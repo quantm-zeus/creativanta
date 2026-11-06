@@ -2,8 +2,11 @@ package order
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -15,8 +18,53 @@ import (
 	"github.com/quantm-zeus/creativanta/apps/api/internal/rbac"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/transportauth"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
+
+func actorIDFromContext(ctx context.Context, workspaceID string) string {
+	if session, ok := transportauth.PrincipalFromContext(ctx); ok {
+		if session.UserID != "" {
+			return session.UserID
+		}
+		if session.ServiceKeyID != "" {
+			return session.ServiceKeyID
+		}
+	}
+	if apiKey, ok := publicapi.AuthenticatedKeyFromContext(ctx); ok && apiKey.APIKeyID != "" {
+		return apiKey.APIKeyID
+	}
+	return workspaceID
+}
+
+func hashRequestPayload(parts ...string) string {
+	h := sha256.New()
+	for _, p := range parts {
+		_, _ = h.Write([]byte(p))
+		_, _ = h.Write([]byte{0})
+	}
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+func toConnectMutationError(err error) error {
+	if err == nil {
+		return nil
+	}
+	var connectErr *connect.Error
+	if errors.As(err, &connectErr) {
+		return err
+	}
+	switch {
+	case errors.Is(err, ErrIdempotencyConflict):
+		return connect.NewError(connect.CodeAlreadyExists, err)
+	case errors.Is(err, ErrConcurrencyConflict):
+		return connect.NewError(connect.CodeFailedPrecondition, err)
+	case errors.Is(err, ErrOrderNotFound), errors.Is(err, ErrRefundNotFound), errors.Is(err, ErrReturnNotFound):
+		return connect.NewError(connect.CodeNotFound, err)
+	default:
+		return connect.NewError(connect.CodeInvalidArgument, err)
+	}
+}
 
 // MembershipRoleResolver looks up a user's active membership role in a workspace.
 type MembershipRoleResolver func(ctx context.Context, workspaceID, userID string) (role string, active bool, err error)
@@ -403,10 +451,45 @@ func (h *OrderHandler) Export(ctx context.Context, req *connect.Request[commerce
 	}), nil
 }
 
+func checkExpectedOrderUpdatedAt(cmdCtx *commonv1.CommandContext, o *Order) error {
+	if cmdCtx == nil || cmdCtx.ExpectedUpdatedAt == nil || o == nil {
+		return nil
+	}
+	expected := cmdCtx.ExpectedUpdatedAt.AsTime().UTC().Truncate(time.Microsecond)
+	actual := o.UpdatedAt.UTC().Truncate(time.Microsecond)
+	if !actual.Equal(expected) {
+		return fmt.Errorf("%w: order %s updated_at is %s, expected %s",
+			ErrConcurrencyConflict, o.OrderID, actual.Format(time.RFC3339Nano), expected.Format(time.RFC3339Nano))
+	}
+	return nil
+}
+
+func checkExpectedRefundUpdatedAt(cmdCtx *commonv1.CommandContext, r *Refund) error {
+	if cmdCtx == nil || cmdCtx.ExpectedUpdatedAt == nil || r == nil {
+		return nil
+	}
+	expected := cmdCtx.ExpectedUpdatedAt.AsTime().UTC().Truncate(time.Microsecond)
+	actual := r.UpdatedAt.UTC().Truncate(time.Microsecond)
+	if !actual.Equal(expected) {
+		return fmt.Errorf("%w: refund %s updated_at is %s, expected %s",
+			ErrConcurrencyConflict, r.RefundID, actual.Format(time.RFC3339Nano), expected.Format(time.RFC3339Nano))
+	}
+	return nil
+}
+
 func (h *OrderHandler) UpdateStatus(ctx context.Context, req *connect.Request[commercev1.OrderServiceUpdateStatusRequest]) (*connect.Response[commercev1.OrderServiceUpdateStatusResponse], error) {
 	wsID, err := authorizeTenantOrderOperation(ctx, req.Msg.Context, h.roleResolver, "order:manage", "write:orders")
 	if err != nil {
 		return nil, err
+	}
+	if req.Msg.Context != nil && req.Msg.Context.ExpectedUpdatedAt != nil {
+		existing, gErr := h.service.store.GetOrder(ctx, wsID, req.Msg.OrderId)
+		if gErr != nil {
+			return nil, toConnectMutationError(gErr)
+		}
+		if cErr := checkExpectedOrderUpdatedAt(req.Msg.Context, existing); cErr != nil {
+			return nil, toConnectMutationError(cErr)
+		}
 	}
 	targetState := fromProtoLifecycleState(req.Msg.TargetState)
 	var o *Order
@@ -423,7 +506,7 @@ func (h *OrderHandler) UpdateStatus(ctx context.Context, req *connect.Request[co
 		err = connect.NewError(connect.CodeInvalidArgument, ErrInvalidOrderTransition)
 	}
 	if err != nil {
-		return nil, err
+		return nil, toConnectMutationError(err)
 	}
 	return connect.NewResponse(&commercev1.OrderServiceUpdateStatusResponse{
 		Order: toProtoOrder(o),
@@ -442,9 +525,18 @@ func (h *OrderHandler) Confirm(ctx context.Context, req *connect.Request[commerc
 	if err != nil {
 		return nil, err
 	}
+	if req.Msg.Context != nil && req.Msg.Context.ExpectedUpdatedAt != nil {
+		existing, gErr := h.service.store.GetOrder(ctx, wsID, req.Msg.OrderId)
+		if gErr != nil {
+			return nil, toConnectMutationError(gErr)
+		}
+		if cErr := checkExpectedOrderUpdatedAt(req.Msg.Context, existing); cErr != nil {
+			return nil, toConnectMutationError(cErr)
+		}
+	}
 	o, err := h.service.ConfirmOrder(ctx, wsID, req.Msg.OrderId)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		return nil, toConnectMutationError(err)
 	}
 	return connect.NewResponse(&commercev1.OrderServiceConfirmResponse{
 		Order: toProtoOrder(o),
@@ -528,6 +620,15 @@ func (h *RefundHandler) Create(ctx context.Context, req *connect.Request[commerc
 		return nil, err
 	}
 	msg := req.Msg
+
+	idempotencyKey := ""
+	if msg.Context != nil {
+		idempotencyKey = strings.TrimSpace(msg.Context.IdempotencyKey)
+	}
+	if idempotencyKey == "" || len(idempotencyKey) > 255 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key is required (1-255 chars) for RefundService.Create"))
+	}
+
 	if msg.Amount == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, ErrInvalidAmount)
 	}
@@ -536,7 +637,41 @@ func (h *RefundHandler) Create(ctx context.Context, req *connect.Request[commerc
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
+	actorID := actorIDFromContext(ctx, wsID)
+	const rpcMethod = "commerce.v1.RefundService/Create"
+	reqHash := hashRequestPayload(wsID, msg.OrderId, amt.Fixed6String(), strings.TrimSpace(msg.Amount.Currency), strings.TrimSpace(msg.Reason), strings.TrimSpace(msg.RefundType))
+
+	unlock := h.service.lockEntity("idem_refund_create", wsID, actorID+":"+idempotencyKey)
+	defer unlock()
+
+	existingRec, err := h.service.store.GetIdempotencyRecord(ctx, wsID, actorID, rpcMethod, idempotencyKey)
+	if err != nil {
+		return nil, toConnectMutationError(err)
+	}
+	if existingRec != nil {
+		if existingRec.RequestHash != reqHash {
+			return nil, connect.NewError(connect.CodeAlreadyExists, ErrIdempotencyConflict)
+		}
+		var cachedResp commercev1.RefundServiceCreateResponse
+		if len(existingRec.ResponsePayload) > 0 {
+			if err := protojson.Unmarshal(existingRec.ResponsePayload, &cachedResp); err == nil {
+				return connect.NewResponse(&cachedResp), nil
+			}
+		}
+	}
+
+	if msg.Context != nil && msg.Context.ExpectedUpdatedAt != nil {
+		existingOrd, gErr := h.service.store.GetOrder(ctx, wsID, msg.OrderId)
+		if gErr != nil {
+			return nil, toConnectMutationError(gErr)
+		}
+		if cErr := checkExpectedOrderUpdatedAt(msg.Context, existingOrd); cErr != nil {
+			return nil, toConnectMutationError(cErr)
+		}
+	}
+
 	r := &Refund{
+		RefundID:    deterministicActorUUID(wsID + ":refund_create:" + actorID + ":" + idempotencyKey),
 		WorkspaceID: wsID,
 		OrderID:     msg.OrderId,
 		Amount:      amt,
@@ -547,13 +682,28 @@ func (h *RefundHandler) Create(ctx context.Context, req *connect.Request[commerc
 
 	createdRef, updatedOrd, err := h.service.RequestRefund(ctx, r)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		return nil, toConnectMutationError(err)
 	}
 
-	return connect.NewResponse(&commercev1.RefundServiceCreateResponse{
+	respMsg := &commercev1.RefundServiceCreateResponse{
 		Refund:       toProtoRefund(createdRef),
 		UpdatedOrder: toProtoOrder(updatedOrd),
-	}), nil
+	}
+	if bodyJSON, mErr := protojson.Marshal(respMsg); mErr == nil {
+		if sErr := h.service.store.SaveIdempotencyRecord(ctx, &IdempotencyRecord{
+			WorkspaceID:     wsID,
+			ActorID:         actorID,
+			RPC:             rpcMethod,
+			IdempotencyKey:  idempotencyKey,
+			RequestHash:     reqHash,
+			Status:          "completed",
+			ResponsePayload: bodyJSON,
+		}); sErr != nil {
+			return nil, toConnectMutationError(sErr)
+		}
+	}
+
+	return connect.NewResponse(respMsg), nil
 }
 
 func (h *RefundHandler) Get(ctx context.Context, req *connect.Request[commercev1.RefundServiceGetRequest]) (*connect.Response[commercev1.RefundServiceGetResponse], error) {
@@ -601,9 +751,18 @@ func (h *RefundHandler) Approve(ctx context.Context, req *connect.Request[commer
 	if err != nil {
 		return nil, err
 	}
+	if req.Msg.Context != nil && req.Msg.Context.ExpectedUpdatedAt != nil {
+		existingRef, gErr := h.service.store.GetRefund(ctx, wsID, req.Msg.RefundId)
+		if gErr != nil {
+			return nil, toConnectMutationError(gErr)
+		}
+		if cErr := checkExpectedRefundUpdatedAt(req.Msg.Context, existingRef); cErr != nil {
+			return nil, toConnectMutationError(cErr)
+		}
+	}
 	appRef, updatedOrd, err := h.service.ApproveRefund(ctx, wsID, req.Msg.RefundId)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		return nil, toConnectMutationError(err)
 	}
 	return connect.NewResponse(&commercev1.RefundServiceApproveResponse{
 		Refund:       toProtoRefund(appRef),
@@ -616,8 +775,17 @@ func (h *RefundHandler) Reject(ctx context.Context, req *connect.Request[commerc
 	if err != nil {
 		return nil, err
 	}
+	if req.Msg.Context != nil && req.Msg.Context.ExpectedUpdatedAt != nil {
+		existingRef, gErr := h.service.store.GetRefund(ctx, wsID, req.Msg.RefundId)
+		if gErr != nil {
+			return nil, toConnectMutationError(gErr)
+		}
+		if cErr := checkExpectedRefundUpdatedAt(req.Msg.Context, existingRef); cErr != nil {
+			return nil, toConnectMutationError(cErr)
+		}
+	}
 	if err := h.service.store.UpdateRefundStatus(ctx, wsID, req.Msg.RefundId, RefundRejected); err != nil {
-		return nil, connect.NewError(connect.CodeNotFound, err)
+		return nil, toConnectMutationError(err)
 	}
 	r, err := h.service.store.GetRefund(ctx, wsID, req.Msg.RefundId)
 	if err != nil {

@@ -961,3 +961,413 @@ func TestAUTH03_OrderAndRefundHandlersEnforceTenantScopeAndPermissions(t *testin
 		t.Fatalf("expected CodePermissionDenied when editor calls RefundHandler.Create (requires refund:manage / Manager+), got %v", err)
 	}
 }
+
+// F09: RefundHandler.Create requires idempotency_key, deduplicates replays, rejects payload conflicts,
+// and enforces unique external refund identity under concurrency.
+func TestF09_RefundCreateIdempotencyConflictAndConcurrentExternalIdentity(t *testing.T) {
+	ctx := context.Background()
+	orderSvc, _, orderStore, _, _ := setupTestHarness()
+	refundHandler := order.NewRefundHandler(orderSvc)
+
+	wsID := "11111111-1111-4111-8111-111111111110"
+	managerCtx := transportauth.WithPrincipal(ctx, transportauth.Session{
+		UserID:      "33333333-3333-4333-8333-333333333339",
+		WorkspaceID: wsID,
+		Role:        "manager",
+	})
+
+	ord, _, err := orderSvc.IngestOrder(ctx, &order.Order{
+		WorkspaceID:    wsID,
+		SourceClass:    order.SourceClassOfficial,
+		Amount:         tenantdb.MustParseExactDecimal("100000.000000"),
+		Currency:       "VND",
+		LifecycleState: order.StateCompleted,
+	}, "")
+	if err != nil {
+		t.Fatalf("ingest order failed: %v", err)
+	}
+
+	// 1. Missing idempotency_key on RefundHandler.Create must fail with CodeInvalidArgument
+	_, err = refundHandler.Create(managerCtx, connect.NewRequest(&commercev1.RefundServiceCreateRequest{
+		Context:    &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: wsID}},
+		OrderId:    ord.OrderID,
+		RefundType: "partial",
+		Amount:     &commonv1.Money{Amount: "30000", Currency: "VND"},
+		Reason:     "partial refund",
+	}))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("expected CodeInvalidArgument when idempotency_key is missing on RefundHandler.Create, got %v", err)
+	}
+
+	// 2. First call with idempotency_key succeeds; second call with same key + same payload returns exact same refund
+	req1 := &commercev1.RefundServiceCreateRequest{
+		Context: &commonv1.CommandContext{
+			WorkspaceId:    &commonv1.UUID{Value: wsID},
+			IdempotencyKey: "idem-refund-create-01",
+		},
+		OrderId:    ord.OrderID,
+		RefundType: "partial",
+		Amount:     &commonv1.Money{Amount: "30000", Currency: "VND"},
+		Reason:     "partial refund",
+	}
+	resp1, err := refundHandler.Create(managerCtx, connect.NewRequest(req1))
+	if err != nil {
+		t.Fatalf("first RefundHandler.Create failed: %v", err)
+	}
+	resp2, err := refundHandler.Create(managerCtx, connect.NewRequest(req1))
+	if err != nil {
+		t.Fatalf("replayed RefundHandler.Create failed: %v", err)
+	}
+	if resp1.Msg.GetRefund().GetRefundId() != resp2.Msg.GetRefund().GetRefundId() {
+		t.Fatalf("expected replayed RefundHandler.Create to return same refund_id %s, got %s",
+			resp1.Msg.GetRefund().GetRefundId(), resp2.Msg.GetRefund().GetRefundId())
+	}
+	allRefunds, err := orderStore.ListRefundsByOrder(ctx, wsID, ord.OrderID)
+	if err != nil || len(allRefunds) != 1 {
+		t.Fatalf("expected exactly 1 refund after idempotent replay, got %d (err=%v)", len(allRefunds), err)
+	}
+
+	// 3. Reusing same idempotency_key with different amount must fail with CodeAlreadyExists (conflict)
+	_, err = refundHandler.Create(managerCtx, connect.NewRequest(&commercev1.RefundServiceCreateRequest{
+		Context: &commonv1.CommandContext{
+			WorkspaceId:    &commonv1.UUID{Value: wsID},
+			IdempotencyKey: "idem-refund-create-01",
+		},
+		OrderId:    ord.OrderID,
+		RefundType: "partial",
+		Amount:     &commonv1.Money{Amount: "40000", Currency: "VND"},
+		Reason:     "partial refund",
+	}))
+	if connect.CodeOf(err) != connect.CodeAlreadyExists {
+		t.Fatalf("expected CodeAlreadyExists when reusing idempotency_key with different amount, got %v", err)
+	}
+
+	// 4. Concurrent external refund requests with same ExternalRefundID must create only 1 refund
+	const workers = 10
+	var wg sync.WaitGroup
+	errs := make(chan error, workers)
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, _, rErr := orderSvc.RequestRefund(ctx, &order.Refund{
+				WorkspaceID:      wsID,
+				OrderID:          ord.OrderID,
+				RefundType:       "partial",
+				Amount:           tenantdb.MustParseExactDecimal("25000.000000"),
+				Currency:         "VND",
+				Reason:           "webhook refund",
+				SourcePlatform:   "tiktok",
+				ExternalRefundID: "ext-ref-dup-01",
+			})
+			if rErr != nil {
+				errs <- rErr
+			}
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	for e := range errs {
+		t.Fatalf("unexpected error in concurrent external RequestRefund: %v", e)
+	}
+	allRefunds, _ = orderStore.ListRefundsByOrder(ctx, wsID, ord.OrderID)
+	extCount := 0
+	for _, r := range allRefunds {
+		if r.ExternalRefundID == "ext-ref-dup-01" {
+			extCount++
+		}
+	}
+	if extCount != 1 {
+		t.Fatalf("expected exactly 1 refund for ExternalRefundID ext-ref-dup-01, got %d", extCount)
+	}
+}
+
+type selectiveFailFinanceService struct {
+	mu               sync.Mutex
+	delegate         order.FinanceService
+	failRefundIDs    map[string]bool
+	beforeRefundHook func(refundID string)
+}
+
+func (f *selectiveFailFinanceService) RecordOrderPosting(ctx context.Context, input finance.OrderPostingInput) error {
+	return f.delegate.RecordOrderPosting(ctx, input)
+}
+
+func (f *selectiveFailFinanceService) RecordOrderCorrection(ctx context.Context, workspaceID, orderID, component string, newAmount tenantdb.ExactDecimal, newVersion, sourceClass, confidence string, fx finance.ExchangeRateSnapshot) error {
+	return f.delegate.RecordOrderCorrection(ctx, workspaceID, orderID, component, newAmount, newVersion, sourceClass, confidence, fx)
+}
+
+func (f *selectiveFailFinanceService) RecordRefundPosting(ctx context.Context, workspaceID, refundID, orderID string, refundAmount tenantdb.ExactDecimal, currency string, sourceClass, confidence string, fx finance.ExchangeRateSnapshot) error {
+	if f.beforeRefundHook != nil {
+		f.beforeRefundHook(refundID)
+	}
+	f.mu.Lock()
+	shouldFail := f.failRefundIDs[refundID]
+	f.mu.Unlock()
+	if shouldFail {
+		return errors.New("simulated refund finance failure")
+	}
+	return f.delegate.RecordRefundPosting(ctx, workspaceID, refundID, orderID, refundAmount, currency, sourceClass, confidence, fx)
+}
+
+// F10: Concurrent refund approval rollback when one finance posting fails must NOT clobber
+// another refund approval that succeeded concurrently.
+func TestF10_ConcurrentRefundApprovalRollbackPreservesOtherRefunds(t *testing.T) {
+	ctx := context.Background()
+	orderSvc, _, orderStore, _, _ := setupTestHarness()
+	finStore := finance.NewMemoryStore()
+	finSvc := finance.NewService(finStore, nil, nil)
+
+	wsID := "00000000-0000-0000-0000-000000000001"
+	ord, _, err := orderSvc.IngestOrder(ctx, &order.Order{
+		WorkspaceID:    wsID,
+		SourceClass:    order.SourceClassOfficial,
+		Amount:         tenantdb.MustParseExactDecimal("100.000000"),
+		Currency:       "VND",
+		LifecycleState: order.StateCompleted,
+	}, "")
+	if err != nil {
+		t.Fatalf("ingest order failed: %v", err)
+	}
+
+	ref1, _, err := orderSvc.RequestRefund(ctx, &order.Refund{
+		WorkspaceID: wsID,
+		OrderID:     ord.OrderID,
+		RefundType:  "partial",
+		Amount:      tenantdb.MustParseExactDecimal("30.000000"),
+		Currency:    "VND",
+		Reason:      "refund 1 (will fail finance)",
+	})
+	if err != nil {
+		t.Fatalf("request ref1 failed: %v", err)
+	}
+	ref2, _, err := orderSvc.RequestRefund(ctx, &order.Refund{
+		WorkspaceID: wsID,
+		OrderID:     ord.OrderID,
+		RefundType:  "partial",
+		Amount:      tenantdb.MustParseExactDecimal("40.000000"),
+		Currency:    "VND",
+		Reason:      "refund 2 (will succeed finance)",
+	})
+	if err != nil {
+		t.Fatalf("request ref2 failed: %v", err)
+	}
+
+	ref1EnteredFinance := make(chan struct{})
+	ref2Done := make(chan struct{})
+
+	selFin := &selectiveFailFinanceService{
+		delegate:      finSvc,
+		failRefundIDs: map[string]bool{ref1.RefundID: true},
+		beforeRefundHook: func(refundID string) {
+			if refundID == ref1.RefundID {
+				close(ref1EnteredFinance)
+				<-ref2Done
+			}
+		},
+	}
+	orderSvc.SetFinance(selFin)
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		_, _, _ = orderSvc.ApproveRefund(ctx, wsID, ref1.RefundID)
+	}()
+	go func() {
+		defer wg.Done()
+		<-ref1EnteredFinance
+		if _, _, err := orderSvc.ApproveRefund(ctx, wsID, ref2.RefundID); err != nil {
+			t.Errorf("expected ref2 ApproveRefund to succeed, got %v", err)
+		}
+		close(ref2Done)
+	}()
+	wg.Wait()
+
+	finalOrd, err := orderStore.GetOrder(ctx, wsID, ord.OrderID)
+	if err != nil {
+		t.Fatalf("GetOrder failed: %v", err)
+	}
+	if finalOrd.RefundedAmount.String() != "40" {
+		t.Fatalf("expected order RefundedAmount=40 after ref1 rollback and ref2 success, got %s", finalOrd.RefundedAmount.String())
+	}
+	if finalOrd.LifecycleState != order.StatePartiallyRefunded {
+		t.Fatalf("expected order LifecycleState=partially_refunded, got %s", finalOrd.LifecycleState)
+	}
+	r1After, _ := orderStore.GetRefund(ctx, wsID, ref1.RefundID)
+	r2After, _ := orderStore.GetRefund(ctx, wsID, ref2.RefundID)
+	if r1After.LifecycleState != order.RefundRequested {
+		t.Fatalf("expected ref1 reverted to requested, got %s", r1After.LifecycleState)
+	}
+	if r2After.LifecycleState != order.RefundCompleted {
+		t.Fatalf("expected ref2 completed, got %s", r2After.LifecycleState)
+	}
+}
+
+// F12: When IngestOrder receives a completed order and finance posting fails after stock fulfillment,
+// retrying with the same external identity must NOT double-deduct stock and must complete the order.
+func TestF12_CompletedOrderFinanceFailurePreservesStockAndReplayIdentityOnRetry(t *testing.T) {
+	ctx := context.Background()
+	orderSvc, invSvc, _, invStore, _ := setupTestHarness()
+	finStore := finance.NewMemoryStore()
+	finSvc := finance.NewService(finStore, nil, nil)
+
+	wsID := "00000000-0000-0000-0000-000000000001"
+	locID := "00000000-0000-0000-0000-000000000010"
+	skuID := "SKU-F12-01"
+
+	t0 := time.Date(2026, 3, 25, 10, 0, 0, 0, time.UTC)
+	if err := invSvc.RecordOpeningBaseline(ctx, wsID, skuID, locID, 10, t0); err != nil {
+		t.Fatalf("RecordOpeningBaseline failed: %v", err)
+	}
+
+	// Inject finance failure on first ingest attempt
+	orderSvc.SetFinance(&failingFinanceService{failOrderPosting: true})
+
+	incoming := func() *order.Order {
+		return &order.Order{
+			WorkspaceID:     wsID,
+			SourceClass:     order.SourceClassOfficial,
+			SourcePlatform:  "tiktok",
+			ExternalOrderID: "tt-ord-f12-001",
+			LifecycleState:  order.StateCompleted,
+			Amount:          tenantdb.MustParseExactDecimal("200000.000000"),
+			Currency:        "VND",
+			OrderedAt:       t0.Add(1 * time.Hour),
+			Items: []order.OrderItem{
+				{
+					Sku:       skuID,
+					Name:      "F12 Item",
+					Quantity:  2,
+					UnitPrice: tenantdb.MustParseExactDecimal("100000.000000"),
+					Total:     tenantdb.MustParseExactDecimal("200000.000000"),
+				},
+			},
+		}
+	}
+
+	if _, _, err := orderSvc.IngestOrder(ctx, incoming(), locID); err == nil {
+		t.Fatalf("expected IngestOrder to fail when finance posting fails")
+	}
+
+	// Restore working finance service and retry ingest with same external identity
+	orderSvc.SetFinance(finSvc)
+	retriedOrd, _, err := orderSvc.IngestOrder(ctx, incoming(), locID)
+	if err != nil {
+		t.Fatalf("retry IngestOrder after finance recovery failed: %v", err)
+	}
+	if retriedOrd.LifecycleState != order.StateCompleted {
+		t.Fatalf("expected retried order to be in StateCompleted, got %s", retriedOrd.LifecycleState)
+	}
+
+	bal, err := invStore.GetBalance(ctx, wsID, skuID, locID)
+	if err != nil {
+		t.Fatalf("GetBalance failed: %v", err)
+	}
+	if bal.OnHand != 8 || bal.Reserved != 0 {
+		t.Fatalf("expected OnHand=8, Reserved=0 (single deduction of 2 units), got OnHand=%d Reserved=%d", bal.OnHand, bal.Reserved)
+	}
+
+	postings, err := finStore.ListPostings(ctx, wsID, finance.PostingFilter{})
+	if err != nil || len(postings) != 1 {
+		t.Fatalf("expected 1 revenue posting after retry, got %d (err=%v)", len(postings), err)
+	}
+}
+
+// Data #16: Concurrent CreateReturn calls and duplicate SKU lines in a single CreateReturn
+// must never exceed sold quantity.
+func TestData16_ConcurrentReturnCreationAndDuplicateSkuCannotExceedOrderedQty(t *testing.T) {
+	ctx := context.Background()
+	orderSvc, invSvc, orderStore, invStore, _ := setupTestHarness()
+
+	wsID := "00000000-0000-0000-0000-000000000001"
+	locID := "00000000-0000-0000-0000-000000000010"
+	skuID := "SKU-RET-RACE-01"
+
+	t0 := time.Date(2026, 3, 25, 10, 0, 0, 0, time.UTC)
+	if err := invSvc.RecordOpeningBaseline(ctx, wsID, skuID, locID, 10, t0); err != nil {
+		t.Fatalf("RecordOpeningBaseline failed: %v", err)
+	}
+
+	ord, _, err := orderSvc.IngestOrder(ctx, &order.Order{
+		WorkspaceID:     wsID,
+		SourceClass:     order.SourceClassOfficial,
+		SourcePlatform:  "shopee",
+		ExternalOrderID: "shp-ret-race-001",
+		LifecycleState:  order.StateCompleted,
+		Amount:          tenantdb.MustParseExactDecimal("100000.000000"),
+		Currency:        "VND",
+		OrderedAt:       t0.Add(1 * time.Hour),
+		Items: []order.OrderItem{
+			{
+				Sku:       skuID,
+				Name:      "Single Unit Item",
+				Quantity:  1,
+				UnitPrice: tenantdb.MustParseExactDecimal("100000.000000"),
+				Total:     tenantdb.MustParseExactDecimal("100000.000000"),
+			},
+		},
+	}, locID)
+	if err != nil {
+		t.Fatalf("IngestOrder failed: %v", err)
+	}
+
+	// 1. Single CreateReturn with duplicate SKU lines totaling 2 > 1 ordered must fail
+	_, err = orderSvc.CreateReturn(ctx, &order.Return{
+		WorkspaceID: wsID,
+		OrderID:     ord.OrderID,
+		ReturnType:  "partial",
+		Items: []order.ReturnItem{
+			{Sku: skuID, Quantity: 1, Reason: "dup line 1"},
+			{Sku: skuID, Quantity: 1, Reason: "dup line 2"},
+		},
+	})
+	if !errors.Is(err, order.ErrReturnExceedsOrderQuantity) {
+		t.Fatalf("expected ErrReturnExceedsOrderQuantity for duplicate SKU lines exceeding ordered qty, got %v", err)
+	}
+
+	// 2. Concurrent CreateReturn calls (10 goroutines each requesting 1 unit when only 1 unit was sold)
+	const workers = 10
+	var wg sync.WaitGroup
+	successes := make(chan *order.Return, workers)
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			r, cErr := orderSvc.CreateReturn(ctx, &order.Return{
+				WorkspaceID: wsID,
+				OrderID:     ord.OrderID,
+				ReturnType:  "full",
+				Items: []order.ReturnItem{
+					{Sku: skuID, Quantity: 1, Reason: "concurrent return"},
+				},
+			})
+			if cErr == nil {
+				successes <- r
+			}
+		}(i)
+	}
+	wg.Wait()
+	close(successes)
+
+	var createdReturns []*order.Return
+	for r := range successes {
+		createdReturns = append(createdReturns, r)
+	}
+	if len(createdReturns) != 1 {
+		t.Fatalf("expected exactly 1 concurrent CreateReturn to succeed for 1 unit sold, got %d", len(createdReturns))
+	}
+
+	allRets, _ := orderStore.ListReturnsByOrder(ctx, wsID, ord.OrderID)
+	if len(allRets) != 1 {
+		t.Fatalf("expected 1 persisted return row, got %d", len(allRets))
+	}
+
+	if _, err := orderSvc.ReceiveReturn(ctx, wsID, createdReturns[0].ReturnID, locID); err != nil {
+		t.Fatalf("ReceiveReturn failed: %v", err)
+	}
+	bal, _ := invStore.GetBalance(ctx, wsID, skuID, locID)
+	if bal.OnHand != 10 {
+		t.Fatalf("expected OnHand restored to 10 (9+1), got %d", bal.OnHand)
+	}
+}

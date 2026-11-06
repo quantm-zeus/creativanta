@@ -10,7 +10,6 @@ import (
 	"github.com/quantm-zeus/creativanta/apps/api/internal/finance"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/inventory"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/order"
-	"github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb"
 )
 
 // Service orchestrates commerce platform adapters with order, inventory, and finance domains.
@@ -149,14 +148,6 @@ func (s *Service) ProcessOrderWebhook(
 		return nil, false, err
 	}
 
-	// If order arrives already completed (e.g. historical completed order), complete order
-	if parsed.LifecycleState == order.StateCompleted && createdOrder.LifecycleState != order.StateCompleted {
-		createdOrder, err = s.orderSvc.CompleteOrder(ctx, workspaceID, createdOrder.OrderID)
-		if err != nil {
-			return nil, false, err
-		}
-	}
-
 	return createdOrder, created, nil
 }
 
@@ -209,16 +200,22 @@ func (s *Service) ProcessReturnWebhook(
 
 	targetOrderID := internalOrderID
 	if targetOrderID == "" {
-		targetOrderID = parsed.ExternalOrderID
+		if existingOrd, fErr := s.orderSvc.Store().FindOrderByExternalID(ctx, workspaceID, platform, parsed.ExternalOrderID, ""); fErr == nil && existingOrd != nil {
+			targetOrderID = existingOrd.OrderID
+		} else {
+			targetOrderID = parsed.ExternalOrderID
+		}
 	}
 
 	ret := &order.Return{
-		WorkspaceID:    workspaceID,
-		OrderID:        targetOrderID,
-		ReturnType:     "physical",
-		Items:          parsed.Items,
-		LifecycleState: parsed.LifecycleState,
-		TrackingNumber: parsed.TrackingNumber,
+		WorkspaceID:      workspaceID,
+		OrderID:          targetOrderID,
+		ReturnType:       "physical",
+		Items:            parsed.Items,
+		LifecycleState:   parsed.LifecycleState,
+		SourcePlatform:   platform,
+		ExternalReturnID: parsed.ExternalReturnID,
+		TrackingNumber:   parsed.TrackingNumber,
 	}
 
 	createdRet, err := s.orderSvc.CreateReturn(ctx, ret)
@@ -226,8 +223,25 @@ func (s *Service) ProcessReturnWebhook(
 		return nil, err
 	}
 
-	// If return status is received/closed, physically restock the returned items
-	if parsed.LifecycleState == order.ReturnReceived || parsed.LifecycleState == order.ReturnClosed {
+	switch parsed.LifecycleState {
+	case order.ReturnApproved:
+		if createdRet.LifecycleState == order.ReturnInitiated {
+			return s.orderSvc.ApproveReturn(ctx, workspaceID, createdRet.ReturnID)
+		}
+	case order.ReturnShippedBack:
+		if createdRet.LifecycleState == order.ReturnInitiated {
+			if _, err := s.orderSvc.ApproveReturn(ctx, workspaceID, createdRet.ReturnID); err != nil {
+				return nil, err
+			}
+		}
+		if createdRet.LifecycleState != order.ReturnClosed && createdRet.LifecycleState != order.ReturnRejected {
+			return s.orderSvc.ShipReturn(ctx, workspaceID, createdRet.ReturnID, parsed.TrackingNumber)
+		}
+	case order.ReturnRejected:
+		if createdRet.LifecycleState != order.ReturnClosed {
+			return s.orderSvc.RejectReturn(ctx, workspaceID, createdRet.ReturnID, parsed.Reason)
+		}
+	case order.ReturnReceived, order.ReturnClosed:
 		return s.orderSvc.ReceiveReturn(ctx, workspaceID, createdRet.ReturnID, restockLocationID)
 	}
 
@@ -291,70 +305,50 @@ func (s *Service) ProcessRefundWebhook(
 
 	targetOrderID := internalOrderID
 	if targetOrderID == "" {
-		targetOrderID = parsed.ExternalOrderID
+		if existingOrd, fErr := s.orderSvc.Store().FindOrderByExternalID(ctx, workspaceID, platform, parsed.ExternalOrderID, ""); fErr == nil && existingOrd != nil {
+			targetOrderID = existingOrd.OrderID
+		} else {
+			targetOrderID = parsed.ExternalOrderID
+		}
 	}
 
 	s.refundMu.Lock()
 	defer s.refundMu.Unlock()
 
-	refundAmount := parsed.Amount
-	externalRefundID := parsed.ExternalRefundID
-
-	existingRefunds, err := s.orderSvc.Store().ListRefundsByOrder(ctx, workspaceID, targetOrderID)
-	if err != nil {
-		return nil, nil, err
-	}
-
 	if parsed.IsCumulative {
-		bookedTotal := tenantdb.ZeroDecimal()
-		var latestRef *order.Refund
-		for _, r := range existingRefunds {
-			if r.LifecycleState == order.RefundRejected {
-				continue
-			}
-			bookedTotal, err = bookedTotal.Add(r.Amount)
-			if err != nil {
-				return nil, nil, err
-			}
-			latestRef = r
+		ref := &order.Refund{
+			WorkspaceID:      workspaceID,
+			OrderID:          targetOrderID,
+			RefundType:       "partial",
+			Currency:         parsed.Currency,
+			Reason:           parsed.Reason,
+			SourceClass:      order.SourceClassOfficial,
+			SourcePlatform:   platform,
+			ExternalRefundID: parsed.ExternalRefundID,
 		}
-
-		delta, err := parsed.Amount.Sub(bookedTotal)
+		createdRef, ord, created, err := s.orderSvc.RequestCumulativeRefund(ctx, ref, parsed.Amount)
 		if err != nil {
 			return nil, nil, err
 		}
-		if delta.IsNegative() || delta.IsZero() {
-			ord, err := s.orderSvc.GetOrder(ctx, workspaceID, targetOrderID)
-			if err != nil {
-				return nil, nil, err
+		if !created {
+			if createdRef != nil && (createdRef.LifecycleState == order.RefundRequested || createdRef.LifecycleState == order.RefundProcessing) {
+				return s.orderSvc.ApproveRefund(ctx, workspaceID, createdRef.RefundID)
 			}
-			return latestRef, ord, nil
+			return createdRef, ord, nil
 		}
-
-		refundAmount = delta
-		externalRefundID = fmt.Sprintf("%s:cum:%s", parsed.ExternalRefundID, parsed.Amount.Fixed6String())
-	} else if externalRefundID != "" {
-		for _, r := range existingRefunds {
-			if r.SourcePlatform == platform && r.ExternalRefundID == externalRefundID {
-				if r.LifecycleState == order.RefundApproved || r.LifecycleState == order.RefundCompleted {
-					ord, err := s.orderSvc.GetOrder(ctx, workspaceID, targetOrderID)
-					return r, ord, err
-				}
-				return s.orderSvc.ApproveRefund(ctx, workspaceID, r.RefundID)
-			}
-		}
+		return s.orderSvc.ApproveRefund(ctx, workspaceID, createdRef.RefundID)
 	}
 
 	ref := &order.Refund{
 		WorkspaceID:      workspaceID,
 		OrderID:          targetOrderID,
 		RefundType:       "partial",
-		Amount:           refundAmount,
+		Amount:           parsed.Amount,
 		Currency:         parsed.Currency,
 		Reason:           parsed.Reason,
 		SourceClass:      order.SourceClassOfficial,
 		SourcePlatform:   platform,
-		ExternalRefundID: externalRefundID,
+		ExternalRefundID: parsed.ExternalRefundID,
 	}
 
 	createdRef, _, err := s.orderSvc.RequestRefund(ctx, ref)
