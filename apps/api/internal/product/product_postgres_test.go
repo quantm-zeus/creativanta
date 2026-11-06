@@ -3,6 +3,7 @@ package product_test
 import (
 	"context"
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -55,6 +56,11 @@ func TestPostgresLiveProductAndSkuCatalog(t *testing.T) {
 		t.Fatalf("migrate.Up: %v", err)
 	}
 
+	_, err = adminPool.Exec(ctx, `ALTER ROLE app_user WITH LOGIN PASSWORD 'app_user_test_pw'`)
+	if err != nil {
+		t.Fatalf("alter app_user login: %v", err)
+	}
+
 	const (
 		tenantA = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa13"
 		tenantB = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbb13"
@@ -63,6 +69,11 @@ func TestPostgresLiveProductAndSkuCatalog(t *testing.T) {
 	)
 
 	// Clean up previous runs
+	_, _ = adminPool.Exec(ctx, `DELETE FROM stock_movements WHERE workspace_id IN ($1::uuid, $2::uuid)`, tenantA, tenantB)
+	_, _ = adminPool.Exec(ctx, `DELETE FROM inventory_balances WHERE workspace_id IN ($1::uuid, $2::uuid)`, tenantA, tenantB)
+	_, _ = adminPool.Exec(ctx, `DELETE FROM inventory_locations WHERE workspace_id IN ($1::uuid, $2::uuid)`, tenantA, tenantB)
+	_, _ = adminPool.Exec(ctx, `DELETE FROM orders WHERE workspace_id IN ($1::uuid, $2::uuid)`, tenantA, tenantB)
+	_, _ = adminPool.Exec(ctx, `DELETE FROM api_idempotency_records WHERE workspace_id IN ($1::uuid, $2::uuid)`, tenantA, tenantB)
 	_, _ = adminPool.Exec(ctx, `DELETE FROM product_skus WHERE workspace_id IN ($1::uuid, $2::uuid)`, tenantA, tenantB)
 	_, _ = adminPool.Exec(ctx, `DELETE FROM products WHERE workspace_id IN ($1::uuid, $2::uuid)`, tenantA, tenantB)
 	_, _ = adminPool.Exec(ctx, `DELETE FROM workspace_members WHERE workspace_id IN ($1::uuid, $2::uuid)`, tenantA, tenantB)
@@ -112,6 +123,7 @@ func TestPostgresLiveProductAndSkuCatalog(t *testing.T) {
 
 	priceDec, _ := tenantdb.ParseExactDecimal("350000.000000")
 	cogsDec, _ := tenantdb.ParseExactDecimal("180000.000000")
+	t0 := time.Date(2026, 11, 6, 10, 0, 0, 0, time.UTC)
 
 	// 1. Insert product as Tenant A under RLS
 	txA, err := appPool.Begin(ctx)
@@ -120,7 +132,7 @@ func TestPostgresLiveProductAndSkuCatalog(t *testing.T) {
 	}
 	defer txA.Rollback(ctx)
 
-	_, err = txA.Exec(ctx, `SET LOCAL app.current_tenant_id = $1`, tenantA)
+	_, err = txA.Exec(ctx, `SELECT set_config('app.current_tenant_id', $1, true), set_config('app.current_workspace_id', $1, true)`, tenantA)
 	if err != nil {
 		t.Fatalf("set tenantA: %v", err)
 	}
@@ -138,8 +150,8 @@ func TestPostgresLiveProductAndSkuCatalog(t *testing.T) {
 		COGS:             &cogsDec,
 		CatalogStatus:    product.StatusActive,
 		InventoryEnabled: true,
-		CreatedAt:        time.Now().UTC(),
-		UpdatedAt:        time.Now().UTC(),
+		CreatedAt:        t0,
+		UpdatedAt:        t0,
 		SKUs: []product.ProductSku{
 			{
 				SkuID:             uuidV4(),
@@ -149,8 +161,8 @@ func TestPostgresLiveProductAndSkuCatalog(t *testing.T) {
 				Currency:          "VND",
 				LowStockThreshold: 5,
 				IsActive:          true,
-				CreatedAt:         time.Now().UTC(),
-				UpdatedAt:         time.Now().UTC(),
+				CreatedAt:         t0,
+				UpdatedAt:         t0,
 			},
 		},
 	}
@@ -168,7 +180,7 @@ func TestPostgresLiveProductAndSkuCatalog(t *testing.T) {
 	}
 	defer txB.Rollback(ctx)
 
-	_, err = txB.Exec(ctx, `SET LOCAL app.current_tenant_id = $1`, tenantB)
+	_, err = txB.Exec(ctx, `SELECT set_config('app.current_tenant_id', $1, true), set_config('app.current_workspace_id', $1, true)`, tenantB)
 	if err != nil {
 		t.Fatalf("set tenantB: %v", err)
 	}
@@ -178,24 +190,188 @@ func TestPostgresLiveProductAndSkuCatalog(t *testing.T) {
 	if err != product.ErrProductNotFound {
 		t.Fatalf("RLS VIOLATION: Tenant B could access Tenant A product: %v", err)
 	}
+	_ = txB.Rollback(ctx)
 
-	// 3. Update stock in Tenant A
+	// 3. F01: Update stock in Tenant A -> must append stock_movements, upsert inventory_balances, and update product_skus
 	txA2, err := appPool.Begin(ctx)
 	if err != nil {
 		t.Fatalf("begin txA2: %v", err)
 	}
 	defer txA2.Rollback(ctx)
-	_, _ = txA2.Exec(ctx, `SET LOCAL app.current_tenant_id = $1`, tenantA)
+	_, _ = txA2.Exec(ctx, `SELECT set_config('app.current_tenant_id', $1, true), set_config('app.current_workspace_id', $1, true)`, tenantA)
 	storeA2 := product.NewPostgresStoreTx(txA2)
 
-	newQty, err := storeA2.UpdateSkuStock(ctx, tenantA, prodA.SKUs[0].SkuID, 100)
+	skuID := prodA.SKUs[0].SkuID
+	adjCtx := product.WithStockAdjustmentMeta(ctx, "initial_stock_count", "pg-adj-1")
+	newQty, err := storeA2.UpdateSkuStock(adjCtx, tenantA, skuID, 100)
 	if err != nil {
 		t.Fatalf("UpdateSkuStock: %v", err)
 	}
 	if newQty != 100 {
 		t.Fatalf("expected 100, got %d", newQty)
 	}
-	_ = txA2.Commit(ctx)
 
-	t.Log("PASS: Live PostgreSQL RLS isolation, product catalog, and SKU transactions verified.")
+	// Verify stock_movements row was written
+	var mvCount int
+	var mvQty int32
+	var mvReason, mvType string
+	if err := txA2.QueryRow(ctx, `
+		SELECT COUNT(*), MAX(quantity), MAX(reason), MAX(movement_type::text)
+		FROM stock_movements
+		WHERE workspace_id = $1::uuid AND sku_id = $2::uuid
+	`, tenantA, skuID).Scan(&mvCount, &mvQty, &mvReason, &mvType); err != nil {
+		t.Fatalf("query stock_movements: %v", err)
+	}
+	if mvCount != 1 || mvQty != 100 || mvReason != "initial_stock_count" || mvType != "adjustment" {
+		t.Fatalf("unexpected stock_movements row: count=%d qty=%d reason=%q type=%q", mvCount, mvQty, mvReason, mvType)
+	}
+
+	// Verify inventory_balances row was upserted
+	var balOnHand int32
+	if err := txA2.QueryRow(ctx, `
+		SELECT on_hand FROM inventory_balances WHERE workspace_id = $1::uuid AND sku_id = $2::uuid
+	`, tenantA, skuID).Scan(&balOnHand); err != nil {
+		t.Fatalf("query inventory_balances: %v", err)
+	}
+	if balOnHand != 100 {
+		t.Fatalf("expected inventory_balances.on_hand=100, got %d", balOnHand)
+	}
+
+	// Idempotent replay with same movement_key returns 100 without duplicating movement
+	replayQty, err := storeA2.UpdateSkuStock(adjCtx, tenantA, skuID, 100)
+	if err != nil {
+		t.Fatalf("replay UpdateSkuStock failed: %v", err)
+	}
+	if replayQty != 100 {
+		t.Fatalf("expected replayQty=100, got %d", replayQty)
+	}
+	if err := txA2.QueryRow(ctx, `SELECT COUNT(*) FROM stock_movements WHERE workspace_id = $1::uuid AND sku_id = $2::uuid`, tenantA, skuID).Scan(&mvCount); err != nil {
+		t.Fatalf("recount stock_movements: %v", err)
+	}
+	if mvCount != 1 {
+		t.Fatalf("expected 1 stock movement after replay, got %d", mvCount)
+	}
+
+	// Conflicting replay with same movement_key and different delta must return ErrIdempotencyConflict
+	if _, err := storeA2.UpdateSkuStock(adjCtx, tenantA, skuID, 50); !errors.Is(err, product.ErrIdempotencyConflict) {
+		t.Fatalf("expected ErrIdempotencyConflict on conflicting movement_key replay, got %v", err)
+	}
+
+	// Negative stock adjustment (-150 from 100) must return ErrInsufficientStock
+	negCtx := product.WithStockAdjustmentMeta(ctx, "shrinkage", "pg-adj-neg")
+	if _, err := storeA2.UpdateSkuStock(negCtx, tenantA, skuID, -150); !errors.Is(err, product.ErrInsufficientStock) {
+		t.Fatalf("expected ErrInsufficientStock on negative resulting stock, got %v", err)
+	}
+
+	// 4. Data review #8: Optimistic concurrency (ExpectedUpdatedAt) on UpdateProduct
+	staleTime := t0.Add(-5 * time.Minute)
+	prodA.Title = "Stale Update Attempt"
+	prodA.ExpectedUpdatedAt = &staleTime
+	if err := storeA2.UpdateProduct(ctx, prodA); !errors.Is(err, product.ErrConcurrencyConflict) {
+		t.Fatalf("expected ErrConcurrencyConflict on stale ExpectedUpdatedAt, got %v", err)
+	}
+
+	prodA.Title = "Balo Laptop Chống Nước Pro"
+	prodA.ExpectedUpdatedAt = &t0
+	prodA.UpdatedAt = t0.Add(time.Minute)
+	if err := storeA2.UpdateProduct(ctx, prodA); err != nil {
+		t.Fatalf("UpdateProduct with matching ExpectedUpdatedAt failed: %v", err)
+	}
+
+	// 5. Data review #6: api_idempotency_records persistence and conflict detection
+	if err := storeA2.SaveIdempotencyRecord(ctx, product.IdempotencyRecord{
+		WorkspaceID:    tenantA,
+		IdempotencyKey: "pg-idem-key-1",
+		RequestHash:    "hash-abc",
+		ResponseStatus: 200,
+		ResponseBody:   []byte(`{"product_id":"` + prodA.ProductID + `"}`),
+	}); err != nil {
+		t.Fatalf("SaveIdempotencyRecord failed: %v", err)
+	}
+	if err := storeA2.SaveIdempotencyRecord(ctx, product.IdempotencyRecord{
+		WorkspaceID:    tenantA,
+		IdempotencyKey: "pg-idem-key-1",
+		RequestHash:    "hash-different",
+		ResponseStatus: 200,
+		ResponseBody:   []byte(`{}`),
+	}); !errors.Is(err, product.ErrIdempotencyConflict) {
+		t.Fatalf("expected ErrIdempotencyConflict on mismatched request_hash, got %v", err)
+	}
+
+	// 6. Data review #13 & #20: Seed second product + order and verify keyset pagination, sales summary, chart, and rank
+	prodA2 := &product.Product{
+		ProductID:        uuidV4(),
+		WorkspaceID:      tenantA,
+		ProductType:      product.TypePhysical,
+		Title:            "Túi Chống Sốc 14 inch",
+		Category:         "Phụ kiện",
+		BasePrice:        &priceDec,
+		Currency:         "VND",
+		COGS:             &cogsDec,
+		CatalogStatus:    product.StatusActive,
+		InventoryEnabled: true,
+		CreatedAt:        t0.Add(2 * time.Minute),
+		UpdatedAt:        t0.Add(2 * time.Minute),
+	}
+	if err := storeA2.CreateProduct(ctx, prodA2); err != nil {
+		t.Fatalf("CreateProduct prodA2: %v", err)
+	}
+
+	// Keyset cursor test: page 1 (limit 1) returns prodA2; page 2 with cursor=(prodA2.CreatedAt, prodA2.ProductID) returns prodA
+	page1, total, err := storeA2.ListProducts(ctx, tenantA, product.ListFilter{Category: "Phụ kiện"}, 1, 0)
+	if err != nil || total != 2 || len(page1) != 1 || page1[0].ProductID != prodA2.ProductID {
+		t.Fatalf("unexpected page1: len=%d total=%d err=%v", len(page1), total, err)
+	}
+	cursorTS := page1[0].CreatedAt
+	page2, total2, err := storeA2.ListProducts(ctx, tenantA, product.ListFilter{
+		Category:        "Phụ kiện",
+		CursorCreatedAt: &cursorTS,
+		CursorProductID: page1[0].ProductID,
+	}, 1, 0)
+	if err != nil || total2 != 2 || len(page2) != 1 || page2[0].ProductID != prodA.ProductID {
+		t.Fatalf("unexpected keyset page2: len=%d total=%d err=%v", len(page2), total2, err)
+	}
+
+	// Seed an order for prodA and verify GetProductSalesSummary, GetProductSalesChart, and GetProductRank
+	_, err = txA2.Exec(ctx, `
+		INSERT INTO orders (
+			order_id, workspace_id, product_id, amount, currency, items, lifecycle_state, ordered_at
+		) VALUES (
+			$1::uuid, $2::uuid, $3::uuid, 700000.000000, 'VND', $4::jsonb, 'completed', NOW()
+		)
+	`, uuidV4(), tenantA, prodA.ProductID, fmt.Sprintf(`[{"product_id":%q,"sku":%q,"quantity":2,"unit_price":"350000.000000","total":"700000.000000","unit_cogs":"180000.000000"}]`, prodA.ProductID, skuID))
+	if err != nil {
+		t.Fatalf("insert order: %v", err)
+	}
+
+	summary, err := storeA2.GetProductSalesSummary(ctx, tenantA, prodA.ProductID)
+	if err != nil {
+		t.Fatalf("GetProductSalesSummary: %v", err)
+	}
+	if summary.UnitsSold != 2 || summary.GrossRevenue.String() != "700000" || summary.TotalCOGS.String() != "360000" || summary.TotalProfit.String() != "340000" || summary.StockMovements != 1 {
+		t.Fatalf("unexpected sales summary: %+v", summary)
+	}
+
+	chart, err := storeA2.GetProductSalesChart(ctx, tenantA, prodA.ProductID, 30)
+	if err != nil || len(chart) != 1 || chart[0].UnitsSold != 2 {
+		t.Fatalf("unexpected sales chart: %+v (err=%v)", chart, err)
+	}
+
+	rankA, err := storeA2.GetProductRank(ctx, tenantA, prodA.ProductID)
+	if err != nil {
+		t.Fatalf("GetProductRank prodA: %v", err)
+	}
+	rankA2, err := storeA2.GetProductRank(ctx, tenantA, prodA2.ProductID)
+	if err != nil {
+		t.Fatalf("GetProductRank prodA2: %v", err)
+	}
+	if rankA.WorkspaceRank != 1 || rankA2.WorkspaceRank != 2 {
+		t.Fatalf("expected prodA rank 1 and prodA2 rank 2, got %d and %d", rankA.WorkspaceRank, rankA2.WorkspaceRank)
+	}
+
+	if err := txA2.Commit(ctx); err != nil {
+		t.Fatalf("commit txA2: %v", err)
+	}
+
+	t.Log("PASS: Live PostgreSQL RLS isolation, product catalog, stock movements ledger, CAS, keyset cursor, and sales analytics verified.")
 }

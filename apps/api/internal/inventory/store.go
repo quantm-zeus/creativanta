@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -48,6 +49,8 @@ type StoreTx interface {
 	GetBalanceForUpdate(ctx context.Context, workspaceID, skuID, locationID string) (*Balance, error)
 	UpdateBalance(ctx context.Context, bal *Balance) error
 	AppendMovement(ctx context.Context, mov *Movement) error
+	FindMovementByKey(ctx context.Context, workspaceID, movementKey string) (*Movement, error)
+	CheckOrRecordSyncKey(ctx context.Context, workspaceID, syncKey string, targetCount int32) (alreadyProcessed bool, prevCount int32, err error)
 	CreateReservation(ctx context.Context, res *Reservation) error
 	GetReservation(ctx context.Context, workspaceID, resKey string) (*Reservation, error)
 	ListReservationsByOrder(ctx context.Context, workspaceID, orderID string) ([]*Reservation, error)
@@ -64,6 +67,7 @@ type MemoryStore struct {
 	balances     map[string]*Balance     // key: workspaceID:skuID:locationID
 	movements    map[string]*Movement    // key: movementID
 	movementKeys map[string]string       // key: workspaceID:movementKey -> movementID
+	syncKeys     map[string]int32        // key: workspaceID:syncKey -> targetCount
 	reservations map[string]*Reservation // key: reservationID
 	resKeys      map[string]string       // key: workspaceID:resKey -> reservationID
 
@@ -77,6 +81,7 @@ func NewMemoryStore() *MemoryStore {
 		balances:     make(map[string]*Balance),
 		movements:    make(map[string]*Movement),
 		movementKeys: make(map[string]string),
+		syncKeys:     make(map[string]int32),
 		reservations: make(map[string]*Reservation),
 		resKeys:      make(map[string]string),
 		rowLocks:     make(map[string]*sync.Mutex),
@@ -215,14 +220,21 @@ func (m *MemoryStore) UpsertBalance(_ context.Context, bal *Balance) error {
 }
 
 func (m *MemoryStore) AppendMovement(_ context.Context, mov *Movement) error {
+	if mov.Quantity == 0 {
+		return ErrInvalidQuantity
+	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	dedupKey := fmt.Sprintf("%s:%s", mov.WorkspaceID, mov.MovementKey)
 	if existingID, ok := m.movementKeys[dedupKey]; ok {
-		// Idempotency: exact same movement key returns nil (no-op)
+		// Idempotency: exact same movement key and payload returns nil (no-op)
 		existing := m.movements[existingID]
-		if existing.Quantity == mov.Quantity && existing.MovementType == mov.MovementType {
+		if existing.Quantity == mov.Quantity &&
+			existing.MovementType == mov.MovementType &&
+			existing.SkuID == mov.SkuID &&
+			existing.LocationID == mov.LocationID {
+			*mov = *existing
 			return nil
 		}
 		return ErrMovementDuplicate
@@ -384,6 +396,21 @@ func (tx *memoryTx) UpdateBalance(ctx context.Context, bal *Balance) error {
 
 func (tx *memoryTx) AppendMovement(ctx context.Context, mov *Movement) error {
 	return tx.store.AppendMovement(ctx, mov)
+}
+
+func (tx *memoryTx) FindMovementByKey(ctx context.Context, workspaceID, movementKey string) (*Movement, error) {
+	return tx.store.FindMovementByKey(ctx, workspaceID, movementKey)
+}
+
+func (tx *memoryTx) CheckOrRecordSyncKey(_ context.Context, workspaceID, syncKey string, targetCount int32) (bool, int32, error) {
+	tx.store.mu.Lock()
+	defer tx.store.mu.Unlock()
+	k := fmt.Sprintf("%s:%s", workspaceID, syncKey)
+	if prev, ok := tx.store.syncKeys[k]; ok {
+		return true, prev, nil
+	}
+	tx.store.syncKeys[k] = targetCount
+	return false, targetCount, nil
 }
 
 func (tx *memoryTx) CreateReservation(ctx context.Context, res *Reservation) error {
@@ -740,45 +767,16 @@ func (s *PostgresStore) ListBalances(ctx context.Context, workspaceID, locationI
 }
 
 func (s *PostgresStore) UpsertBalance(ctx context.Context, bal *Balance) error {
-	if bal.BalanceID == "" {
-		bal.BalanceID = newUUID()
-	}
-	const q = `
-		INSERT INTO inventory_balances (
-			balance_id, workspace_id, sku_id, location_id, on_hand, reserved, opening_at, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
-		ON CONFLICT (workspace_id, sku_id, location_id) DO UPDATE SET
-			on_hand = EXCLUDED.on_hand,
-			reserved = EXCLUDED.reserved,
-			opening_at = COALESCE(EXCLUDED.opening_at, inventory_balances.opening_at),
-			updated_at = NOW();
-	`
 	return s.withTenantTx(ctx, bal.WorkspaceID, func(txCtx context.Context, tx pgx.Tx) error {
-		_, err := tx.Exec(txCtx, q, bal.BalanceID, bal.WorkspaceID, bal.SkuID, bal.LocationID, bal.OnHand, bal.Reserved, bal.OpeningAt)
-		return err
+		ptx := &postgresTx{tx: tx, workspaceID: bal.WorkspaceID}
+		return ptx.UpdateBalance(txCtx, bal)
 	})
 }
 
 func (s *PostgresStore) AppendMovement(ctx context.Context, mov *Movement) error {
-	if mov.MovementID == "" {
-		mov.MovementID = newUUID()
-	}
-	metaJSON, err := json.Marshal(mov.Metadata)
-	if err != nil {
-		metaJSON = []byte("{}")
-	}
-
-	const q = `
-		INSERT INTO stock_movements (
-			movement_id, workspace_id, sku_id, location_id, movement_type, movement_key,
-			quantity, reference_type, reference_id, source_created_at, reason, metadata, created_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NULLIF($9, '')::uuid, $10, $11, $12, NOW())
-		ON CONFLICT (workspace_id, movement_key) DO NOTHING;
-	`
 	return s.withTenantTx(ctx, mov.WorkspaceID, func(txCtx context.Context, tx pgx.Tx) error {
-		_, err := tx.Exec(txCtx, q, mov.MovementID, mov.WorkspaceID, mov.SkuID, mov.LocationID, mov.MovementType, mov.MovementKey,
-			mov.Quantity, mov.ReferenceType, mov.ReferenceID, mov.SourceCreatedAt, mov.Reason, metaJSON)
-		return err
+		ptx := &postgresTx{tx: tx, workspaceID: mov.WorkspaceID}
+		return ptx.AppendMovement(txCtx, mov)
 	})
 }
 
@@ -865,24 +863,9 @@ func (s *PostgresStore) FindMovementByKey(ctx context.Context, workspaceID, move
 }
 
 func (s *PostgresStore) CreateReservation(ctx context.Context, res *Reservation) error {
-	if res.ReservationID == "" {
-		res.ReservationID = newUUID()
-	}
-	const q = `
-		INSERT INTO stock_reservations (
-			reservation_id, workspace_id, order_id, sku_id, location_id, reservation_key, quantity, status, expires_at, created_at, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
-		ON CONFLICT (workspace_id, reservation_key) DO UPDATE SET
-			quantity = EXCLUDED.quantity,
-			status = EXCLUDED.status,
-			expires_at = EXCLUDED.expires_at,
-			updated_at = NOW()
-		WHERE stock_reservations.status IN ('expired', 'released');
-	`
 	return s.withTenantTx(ctx, res.WorkspaceID, func(txCtx context.Context, tx pgx.Tx) error {
-		_, err := tx.Exec(txCtx, q, res.ReservationID, res.WorkspaceID, res.OrderID, res.SkuID, res.LocationID,
-			res.ReservationKey, res.Quantity, res.Status, res.ExpiresAt)
-		return err
+		ptx := &postgresTx{tx: tx, workspaceID: res.WorkspaceID}
+		return ptx.CreateReservation(txCtx, res)
 	})
 }
 
@@ -1034,16 +1017,38 @@ func (ptx *postgresTx) GetBalanceForUpdate(ctx context.Context, workspaceID, sku
 }
 
 func (ptx *postgresTx) UpdateBalance(ctx context.Context, bal *Balance) error {
+	if bal.BalanceID == "" {
+		bal.BalanceID = newUUID()
+	}
 	const q = `
-		UPDATE inventory_balances
-		SET on_hand = $1, reserved = $2, updated_at = NOW()
-		WHERE workspace_id = $3 AND balance_id = $4;
+		INSERT INTO inventory_balances (
+			balance_id, workspace_id, sku_id, location_id, on_hand, reserved, opening_at, updated_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+		ON CONFLICT (workspace_id, sku_id, location_id) DO UPDATE SET
+			on_hand = EXCLUDED.on_hand,
+			reserved = EXCLUDED.reserved,
+			opening_at = COALESCE(EXCLUDED.opening_at, inventory_balances.opening_at),
+			updated_at = NOW()
+		RETURNING balance_id;
 	`
-	_, err := ptx.tx.Exec(ctx, q, bal.OnHand, bal.Reserved, bal.WorkspaceID, bal.BalanceID)
+	if err := ptx.tx.QueryRow(ctx, q, bal.BalanceID, bal.WorkspaceID, bal.SkuID, bal.LocationID, bal.OnHand, bal.Reserved, bal.OpeningAt).Scan(&bal.BalanceID); err != nil {
+		return err
+	}
+	const syncSkuQ = `
+		UPDATE product_skus
+		SET stock_quantity = COALESCE((SELECT SUM(on_hand) FROM inventory_balances WHERE workspace_id = $1 AND sku_id = $2), 0),
+		    stock_reserved = COALESCE((SELECT SUM(reserved) FROM inventory_balances WHERE workspace_id = $1 AND sku_id = $2), 0),
+		    updated_at = NOW()
+		WHERE workspace_id = $1 AND sku_id = $2;
+	`
+	_, err := ptx.tx.Exec(ctx, syncSkuQ, bal.WorkspaceID, bal.SkuID)
 	return err
 }
 
 func (ptx *postgresTx) AppendMovement(ctx context.Context, mov *Movement) error {
+	if mov.Quantity == 0 {
+		return ErrInvalidQuantity
+	}
 	if mov.MovementID == "" {
 		mov.MovementID = newUUID()
 	}
@@ -1059,9 +1064,86 @@ func (ptx *postgresTx) AppendMovement(ctx context.Context, mov *Movement) error 
 		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NULLIF($9, '')::uuid, $10, $11, $12, NOW())
 		ON CONFLICT (workspace_id, movement_key) DO NOTHING;
 	`
-	_, err = ptx.tx.Exec(ctx, q, mov.MovementID, mov.WorkspaceID, mov.SkuID, mov.LocationID, mov.MovementType, mov.MovementKey,
+	tag, err := ptx.tx.Exec(ctx, q, mov.MovementID, mov.WorkspaceID, mov.SkuID, mov.LocationID, mov.MovementType, mov.MovementKey,
 		mov.Quantity, mov.ReferenceType, mov.ReferenceID, mov.SourceCreatedAt, mov.Reason, metaJSON)
-	return err
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		existing, err := ptx.FindMovementByKey(ctx, mov.WorkspaceID, mov.MovementKey)
+		if err != nil {
+			return err
+		}
+		if existing == nil {
+			return ErrMovementDuplicate
+		}
+		if existing.Quantity != mov.Quantity ||
+			existing.MovementType != mov.MovementType ||
+			existing.SkuID != mov.SkuID ||
+			existing.LocationID != mov.LocationID {
+			return ErrMovementDuplicate
+		}
+		*mov = *existing
+	}
+	return nil
+}
+
+func (ptx *postgresTx) FindMovementByKey(ctx context.Context, workspaceID, movementKey string) (*Movement, error) {
+	var m Movement
+	var metaBytes []byte
+	const q = `
+		SELECT movement_id, workspace_id, sku_id, location_id, movement_type, movement_key,
+		       quantity, reference_type, COALESCE(reference_id::text, ''), source_created_at, reason, metadata, created_at
+		FROM stock_movements
+		WHERE workspace_id = $1 AND movement_key = $2;
+	`
+	err := ptx.tx.QueryRow(ctx, q, workspaceID, movementKey).Scan(
+		&m.MovementID, &m.WorkspaceID, &m.SkuID, &m.LocationID, &m.MovementType, &m.MovementKey,
+		&m.Quantity, &m.ReferenceType, &m.ReferenceID, &m.SourceCreatedAt, &m.Reason, &metaBytes, &m.CreatedAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	if len(metaBytes) > 0 {
+		_ = json.Unmarshal(metaBytes, &m.Metadata)
+	}
+	return &m, nil
+}
+
+func (ptx *postgresTx) CheckOrRecordSyncKey(ctx context.Context, workspaceID, syncKey string, targetCount int32) (bool, int32, error) {
+	const selQ = `
+		SELECT request_hash
+		FROM api_idempotency_records
+		WHERE workspace_id = $1::uuid AND actor_id = $1::uuid AND rpc = 'inventory.platform_sync' AND idempotency_key = $2
+		FOR UPDATE;
+	`
+	var existingHash string
+	err := ptx.tx.QueryRow(ctx, selQ, workspaceID, syncKey).Scan(&existingHash)
+	if err == nil {
+		parsed, pErr := strconv.ParseInt(existingHash, 10, 32)
+		if pErr != nil {
+			return true, 0, ErrMovementDuplicate
+		}
+		return true, int32(parsed), nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return false, 0, err
+	}
+	const insQ = `
+		INSERT INTO api_idempotency_records (
+			workspace_id, actor_id, rpc, idempotency_key,
+			request_hash, status, response_payload, created_at, expires_at
+		) VALUES (
+			$1::uuid, $1::uuid, 'inventory.platform_sync', $2,
+			$3, 'completed', '{}'::jsonb, NOW(), NOW() + INTERVAL '365 days'
+		);
+	`
+	if _, err := ptx.tx.Exec(ctx, insQ, workspaceID, syncKey, strconv.FormatInt(int64(targetCount), 10)); err != nil {
+		return false, 0, err
+	}
+	return false, targetCount, nil
 }
 
 func (ptx *postgresTx) CreateReservation(ctx context.Context, res *Reservation) error {
@@ -1079,9 +1161,15 @@ func (ptx *postgresTx) CreateReservation(ctx context.Context, res *Reservation) 
 			updated_at = NOW()
 		WHERE stock_reservations.status IN ('expired', 'released');
 	`
-	_, err := ptx.tx.Exec(ctx, q, res.ReservationID, res.WorkspaceID, res.OrderID, res.SkuID, res.LocationID,
+	tag, err := ptx.tx.Exec(ctx, q, res.ReservationID, res.WorkspaceID, res.OrderID, res.SkuID, res.LocationID,
 		res.ReservationKey, res.Quantity, res.Status, res.ExpiresAt)
-	return err
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrReservationConflict
+	}
+	return nil
 }
 
 func (ptx *postgresTx) GetReservation(ctx context.Context, workspaceID, resKey string) (*Reservation, error) {

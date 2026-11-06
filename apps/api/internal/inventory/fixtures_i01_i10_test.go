@@ -2,6 +2,7 @@ package inventory_test
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"testing"
 	"time"
@@ -551,5 +552,136 @@ func TestI10_PolledAbsoluteCountTwiceNoOp(t *testing.T) {
 	_, total, _ := store.ListMovements(ctx, wsID, skuID, locID, 10, 0)
 	if total != 1 {
 		t.Fatalf("expected exactly 1 movement recorded, got %d", total)
+	}
+}
+
+func TestRemediation_F14_StockSyncReplayDoesNotCorruptBalanceAfterMovement(t *testing.T) {
+	ctx := context.Background()
+	store := inventory.NewMemoryStore()
+	sink := &mockSink{}
+	now := time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC)
+	svc := inventory.NewService(store, sink, func() time.Time { return now })
+
+	const wsID = "ws-tenant-f14"
+	const locID = "loc-f14"
+	const skuID = "sku-f14"
+
+	_ = store.CreateLocation(ctx, &inventory.Location{LocationID: locID, WorkspaceID: wsID, Name: "Loc F14", IsDefault: true, Status: inventory.StatusActive})
+	if err := svc.RecordOpeningBaseline(ctx, wsID, skuID, locID, 10, now.Add(-1*time.Hour)); err != nil {
+		t.Fatalf("RecordOpeningBaseline: %v", err)
+	}
+
+	// 1. External platform sync sets count to 8 (delta = -2)
+	m1, err := svc.PlatformSyncAbsoluteCount(ctx, wsID, locID, skuID, 8, "sync-snap-001")
+	if err != nil {
+		t.Fatalf("first sync failed: %v", err)
+	}
+	if m1 == nil || m1.Quantity != -2 {
+		t.Fatalf("expected sync movement of -2, got %+v", m1)
+	}
+
+	// 2. Subsequent order reserves and fulfills 2 units -> OnHand becomes 6
+	if _, err := svc.ReserveStock(ctx, wsID, "ord-f14-1", []inventory.ReservationItem{{SkuID: skuID, LocationID: locID, Quantity: 2}}, 15*time.Minute); err != nil {
+		t.Fatalf("ReserveStock: %v", err)
+	}
+	if _, err := svc.FulfillReservation(ctx, wsID, "ord-f14-1"); err != nil {
+		t.Fatalf("FulfillReservation: %v", err)
+	}
+
+	balMid, err := store.GetBalance(ctx, wsID, skuID, locID)
+	if err != nil || balMid.OnHand != 6 {
+		t.Fatalf("expected OnHand=6 after sale, got %+v (err=%v)", balMid, err)
+	}
+
+	// 3. Replay of "sync-snap-001" with count=8 MUST NOT overwrite OnHand back to 8 or fail
+	mReplay, err := svc.PlatformSyncAbsoluteCount(ctx, wsID, locID, skuID, 8, "sync-snap-001")
+	if err != nil {
+		t.Fatalf("sync replay should be idempotent, got err: %v", err)
+	}
+	if mReplay == nil || mReplay.MovementID != m1.MovementID {
+		t.Fatalf("expected original movement on replay, got %+v", mReplay)
+	}
+
+	balAfterReplay, _ := store.GetBalance(ctx, wsID, skuID, locID)
+	if balAfterReplay.OnHand != 6 {
+		t.Fatalf("F14 regression: sync replay overwrote OnHand to %d (expected 6)", balAfterReplay.OnHand)
+	}
+	if rep, err := svc.ReconcileLedger(ctx, wsID, skuID, locID); err != nil || rep.Discrepancy != 0 {
+		t.Fatalf("ledger discrepancy after sync replay: rep=%+v err=%v", rep, err)
+	}
+
+	// 4. Reusing "sync-snap-001" with a DIFFERENT count (e.g. 5) must fail with ErrMovementDuplicate
+	if _, err := svc.PlatformSyncAbsoluteCount(ctx, wsID, locID, skuID, 5, "sync-snap-001"); !errors.Is(err, inventory.ErrMovementDuplicate) {
+		t.Fatalf("expected ErrMovementDuplicate on conflicting syncKey reuse, got %v", err)
+	}
+
+	// 5. Zero-delta sync followed by sale and replay of zero-delta sync must also preserve OnHand
+	if mZero, err := svc.PlatformSyncAbsoluteCount(ctx, wsID, locID, skuID, 6, "sync-zero-001"); err != nil || mZero != nil {
+		t.Fatalf("expected nil movement on zero-delta sync, got mov=%+v err=%v", mZero, err)
+	}
+	if _, err := svc.ReserveStock(ctx, wsID, "ord-f14-2", []inventory.ReservationItem{{SkuID: skuID, LocationID: locID, Quantity: 1}}, 15*time.Minute); err != nil {
+		t.Fatalf("ReserveStock 2: %v", err)
+	}
+	if _, err := svc.FulfillReservation(ctx, wsID, "ord-f14-2"); err != nil {
+		t.Fatalf("FulfillReservation 2: %v", err)
+	}
+	// OnHand is now 5. Replaying "sync-zero-001" (count=6) must NOT reset OnHand to 6!
+	if mZeroReplay, err := svc.PlatformSyncAbsoluteCount(ctx, wsID, locID, skuID, 6, "sync-zero-001"); err != nil || mZeroReplay != nil {
+		t.Fatalf("expected nil movement on zero-delta sync replay, got mov=%+v err=%v", mZeroReplay, err)
+	}
+	balAfterZeroReplay, _ := store.GetBalance(ctx, wsID, skuID, locID)
+	if balAfterZeroReplay.OnHand != 5 {
+		t.Fatalf("zero-delta sync replay corrupted OnHand: got %d, want 5", balAfterZeroReplay.OnHand)
+	}
+	if _, err := svc.PlatformSyncAbsoluteCount(ctx, wsID, locID, skuID, 9, "sync-zero-001"); !errors.Is(err, inventory.ErrMovementDuplicate) {
+		t.Fatalf("expected ErrMovementDuplicate when zero-delta syncKey reused with different count, got %v", err)
+	}
+}
+
+func TestRemediation_F15_DuplicateSkuLocationReservationCannotOverbook(t *testing.T) {
+	ctx := context.Background()
+	store := inventory.NewMemoryStore()
+	sink := &mockSink{}
+	now := time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC)
+	svc := inventory.NewService(store, sink, func() time.Time { return now })
+
+	const wsID = "ws-tenant-f15"
+	const locID = "loc-f15"
+	const skuID = "sku-f15"
+
+	_ = store.CreateLocation(ctx, &inventory.Location{LocationID: locID, WorkspaceID: wsID, Name: "Loc F15", IsDefault: true, Status: inventory.StatusActive})
+	if err := svc.RecordOpeningBaseline(ctx, wsID, skuID, locID, 1, now.Add(-1*time.Hour)); err != nil {
+		t.Fatalf("RecordOpeningBaseline: %v", err)
+	}
+
+	// 1. Duplicate lines for (skuID, locID) with qty 1 + 1 = 2 when OnHand = 1 must be rejected!
+	_, err := svc.ReserveStock(ctx, wsID, "ord-dup-overbook", []inventory.ReservationItem{
+		{SkuID: skuID, LocationID: locID, Quantity: 1},
+		{SkuID: skuID, LocationID: locID, Quantity: 1},
+	}, 15*time.Minute)
+	if !errors.Is(err, inventory.ErrInsufficientStock) {
+		t.Fatalf("F15 regression: expected ErrInsufficientStock for duplicate SKU/location overbook, got %v", err)
+	}
+
+	bal, _ := store.GetBalance(ctx, wsID, skuID, locID)
+	if bal.Reserved != 0 || bal.Sellable() != 1 {
+		t.Fatalf("expected Reserved=0, Sellable=1 after rejected overbook, got Reserved=%d Sellable=%d", bal.Reserved, bal.Sellable())
+	}
+
+	// 2. When stock is sufficient (e.g. OnHand = 3), duplicate lines coalesce cleanly into a single hold of 2
+	_, _ = svc.PlatformSyncAbsoluteCount(ctx, wsID, locID, skuID, 3, "sync-f15-restock")
+	resList, err := svc.ReserveStock(ctx, wsID, "ord-dup-valid", []inventory.ReservationItem{
+		{SkuID: skuID, LocationID: locID, Quantity: 1},
+		{SkuID: skuID, LocationID: locID, Quantity: 1},
+	}, 15*time.Minute)
+	if err != nil {
+		t.Fatalf("expected coalesced reservation to succeed when stock=3, got %v", err)
+	}
+	if len(resList) != 1 || resList[0].Quantity != 2 {
+		t.Fatalf("expected 1 coalesced reservation of quantity 2, got %+v", resList)
+	}
+	balAfter, _ := store.GetBalance(ctx, wsID, skuID, locID)
+	if balAfter.Reserved != 2 || balAfter.Sellable() != 1 {
+		t.Fatalf("expected Reserved=2, Sellable=1, got Reserved=%d Sellable=%d", balAfter.Reserved, balAfter.Sellable())
 	}
 }

@@ -237,19 +237,51 @@ func TestPostgresLiveInventoryStore(t *testing.T) {
 	otherWS := "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbb14"
 	locID := "22222222-2222-2222-2222-222222222222"
 	userID := "11111111-1111-4111-8111-111111111114"
+	prodID := "77777777-7777-4777-8777-777777777714"
+	skuF19 := "33333333-3333-4333-8333-333333333319"
+	skuF15 := "44444444-4444-4444-8444-444444444415"
+	orderOverbook := "55555555-5555-4555-8555-555555555515"
+	orderCoalesce := "66666666-6666-4666-8666-666666666615"
 
-	// Ensure workspaces exist
-	_, _ = adminPool.Exec(ctx, `
+	// Ensure user, workspaces, product, SKUs, and orders exist
+	if _, err := adminPool.Exec(ctx, `
 		INSERT INTO users (user_id, email, display_name, created_at, updated_at)
 		VALUES ($1::uuid, 'inv-user@test.com', 'Inv User', NOW(), NOW())
-		ON CONFLICT (user_id) DO NOTHING;
+		ON CONFLICT (user_id) DO NOTHING
+	`, userID); err != nil {
+		t.Fatalf("seed user: %v", err)
+	}
+	if _, err := adminPool.Exec(ctx, `
 		INSERT INTO workspaces (workspace_id, name, slug, owner_user_id, created_at, updated_at)
-		VALUES ($2::uuid, 'Inv Workspace', 'inv-ws', $1::uuid, NOW(), NOW())
-		ON CONFLICT (workspace_id) DO NOTHING;
-		INSERT INTO workspaces (workspace_id, name, slug, owner_user_id, created_at, updated_at)
-		VALUES ($3::uuid, 'Other Workspace', 'other-inv-ws', $1::uuid, NOW(), NOW())
-		ON CONFLICT (workspace_id) DO NOTHING;
-	`, userID, wsID, otherWS)
+		VALUES ($1::uuid, 'Inv Workspace', 'inv-ws', $3::uuid, NOW(), NOW()),
+		       ($2::uuid, 'Other Workspace', 'other-inv-ws', $3::uuid, NOW(), NOW())
+		ON CONFLICT (workspace_id) DO NOTHING
+	`, wsID, otherWS, userID); err != nil {
+		t.Fatalf("seed workspaces: %v", err)
+	}
+	if _, err := adminPool.Exec(ctx, `
+		INSERT INTO products (product_id, workspace_id, product_type, title, base_price, currency, cogs, catalog_status, inventory_enabled, created_at, updated_at)
+		VALUES ($1::uuid, $2::uuid, 'physical', 'Inv Test Product', 100000.000000, 'VND', 50000.000000, 'active', true, NOW(), NOW())
+		ON CONFLICT (product_id) DO NOTHING
+	`, prodID, wsID); err != nil {
+		t.Fatalf("seed product: %v", err)
+	}
+	if _, err := adminPool.Exec(ctx, `
+		INSERT INTO product_skus (sku_id, workspace_id, product_id, sku_code, currency, price_override, cogs_override, stock_quantity, stock_reserved, low_stock_threshold, is_active, created_at, updated_at)
+		VALUES ($1::uuid, $3::uuid, $4::uuid, 'SKU-F19', 'VND', 100000.000000, 50000.000000, 0, 0, 5, true, NOW(), NOW()),
+		       ($2::uuid, $3::uuid, $4::uuid, 'SKU-F15', 'VND', 100000.000000, 50000.000000, 0, 0, 5, true, NOW(), NOW())
+		ON CONFLICT (sku_id) DO NOTHING
+	`, skuF19, skuF15, wsID, prodID); err != nil {
+		t.Fatalf("seed product_skus: %v", err)
+	}
+	if _, err := adminPool.Exec(ctx, `
+		INSERT INTO orders (order_id, workspace_id, product_id, amount, currency, lifecycle_state, ordered_at, created_at, updated_at)
+		VALUES ($1::uuid, $3::uuid, $4::uuid, 200000.000000, 'VND', 'created', NOW(), NOW(), NOW()),
+		       ($2::uuid, $3::uuid, $4::uuid, 200000.000000, 'VND', 'created', NOW(), NOW(), NOW())
+		ON CONFLICT (order_id) DO NOTHING
+	`, orderOverbook, orderCoalesce, wsID, prodID); err != nil {
+		t.Fatalf("seed orders: %v", err)
+	}
 
 	appDSN, err := buildAppUserDSN(dsn)
 	if err != nil {
@@ -284,6 +316,72 @@ func TestPostgresLiveInventoryStore(t *testing.T) {
 	// Cross-tenant read under app_user must fail closed
 	if _, err := store.GetLocation(ctx, otherWS, locID); !errors.Is(err, inventory.ErrLocationNotFound) {
 		t.Fatalf("expected ErrLocationNotFound for cross-tenant read, got %v", err)
+	}
+
+	// F19: RecordOpeningBaseline on PostgreSQL must initialize the inventory_balances row, set opening_at, and be idempotent on replay
+	now := time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC)
+	svc := inventory.NewService(store, &mockSink{}, func() time.Time { return now })
+	openingAt := now.Add(-2 * time.Hour)
+
+	if err := svc.RecordOpeningBaseline(ctx, wsID, skuF19, locID, 25, openingAt); err != nil {
+		t.Fatalf("F19 RecordOpeningBaseline failed on PostgreSQL: %v", err)
+	}
+	balF19, err := store.GetBalance(ctx, wsID, skuF19, locID)
+	if err != nil {
+		t.Fatalf("F19 regression: GetBalance after RecordOpeningBaseline failed: %v", err)
+	}
+	if balF19.OnHand != 25 || balF19.Reserved != 0 || balF19.OpeningAt == nil {
+		t.Fatalf("F19 unexpected balance state: %+v", balF19)
+	}
+	// Replay of identical baseline must be idempotent
+	if err := svc.RecordOpeningBaseline(ctx, wsID, skuF19, locID, 25, openingAt); err != nil {
+		t.Fatalf("F19 idempotent baseline replay failed: %v", err)
+	}
+	// Conflicting baseline count at same timestamp must fail with ErrMovementDuplicate
+	if err := svc.RecordOpeningBaseline(ctx, wsID, skuF19, locID, 99, openingAt); !errors.Is(err, inventory.ErrMovementDuplicate) {
+		t.Fatalf("F19 expected ErrMovementDuplicate on conflicting baseline replay, got %v", err)
+	}
+
+	// F15 on PostgreSQL: Duplicate (sku_id, location_id) lines in ReserveStock must coalesce and never overbook
+	if err := svc.RecordOpeningBaseline(ctx, wsID, skuF15, locID, 1, openingAt); err != nil {
+		t.Fatalf("RecordOpeningBaseline skuF15: %v", err)
+	}
+	_, err = svc.ReserveStock(ctx, wsID, orderOverbook, []inventory.ReservationItem{
+		{SkuID: skuF15, LocationID: locID, Quantity: 1},
+		{SkuID: skuF15, LocationID: locID, Quantity: 1},
+	}, 15*time.Minute)
+	if !errors.Is(err, inventory.ErrInsufficientStock) {
+		t.Fatalf("F15 Postgres regression: expected ErrInsufficientStock on duplicate line overbook, got %v", err)
+	}
+	// Increase stock to 3 and verify coalesced reservation
+	if _, err := svc.PlatformSyncAbsoluteCount(ctx, wsID, locID, skuF15, 3, "pg-sync-f15"); err != nil {
+		t.Fatalf("PlatformSyncAbsoluteCount skuF15: %v", err)
+	}
+	resF15, err := svc.ReserveStock(ctx, wsID, orderCoalesce, []inventory.ReservationItem{
+		{SkuID: skuF15, LocationID: locID, Quantity: 1},
+		{SkuID: skuF15, LocationID: locID, Quantity: 1},
+	}, 15*time.Minute)
+	if err != nil || len(resF15) != 1 || resF15[0].Quantity != 2 {
+		t.Fatalf("F15 Postgres coalesced reserve failed: res=%+v err=%v", resF15, err)
+	}
+
+	// F14 on PostgreSQL: Replay of PlatformSyncAbsoluteCount after subsequent movement must NOT overwrite OnHand
+	if _, err := svc.FulfillReservation(ctx, wsID, orderCoalesce); err != nil {
+		t.Fatalf("FulfillReservation orderCoalesce: %v", err)
+	}
+	// OnHand is now 3 - 2 = 1. Replaying "pg-sync-f15" (count=3) must NOT reset OnHand to 3!
+	if _, err := svc.PlatformSyncAbsoluteCount(ctx, wsID, locID, skuF15, 3, "pg-sync-f15"); err != nil {
+		t.Fatalf("F14 Postgres sync replay failed: %v", err)
+	}
+	balF14, err := store.GetBalance(ctx, wsID, skuF15, locID)
+	if err != nil || balF14.OnHand != 1 {
+		t.Fatalf("F14 Postgres regression: OnHand is %d (expected 1), err=%v", balF14.OnHand, err)
+	}
+	if rep, err := svc.ReconcileLedger(ctx, wsID, skuF15, locID); err != nil || rep.Discrepancy != 0 {
+		t.Fatalf("F14 Postgres ledger discrepancy: rep=%+v err=%v", rep, err)
+	}
+	if _, err := svc.PlatformSyncAbsoluteCount(ctx, wsID, locID, skuF15, 7, "pg-sync-f15"); !errors.Is(err, inventory.ErrMovementDuplicate) {
+		t.Fatalf("F14 Postgres expected ErrMovementDuplicate on conflicting syncKey reuse, got %v", err)
 	}
 
 	_ = tenantdb.ErrNilContext

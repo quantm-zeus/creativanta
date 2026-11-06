@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"connectrpc.com/connect"
 	commercev1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/commerce/v1"
@@ -18,6 +19,8 @@ import (
 	"github.com/quantm-zeus/creativanta/apps/api/internal/rbac"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/transportauth"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -175,13 +178,15 @@ func authorizeProductRPC(ctx context.Context, rpcMethod string, cmdCtx *commonv1
 var productPageCursorHMACKey = []byte("creativanta-product-page-cursor-hmac-v1")
 
 type productPageCursor struct {
-	WorkspaceID string `json:"ws"`
-	RPC         string `json:"rpc"`
-	Status      string `json:"st,omitempty"`
-	Type        string `json:"tp,omitempty"`
-	Category    string `json:"cat,omitempty"`
-	SearchQuery string `json:"q,omitempty"`
-	Offset      int    `json:"off"`
+	WorkspaceID       string `json:"ws"`
+	RPC               string `json:"rpc"`
+	Status            string `json:"st,omitempty"`
+	Type              string `json:"tp,omitempty"`
+	Category          string `json:"cat,omitempty"`
+	SearchQuery       string `json:"q,omitempty"`
+	CursorCreatedAtNs int64  `json:"ts,omitempty"`
+	CursorProductID   string `json:"pid,omitempty"`
+	Offset            int    `json:"off,omitempty"`
 }
 
 func encodeProductPageToken(c productPageCursor) (string, error) {
@@ -196,45 +201,156 @@ func encodeProductPageToken(c productPageCursor) (string, error) {
 	return payloadB64 + "." + sig, nil
 }
 
-func decodeProductPageToken(token string, expected productPageCursor) (int, error) {
+func decodeProductPageToken(token string, expected productPageCursor) (productPageCursor, error) {
 	if token == "" {
-		return 0, nil
+		return productPageCursor{}, nil
 	}
 	if len(token) > 512 || strings.TrimSpace(token) != token {
-		return 0, fmt.Errorf("%w: malformed page_token", ErrInvalidInput)
+		return productPageCursor{}, fmt.Errorf("%w: malformed page_token", ErrInvalidInput)
 	}
 	parts := strings.Split(token, ".")
 	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
-		return 0, fmt.Errorf("%w: invalid page_token format", ErrInvalidInput)
+		return productPageCursor{}, fmt.Errorf("%w: invalid page_token format", ErrInvalidInput)
 	}
 	mac := hmac.New(sha256.New, productPageCursorHMACKey)
 	mac.Write([]byte(parts[0]))
 	expectedSig := hex.EncodeToString(mac.Sum(nil))
 	if !hmac.Equal([]byte(parts[1]), []byte(expectedSig)) {
-		return 0, fmt.Errorf("%w: invalid page_token signature", ErrInvalidInput)
+		return productPageCursor{}, fmt.Errorf("%w: invalid page_token signature", ErrInvalidInput)
 	}
 	raw, err := base64.RawURLEncoding.DecodeString(parts[0])
 	if err != nil {
-		return 0, fmt.Errorf("%w: invalid page_token encoding", ErrInvalidInput)
+		return productPageCursor{}, fmt.Errorf("%w: invalid page_token encoding", ErrInvalidInput)
 	}
 	var decoded productPageCursor
 	if err := json.Unmarshal(raw, &decoded); err != nil {
-		return 0, fmt.Errorf("%w: invalid page_token payload", ErrInvalidInput)
+		return productPageCursor{}, fmt.Errorf("%w: invalid page_token payload", ErrInvalidInput)
 	}
-	if decoded.Offset <= 0 {
-		return 0, fmt.Errorf("%w: invalid page_token offset", ErrInvalidInput)
+	hasKeyset := decoded.CursorProductID != "" && decoded.CursorCreatedAtNs > 0
+	if !hasKeyset && decoded.Offset <= 0 {
+		return productPageCursor{}, fmt.Errorf("%w: invalid page_token cursor", ErrInvalidInput)
 	}
 	if decoded.WorkspaceID != expected.WorkspaceID {
-		return 0, fmt.Errorf("%w: page_token tenant mismatch", ErrInvalidInput)
+		return productPageCursor{}, fmt.Errorf("%w: page_token tenant mismatch", ErrInvalidInput)
 	}
 	if decoded.RPC != expected.RPC ||
 		!strings.EqualFold(decoded.Status, expected.Status) ||
 		!strings.EqualFold(decoded.Type, expected.Type) ||
 		!strings.EqualFold(decoded.Category, expected.Category) ||
 		decoded.SearchQuery != expected.SearchQuery {
-		return 0, fmt.Errorf("%w: page_token filter mismatch", ErrInvalidInput)
+		return productPageCursor{}, fmt.Errorf("%w: page_token filter mismatch", ErrInvalidInput)
 	}
-	return decoded.Offset, nil
+	return decoded, nil
+}
+
+func hashCommandPayload(rpcName string, payload any) string {
+	raw, _ := json.Marshal(map[string]any{
+		"rpc":     rpcName,
+		"payload": payload,
+	})
+	sum := sha256.Sum256(raw)
+	return hex.EncodeToString(sum[:])
+}
+
+func executeIdempotentMutation[T any](
+	ctx context.Context,
+	h *Handler,
+	wsID string,
+	rpcName string,
+	cmdCtx *commonv1.CommandContext,
+	reqPayload any,
+	newResp func() *T,
+	execFn func(idemKey string) (*T, error),
+) (*connect.Response[T], error) {
+	var idemKey string
+	if cmdCtx != nil {
+		idemKey = strings.TrimSpace(cmdCtx.IdempotencyKey)
+	}
+	if idemKey == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%w: idempotency_key is required for mutating command %s", ErrInvalidInput, rpcName))
+	}
+
+	unlock := h.service.lockIdempotency(wsID, idemKey)
+	defer unlock()
+
+	reqHash := hashCommandPayload(rpcName, reqPayload)
+	existing, err := h.service.store.GetIdempotencyRecord(ctx, wsID, idemKey)
+	if err != nil {
+		return nil, mapError(err)
+	}
+	if existing != nil {
+		if existing.RequestHash != reqHash {
+			return nil, connect.NewError(connect.CodeAlreadyExists, ErrIdempotencyConflict)
+		}
+		respMsg := newResp()
+		if len(existing.ResponseBody) > 0 {
+			if pm, ok := any(respMsg).(proto.Message); ok {
+				if err := protojson.Unmarshal(existing.ResponseBody, pm); err != nil {
+					return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("unmarshal cached idempotency response: %w", err))
+				}
+			}
+		}
+		return connect.NewResponse(respMsg), nil
+	}
+
+	respMsg, err := execFn(idemKey)
+	if err != nil {
+		return nil, err
+	}
+
+	var respBytes []byte
+	if pm, ok := any(respMsg).(proto.Message); ok {
+		respBytes, err = protojson.Marshal(pm)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("marshal idempotency response: %w", err))
+		}
+	}
+	now := h.service.clock()
+	if err := h.service.store.SaveIdempotencyRecord(ctx, IdempotencyRecord{
+		WorkspaceID:    wsID,
+		IdempotencyKey: idemKey,
+		RequestHash:    reqHash,
+		ResponseStatus: 200,
+		ResponseBody:   respBytes,
+		CreatedAt:      now,
+		ExpiresAt:      now.Add(24 * time.Hour),
+	}); err != nil {
+		return nil, mapError(err)
+	}
+
+	return connect.NewResponse(respMsg), nil
+}
+
+func checkProductExpectedUpdatedAt(ctx context.Context, h *Handler, wsID, productID string, cmdCtx *commonv1.CommandContext) error {
+	if cmdCtx == nil || cmdCtx.ExpectedUpdatedAt == nil {
+		return nil
+	}
+	existing, err := h.service.GetProduct(ctx, wsID, productID)
+	if err != nil {
+		return err
+	}
+	expected := cmdCtx.ExpectedUpdatedAt.AsTime().UTC().Truncate(time.Microsecond)
+	actual := existing.UpdatedAt.UTC().Truncate(time.Microsecond)
+	if !actual.Equal(expected) {
+		return ErrConcurrencyConflict
+	}
+	return nil
+}
+
+func checkSkuExpectedUpdatedAt(ctx context.Context, h *Handler, wsID, skuID string, cmdCtx *commonv1.CommandContext) error {
+	if cmdCtx == nil || cmdCtx.ExpectedUpdatedAt == nil {
+		return nil
+	}
+	existing, err := h.service.store.GetSku(ctx, wsID, skuID)
+	if err != nil {
+		return err
+	}
+	expected := cmdCtx.ExpectedUpdatedAt.AsTime().UTC().Truncate(time.Microsecond)
+	actual := existing.UpdatedAt.UTC().Truncate(time.Microsecond)
+	if !actual.Equal(expected) {
+		return ErrConcurrencyConflict
+	}
+	return nil
 }
 
 func (h *Handler) Create(
@@ -250,78 +366,105 @@ func (h *Handler) Create(
 		return nil, err
 	}
 
-	p := &Product{
-		WorkspaceID:      wsID,
-		ProductType:      fromProtoProductType(msg.ProductType),
-		Title:            msg.Title,
-		Description:      msg.Description,
-		Category:         msg.Category,
-		Currency:         msg.Currency,
-		CatalogStatus:    fromProtoCatalogStatus(msg.CatalogStatus),
-		InventoryEnabled: msg.InventoryEnabled,
-		Images:           msg.Images,
-		Metadata:         make(map[string]any),
-	}
-	if msg.BasePrice != nil {
-		dec, err := tenantdb.ParseExactDecimal(msg.BasePrice.Amount)
-		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, err)
-		}
-		p.BasePrice = &dec
-		if p.Currency == "" {
-			p.Currency = msg.BasePrice.Currency
-		}
-	}
-	if msg.Cogs != nil {
-		dec, err := tenantdb.ParseExactDecimal(msg.Cogs.Amount)
-		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, err)
-		}
-		p.COGS = &dec
-	}
-	for _, ref := range msg.ExternalRefs {
-		p.ExternalRefs = append(p.ExternalRefs, ExternalRef{
-			Platform:           ref.Platform,
-			ExternalID:         ref.ExternalId,
-			URL:                ref.Url,
-			ConnectedAccountID: ref.ConnectedAccountId,
-		})
-	}
-	if msg.MetadataJson != "" {
-		_ = json.Unmarshal([]byte(msg.MetadataJson), &p.Metadata)
-	}
-	for _, sku := range msg.InitialSkus {
-		pSku := ProductSku{
-			SkuCode:           sku.SkuCode,
-			VariantAttributes: sku.VariantAttributes,
-			Currency:          sku.Currency,
-			LowStockThreshold: sku.LowStockThreshold,
-			Barcode:           sku.Barcode,
-			WeightGrams:       sku.WeightGrams,
-			IsActive:          sku.IsActive,
-		}
-		if sku.PriceOverride != nil {
-			dec, err := tenantdb.ParseExactDecimal(sku.PriceOverride.Amount)
-			if err == nil {
-				pSku.PriceOverride = &dec
-			}
-		}
-		if sku.CogsOverride != nil {
-			dec, err := tenantdb.ParseExactDecimal(sku.CogsOverride.Amount)
-			if err == nil {
-				pSku.CogsOverride = &dec
-			}
-		}
-		p.SKUs = append(p.SKUs, pSku)
+	reqPayload := map[string]any{
+		"product_type":      msg.ProductType,
+		"title":             msg.Title,
+		"description":       msg.Description,
+		"category":          msg.Category,
+		"base_price":        msg.BasePrice,
+		"currency":          msg.Currency,
+		"cogs":              msg.Cogs,
+		"catalog_status":    msg.CatalogStatus,
+		"inventory_enabled": msg.InventoryEnabled,
+		"external_refs":     msg.ExternalRefs,
+		"images":            msg.Images,
+		"metadata_json":     msg.MetadataJson,
+		"initial_skus":      msg.InitialSkus,
 	}
 
-	created, err := h.service.CreateProduct(ctx, p)
-	if err != nil {
-		return nil, mapError(err)
-	}
-	return connect.NewResponse(&commercev1.CreateResponse{
-		Product: toProtoProduct(created),
-	}), nil
+	return executeIdempotentMutation(
+		ctx,
+		h,
+		wsID,
+		"ProductService/Create",
+		msg.Context,
+		reqPayload,
+		func() *commercev1.CreateResponse { return &commercev1.CreateResponse{} },
+		func(_ string) (*commercev1.CreateResponse, error) {
+			p := &Product{
+				WorkspaceID:      wsID,
+				ProductType:      fromProtoProductType(msg.ProductType),
+				Title:            msg.Title,
+				Description:      msg.Description,
+				Category:         msg.Category,
+				Currency:         msg.Currency,
+				CatalogStatus:    fromProtoCatalogStatus(msg.CatalogStatus),
+				InventoryEnabled: msg.InventoryEnabled,
+				Images:           msg.Images,
+				Metadata:         make(map[string]any),
+			}
+			if msg.BasePrice != nil {
+				dec, err := tenantdb.ParseExactDecimal(msg.BasePrice.Amount)
+				if err != nil {
+					return nil, connect.NewError(connect.CodeInvalidArgument, err)
+				}
+				p.BasePrice = &dec
+				if p.Currency == "" {
+					p.Currency = msg.BasePrice.Currency
+				}
+			}
+			if msg.Cogs != nil {
+				dec, err := tenantdb.ParseExactDecimal(msg.Cogs.Amount)
+				if err != nil {
+					return nil, connect.NewError(connect.CodeInvalidArgument, err)
+				}
+				p.COGS = &dec
+			}
+			for _, ref := range msg.ExternalRefs {
+				p.ExternalRefs = append(p.ExternalRefs, ExternalRef{
+					Platform:           ref.Platform,
+					ExternalID:         ref.ExternalId,
+					URL:                ref.Url,
+					ConnectedAccountID: ref.ConnectedAccountId,
+				})
+			}
+			if msg.MetadataJson != "" {
+				_ = json.Unmarshal([]byte(msg.MetadataJson), &p.Metadata)
+			}
+			for _, sku := range msg.InitialSkus {
+				pSku := ProductSku{
+					SkuCode:           sku.SkuCode,
+					VariantAttributes: sku.VariantAttributes,
+					Currency:          sku.Currency,
+					LowStockThreshold: sku.LowStockThreshold,
+					Barcode:           sku.Barcode,
+					WeightGrams:       sku.WeightGrams,
+					IsActive:          sku.IsActive,
+				}
+				if sku.PriceOverride != nil {
+					dec, err := tenantdb.ParseExactDecimal(sku.PriceOverride.Amount)
+					if err == nil {
+						pSku.PriceOverride = &dec
+					}
+				}
+				if sku.CogsOverride != nil {
+					dec, err := tenantdb.ParseExactDecimal(sku.CogsOverride.Amount)
+					if err == nil {
+						pSku.CogsOverride = &dec
+					}
+				}
+				p.SKUs = append(p.SKUs, pSku)
+			}
+
+			created, err := h.service.CreateProduct(ctx, p)
+			if err != nil {
+				return nil, mapError(err)
+			}
+			return &commercev1.CreateResponse{
+				Product: toProtoProduct(created),
+			}, nil
+		},
+	)
 }
 
 func (h *Handler) Get(
@@ -386,17 +529,29 @@ func (h *Handler) List(
 			}
 		}
 		if msg.Pagination.PageToken != "" {
-			decodedOffset, err := decodeProductPageToken(msg.Pagination.PageToken, expectedCursor)
+			decoded, err := decodeProductPageToken(msg.Pagination.PageToken, expectedCursor)
 			if err != nil {
 				return nil, connect.NewError(connect.CodeInvalidArgument, err)
 			}
-			offset = decodedOffset
+			if decoded.CursorProductID != "" && decoded.CursorCreatedAtNs > 0 {
+				ts := time.Unix(0, decoded.CursorCreatedAtNs).UTC()
+				filter.CursorCreatedAt = &ts
+				filter.CursorProductID = decoded.CursorProductID
+			} else {
+				offset = decoded.Offset
+			}
 		}
 	}
 
-	products, total, err := h.service.ListProducts(ctx, wsID, filter, limit, offset)
+	products, total, err := h.service.ListProducts(ctx, wsID, filter, limit+1, offset)
 	if err != nil {
 		return nil, mapError(err)
+	}
+
+	hasMore := false
+	if len(products) > limit {
+		hasMore = true
+		products = products[:limit]
 	}
 
 	var protoList []*commercev1.Product
@@ -404,9 +559,11 @@ func (h *Handler) List(
 		protoList = append(protoList, toProtoProduct(p))
 	}
 
-	hasMore := len(products) > 0 && int64(offset+len(products)) < total
 	var nextPageToken string
-	if hasMore {
+	if hasMore && len(products) > 0 {
+		last := products[len(products)-1]
+		expectedCursor.CursorCreatedAtNs = last.CreatedAt.UTC().UnixNano()
+		expectedCursor.CursorProductID = last.ProductID
 		expectedCursor.Offset = offset + len(products)
 		tok, err := encodeProductPageToken(expectedCursor)
 		if err != nil {
@@ -438,62 +595,90 @@ func (h *Handler) Update(
 		return nil, err
 	}
 
-	p := &Product{
-		ProductID:   msg.ProductId,
-		WorkspaceID: wsID,
-	}
-	if msg.Title != nil {
-		p.Title = *msg.Title
-	}
-	if msg.Description != nil {
-		p.Description = *msg.Description
-	}
-	if msg.Category != nil {
-		p.Category = *msg.Category
-	}
-	if msg.BasePrice != nil {
-		dec, err := tenantdb.ParseExactDecimal(msg.BasePrice.Amount)
-		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, err)
-		}
-		p.BasePrice = &dec
-		p.Currency = msg.BasePrice.Currency
-	}
-	if msg.Cogs != nil {
-		dec, err := tenantdb.ParseExactDecimal(msg.Cogs.Amount)
-		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, err)
-		}
-		p.COGS = &dec
-	}
-	if msg.CatalogStatus != nil {
-		p.CatalogStatus = fromProtoCatalogStatus(*msg.CatalogStatus)
-	}
-	if len(msg.ExternalRefs) > 0 {
-		for _, ref := range msg.ExternalRefs {
-			p.ExternalRefs = append(p.ExternalRefs, ExternalRef{
-				Platform:           ref.Platform,
-				ExternalID:         ref.ExternalId,
-				URL:                ref.Url,
-				ConnectedAccountID: ref.ConnectedAccountId,
-			})
-		}
-	}
-	if len(msg.Images) > 0 {
-		p.Images = msg.Images
-	}
-	if msg.MetadataJson != nil && *msg.MetadataJson != "" {
-		p.Metadata = make(map[string]any)
-		_ = json.Unmarshal([]byte(*msg.MetadataJson), &p.Metadata)
+	reqPayload := map[string]any{
+		"product_id":     msg.ProductId,
+		"title":          msg.Title,
+		"description":    msg.Description,
+		"category":       msg.Category,
+		"base_price":     msg.BasePrice,
+		"cogs":           msg.Cogs,
+		"catalog_status": msg.CatalogStatus,
+		"external_refs":  msg.ExternalRefs,
+		"images":         msg.Images,
+		"metadata_json":  msg.MetadataJson,
 	}
 
-	updated, err := h.service.UpdateProduct(ctx, p)
-	if err != nil {
-		return nil, mapError(err)
-	}
-	return connect.NewResponse(&commercev1.UpdateResponse{
-		Product: toProtoProduct(updated),
-	}), nil
+	return executeIdempotentMutation(
+		ctx,
+		h,
+		wsID,
+		"ProductService/Update",
+		msg.Context,
+		reqPayload,
+		func() *commercev1.UpdateResponse { return &commercev1.UpdateResponse{} },
+		func(_ string) (*commercev1.UpdateResponse, error) {
+			p := &Product{
+				ProductID:   msg.ProductId,
+				WorkspaceID: wsID,
+			}
+			if msg.Context != nil && msg.Context.ExpectedUpdatedAt != nil {
+				exp := msg.Context.ExpectedUpdatedAt.AsTime().UTC()
+				p.ExpectedUpdatedAt = &exp
+			}
+			if msg.Title != nil {
+				p.Title = *msg.Title
+			}
+			if msg.Description != nil {
+				p.Description = *msg.Description
+			}
+			if msg.Category != nil {
+				p.Category = *msg.Category
+			}
+			if msg.BasePrice != nil {
+				dec, err := tenantdb.ParseExactDecimal(msg.BasePrice.Amount)
+				if err != nil {
+					return nil, connect.NewError(connect.CodeInvalidArgument, err)
+				}
+				p.BasePrice = &dec
+				p.Currency = msg.BasePrice.Currency
+			}
+			if msg.Cogs != nil {
+				dec, err := tenantdb.ParseExactDecimal(msg.Cogs.Amount)
+				if err != nil {
+					return nil, connect.NewError(connect.CodeInvalidArgument, err)
+				}
+				p.COGS = &dec
+			}
+			if msg.CatalogStatus != nil {
+				p.CatalogStatus = fromProtoCatalogStatus(*msg.CatalogStatus)
+			}
+			if len(msg.ExternalRefs) > 0 {
+				for _, ref := range msg.ExternalRefs {
+					p.ExternalRefs = append(p.ExternalRefs, ExternalRef{
+						Platform:           ref.Platform,
+						ExternalID:         ref.ExternalId,
+						URL:                ref.Url,
+						ConnectedAccountID: ref.ConnectedAccountId,
+					})
+				}
+			}
+			if len(msg.Images) > 0 {
+				p.Images = msg.Images
+			}
+			if msg.MetadataJson != nil && *msg.MetadataJson != "" {
+				p.Metadata = make(map[string]any)
+				_ = json.Unmarshal([]byte(*msg.MetadataJson), &p.Metadata)
+			}
+
+			updated, err := h.service.UpdateProduct(ctx, p)
+			if err != nil {
+				return nil, mapError(err)
+			}
+			return &commercev1.UpdateResponse{
+				Product: toProtoProduct(updated),
+			}, nil
+		},
+	)
 }
 
 func (h *Handler) Delete(
@@ -508,10 +693,29 @@ func (h *Handler) Delete(
 	if err != nil {
 		return nil, err
 	}
-	if err := h.service.DeleteProduct(ctx, wsID, msg.ProductId); err != nil {
-		return nil, mapError(err)
+
+	reqPayload := map[string]any{
+		"product_id": msg.ProductId,
 	}
-	return connect.NewResponse(&commercev1.DeleteResponse{Success: true}), nil
+
+	return executeIdempotentMutation(
+		ctx,
+		h,
+		wsID,
+		"ProductService/Delete",
+		msg.Context,
+		reqPayload,
+		func() *commercev1.DeleteResponse { return &commercev1.DeleteResponse{} },
+		func(_ string) (*commercev1.DeleteResponse, error) {
+			if err := checkProductExpectedUpdatedAt(ctx, h, wsID, msg.ProductId, msg.Context); err != nil {
+				return nil, mapError(err)
+			}
+			if err := h.service.DeleteProduct(ctx, wsID, msg.ProductId); err != nil {
+				return nil, mapError(err)
+			}
+			return &commercev1.DeleteResponse{Success: true}, nil
+		},
+	)
 }
 
 func (h *Handler) Archive(
@@ -526,13 +730,32 @@ func (h *Handler) Archive(
 	if err != nil {
 		return nil, err
 	}
-	archived, err := h.service.ArchiveProduct(ctx, wsID, msg.ProductId)
-	if err != nil {
-		return nil, mapError(err)
+
+	reqPayload := map[string]any{
+		"product_id": msg.ProductId,
 	}
-	return connect.NewResponse(&commercev1.ArchiveResponse{
-		Product: toProtoProduct(archived),
-	}), nil
+
+	return executeIdempotentMutation(
+		ctx,
+		h,
+		wsID,
+		"ProductService/Archive",
+		msg.Context,
+		reqPayload,
+		func() *commercev1.ArchiveResponse { return &commercev1.ArchiveResponse{} },
+		func(_ string) (*commercev1.ArchiveResponse, error) {
+			if err := checkProductExpectedUpdatedAt(ctx, h, wsID, msg.ProductId, msg.Context); err != nil {
+				return nil, mapError(err)
+			}
+			archived, err := h.service.ArchiveProduct(ctx, wsID, msg.ProductId)
+			if err != nil {
+				return nil, mapError(err)
+			}
+			return &commercev1.ArchiveResponse{
+				Product: toProtoProduct(archived),
+			}, nil
+		},
+	)
 }
 
 func (h *Handler) BatchTag(
@@ -547,11 +770,66 @@ func (h *Handler) BatchTag(
 	if err != nil {
 		return nil, err
 	}
-	count, err := h.service.BatchTagProducts(ctx, wsID, msg.ProductIds, msg.TagsToAdd, msg.TagsToRemove)
-	if err != nil {
-		return nil, mapError(err)
+
+	reqPayload := map[string]any{
+		"product_ids":    msg.ProductIds,
+		"tags_to_add":    msg.TagsToAdd,
+		"tags_to_remove": msg.TagsToRemove,
 	}
-	return connect.NewResponse(&commercev1.BatchTagResponse{UpdatedCount: int32(count)}), nil
+
+	return executeIdempotentMutation(
+		ctx,
+		h,
+		wsID,
+		"ProductService/BatchTag",
+		msg.Context,
+		reqPayload,
+		func() *commercev1.BatchTagResponse { return &commercev1.BatchTagResponse{} },
+		func(_ string) (*commercev1.BatchTagResponse, error) {
+			count, err := h.service.BatchTagProducts(ctx, wsID, msg.ProductIds, msg.TagsToAdd, msg.TagsToRemove)
+			if err != nil {
+				return nil, mapError(err)
+			}
+			return &commercev1.BatchTagResponse{UpdatedCount: int32(count)}, nil
+		},
+	)
+}
+
+func buildImportProtoResponse(result *ImportResult) *commercev1.ImportResponse {
+	if result == nil {
+		return &commercev1.ImportResponse{}
+	}
+	var protoRows []*commercev1.ImportRowResult
+	for _, r := range result.Rows {
+		protoRows = append(protoRows, &commercev1.ImportRowResult{
+			RowNumber:    int32(r.RowNumber),
+			SourceId:     r.SourceID,
+			Title:        r.Title,
+			Action:       r.Action,
+			ErrorMessage: r.ErrorMessage,
+			ProductId:    r.ProductID,
+			SkuCode:      r.SkuCode,
+		})
+	}
+	var createdProtos []*commercev1.Product
+	for _, cp := range result.CreatedProducts {
+		createdProtos = append(createdProtos, toProtoProduct(cp))
+	}
+	return &commercev1.ImportResponse{
+		IsPreview:                 result.IsPreview,
+		PreviewToken:              result.PreviewToken,
+		TotalRows:                 int32(result.TotalRows),
+		CreateCount:               int32(result.CreateCount),
+		UpdateCount:               int32(result.UpdateCount),
+		UnchangedCount:            int32(result.UnchangedCount),
+		ErrorCount:                int32(result.ErrorCount),
+		RequiresMappingCorrection: result.RequiresMappingCorrection,
+		MappingErrors:             result.MappingErrors,
+		Rows:                      protoRows,
+		CreatedProducts:           createdProtos,
+		ImportFingerprint:         result.ImportFingerprint,
+		DownloadableErrorCsv:      result.DownloadableErrorCSV,
+	}
 }
 
 func (h *Handler) Import(
@@ -567,63 +845,77 @@ func (h *Handler) Import(
 		return nil, err
 	}
 
-	result, err := h.service.Import(
+	isPreview := msg.PreviewOnly || msg.DryRun
+	hasIdemKey := msg.Context != nil && strings.TrimSpace(msg.Context.IdempotencyKey) != ""
+
+	if isPreview && !hasIdemKey {
+		result, err := h.service.Import(
+			ctx,
+			wsID,
+			msg.SourcePlatform,
+			msg.ConnectedAccountId,
+			msg.RawData,
+			msg.ColumnMappings,
+			msg.DefaultCurrency,
+			true,
+			msg.PreviewToken,
+		)
+		if err != nil && result == nil {
+			return nil, mapError(err)
+		}
+		resp := buildImportProtoResponse(result)
+		if err != nil {
+			return connect.NewResponse(resp), mapError(err)
+		}
+		return connect.NewResponse(resp), nil
+	}
+
+	reqPayload := map[string]any{
+		"source_platform":      msg.SourcePlatform,
+		"connected_account_id": msg.ConnectedAccountId,
+		"raw_data":             msg.RawData,
+		"column_mappings":      msg.ColumnMappings,
+		"default_currency":     msg.DefaultCurrency,
+		"is_preview":           isPreview,
+		"preview_token":        msg.PreviewToken,
+	}
+
+	var partialMappingResp *commercev1.ImportResponse
+	resp, err := executeIdempotentMutation(
 		ctx,
+		h,
 		wsID,
-		msg.SourcePlatform,
-		msg.ConnectedAccountId,
-		msg.RawData,
-		msg.ColumnMappings,
-		msg.DefaultCurrency,
-		msg.PreviewOnly,
-		msg.PreviewToken,
+		"ProductService/Import",
+		msg.Context,
+		reqPayload,
+		func() *commercev1.ImportResponse { return &commercev1.ImportResponse{} },
+		func(_ string) (*commercev1.ImportResponse, error) {
+			result, err := h.service.Import(
+				ctx,
+				wsID,
+				msg.SourcePlatform,
+				msg.ConnectedAccountId,
+				msg.RawData,
+				msg.ColumnMappings,
+				msg.DefaultCurrency,
+				isPreview,
+				msg.PreviewToken,
+			)
+			if err != nil && result == nil {
+				return nil, mapError(err)
+			}
+			built := buildImportProtoResponse(result)
+			if err != nil {
+				partialMappingResp = built
+				return nil, mapError(err)
+			}
+			return built, nil
+		},
 	)
-	if err != nil && result == nil {
-		return nil, mapError(err)
+	if err != nil && partialMappingResp != nil {
+		return connect.NewResponse(partialMappingResp), err
 	}
-
-	var protoRows []*commercev1.ImportRowResult
-	if result != nil {
-		for _, r := range result.Rows {
-			protoRows = append(protoRows, &commercev1.ImportRowResult{
-				RowNumber:    int32(r.RowNumber),
-				SourceId:     r.SourceID,
-				Title:        r.Title,
-				Action:       r.Action,
-				ErrorMessage: r.ErrorMessage,
-				ProductId:    r.ProductID,
-				SkuCode:      r.SkuCode,
-			})
-		}
-	}
-
-	var createdProtos []*commercev1.Product
-	if result != nil {
-		for _, cp := range result.CreatedProducts {
-			createdProtos = append(createdProtos, toProtoProduct(cp))
-		}
-	}
-
-	resp := &commercev1.ImportResponse{
-		IsPreview:                 result.IsPreview,
-		PreviewToken:              result.PreviewToken,
-		TotalRows:                 int32(result.TotalRows),
-		CreateCount:               int32(result.CreateCount),
-		UpdateCount:               int32(result.UpdateCount),
-		UnchangedCount:            int32(result.UnchangedCount),
-		ErrorCount:                int32(result.ErrorCount),
-		RequiresMappingCorrection: result.RequiresMappingCorrection,
-		MappingErrors:             result.MappingErrors,
-		Rows:                      protoRows,
-		CreatedProducts:           createdProtos,
-		ImportFingerprint:         result.ImportFingerprint,
-		DownloadableErrorCsv:      result.DownloadableErrorCSV,
-	}
-
-	if err != nil {
-		return connect.NewResponse(resp), mapError(err)
-	}
-	return connect.NewResponse(resp), nil
+	return resp, err
 }
 
 func (h *Handler) Search(
@@ -637,6 +929,9 @@ func (h *Handler) Search(
 	wsID, err := authorizeProductRPC(ctx, "ProductService/Search", nil)
 	if err != nil {
 		return nil, err
+	}
+	filter := ListFilter{
+		SearchQuery: msg.Query,
 	}
 	limit := 20
 	offset := 0
@@ -656,24 +951,37 @@ func (h *Handler) Search(
 			}
 		}
 		if msg.Pagination.PageToken != "" {
-			decodedOffset, err := decodeProductPageToken(msg.Pagination.PageToken, expectedCursor)
+			decoded, err := decodeProductPageToken(msg.Pagination.PageToken, expectedCursor)
 			if err != nil {
 				return nil, connect.NewError(connect.CodeInvalidArgument, err)
 			}
-			offset = decodedOffset
+			if decoded.CursorProductID != "" && decoded.CursorCreatedAtNs > 0 {
+				ts := time.Unix(0, decoded.CursorCreatedAtNs).UTC()
+				filter.CursorCreatedAt = &ts
+				filter.CursorProductID = decoded.CursorProductID
+			} else {
+				offset = decoded.Offset
+			}
 		}
 	}
-	products, total, err := h.service.SearchProducts(ctx, wsID, msg.Query, limit, offset)
+	products, total, err := h.service.ListProducts(ctx, wsID, filter, limit+1, offset)
 	if err != nil {
 		return nil, mapError(err)
+	}
+	hasMore := false
+	if len(products) > limit {
+		hasMore = true
+		products = products[:limit]
 	}
 	var protoList []*commercev1.Product
 	for _, p := range products {
 		protoList = append(protoList, toProtoProduct(p))
 	}
-	hasMore := len(products) > 0 && int64(offset+len(products)) < total
 	var nextPageToken string
-	if hasMore {
+	if hasMore && len(products) > 0 {
+		last := products[len(products)-1]
+		expectedCursor.CursorCreatedAtNs = last.CreatedAt.UTC().UnixNano()
+		expectedCursor.CursorProductID = last.ProductID
 		expectedCursor.Offset = offset + len(products)
 		tok, err := encodeProductPageToken(expectedCursor)
 		if err != nil {
@@ -703,14 +1011,22 @@ func (h *Handler) GetStats(
 	if err != nil {
 		return nil, err
 	}
+	p, err := h.service.GetProduct(ctx, wsID, msg.ProductId)
+	if err != nil {
+		return nil, mapError(err)
+	}
 	orders, rev, skus, onHand, reserved, err := h.service.GetStats(ctx, wsID, msg.ProductId)
 	if err != nil {
 		return nil, mapError(err)
 	}
+	curr := p.Currency
+	if curr == "" {
+		curr = "VND"
+	}
 	return connect.NewResponse(&commercev1.GetStatsResponse{
 		ProductId:       msg.ProductId,
 		TotalOrders:     orders,
-		TotalRevenue:    &commonv1.Money{Amount: rev.String(), Currency: "VND"},
+		TotalRevenue:    &commonv1.Money{Amount: rev.String(), Currency: curr},
 		ActiveSkusCount: skus,
 		OnHandStock:     onHand,
 		ReservedStock:   reserved,
@@ -729,15 +1045,16 @@ func (h *Handler) GetSalesStats(
 	if err != nil {
 		return nil, err
 	}
-	if _, err := h.service.GetProduct(ctx, wsID, msg.ProductId); err != nil {
+	summary, err := h.service.GetSalesSummary(ctx, wsID, msg.ProductId)
+	if err != nil {
 		return nil, mapError(err)
 	}
 	return connect.NewResponse(&commercev1.GetSalesStatsResponse{
 		ProductId:   msg.ProductId,
-		GrossSales:  &commonv1.Money{Amount: "0.000000", Currency: "VND"},
-		NetSales:    &commonv1.Money{Amount: "0.000000", Currency: "VND"},
-		UnitsSold:   0,
-		RefundCount: 0,
+		GrossSales:  &commonv1.Money{Amount: summary.GrossRevenue.String(), Currency: summary.Currency},
+		NetSales:    &commonv1.Money{Amount: summary.NetRevenue.String(), Currency: summary.Currency},
+		UnitsSold:   summary.UnitsSold,
+		RefundCount: summary.RefundCount,
 	}), nil
 }
 
@@ -753,12 +1070,28 @@ func (h *Handler) GetSalesChart(
 	if err != nil {
 		return nil, err
 	}
-	if _, err := h.service.GetProduct(ctx, wsID, msg.ProductId); err != nil {
+	days := 30
+	switch strings.ToLower(strings.TrimSpace(msg.Interval)) {
+	case "week", "7d":
+		days = 7
+	case "month", "90d":
+		days = 90
+	}
+	pts, curr, err := h.service.GetSalesChart(ctx, wsID, msg.ProductId, days)
+	if err != nil {
 		return nil, mapError(err)
+	}
+	protoPts := make([]*commercev1.SalesChartPoint, 0, len(pts))
+	for _, pt := range pts {
+		protoPts = append(protoPts, &commercev1.SalesChartPoint{
+			Timestamp:  pt.Date.UTC().Format(time.RFC3339),
+			Amount:     &commonv1.Money{Amount: pt.Revenue.String(), Currency: curr},
+			OrderCount: pt.UnitsSold,
+		})
 	}
 	return connect.NewResponse(&commercev1.GetSalesChartResponse{
 		ProductId:  msg.ProductId,
-		DataPoints: []*commercev1.SalesChartPoint{},
+		DataPoints: protoPts,
 	}), nil
 }
 
@@ -810,13 +1143,14 @@ func (h *Handler) GetRank(
 	if err != nil {
 		return nil, err
 	}
-	if _, err := h.service.GetProduct(ctx, wsID, msg.ProductId); err != nil {
+	rank, err := h.service.GetRank(ctx, wsID, msg.ProductId)
+	if err != nil {
 		return nil, mapError(err)
 	}
 	return connect.NewResponse(&commercev1.GetRankResponse{
 		ProductId:       msg.ProductId,
-		RankInCategory:  1,
-		RankInWorkspace: 1,
+		RankInCategory:  rank.CategoryRank,
+		RankInWorkspace: rank.WorkspaceRank,
 	}), nil
 }
 
@@ -866,31 +1200,55 @@ func (h *Handler) LinkContent(
 	if err != nil {
 		return nil, err
 	}
-	ref := ContentRef{
-		ContentID:   msg.ContentId,
-		ContentType: msg.ContentType,
-		Title:       msg.Title,
-		URL:         msg.Url,
+
+	reqPayload := map[string]any{
+		"product_id":    msg.ProductId,
+		"content_id":    msg.ContentId,
+		"content_type":  msg.ContentType,
+		"title":         msg.Title,
+		"url":           msg.Url,
+		"metadata_json": msg.MetadataJson,
 	}
-	if msg.MetadataJson != "" {
-		_ = json.Unmarshal([]byte(msg.MetadataJson), &ref.Metadata)
-	}
-	saved, err := h.service.LinkContent(ctx, wsID, msg.ProductId, ref)
-	if err != nil {
-		return nil, mapError(err)
-	}
-	metaJSON, _ := json.Marshal(saved.Metadata)
-	return connect.NewResponse(&commercev1.LinkContentResponse{
-		Success: true,
-		LinkedContent: &commercev1.ContentRef{
-			ContentId:    saved.ContentID,
-			ContentType:  saved.ContentType,
-			Title:        saved.Title,
-			Url:          saved.URL,
-			LinkedAt:     timestamppb.New(saved.LinkedAt),
-			MetadataJson: string(metaJSON),
+
+	return executeIdempotentMutation(
+		ctx,
+		h,
+		wsID,
+		"ProductService/LinkContent",
+		msg.Context,
+		reqPayload,
+		func() *commercev1.LinkContentResponse { return &commercev1.LinkContentResponse{} },
+		func(_ string) (*commercev1.LinkContentResponse, error) {
+			if err := checkProductExpectedUpdatedAt(ctx, h, wsID, msg.ProductId, msg.Context); err != nil {
+				return nil, mapError(err)
+			}
+			ref := ContentRef{
+				ContentID:   msg.ContentId,
+				ContentType: msg.ContentType,
+				Title:       msg.Title,
+				URL:         msg.Url,
+			}
+			if msg.MetadataJson != "" {
+				_ = json.Unmarshal([]byte(msg.MetadataJson), &ref.Metadata)
+			}
+			saved, err := h.service.LinkContent(ctx, wsID, msg.ProductId, ref)
+			if err != nil {
+				return nil, mapError(err)
+			}
+			metaJSON, _ := json.Marshal(saved.Metadata)
+			return &commercev1.LinkContentResponse{
+				Success: true,
+				LinkedContent: &commercev1.ContentRef{
+					ContentId:    saved.ContentID,
+					ContentType:  saved.ContentType,
+					Title:        saved.Title,
+					Url:          saved.URL,
+					LinkedAt:     timestamppb.New(saved.LinkedAt),
+					MetadataJson: string(metaJSON),
+				},
+			}, nil
 		},
-	}), nil
+	)
 }
 
 func (h *Handler) UpdateStock(
@@ -905,14 +1263,36 @@ func (h *Handler) UpdateStock(
 	if err != nil {
 		return nil, err
 	}
-	newQty, err := h.service.UpdateStock(ctx, wsID, msg.SkuId, msg.DeltaQuantity, msg.Reason)
-	if err != nil {
-		return nil, mapError(err)
+
+	reqPayload := map[string]any{
+		"sku_id":         msg.SkuId,
+		"delta_quantity": msg.DeltaQuantity,
+		"reason":         msg.Reason,
 	}
-	return connect.NewResponse(&commercev1.UpdateStockResponse{
-		SkuId:            msg.SkuId,
-		NewStockQuantity: newQty,
-	}), nil
+
+	return executeIdempotentMutation(
+		ctx,
+		h,
+		wsID,
+		"ProductService/UpdateStock",
+		msg.Context,
+		reqPayload,
+		func() *commercev1.UpdateStockResponse { return &commercev1.UpdateStockResponse{} },
+		func(idemKey string) (*commercev1.UpdateStockResponse, error) {
+			if err := checkSkuExpectedUpdatedAt(ctx, h, wsID, msg.SkuId, msg.Context); err != nil {
+				return nil, mapError(err)
+			}
+			adjCtx := WithStockAdjustmentMeta(ctx, msg.Reason, "rpc:"+idemKey)
+			newQty, err := h.service.UpdateStock(adjCtx, wsID, msg.SkuId, msg.DeltaQuantity, msg.Reason)
+			if err != nil {
+				return nil, mapError(err)
+			}
+			return &commercev1.UpdateStockResponse{
+				SkuId:            msg.SkuId,
+				NewStockQuantity: newQty,
+			}, nil
+		},
+	)
 }
 
 func (h *Handler) SetAlertThreshold(
@@ -927,13 +1307,33 @@ func (h *Handler) SetAlertThreshold(
 	if err != nil {
 		return nil, err
 	}
-	if err := h.service.SetAlertThreshold(ctx, wsID, msg.SkuId, msg.LowStockThreshold); err != nil {
-		return nil, mapError(err)
+
+	reqPayload := map[string]any{
+		"sku_id":              msg.SkuId,
+		"low_stock_threshold": msg.LowStockThreshold,
 	}
-	return connect.NewResponse(&commercev1.SetAlertThresholdResponse{
-		SkuId:             msg.SkuId,
-		LowStockThreshold: msg.LowStockThreshold,
-	}), nil
+
+	return executeIdempotentMutation(
+		ctx,
+		h,
+		wsID,
+		"ProductService/SetAlertThreshold",
+		msg.Context,
+		reqPayload,
+		func() *commercev1.SetAlertThresholdResponse { return &commercev1.SetAlertThresholdResponse{} },
+		func(_ string) (*commercev1.SetAlertThresholdResponse, error) {
+			if err := checkSkuExpectedUpdatedAt(ctx, h, wsID, msg.SkuId, msg.Context); err != nil {
+				return nil, mapError(err)
+			}
+			if err := h.service.SetAlertThreshold(ctx, wsID, msg.SkuId, msg.LowStockThreshold); err != nil {
+				return nil, mapError(err)
+			}
+			return &commercev1.SetAlertThresholdResponse{
+				SkuId:             msg.SkuId,
+				LowStockThreshold: msg.LowStockThreshold,
+			}, nil
+		},
+	)
 }
 
 func (h *Handler) BulkArchive(
@@ -948,11 +1348,27 @@ func (h *Handler) BulkArchive(
 	if err != nil {
 		return nil, err
 	}
-	count, err := h.service.BulkArchiveProducts(ctx, wsID, msg.ProductIds)
-	if err != nil {
-		return nil, mapError(err)
+
+	reqPayload := map[string]any{
+		"product_ids": msg.ProductIds,
 	}
-	return connect.NewResponse(&commercev1.BulkArchiveResponse{ArchivedCount: int32(count)}), nil
+
+	return executeIdempotentMutation(
+		ctx,
+		h,
+		wsID,
+		"ProductService/BulkArchive",
+		msg.Context,
+		reqPayload,
+		func() *commercev1.BulkArchiveResponse { return &commercev1.BulkArchiveResponse{} },
+		func(_ string) (*commercev1.BulkArchiveResponse, error) {
+			count, err := h.service.BulkArchiveProducts(ctx, wsID, msg.ProductIds)
+			if err != nil {
+				return nil, mapError(err)
+			}
+			return &commercev1.BulkArchiveResponse{ArchivedCount: int32(count)}, nil
+		},
+	)
 }
 
 func mapError(err error) error {
@@ -963,7 +1379,9 @@ func mapError(err error) error {
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	case errors.Is(err, ErrMappingCorrectionNeeded):
 		return connect.NewError(connect.CodeInvalidArgument, err)
-	case errors.Is(err, ErrDuplicateImportToken):
+	case errors.Is(err, ErrIdempotencyConflict), errors.Is(err, ErrDuplicateSkuCode):
+		return connect.NewError(connect.CodeAlreadyExists, err)
+	case errors.Is(err, ErrConcurrencyConflict), errors.Is(err, ErrInsufficientStock), errors.Is(err, ErrDuplicateImportToken), errors.Is(err, ErrProductArchived):
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	case errors.Is(err, ErrMissingTenant):
 		return connect.NewError(connect.CodeUnauthenticated, err)

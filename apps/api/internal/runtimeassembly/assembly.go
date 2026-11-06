@@ -903,29 +903,42 @@ func (s *tenantProductStore) UpdateProduct(ctx context.Context, p *product.Produ
 	}
 	return s.runInTenantTx(ctx, p.WorkspaceID, func(txCtx context.Context, tx pgx.Tx, q *tenantdb.Queries, principal transportauth.Session) error {
 		store := product.NewPostgresStoreTx(tx)
+		prevStatus := p.PreviousCatalogStatus
+		if prevStatus == "" {
+			if existing, err := store.GetProduct(txCtx, p.WorkspaceID, p.ProductID); err == nil && existing != nil {
+				prevStatus = existing.CatalogStatus
+			}
+		}
 		if err := store.UpdateProduct(txCtx, p); err != nil {
 			return err
 		}
-		payloadBytes, _ := json.Marshal(map[string]any{
-			"product_id":     p.ProductID,
-			"workspace_id":   p.WorkspaceID,
-			"catalog_status": string(p.CatalogStatus),
-		})
-		metaBytes, _ := json.Marshal(map[string]any{
-			"actor_id":      principal.UserID,
-			"actor_type":    "user",
-			"required_perm": "product:manage",
-		})
-		return q.InsertOutboxEvent(txCtx, tenantdb.OutboxEventParams{
-			EventID:       newUUIDv4(),
-			EventType:     "product.catalog_status_changed",
-			TargetStream:  string(outbox.QueueSearchIndexing),
-			AggregateType: "product",
-			AggregateID:   p.ProductID,
-			WorkspaceID:   p.WorkspaceID,
-			PayloadJSON:   payloadBytes,
-			MetadataJSON:  metaBytes,
-		})
+		if prevStatus != "" && prevStatus != p.CatalogStatus {
+			payloadBytes, _ := json.Marshal(map[string]any{
+				"product_id":     p.ProductID,
+				"workspace_id":   p.WorkspaceID,
+				"from":           prevStatus,
+				"to":             string(p.CatalogStatus),
+				"catalog_status": string(p.CatalogStatus),
+			})
+			metaBytes, _ := json.Marshal(map[string]any{
+				"actor_id":      principal.UserID,
+				"actor_type":    "user",
+				"required_perm": "product:manage",
+			})
+			if err := q.InsertOutboxEvent(txCtx, tenantdb.OutboxEventParams{
+				EventID:       newUUIDv4(),
+				EventType:     "product.catalog_status_changed",
+				TargetStream:  string(outbox.QueueSearchIndexing),
+				AggregateType: "product",
+				AggregateID:   p.ProductID,
+				WorkspaceID:   p.WorkspaceID,
+				PayloadJSON:   payloadBytes,
+				MetadataJSON:  metaBytes,
+			}); err != nil {
+				return err
+			}
+		}
+		return nil
 	})
 }
 
@@ -936,8 +949,42 @@ func (s *tenantProductStore) DeleteProduct(ctx context.Context, workspaceID, pro
 }
 
 func (s *tenantProductStore) ArchiveProduct(ctx context.Context, workspaceID, productID string) error {
-	return s.runInTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx, _ *tenantdb.Queries, _ transportauth.Session) error {
-		return product.NewPostgresStoreTx(tx).ArchiveProduct(txCtx, workspaceID, productID)
+	return s.runInTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx, q *tenantdb.Queries, principal transportauth.Session) error {
+		store := product.NewPostgresStoreTx(tx)
+		existing, err := store.GetProduct(txCtx, workspaceID, productID)
+		if err != nil {
+			return err
+		}
+		if err := store.ArchiveProduct(txCtx, workspaceID, productID); err != nil {
+			return err
+		}
+		if existing.CatalogStatus != product.StatusArchived {
+			payloadBytes, _ := json.Marshal(map[string]any{
+				"product_id":     productID,
+				"workspace_id":   workspaceID,
+				"from":           existing.CatalogStatus,
+				"to":             product.StatusArchived,
+				"catalog_status": product.StatusArchived,
+			})
+			metaBytes, _ := json.Marshal(map[string]any{
+				"actor_id":      principal.UserID,
+				"actor_type":    "user",
+				"required_perm": "product:manage",
+			})
+			if err := q.InsertOutboxEvent(txCtx, tenantdb.OutboxEventParams{
+				EventID:       newUUIDv4(),
+				EventType:     "product.catalog_status_changed",
+				TargetStream:  string(outbox.QueueSearchIndexing),
+				AggregateType: "product",
+				AggregateID:   productID,
+				WorkspaceID:   workspaceID,
+				PayloadJSON:   payloadBytes,
+				MetadataJSON:  metaBytes,
+			}); err != nil {
+				return err
+			}
+		}
+		return nil
 	})
 }
 
@@ -992,10 +1039,51 @@ func (s *tenantProductStore) ListSkusByProduct(ctx context.Context, workspaceID,
 
 func (s *tenantProductStore) UpdateSkuStock(ctx context.Context, workspaceID, skuID string, delta int32) (int32, error) {
 	var newQty int32
-	err := s.runInTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx, _ *tenantdb.Queries, _ transportauth.Session) error {
+	err := s.runInTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx, q *tenantdb.Queries, principal transportauth.Session) error {
 		var err error
 		newQty, err = product.NewPostgresStoreTx(tx).UpdateSkuStock(txCtx, workspaceID, skuID, delta)
-		return err
+		if err != nil {
+			return err
+		}
+		meta, _ := product.StockAdjustmentMetaFromContext(txCtx)
+		reason := meta.Reason
+		if reason == "" {
+			reason = "manual_adjustment"
+		}
+		payloadBytes, _ := json.Marshal(map[string]any{
+			"sku_id":       skuID,
+			"workspace_id": workspaceID,
+			"delta":        delta,
+			"reason":       reason,
+			"new_quantity": newQty,
+		})
+		metaBytes, _ := json.Marshal(map[string]any{
+			"actor_id":      principal.UserID,
+			"actor_type":    "user",
+			"required_perm": "inventory:adjust",
+		})
+		if err := q.InsertOutboxEvent(txCtx, tenantdb.OutboxEventParams{
+			EventID:       newUUIDv4(),
+			EventType:     "inventory.stock_moved",
+			TargetStream:  string(outbox.QueueAnalyticsEvents),
+			AggregateType: "product_sku",
+			AggregateID:   skuID,
+			WorkspaceID:   workspaceID,
+			PayloadJSON:   payloadBytes,
+			MetadataJSON:  metaBytes,
+		}); err != nil {
+			return err
+		}
+		return q.InsertAuditEvent(txCtx, tenantdb.AuditEventParams{
+			AuditEventID: newUUIDv4(),
+			WorkspaceID:  workspaceID,
+			ActorUserID:  principal.UserID,
+			ActorType:    "user",
+			Action:       "inventory.stock_moved",
+			ResourceType: "product_sku",
+			ResourceID:   skuID,
+			ChangesJSON:  payloadBytes,
+		})
 	})
 	return newQty, err
 }
@@ -1030,6 +1118,52 @@ func (s *tenantProductStore) BatchTag(ctx context.Context, workspaceID string, p
 		return err
 	})
 	return count, err
+}
+
+func (s *tenantProductStore) GetIdempotencyRecord(ctx context.Context, workspaceID, idempotencyKey string) (*product.IdempotencyRecord, error) {
+	var out *product.IdempotencyRecord
+	err := s.runInTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx, _ *tenantdb.Queries, _ transportauth.Session) error {
+		var err error
+		out, err = product.NewPostgresStoreTx(tx).GetIdempotencyRecord(txCtx, workspaceID, idempotencyKey)
+		return err
+	})
+	return out, err
+}
+
+func (s *tenantProductStore) SaveIdempotencyRecord(ctx context.Context, rec product.IdempotencyRecord) error {
+	return s.runInTenantTx(ctx, rec.WorkspaceID, func(txCtx context.Context, tx pgx.Tx, _ *tenantdb.Queries, _ transportauth.Session) error {
+		return product.NewPostgresStoreTx(tx).SaveIdempotencyRecord(txCtx, rec)
+	})
+}
+
+func (s *tenantProductStore) GetProductSalesSummary(ctx context.Context, workspaceID, productID string) (*product.ProductSalesSummary, error) {
+	var out *product.ProductSalesSummary
+	err := s.runInTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx, _ *tenantdb.Queries, _ transportauth.Session) error {
+		var err error
+		out, err = product.NewPostgresStoreTx(tx).GetProductSalesSummary(txCtx, workspaceID, productID)
+		return err
+	})
+	return out, err
+}
+
+func (s *tenantProductStore) GetProductSalesChart(ctx context.Context, workspaceID, productID string, days int) ([]product.SalesChartDataPoint, error) {
+	var out []product.SalesChartDataPoint
+	err := s.runInTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx, _ *tenantdb.Queries, _ transportauth.Session) error {
+		var err error
+		out, err = product.NewPostgresStoreTx(tx).GetProductSalesChart(txCtx, workspaceID, productID, days)
+		return err
+	})
+	return out, err
+}
+
+func (s *tenantProductStore) GetProductRank(ctx context.Context, workspaceID, productID string) (*product.ProductRankSummary, error) {
+	var out *product.ProductRankSummary
+	err := s.runInTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx, _ *tenantdb.Queries, _ transportauth.Session) error {
+		var err error
+		out, err = product.NewPostgresStoreTx(tx).GetProductRank(txCtx, workspaceID, productID)
+		return err
+	})
+	return out, err
 }
 
 // =============================================================================

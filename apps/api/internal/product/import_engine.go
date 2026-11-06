@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/csv"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"sort"
@@ -340,6 +341,13 @@ func (e *ImportEngine) Process(
 		// ACCEPTANCE TARGET 1: Scoped by workspace_id + connected_account_id + platform + external_id
 		// Two shops with same source ID remain separate because connectedAccountID is isolated!
 		existing, err := e.store.FindProductByExternalID(ctx, workspaceID, platform, extID, connectedAccountID)
+		if err != nil && !errors.Is(err, ErrProductNotFound) {
+			outcome.Action = "error"
+			outcome.ErrorMessage = fmt.Sprintf("database lookup error: %v", err)
+			res.ErrorCount++
+			res.Rows = append(res.Rows, outcome)
+			continue
+		}
 		if err == nil && existing != nil {
 			outcome.ProductID = existing.ProductID
 			// ACCEPTANCE TARGET 2: Repeated rows no-op if identical
@@ -351,6 +359,9 @@ func (e *ImportEngine) Process(
 				outcome.Action = "update"
 				res.UpdateCount++
 				if !previewOnly {
+					prevUpdatedAt := existing.UpdatedAt
+					existing.ExpectedUpdatedAt = &prevUpdatedAt
+					existing.PreviousCatalogStatus = existing.CatalogStatus
 					existing.Title = title
 					existing.ProductType = pType
 					existing.Currency = curr
@@ -363,7 +374,12 @@ func (e *ImportEngine) Process(
 						existing.Description = desc
 					}
 					existing.UpdatedAt = time.Now().UTC()
-					_ = e.store.UpdateProduct(ctx, existing)
+					if err := e.store.UpdateProduct(ctx, existing); err != nil {
+						outcome.Action = "error"
+						outcome.ErrorMessage = fmt.Sprintf("database write error: %v", err)
+						res.UpdateCount--
+						res.ErrorCount++
+					}
 				}
 			}
 			res.Rows = append(res.Rows, outcome)
