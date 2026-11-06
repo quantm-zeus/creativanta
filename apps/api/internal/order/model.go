@@ -24,6 +24,8 @@ var (
 	ErrInvalidInput               = errors.New("invalid input data")
 	ErrMissingTenant              = errors.New("missing tenant workspace context")
 	ErrCurrencyMismatch           = errors.New("currency mismatch")
+	ErrIdempotencyConflict        = errors.New("idempotency key reused with conflicting request parameters (SYSTEM_CONFLICT_001)")
+	ErrConcurrencyConflict        = errors.New("optimistic concurrency check failed: expected_updated_at mismatch (SYSTEM_CONFLICT_001)")
 )
 
 type SourceClass string
@@ -272,9 +274,23 @@ type Return struct {
 	ReturnType       string       `json:"return_type"` // full, partial
 	Items            []ReturnItem `json:"items"`
 	LifecycleState   ReturnState  `json:"lifecycle_state"`
+	SourcePlatform   string       `json:"source_platform,omitempty"`
+	ExternalReturnID string       `json:"external_return_id,omitempty"`
 	TrackingNumber   string       `json:"tracking_number,omitempty"`
 	EvidencePhotoURL string       `json:"evidence_photo_url,omitempty"`
 	CreatedAt        time.Time    `json:"created_at"`
 	UpdatedAt        time.Time    `json:"updated_at"`
 	DeletedAt        *time.Time   `json:"deleted_at,omitempty"`
+}
+
+// IdempotencyRecord tracks mutating command idempotency per DB Schema §26.7.
+type IdempotencyRecord struct {
+	WorkspaceID     string    `json:"workspace_id"`
+	ActorID         string    `json:"actor_id"`
+	RPC             string    `json:"rpc"`
+	IdempotencyKey  string    `json:"idempotency_key"`
+	RequestHash     string    `json:"request_hash"`
+	Status          string    `json:"status"`
+	ResponsePayload []byte    `json:"response_payload,omitempty"`
+	CreatedAt       time.Time `json:"created_at"`
 }

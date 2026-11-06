@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/quantm-zeus/creativanta/apps/api/internal/finance"
@@ -41,11 +42,40 @@ type EventSink interface {
 }
 
 type Service struct {
-	store     Store
-	inventory InventoryService
-	finance   FinanceService
-	eventSink EventSink
-	clock     func() time.Time
+	store      Store
+	inventory  InventoryService
+	finance    FinanceService
+	eventSink  EventSink
+	clock      func() time.Time
+	entityLock sync.Map
+}
+
+func (s *Service) lockEntity(kind, workspaceID, id string) func() {
+	if id == "" {
+		return func() {}
+	}
+	key := kind + ":" + workspaceID + ":" + id
+	val, _ := s.entityLock.LoadOrStore(key, &sync.Mutex{})
+	mu := val.(*sync.Mutex)
+	mu.Lock()
+	return mu.Unlock
+}
+
+func orderForwardRank(st LifecycleState) int {
+	switch st {
+	case StateCreated:
+		return 1
+	case StateConfirmed:
+		return 2
+	case StateFulfilled:
+		return 3
+	case StateCompleted:
+		return 4
+	case StatePartiallyRefunded, StateRefunded, StateReturned:
+		return 5
+	default:
+		return 0
+	}
 }
 
 func NewService(store Store, inv InventoryService, sink EventSink, clock func() time.Time) *Service {
@@ -146,9 +176,9 @@ func (s *Service) recordOrderPosting(ctx context.Context, o *Order) error {
 
 // IngestOrder handles order creation and ingestion from external platforms or native channels.
 // Enforces:
-// 1. Idempotency on (platform, external_id, connected_account) and import_fingerprint
+// 1. Idempotency on (platform, external_id, connected_account) and import_fingerprint, plus forward lifecycle progression on updates (F13)
 // 2. Historical order stock protection (I04 / Acceptance Target 2)
-// 3. State initialization and reservation AFTER parent order row exists
+// 3. State initialization and reservation AFTER parent order row exists, preserving replay identity on post-fulfillment finance failure (F12)
 func (s *Service) IngestOrder(ctx context.Context, o *Order, defaultLocationID string) (*Order, bool, error) {
 	if o.WorkspaceID == "" {
 		return nil, false, ErrMissingTenant
@@ -157,25 +187,35 @@ func (s *Service) IngestOrder(ctx context.Context, o *Order, defaultLocationID s
 		return nil, false, ErrInvalidAmount
 	}
 
-	// 1. Idempotency Check: Fingerprint
+	lockKey := o.ExternalOrderID
+	if lockKey == "" {
+		lockKey = o.ImportFingerprint
+	}
+	if lockKey == "" {
+		lockKey = o.OrderID
+	}
+	unlock := s.lockEntity("ingest_order", o.WorkspaceID, lockKey)
+	defer unlock()
+
+	// 1. Idempotency / Lifecycle Progression Check: Fingerprint
 	if o.ImportFingerprint != "" {
 		existing, err := s.store.FindOrderByImportFingerprint(ctx, o.WorkspaceID, o.ImportFingerprint)
 		if err != nil {
 			return nil, false, err
 		}
 		if existing != nil {
-			return existing, false, nil // Idempotent return
+			return s.reconcileExistingOrderOnIngest(ctx, existing, o, defaultLocationID)
 		}
 	}
 
-	// Idempotency Check: External Order Identity
+	// Idempotency / Lifecycle Progression Check: External Order Identity
 	if o.SourcePlatform != "" && o.ExternalOrderID != "" {
 		existing, err := s.store.FindOrderByExternalID(ctx, o.WorkspaceID, o.SourcePlatform, o.ExternalOrderID, o.ConnectedAccountID)
 		if err != nil {
 			return nil, false, err
 		}
 		if existing != nil {
-			return existing, false, nil // Idempotent return
+			return s.reconcileExistingOrderOnIngest(ctx, existing, o, defaultLocationID)
 		}
 	}
 
@@ -187,6 +227,14 @@ func (s *Service) IngestOrder(ctx context.Context, o *Order, defaultLocationID s
 	}
 	if o.OrderedAt.IsZero() {
 		o.OrderedAt = s.clock().UTC()
+	}
+
+	targetState := o.LifecycleState
+	// When ingesting directly as StateCompleted, persist initially in StateFulfilled so that if
+	// finance posting fails after stock is fulfilled, the order row and replay identity remain intact
+	// in StateFulfilled and a retry can complete the finance posting without re-deducting stock (F12).
+	if targetState == StateCompleted {
+		o.LifecycleState = StateFulfilled
 	}
 
 	// 2. Inventory evaluation: check if items should deduct stock
@@ -220,16 +268,16 @@ func (s *Service) IngestOrder(ctx context.Context, o *Order, defaultLocationID s
 		return nil, false, err
 	}
 
-	// 4. Reserve/fulfill stock after parent order exists; roll back order creation on failure
+	// 4. Reserve/fulfill stock after parent order exists; roll back order creation only if stock step fails
 	if len(reservationItems) > 0 && s.inventory != nil {
-		if o.LifecycleState == StateCreated {
+		if targetState == StateCreated {
 			const holdTTL = 30 * time.Minute
 			_, err := s.inventory.ReserveStock(ctx, o.WorkspaceID, o.OrderID, reservationItems, holdTTL)
 			if err != nil {
 				_ = s.store.DeleteOrder(ctx, o.WorkspaceID, o.OrderID)
 				return nil, false, fmt.Errorf("reserve stock: %w", err)
 			}
-		} else if o.LifecycleState == StateConfirmed || o.LifecycleState == StateFulfilled || o.LifecycleState == StateCompleted {
+		} else if targetState == StateConfirmed || targetState == StateFulfilled || targetState == StateCompleted {
 			// Pre-confirmed/completed order (e.g. historical paid order after baseline): reserve then fulfill immediately
 			const holdTTL = 5 * time.Minute
 			_, err := s.inventory.ReserveStock(ctx, o.WorkspaceID, o.OrderID, reservationItems, holdTTL)
@@ -246,12 +294,14 @@ func (s *Service) IngestOrder(ctx context.Context, o *Order, defaultLocationID s
 		}
 	}
 
-	// 5. If order is ingested directly in StateCompleted, post to finance ledger atomically or roll back
-	if o.LifecycleState == StateCompleted && s.finance != nil {
-		if err := s.recordOrderPosting(ctx, o); err != nil {
-			_ = s.store.DeleteOrder(ctx, o.WorkspaceID, o.OrderID)
-			return nil, false, fmt.Errorf("record completed order finance posting: %w", err)
+	// 5. If order was requested in StateCompleted, transition from StateFulfilled -> StateCompleted and post to finance ledger.
+	// If finance fails, CompleteOrder rolls back status to StateFulfilled (NOT deleting the order!), preserving stock & replay identity.
+	if targetState == StateCompleted {
+		completedOrder, err := s.CompleteOrder(ctx, o.WorkspaceID, o.OrderID)
+		if err != nil {
+			return nil, false, err
 		}
+		o = completedOrder
 	}
 
 	s.emitEvent(ctx, "commerce.order.created", "order", o.OrderID, o.WorkspaceID, map[string]any{
@@ -263,6 +313,88 @@ func (s *Service) IngestOrder(ctx context.Context, o *Order, defaultLocationID s
 	})
 
 	return o, true, nil
+}
+
+func (s *Service) reconcileExistingOrderOnIngest(ctx context.Context, existing *Order, incoming *Order, defaultLocationID string) (*Order, bool, error) {
+	// Stale observation protection: ignore webhooks older than the already-applied source_updated_at
+	if existing.SourceUpdatedAt != nil && incoming.SourceUpdatedAt != nil && incoming.SourceUpdatedAt.Before(*existing.SourceUpdatedAt) {
+		s.emitEvent(ctx, "commerce.order.out_of_order_ignored", "order", existing.OrderID, existing.WorkspaceID, map[string]any{
+			"order_id":            existing.OrderID,
+			"existing_state":      existing.LifecycleState,
+			"incoming_state":      incoming.LifecycleState,
+			"existing_updated_at": existing.SourceUpdatedAt,
+			"incoming_updated_at": incoming.SourceUpdatedAt,
+		})
+		return existing, false, nil
+	}
+
+	targetState := incoming.LifecycleState
+	if targetState == "" || targetState == existing.LifecycleState {
+		return existing, false, nil
+	}
+
+	// Merge newer source_updated_at or fee breakdown before advancing
+	needsMetaUpdate := false
+	if incoming.SourceUpdatedAt != nil && (existing.SourceUpdatedAt == nil || incoming.SourceUpdatedAt.After(*existing.SourceUpdatedAt)) {
+		ts := *incoming.SourceUpdatedAt
+		existing.SourceUpdatedAt = &ts
+		needsMetaUpdate = true
+	}
+	if (!incoming.FeeBreakdown.PlatformFee.IsZero() || !incoming.FeeBreakdown.ShippingCost.IsZero() || !incoming.FeeBreakdown.AffiliateCommission.IsZero()) &&
+		existing.LifecycleState != StateCompleted && existing.LifecycleState != StatePartiallyRefunded && existing.LifecycleState != StateRefunded {
+		existing.FeeBreakdown = incoming.FeeBreakdown
+		needsMetaUpdate = true
+	}
+	if needsMetaUpdate {
+		existing.UpdatedAt = s.clock().UTC()
+		_ = s.store.UpdateOrder(ctx, existing)
+	}
+
+	if targetState == StateCancelled {
+		if CanTransitionOrder(existing.LifecycleState, StateCancelled) {
+			cancelled, err := s.CancelOrder(ctx, existing.WorkspaceID, existing.OrderID, "platform_webhook_cancelled")
+			return cancelled, false, err
+		}
+		s.emitEvent(ctx, "commerce.order.out_of_order_ignored", "order", existing.OrderID, existing.WorkspaceID, map[string]any{
+			"order_id":       existing.OrderID,
+			"existing_state": existing.LifecycleState,
+			"incoming_state": targetState,
+		})
+		return existing, false, nil
+	}
+
+	curRank := orderForwardRank(existing.LifecycleState)
+	targetRank := orderForwardRank(targetState)
+	if curRank == 0 || targetRank == 0 || targetRank <= curRank {
+		s.emitEvent(ctx, "commerce.order.out_of_order_ignored", "order", existing.OrderID, existing.WorkspaceID, map[string]any{
+			"order_id":       existing.OrderID,
+			"existing_state": existing.LifecycleState,
+			"incoming_state": targetState,
+		})
+		return existing, false, nil
+	}
+
+	cur := existing
+	var err error
+	if cur.LifecycleState == StateCreated && targetRank >= orderForwardRank(StateConfirmed) {
+		cur, err = s.HandlePaymentConfirmation(ctx, cur.WorkspaceID, cur.OrderID, defaultLocationID)
+		if err != nil {
+			return nil, false, err
+		}
+	}
+	if cur.LifecycleState == StateConfirmed && targetRank >= orderForwardRank(StateFulfilled) {
+		cur, err = s.FulfillOrder(ctx, cur.WorkspaceID, cur.OrderID)
+		if err != nil {
+			return nil, false, err
+		}
+	}
+	if cur.LifecycleState == StateFulfilled && targetRank >= orderForwardRank(StateCompleted) {
+		cur, err = s.CompleteOrder(ctx, cur.WorkspaceID, cur.OrderID)
+		if err != nil {
+			return nil, false, err
+		}
+	}
+	return cur, false, nil
 }
 
 // ConfirmOrder transitions an order from created to confirmed and fulfills any held stock reservation.
@@ -394,7 +526,7 @@ func (s *Service) CancelOrder(ctx context.Context, workspaceID, orderID, reason 
 }
 
 // RequestRefund creates a financial refund request.
-// Verifies currency match, external refund deduplication, and that requested refund amount <= order refundable remaining balance.
+// Verifies currency match, external refund deduplication, and that cumulative active refunds <= order total atomically.
 func (s *Service) RequestRefund(ctx context.Context, r *Refund) (*Refund, *Order, error) {
 	if r.WorkspaceID == "" {
 		return nil, nil, ErrMissingTenant
@@ -403,49 +535,19 @@ func (s *Service) RequestRefund(ctx context.Context, r *Refund) (*Refund, *Order
 		return nil, nil, ErrInvalidAmount
 	}
 
-	o, err := s.store.GetOrder(ctx, r.WorkspaceID, r.OrderID)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if r.Currency != "" && o.Currency != "" && r.Currency != o.Currency {
-		return nil, nil, fmt.Errorf("%w: refund currency %s does not match order currency %s", ErrCurrencyMismatch, r.Currency, o.Currency)
-	}
-
-	// Idempotent deduplication by external refund ID
-	if r.ExternalRefundID != "" {
-		existing, err := s.store.FindRefundByExternalID(ctx, r.WorkspaceID, r.OrderID, r.SourcePlatform, r.ExternalRefundID)
-		if err != nil {
-			return nil, nil, err
-		}
-		if existing != nil {
-			return existing, o, nil
-		}
-	}
-	if r.RefundID != "" {
-		existing, err := s.store.GetRefund(ctx, r.WorkspaceID, r.RefundID)
-		if err == nil && existing != nil {
-			return existing, o, nil
-		}
-	}
-
-	rem, err := o.RefundableRemaining()
-	if err != nil {
-		return nil, nil, err
-	}
-	if r.Amount.Cmp(rem) > 0 {
-		return nil, nil, fmt.Errorf("%w: requested %s exceeds remaining refundable %s", ErrRefundExceedsOrderTotal, r.Amount.Fixed6String(), rem.Fixed6String())
-	}
-
 	if r.RefundID == "" {
 		r.RefundID = newUUID()
 	}
-	r.LifecycleState = RefundRequested
-	if r.Currency == "" {
-		r.Currency = o.Currency
+	if r.LifecycleState == "" {
+		r.LifecycleState = RefundRequested
 	}
 
 	if err := s.store.CreateRefund(ctx, r); err != nil {
+		return nil, nil, err
+	}
+
+	o, err := s.store.GetOrder(ctx, r.WorkspaceID, r.OrderID)
+	if err != nil {
 		return nil, nil, err
 	}
 
@@ -458,12 +560,51 @@ func (s *Service) RequestRefund(ctx context.Context, r *Refund) (*Refund, *Order
 	return r, o, nil
 }
 
+// RequestCumulativeRefund atomically computes the positive delta between a cumulative refund total (e.g. Stripe charge.refunded)
+// and already-booked refunds on the order under the store/DB lock.
+func (s *Service) RequestCumulativeRefund(ctx context.Context, r *Refund, cumulativeAmount tenantdb.ExactDecimal) (*Refund, *Order, bool, error) {
+	if r.WorkspaceID == "" {
+		return nil, nil, false, ErrMissingTenant
+	}
+	if cumulativeAmount.IsNegative() || cumulativeAmount.IsZero() {
+		return nil, nil, false, ErrInvalidAmount
+	}
+	if r.RefundID == "" {
+		r.RefundID = newUUID()
+	}
+	if r.LifecycleState == "" {
+		r.LifecycleState = RefundRequested
+	}
+
+	created, err := s.store.CreateCumulativeRefund(ctx, r, cumulativeAmount)
+	if err != nil {
+		return nil, nil, false, err
+	}
+
+	o, err := s.store.GetOrder(ctx, r.WorkspaceID, r.OrderID)
+	if err != nil {
+		return nil, nil, false, err
+	}
+
+	if created {
+		s.emitEvent(ctx, "commerce.refund.requested", "refund", r.RefundID, r.WorkspaceID, map[string]any{
+			"refund_id": r.RefundID,
+			"order_id":  r.OrderID,
+			"amount":    r.Amount.Fixed6String(),
+		})
+	}
+	return r, o, created, nil
+}
+
 // ApproveRefund approves and completes a refund atomically.
 // Enforces Acceptance Target 3:
 // - Partial refund transitions order to partially_refunded.
 // - Followed by full refund transitions order to refunded.
 // - Over-refunding (including concurrent approvals) is strictly rejected.
 func (s *Service) ApproveRefund(ctx context.Context, workspaceID, refundID string) (*Refund, *Order, error) {
+	unlock := s.lockEntity("refund", workspaceID, refundID)
+	defer unlock()
+
 	r, o, prevState, prevRefunded, newlyApproved, err := s.store.ApproveRefundAtomic(ctx, workspaceID, refundID)
 	if err != nil {
 		return nil, nil, err
@@ -502,50 +643,13 @@ func (s *Service) ApproveRefund(ctx context.Context, workspaceID, refundID strin
 }
 
 // CreateReturn creates a physical return request.
-// Enforces inventory contract §3: cumulative return quantity <= sold quantity across all non-rejected returns.
+// Enforces inventory contract §3: cumulative return quantity <= sold quantity across all non-rejected returns atomically.
 func (s *Service) CreateReturn(ctx context.Context, ret *Return) (*Return, error) {
 	if ret.WorkspaceID == "" {
 		return nil, ErrMissingTenant
 	}
-	o, err := s.store.GetOrder(ctx, ret.WorkspaceID, ret.OrderID)
-	if err != nil {
-		return nil, err
-	}
-
 	if len(ret.Items) == 0 {
 		return nil, fmt.Errorf("%w: return must contain at least one item", ErrInvalidInput)
-	}
-
-	// Validate cumulative returned quantity per SKU
-	priorReturns, err := s.store.ListReturnsByOrder(ctx, ret.WorkspaceID, ret.OrderID)
-	if err != nil {
-		return nil, err
-	}
-
-	orderedQty := make(map[string]int32)
-	for _, it := range o.Items {
-		orderedQty[it.Sku] += it.Quantity
-	}
-
-	returnedQty := make(map[string]int32)
-	for _, pr := range priorReturns {
-		if pr.LifecycleState != ReturnRejected {
-			for _, it := range pr.Items {
-				returnedQty[it.Sku] += it.Quantity
-			}
-		}
-	}
-
-	for _, it := range ret.Items {
-		if it.Quantity <= 0 {
-			return nil, fmt.Errorf("%w: return quantity must be positive", ErrInvalidInput)
-		}
-		totalRet := returnedQty[it.Sku] + it.Quantity
-		maxAllowed := orderedQty[it.Sku]
-		if totalRet > maxAllowed {
-			return nil, fmt.Errorf("%w: sku %s cumulative return %d exceeds ordered quantity %d",
-				ErrReturnExceedsOrderQuantity, it.Sku, totalRet, maxAllowed)
-		}
 	}
 
 	if ret.ReturnID == "" {
@@ -681,6 +785,9 @@ func (s *Service) RejectReturn(ctx context.Context, workspaceID, returnID, reaso
 // NOTE: Physical return restocks inventory via inventoryService; refunds NEVER restock inventory!
 // Enforces that duplicate callbacks or replays are idempotent and restock exactly once.
 func (s *Service) ReceiveReturn(ctx context.Context, workspaceID, returnID, restockLocationID string) (*Return, error) {
+	unlock := s.lockEntity("return", workspaceID, returnID)
+	defer unlock()
+
 	ret, err := s.store.GetReturn(ctx, workspaceID, returnID)
 	if err != nil {
 		return nil, err
@@ -692,14 +799,24 @@ func (s *Service) ReceiveReturn(ctx context.Context, workspaceID, returnID, rest
 		return nil, fmt.Errorf("%w: cannot receive a rejected return", ErrReturnAlreadyProcessed)
 	}
 
-	// Physical restock
+	// Physical restock (aggregate quantities per SKU so duplicate SKU lines in a return restock accurately)
 	if s.inventory != nil && restockLocationID != "" {
+		qtyBySku := make(map[string]int32)
+		reasonBySku := make(map[string]string)
+		var skuOrder []string
 		for _, item := range ret.Items {
 			if item.Quantity > 0 && item.Sku != "" {
-				_, err := s.inventory.RecordPhysicalReturn(ctx, workspaceID, ret.OrderID, returnID, item.Sku, restockLocationID, item.Quantity, item.Reason)
-				if err != nil {
-					return nil, fmt.Errorf("restock returned item %s: %w", item.Sku, err)
+				if _, seen := qtyBySku[item.Sku]; !seen {
+					skuOrder = append(skuOrder, item.Sku)
+					reasonBySku[item.Sku] = item.Reason
 				}
+				qtyBySku[item.Sku] += item.Quantity
+			}
+		}
+		for _, sku := range skuOrder {
+			_, err := s.inventory.RecordPhysicalReturn(ctx, workspaceID, ret.OrderID, returnID, sku, restockLocationID, qtyBySku[sku], reasonBySku[sku])
+			if err != nil {
+				return nil, fmt.Errorf("restock returned item %s: %w", sku, err)
 			}
 		}
 	}

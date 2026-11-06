@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS orders (
   source_class            source_class NOT NULL DEFAULT 'imported',
   source_platform         VARCHAR(50),
   external_order_id       VARCHAR(255),
-  connected_account_id    UUID REFERENCES connected_accounts(connected_account_id),
+  connected_account_id    UUID,
   tax_amount              NUMERIC(18,6) NOT NULL DEFAULT 0,
   tax_jurisdiction        VARCHAR(10),
   tax_note                VARCHAR(100),
@@ -60,12 +60,12 @@ CREATE TABLE IF NOT EXISTS orders (
   lifecycle_state         VARCHAR(20) NOT NULL DEFAULT 'created',
   amount                  NUMERIC(18,6) NOT NULL,
   currency                VARCHAR(5) NOT NULL DEFAULT 'VND',
-  product_id              UUID REFERENCES products(product_id),
-  offer_id                UUID REFERENCES offers(offer_id),
+  product_id              UUID,
+  offer_id                UUID,
   campaign_id             UUID,
   post_id                 UUID,
   live_session_id         UUID,
-  customer_entity_id      UUID REFERENCES entities(entity_id),
+  customer_entity_id      UUID,
   items                   JSONB DEFAULT '[]'::jsonb,
   fee_breakdown           JSONB DEFAULT '{}'::jsonb,
   shipping_address        JSONB,
@@ -77,6 +77,10 @@ CREATE TABLE IF NOT EXISTS orders (
   updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at              TIMESTAMPTZ,
   CONSTRAINT uq_orders_tenant_pk UNIQUE (workspace_id, order_id),
+  CONSTRAINT fk_orders_connected_account_id_tenant FOREIGN KEY (workspace_id, connected_account_id) REFERENCES connected_accounts(workspace_id, connected_account_id),
+  CONSTRAINT fk_orders_product_id_tenant FOREIGN KEY (workspace_id, product_id) REFERENCES products(workspace_id, product_id),
+  CONSTRAINT fk_orders_offer_id_tenant FOREIGN KEY (workspace_id, offer_id) REFERENCES offers(workspace_id, offer_id),
+  CONSTRAINT fk_orders_customer_entity_id_tenant FOREIGN KEY (workspace_id, customer_entity_id) REFERENCES entities(workspace_id, entity_id),
   CONSTRAINT chk_orders_lifecycle_state CHECK (
     lifecycle_state IN ('created', 'confirmed', 'fulfilled', 'completed', 'refunded', 'partially_refunded', 'returned', 'cancelled')
   )
@@ -259,6 +263,9 @@ CREATE TABLE IF NOT EXISTS refunds (
 
 CREATE INDEX IF NOT EXISTS idx_refunds_workspace ON refunds(workspace_id);
 CREATE INDEX IF NOT EXISTS idx_refunds_order ON refunds(workspace_id, order_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_refunds_external_identity
+  ON refunds(workspace_id, order_id, source_platform, external_refund_id)
+  WHERE external_refund_id IS NOT NULL AND deleted_at IS NULL;
 
 ALTER TABLE refunds ENABLE ROW LEVEL SECURITY;
 ALTER TABLE refunds FORCE ROW LEVEL SECURITY;
@@ -284,10 +291,12 @@ CREATE TABLE IF NOT EXISTS returns (
   return_id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   workspace_id        UUID NOT NULL REFERENCES workspaces(workspace_id) ON DELETE CASCADE,
   order_id            UUID NOT NULL,
-  refund_id           UUID REFERENCES refunds(refund_id),
+  refund_id           UUID,
   return_type         VARCHAR(20) NOT NULL, -- full, partial
   items               JSONB DEFAULT '[]'::jsonb,
   lifecycle_state     VARCHAR(20) NOT NULL DEFAULT 'initiated',
+  source_platform     VARCHAR(50),
+  external_return_id  VARCHAR(255),
   tracking_number     VARCHAR(100),
   evidence_photo_url  TEXT,
   created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -295,6 +304,7 @@ CREATE TABLE IF NOT EXISTS returns (
   deleted_at          TIMESTAMPTZ,
   CONSTRAINT uq_returns_tenant_pk UNIQUE (workspace_id, return_id),
   CONSTRAINT fk_returns_order_id_tenant FOREIGN KEY (workspace_id, order_id) REFERENCES orders(workspace_id, order_id) ON DELETE CASCADE,
+  CONSTRAINT fk_returns_refund_id_tenant FOREIGN KEY (workspace_id, refund_id) REFERENCES refunds(workspace_id, refund_id),
   CONSTRAINT chk_returns_lifecycle_state CHECK (
     lifecycle_state IN ('initiated', 'approved', 'shipped_back', 'received', 'inspected', 'closed', 'rejected')
   )
@@ -302,6 +312,9 @@ CREATE TABLE IF NOT EXISTS returns (
 
 CREATE INDEX IF NOT EXISTS idx_returns_workspace ON returns(workspace_id);
 CREATE INDEX IF NOT EXISTS idx_returns_order ON returns(workspace_id, order_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_returns_external_identity
+  ON returns(workspace_id, order_id, source_platform, external_return_id)
+  WHERE external_return_id IS NOT NULL AND deleted_at IS NULL;
 
 ALTER TABLE returns ENABLE ROW LEVEL SECURITY;
 ALTER TABLE returns FORCE ROW LEVEL SECURITY;

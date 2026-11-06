@@ -3,6 +3,7 @@ package order
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -20,6 +21,19 @@ func newUUID() string {
 	b := make([]byte, 16)
 	_, _ = rand.Read(b)
 	b[6] = (b[6] & 0x0f) | 0x40
+	b[8] = (b[8] & 0x3f) | 0x80
+	return fmt.Sprintf("%08x-%04x-%04x-%04x-%012x",
+		b[0:4], b[4:6], b[6:8], b[8:10], b[10:16])
+}
+
+func deterministicActorUUID(actorID string) string {
+	actorID = strings.TrimSpace(actorID)
+	if tenantdb.IsValidNonZeroUUID(actorID) {
+		return actorID
+	}
+	sum := sha256.Sum256([]byte("creativanta:order:actor:" + actorID))
+	b := sum[:16]
+	b[6] = (b[6] & 0x0f) | 0x50
 	b[8] = (b[8] & 0x3f) | 0x80
 	return fmt.Sprintf("%08x-%04x-%04x-%04x-%012x",
 		b[0:4], b[4:6], b[6:8], b[8:10], b[10:16])
@@ -43,6 +57,7 @@ type Store interface {
 	ListOrders(ctx context.Context, workspaceID string, filter OrderFilter, limit, offset int) ([]*Order, int64, error)
 
 	CreateRefund(ctx context.Context, r *Refund) error
+	CreateCumulativeRefund(ctx context.Context, r *Refund, cumulativeAmount tenantdb.ExactDecimal) (bool, error)
 	GetRefund(ctx context.Context, workspaceID, refundID string) (*Refund, error)
 	FindRefundByExternalID(ctx context.Context, workspaceID, orderID, platform, externalRefundID string) (*Refund, error)
 	ListRefundsByOrder(ctx context.Context, workspaceID, orderID string) ([]*Refund, error)
@@ -54,6 +69,9 @@ type Store interface {
 	GetReturn(ctx context.Context, workspaceID, returnID string) (*Return, error)
 	ListReturnsByOrder(ctx context.Context, workspaceID, orderID string) ([]*Return, error)
 	UpdateReturnStatus(ctx context.Context, workspaceID, returnID string, state ReturnState) error
+
+	GetIdempotencyRecord(ctx context.Context, workspaceID, actorID, rpc, key string) (*IdempotencyRecord, error)
+	SaveIdempotencyRecord(ctx context.Context, rec *IdempotencyRecord) error
 }
 
 // ----------------------------------------------------------------------------
@@ -61,17 +79,19 @@ type Store interface {
 // ----------------------------------------------------------------------------
 
 type MemoryStore struct {
-	mu      sync.RWMutex
-	orders  map[string]*Order  // key: workspaceID:orderID
-	refunds map[string]*Refund // key: workspaceID:refundID
-	returns map[string]*Return // key: workspaceID:returnID
+	mu          sync.RWMutex
+	orders      map[string]*Order             // key: workspaceID:orderID
+	refunds     map[string]*Refund            // key: workspaceID:refundID
+	returns     map[string]*Return            // key: workspaceID:returnID
+	idempotency map[string]*IdempotencyRecord // key: workspaceID:actorID:rpc:key
 }
 
 func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{
-		orders:  make(map[string]*Order),
-		refunds: make(map[string]*Refund),
-		returns: make(map[string]*Return),
+		orders:      make(map[string]*Order),
+		refunds:     make(map[string]*Refund),
+		returns:     make(map[string]*Return),
+		idempotency: make(map[string]*IdempotencyRecord),
 	}
 }
 
@@ -277,6 +297,53 @@ func (m *MemoryStore) CreateRefund(_ context.Context, r *Refund) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	oKey := r.WorkspaceID + ":" + r.OrderID
+	o, oExists := m.orders[oKey]
+	if !oExists || o.DeletedAt != nil {
+		return ErrOrderNotFound
+	}
+	if r.Currency == "" {
+		r.Currency = o.Currency
+	}
+	if r.Currency != "" && o.Currency != "" && r.Currency != o.Currency {
+		return fmt.Errorf("%w: refund currency %s does not match order currency %s", ErrCurrencyMismatch, r.Currency, o.Currency)
+	}
+
+	// Check existing refund by RefundID or ExternalRefundID under the lock
+	if r.RefundID != "" {
+		if existing, exists := m.refunds[r.WorkspaceID+":"+r.RefundID]; exists && existing.DeletedAt == nil {
+			if existing.Amount.Cmp(r.Amount) != 0 {
+				return fmt.Errorf("%w: refund %s already exists with amount %s", ErrIdempotencyConflict, r.RefundID, existing.Amount.Fixed6String())
+			}
+			*r = *cloneRefund(existing)
+			return nil
+		}
+	}
+	if r.ExternalRefundID != "" {
+		for _, existing := range m.refunds {
+			if existing.WorkspaceID == r.WorkspaceID &&
+				existing.OrderID == r.OrderID &&
+				(r.SourcePlatform == "" || existing.SourcePlatform == r.SourcePlatform) &&
+				existing.ExternalRefundID == r.ExternalRefundID &&
+				existing.DeletedAt == nil {
+				if existing.Amount.Cmp(r.Amount) != 0 {
+					return fmt.Errorf("%w: external refund %s already exists with amount %s", ErrIdempotencyConflict, r.ExternalRefundID, existing.Amount.Fixed6String())
+				}
+				*r = *cloneRefund(existing)
+				return nil
+			}
+		}
+	}
+
+	// Refundable remaining check under lock
+	rem, err := o.RefundableRemaining()
+	if err != nil {
+		return err
+	}
+	if r.Amount.Cmp(rem) > 0 {
+		return fmt.Errorf("%w: requested %s exceeds remaining refundable %s", ErrRefundExceedsOrderTotal, r.Amount.Fixed6String(), rem.Fixed6String())
+	}
+
 	if r.RefundID == "" {
 		r.RefundID = newUUID()
 	}
@@ -290,6 +357,78 @@ func (m *MemoryStore) CreateRefund(_ context.Context, r *Refund) error {
 	}
 	m.refunds[key] = cloneRefund(r)
 	return nil
+}
+
+func (m *MemoryStore) CreateCumulativeRefund(_ context.Context, r *Refund, cumulativeAmount tenantdb.ExactDecimal) (bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	oKey := r.WorkspaceID + ":" + r.OrderID
+	o, oExists := m.orders[oKey]
+	if !oExists || o.DeletedAt != nil {
+		return false, ErrOrderNotFound
+	}
+	if r.Currency != "" && o.Currency != "" && r.Currency != o.Currency {
+		return false, fmt.Errorf("%w: refund currency %s does not match order currency %s", ErrCurrencyMismatch, r.Currency, o.Currency)
+	}
+	if r.Currency == "" {
+		r.Currency = o.Currency
+	}
+	if cumulativeAmount.Cmp(o.Amount) > 0 {
+		return false, fmt.Errorf("%w: cumulative refund %s exceeds order total %s", ErrRefundExceedsOrderTotal, cumulativeAmount.Fixed6String(), o.Amount.Fixed6String())
+	}
+
+	bookedTotal := tenantdb.ZeroDecimal()
+	var latestRef *Refund
+	for _, existing := range m.refunds {
+		if existing.WorkspaceID == r.WorkspaceID && existing.OrderID == r.OrderID && existing.DeletedAt == nil {
+			if existing.LifecycleState != RefundRejected && existing.LifecycleState != RefundCancelled && existing.LifecycleState != RefundFailed {
+				var err error
+				bookedTotal, err = bookedTotal.Add(existing.Amount)
+				if err != nil {
+					return false, err
+				}
+				if latestRef == nil || existing.CreatedAt.After(latestRef.CreatedAt) || (existing.CreatedAt.Equal(latestRef.CreatedAt) && existing.Amount.Cmp(latestRef.Amount) >= 0) {
+					latestRef = existing
+				}
+			}
+		}
+	}
+
+	delta, err := cumulativeAmount.Sub(bookedTotal)
+	if err != nil {
+		return false, err
+	}
+	if delta.IsNegative() || delta.IsZero() {
+		if latestRef != nil {
+			*r = *cloneRefund(latestRef)
+		}
+		return false, nil
+	}
+
+	r.Amount = delta
+	baseExtID := r.ExternalRefundID
+	if baseExtID == "" {
+		baseExtID = r.OrderID
+	}
+	r.ExternalRefundID = fmt.Sprintf("%s:cum:%s", baseExtID, cumulativeAmount.Fixed6String())
+	if r.RefundID == "" {
+		r.RefundID = newUUID()
+	}
+	now := time.Now().UTC()
+	if r.CreatedAt.IsZero() {
+		r.CreatedAt = now
+	}
+	r.UpdatedAt = now
+	if r.RefundType == "" {
+		if cumulativeAmount.Cmp(o.Amount) == 0 {
+			r.RefundType = "full"
+		} else {
+			r.RefundType = "partial"
+		}
+	}
+	m.refunds[r.WorkspaceID+":"+r.RefundID] = cloneRefund(r)
+	return true, nil
 }
 
 func (m *MemoryStore) GetRefund(_ context.Context, workspaceID, refundID string) (*Refund, error) {
@@ -414,24 +553,89 @@ func (m *MemoryStore) ApproveRefundAtomic(_ context.Context, workspaceID, refund
 	return cloneRefund(r), cloneOrder(o), prevState, prevRefunded, true, nil
 }
 
-func (m *MemoryStore) RevertRefundApproval(_ context.Context, workspaceID, refundID, orderID string, prevState LifecycleState, prevRefunded tenantdb.ExactDecimal) error {
+func deriveOrderStateAfterRefundRevert(o *Order, newRefunded tenantdb.ExactDecimal, prevState LifecycleState, hasClosedReturn bool) LifecycleState {
+	if newRefunded.Cmp(o.Amount) >= 0 {
+		return StateRefunded
+	}
+	if newRefunded.IsPositive() {
+		return StatePartiallyRefunded
+	}
+	if hasClosedReturn || prevState == StateReturned {
+		return StateReturned
+	}
+	if prevState != "" && prevState != StatePartiallyRefunded && prevState != StateRefunded {
+		return prevState
+	}
+	return StateCompleted
+}
+
+func (m *MemoryStore) RevertRefundApproval(_ context.Context, workspaceID, refundID, orderID string, prevState LifecycleState, _ tenantdb.ExactDecimal) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	rKey := workspaceID + ":" + refundID
-	if r, exists := m.refunds[rKey]; exists && r.DeletedAt == nil {
-		r.LifecycleState = RefundRequested
-		r.UpdatedAt = time.Now().UTC()
+	r, rExists := m.refunds[rKey]
+	if !rExists || r.DeletedAt != nil {
+		return nil
 	}
+	if r.LifecycleState != RefundCompleted && r.LifecycleState != RefundApproved && r.LifecycleState != RefundProcessing {
+		return nil
+	}
+	now := time.Now().UTC()
+	r.LifecycleState = RefundRequested
+	r.UpdatedAt = now
+
 	oKey := workspaceID + ":" + orderID
 	if o, exists := m.orders[oKey]; exists && o.DeletedAt == nil {
-		o.LifecycleState = prevState
-		o.RefundedAmount = prevRefunded
+		newRefunded, err := o.RefundedAmount.Sub(r.Amount)
+		if err != nil || newRefunded.IsNegative() {
+			newRefunded = tenantdb.ZeroDecimal()
+		}
+		hasClosedReturn := false
+		for _, ret := range m.returns {
+			if ret.WorkspaceID == workspaceID && ret.OrderID == orderID && ret.DeletedAt == nil && ret.LifecycleState == ReturnClosed {
+				hasClosedReturn = true
+				break
+			}
+		}
+		o.RefundedAmount = newRefunded
+		o.LifecycleState = deriveOrderStateAfterRefundRevert(o, newRefunded, prevState, hasClosedReturn)
 		if o.Metadata == nil {
 			o.Metadata = make(map[string]any)
 		}
-		o.Metadata["refunded_amount"] = prevRefunded.Fixed6String()
-		o.UpdatedAt = time.Now().UTC()
+		o.Metadata["refunded_amount"] = newRefunded.Fixed6String()
+		o.UpdatedAt = now
+	}
+	return nil
+}
+
+func validateAndAccumulateReturnItems(o *Order, existingReturns []*Return, ret *Return) error {
+	orderedQty := make(map[string]int32, len(o.Items))
+	for _, it := range o.Items {
+		orderedQty[it.Sku] += it.Quantity
+	}
+	returnedQty := make(map[string]int32)
+	for _, ex := range existingReturns {
+		if ex.DeletedAt != nil || ex.LifecycleState == ReturnRejected {
+			continue
+		}
+		for _, it := range ex.Items {
+			returnedQty[it.Sku] += it.Quantity
+		}
+	}
+	for _, it := range ret.Items {
+		if it.Sku == "" || it.Quantity <= 0 {
+			return fmt.Errorf("%w: return item must have valid sku and positive quantity", ErrInvalidInput)
+		}
+		maxAllowed, exists := orderedQty[it.Sku]
+		if !exists {
+			return fmt.Errorf("%w: sku %s was not part of order %s", ErrInvalidInput, it.Sku, o.OrderID)
+		}
+		returnedQty[it.Sku] += it.Quantity
+		if returnedQty[it.Sku] > maxAllowed {
+			return fmt.Errorf("%w: sku %s total returned %d exceeds ordered %d",
+				ErrReturnExceedsOrderQuantity, it.Sku, returnedQty[it.Sku], maxAllowed)
+		}
 	}
 	return nil
 }
@@ -439,6 +643,50 @@ func (m *MemoryStore) RevertRefundApproval(_ context.Context, workspaceID, refun
 func (m *MemoryStore) CreateReturn(_ context.Context, ret *Return) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
+	oKey := ret.WorkspaceID + ":" + ret.OrderID
+	o, oExists := m.orders[oKey]
+	if !oExists || o.DeletedAt != nil {
+		return ErrOrderNotFound
+	}
+	if ret.RefundID != "" {
+		if ref, ok := m.refunds[ret.WorkspaceID+":"+ret.RefundID]; !ok || ref.DeletedAt != nil {
+			return ErrRefundNotFound
+		}
+	}
+
+	if ret.ReturnID != "" {
+		if existing, exists := m.returns[ret.WorkspaceID+":"+ret.ReturnID]; exists && existing.DeletedAt == nil {
+			*ret = *cloneReturn(existing)
+			return nil
+		}
+	}
+	if ret.ExternalReturnID != "" {
+		for _, existing := range m.returns {
+			if existing.WorkspaceID == ret.WorkspaceID &&
+				existing.OrderID == ret.OrderID &&
+				(ret.SourcePlatform == "" || existing.SourcePlatform == ret.SourcePlatform) &&
+				existing.ExternalReturnID == ret.ExternalReturnID &&
+				existing.DeletedAt == nil {
+				if ret.TrackingNumber != "" && existing.TrackingNumber == "" {
+					existing.TrackingNumber = ret.TrackingNumber
+					existing.UpdatedAt = time.Now().UTC()
+				}
+				*ret = *cloneReturn(existing)
+				return nil
+			}
+		}
+	}
+
+	var existingReturns []*Return
+	for _, ex := range m.returns {
+		if ex.WorkspaceID == ret.WorkspaceID && ex.OrderID == ret.OrderID && ex.DeletedAt == nil {
+			existingReturns = append(existingReturns, ex)
+		}
+	}
+	if err := validateAndAccumulateReturnItems(o, existingReturns, ret); err != nil {
+		return err
+	}
 
 	if ret.ReturnID == "" {
 		ret.ReturnID = newUUID()
@@ -491,6 +739,45 @@ func (m *MemoryStore) UpdateReturnStatus(_ context.Context, workspaceID, returnI
 	}
 	ret.LifecycleState = state
 	ret.UpdatedAt = time.Now().UTC()
+	return nil
+}
+
+func (m *MemoryStore) GetIdempotencyRecord(_ context.Context, workspaceID, actorID, rpc, key string) (*IdempotencyRecord, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	cacheKey := workspaceID + ":" + deterministicActorUUID(actorID) + ":" + rpc + ":" + key
+	rec, ok := m.idempotency[cacheKey]
+	if !ok {
+		return nil, nil
+	}
+	cp := *rec
+	if len(rec.ResponsePayload) > 0 {
+		cp.ResponsePayload = append([]byte(nil), rec.ResponsePayload...)
+	}
+	return &cp, nil
+}
+
+func (m *MemoryStore) SaveIdempotencyRecord(_ context.Context, rec *IdempotencyRecord) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	actorUUID := deterministicActorUUID(rec.ActorID)
+	cacheKey := rec.WorkspaceID + ":" + actorUUID + ":" + rec.RPC + ":" + rec.IdempotencyKey
+	if existing, ok := m.idempotency[cacheKey]; ok {
+		if existing.RequestHash != rec.RequestHash {
+			return ErrIdempotencyConflict
+		}
+	}
+	cp := *rec
+	cp.ActorID = actorUUID
+	if cp.CreatedAt.IsZero() {
+		cp.CreatedAt = time.Now().UTC()
+	}
+	if len(rec.ResponsePayload) > 0 {
+		cp.ResponsePayload = append([]byte(nil), rec.ResponsePayload...)
+	}
+	m.idempotency[cacheKey] = &cp
 	return nil
 }
 
@@ -688,10 +975,10 @@ func (s *PostgresStore) DeleteOrder(ctx context.Context, workspaceID, orderID st
 
 func (s *PostgresStore) scanOrder(row pgx.Row) (*Order, error) {
 	var o Order
-	var sourceClass, lifecycleState, recState string
+	var sourceClass, lifecycleState string
 	var taxNum, amountNum pgtype.Numeric
 	var extOrderID, connAccID, taxJurisdiction, taxNote, fingerprint *string
-	var prodID, offerID, campID, postID, liveID, custID *string
+	var prodID, offerID, campID, postID, liveID, custID, recState *string
 	var rateJSON, itemsJSON, feeJSON, shipJSON, evJSON, metaJSON []byte
 
 	err := row.Scan(
@@ -708,7 +995,9 @@ func (s *PostgresStore) scanOrder(row pgx.Row) (*Order, error) {
 
 	o.SourceClass = SourceClass(sourceClass)
 	o.LifecycleState = LifecycleState(lifecycleState)
-	o.ReconciliationState = recState
+	if recState != nil {
+		o.ReconciliationState = *recState
+	}
 	if extOrderID != nil {
 		o.ExternalOrderID = *extOrderID
 	}
@@ -1013,30 +1302,256 @@ func (s *PostgresStore) CreateRefund(ctx context.Context, r *Refund) error {
 	if r.RefundID == "" {
 		r.RefundID = newUUID()
 	}
-	evJSON, err := json.Marshal(r.EvidenceRefs)
-	if err != nil {
-		evJSON = []byte("[]")
-	}
 
-	const q = `
-		INSERT INTO refunds (
-			refund_id, workspace_id, order_id, refund_type, amount, currency,
-			reason, lifecycle_state, source_class, source_platform, external_refund_id,
-			settlement_id, evidence_refs, created_at, updated_at
-		) VALUES (
-			$1, $2, $3, $4, $5, $6,
-			$7, $8, $9, NULLIF($10, ''), NULLIF($11, ''),
-			NULLIF($12, '')::uuid, $13, NOW(), NOW()
-		);
-	`
 	return s.withTenantTx(ctx, r.WorkspaceID, func(txCtx context.Context, tx pgx.Tx) error {
-		_, err := tx.Exec(txCtx, q,
+		const orderQ = `
+			SELECT
+				order_id, workspace_id, source_class, COALESCE(source_platform, ''), external_order_id,
+				connected_account_id::text, tax_amount, tax_jurisdiction, tax_note, exchange_rate_snapshot,
+				recognized_at, source_updated_at, import_fingerprint, lifecycle_state,
+				amount, currency, product_id::text, offer_id::text, campaign_id::text, post_id::text, live_session_id::text,
+				customer_entity_id::text, items, fee_breakdown, shipping_address, reconciliation_state::text,
+				evidence_refs, metadata, ordered_at, created_at, updated_at, deleted_at
+			FROM orders
+			WHERE workspace_id = $1 AND order_id = $2 AND deleted_at IS NULL
+			FOR UPDATE;
+		`
+		o, err := s.scanOrder(tx.QueryRow(txCtx, orderQ, r.WorkspaceID, r.OrderID))
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return ErrOrderNotFound
+			}
+			return err
+		}
+
+		if r.Currency != "" && o.Currency != "" && r.Currency != o.Currency {
+			return fmt.Errorf("%w: refund currency %s does not match order currency %s", ErrCurrencyMismatch, r.Currency, o.Currency)
+		}
+		if r.Currency == "" {
+			r.Currency = o.Currency
+		}
+
+		const listRefundsQ = `
+			SELECT
+				refund_id, workspace_id, order_id, refund_type, amount, currency,
+				reason, lifecycle_state, source_class, source_platform, external_refund_id,
+				settlement_id::text, evidence_refs, created_at, updated_at, deleted_at
+			FROM refunds
+			WHERE workspace_id = $1 AND order_id = $2 AND deleted_at IS NULL
+			ORDER BY created_at ASC
+			FOR UPDATE;
+		`
+		rows, err := tx.Query(txCtx, listRefundsQ, r.WorkspaceID, r.OrderID)
+		if err != nil {
+			return err
+		}
+		var existingRefunds []*Refund
+		for rows.Next() {
+			ex, scanErr := s.scanRefund(rows)
+			if scanErr != nil {
+				rows.Close()
+				return scanErr
+			}
+			existingRefunds = append(existingRefunds, ex)
+		}
+		if err := rows.Err(); err != nil {
+			rows.Close()
+			return err
+		}
+		rows.Close()
+
+		for _, ex := range existingRefunds {
+			if ex.RefundID == r.RefundID {
+				*r = *cloneRefund(ex)
+				return nil
+			}
+			if r.ExternalRefundID != "" && ex.ExternalRefundID == r.ExternalRefundID &&
+				(r.SourcePlatform == "" || ex.SourcePlatform == "" || ex.SourcePlatform == r.SourcePlatform) {
+				if ex.Amount.Cmp(r.Amount) != 0 {
+					return fmt.Errorf("%w: external refund %s already exists with amount %s (got %s)",
+						ErrIdempotencyConflict, r.ExternalRefundID, ex.Amount.Fixed6String(), r.Amount.Fixed6String())
+				}
+				*r = *cloneRefund(ex)
+				return nil
+			}
+		}
+
+		rem, err := o.RefundableRemaining()
+		if err != nil {
+			return err
+		}
+		if r.Amount.Cmp(rem) > 0 {
+			return fmt.Errorf("%w: requested %s exceeds remaining refundable %s",
+				ErrRefundExceedsOrderTotal, r.Amount.Fixed6String(), rem.Fixed6String())
+		}
+
+		evJSON, err := json.Marshal(r.EvidenceRefs)
+		if err != nil {
+			evJSON = []byte("[]")
+		}
+		now := time.Now().UTC()
+		if r.CreatedAt.IsZero() {
+			r.CreatedAt = now
+		}
+		r.UpdatedAt = now
+
+		const q = `
+			INSERT INTO refunds (
+				refund_id, workspace_id, order_id, refund_type, amount, currency,
+				reason, lifecycle_state, source_class, source_platform, external_refund_id,
+				settlement_id, evidence_refs, created_at, updated_at
+			) VALUES (
+				$1, $2, $3, $4, $5, $6,
+				$7, $8, $9, NULLIF($10, ''), NULLIF($11, ''),
+				NULLIF($12, '')::uuid, $13, $14, $15
+			);
+		`
+		_, err = tx.Exec(txCtx, q,
 			r.RefundID, r.WorkspaceID, r.OrderID, r.RefundType, r.Amount.Fixed6String(), r.Currency,
 			r.Reason, string(r.LifecycleState), string(r.SourceClass), r.SourcePlatform, r.ExternalRefundID,
-			r.SettlementID, evJSON,
+			r.SettlementID, evJSON, r.CreatedAt, r.UpdatedAt,
 		)
 		return err
 	})
+}
+
+func (s *PostgresStore) CreateCumulativeRefund(ctx context.Context, r *Refund, cumulativeAmount tenantdb.ExactDecimal) (bool, error) {
+	if r.RefundID == "" {
+		r.RefundID = newUUID()
+	}
+	var created bool
+	err := s.withTenantTx(ctx, r.WorkspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		const orderQ = `
+			SELECT
+				order_id, workspace_id, source_class, COALESCE(source_platform, ''), external_order_id,
+				connected_account_id::text, tax_amount, tax_jurisdiction, tax_note, exchange_rate_snapshot,
+				recognized_at, source_updated_at, import_fingerprint, lifecycle_state,
+				amount, currency, product_id::text, offer_id::text, campaign_id::text, post_id::text, live_session_id::text,
+				customer_entity_id::text, items, fee_breakdown, shipping_address, reconciliation_state::text,
+				evidence_refs, metadata, ordered_at, created_at, updated_at, deleted_at
+			FROM orders
+			WHERE workspace_id = $1 AND order_id = $2 AND deleted_at IS NULL
+			FOR UPDATE;
+		`
+		o, err := s.scanOrder(tx.QueryRow(txCtx, orderQ, r.WorkspaceID, r.OrderID))
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return ErrOrderNotFound
+			}
+			return err
+		}
+
+		if r.Currency != "" && o.Currency != "" && r.Currency != o.Currency {
+			return fmt.Errorf("%w: refund currency %s does not match order currency %s", ErrCurrencyMismatch, r.Currency, o.Currency)
+		}
+		if r.Currency == "" {
+			r.Currency = o.Currency
+		}
+		if cumulativeAmount.Cmp(o.Amount) > 0 {
+			return fmt.Errorf("%w: cumulative refund %s exceeds order total %s", ErrRefundExceedsOrderTotal, cumulativeAmount.Fixed6String(), o.Amount.Fixed6String())
+		}
+
+		const listRefundsQ = `
+			SELECT
+				refund_id, workspace_id, order_id, refund_type, amount, currency,
+				reason, lifecycle_state, source_class, source_platform, external_refund_id,
+				settlement_id::text, evidence_refs, created_at, updated_at, deleted_at
+			FROM refunds
+			WHERE workspace_id = $1 AND order_id = $2 AND deleted_at IS NULL
+			ORDER BY created_at ASC
+			FOR UPDATE;
+		`
+		rows, err := tx.Query(txCtx, listRefundsQ, r.WorkspaceID, r.OrderID)
+		if err != nil {
+			return err
+		}
+		var existingRefunds []*Refund
+		for rows.Next() {
+			ex, scanErr := s.scanRefund(rows)
+			if scanErr != nil {
+				rows.Close()
+				return scanErr
+			}
+			existingRefunds = append(existingRefunds, ex)
+		}
+		if err := rows.Err(); err != nil {
+			rows.Close()
+			return err
+		}
+		rows.Close()
+
+		bookedTotal := tenantdb.ZeroDecimal()
+		var latestRef *Refund
+		for _, ex := range existingRefunds {
+			if ex.LifecycleState != RefundRejected && ex.LifecycleState != RefundCancelled && ex.LifecycleState != RefundFailed {
+				sum, err := bookedTotal.Add(ex.Amount)
+				if err != nil {
+					return err
+				}
+				bookedTotal = sum
+				latestRef = ex
+			}
+		}
+
+		delta, err := cumulativeAmount.Sub(bookedTotal)
+		if err != nil {
+			return err
+		}
+		if delta.IsNegative() || delta.IsZero() {
+			if latestRef != nil {
+				*r = *cloneRefund(latestRef)
+			}
+			created = false
+			return nil
+		}
+
+		r.Amount = delta
+		baseExtID := r.ExternalRefundID
+		if baseExtID == "" {
+			baseExtID = r.OrderID
+		}
+		r.ExternalRefundID = fmt.Sprintf("%s:cum:%s", baseExtID, cumulativeAmount.Fixed6String())
+		if r.RefundType == "" {
+			if cumulativeAmount.Cmp(o.Amount) == 0 {
+				r.RefundType = "full"
+			} else {
+				r.RefundType = "partial"
+			}
+		}
+
+		evJSON, err := json.Marshal(r.EvidenceRefs)
+		if err != nil {
+			evJSON = []byte("[]")
+		}
+		now := time.Now().UTC()
+		if r.CreatedAt.IsZero() {
+			r.CreatedAt = now
+		}
+		r.UpdatedAt = now
+
+		const q = `
+			INSERT INTO refunds (
+				refund_id, workspace_id, order_id, refund_type, amount, currency,
+				reason, lifecycle_state, source_class, source_platform, external_refund_id,
+				settlement_id, evidence_refs, created_at, updated_at
+			) VALUES (
+				$1, $2, $3, $4, $5, $6,
+				$7, $8, $9, NULLIF($10, ''), NULLIF($11, ''),
+				NULLIF($12, '')::uuid, $13, $14, $15
+			);
+		`
+		_, err = tx.Exec(txCtx, q,
+			r.RefundID, r.WorkspaceID, r.OrderID, r.RefundType, r.Amount.Fixed6String(), r.Currency,
+			r.Reason, string(r.LifecycleState), string(r.SourceClass), r.SourcePlatform, r.ExternalRefundID,
+			r.SettlementID, evJSON, r.CreatedAt, r.UpdatedAt,
+		)
+		if err != nil {
+			return err
+		}
+		created = true
+		return nil
+	})
+	return created, err
 }
 
 func (s *PostgresStore) scanRefund(row pgx.Row) (*Refund, error) {
@@ -1309,8 +1824,64 @@ func (s *PostgresStore) ApproveRefundAtomic(ctx context.Context, workspaceID, re
 	return r, o, prevState, prevRefunded, newlyApproved, nil
 }
 
-func (s *PostgresStore) RevertRefundApproval(ctx context.Context, workspaceID, refundID, orderID string, prevState LifecycleState, prevRefunded tenantdb.ExactDecimal) error {
+func (s *PostgresStore) RevertRefundApproval(ctx context.Context, workspaceID, refundID, orderID string, prevState LifecycleState, _ tenantdb.ExactDecimal) error {
 	return s.withTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		const refundQ = `
+			SELECT
+				refund_id, workspace_id, order_id, refund_type, amount, currency,
+				reason, lifecycle_state, source_class, source_platform, external_refund_id,
+				settlement_id::text, evidence_refs, created_at, updated_at, deleted_at
+			FROM refunds
+			WHERE workspace_id = $1 AND refund_id = $2 AND deleted_at IS NULL
+			FOR UPDATE;
+		`
+		r, err := s.scanRefund(tx.QueryRow(txCtx, refundQ, workspaceID, refundID))
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return ErrRefundNotFound
+			}
+			return err
+		}
+		if r.LifecycleState != RefundCompleted && r.LifecycleState != RefundApproved && r.LifecycleState != RefundProcessing {
+			return nil
+		}
+
+		const orderQ = `
+			SELECT
+				order_id, workspace_id, source_class, COALESCE(source_platform, ''), external_order_id,
+				connected_account_id::text, tax_amount, tax_jurisdiction, tax_note, exchange_rate_snapshot,
+				recognized_at, source_updated_at, import_fingerprint, lifecycle_state,
+				amount, currency, product_id::text, offer_id::text, campaign_id::text, post_id::text, live_session_id::text,
+				customer_entity_id::text, items, fee_breakdown, shipping_address, reconciliation_state::text,
+				evidence_refs, metadata, ordered_at, created_at, updated_at, deleted_at
+			FROM orders
+			WHERE workspace_id = $1 AND order_id = $2 AND deleted_at IS NULL
+			FOR UPDATE;
+		`
+		o, err := s.scanOrder(tx.QueryRow(txCtx, orderQ, workspaceID, orderID))
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return ErrOrderNotFound
+			}
+			return err
+		}
+
+		newRefunded, err := o.RefundedAmount.Sub(r.Amount)
+		if err != nil || newRefunded.IsNegative() {
+			newRefunded = tenantdb.ZeroDecimal()
+		}
+
+		var hasClosedReturn bool
+		const closedReturnQ = `
+			SELECT EXISTS(
+				SELECT 1 FROM returns
+				WHERE workspace_id = $1 AND order_id = $2 AND lifecycle_state = 'closed' AND deleted_at IS NULL
+			);
+		`
+		_ = tx.QueryRow(txCtx, closedReturnQ, workspaceID, orderID).Scan(&hasClosedReturn)
+
+		newOrderState := deriveOrderStateAfterRefundRevert(o, newRefunded, prevState, hasClosedReturn)
+
 		const updOrderQ = `
 			UPDATE orders
 			SET lifecycle_state = $1,
@@ -1318,7 +1889,7 @@ func (s *PostgresStore) RevertRefundApproval(ctx context.Context, workspaceID, r
 			    updated_at = NOW()
 			WHERE workspace_id = $3 AND order_id = $4 AND deleted_at IS NULL;
 		`
-		if _, err := tx.Exec(txCtx, updOrderQ, string(prevState), prevRefunded.Fixed6String(), workspaceID, orderID); err != nil {
+		if _, err := tx.Exec(txCtx, updOrderQ, string(newOrderState), newRefunded.Fixed6String(), workspaceID, orderID); err != nil {
 			return err
 		}
 		const updRefundQ = `
@@ -1326,7 +1897,7 @@ func (s *PostgresStore) RevertRefundApproval(ctx context.Context, workspaceID, r
 			SET lifecycle_state = $1, updated_at = NOW()
 			WHERE workspace_id = $2 AND refund_id = $3 AND deleted_at IS NULL;
 		`
-		_, err := tx.Exec(txCtx, updRefundQ, string(RefundRequested), workspaceID, refundID)
+		_, err = tx.Exec(txCtx, updRefundQ, string(RefundRequested), workspaceID, refundID)
 		return err
 	})
 }
@@ -1335,24 +1906,95 @@ func (s *PostgresStore) CreateReturn(ctx context.Context, ret *Return) error {
 	if ret.ReturnID == "" {
 		ret.ReturnID = newUUID()
 	}
-	itemsJSON, err := json.Marshal(ret.Items)
-	if err != nil {
-		itemsJSON = []byte("[]")
-	}
 
-	const q = `
-		INSERT INTO returns (
-			return_id, workspace_id, order_id, refund_id, return_type, items,
-			lifecycle_state, tracking_number, evidence_photo_url, created_at, updated_at
-		) VALUES (
-			$1, $2, $3, NULLIF($4, '')::uuid, $5, $6,
-			$7, $8, $9, NOW(), NOW()
-		);
-	`
 	return s.withTenantTx(ctx, ret.WorkspaceID, func(txCtx context.Context, tx pgx.Tx) error {
-		_, err := tx.Exec(txCtx, q,
+		const orderQ = `
+			SELECT
+				order_id, workspace_id, source_class, COALESCE(source_platform, ''), external_order_id,
+				connected_account_id::text, tax_amount, tax_jurisdiction, tax_note, exchange_rate_snapshot,
+				recognized_at, source_updated_at, import_fingerprint, lifecycle_state,
+				amount, currency, product_id::text, offer_id::text, campaign_id::text, post_id::text, live_session_id::text,
+				customer_entity_id::text, items, fee_breakdown, shipping_address, reconciliation_state::text,
+				evidence_refs, metadata, ordered_at, created_at, updated_at, deleted_at
+			FROM orders
+			WHERE workspace_id = $1 AND order_id = $2 AND deleted_at IS NULL
+			FOR UPDATE;
+		`
+		o, err := s.scanOrder(tx.QueryRow(txCtx, orderQ, ret.WorkspaceID, ret.OrderID))
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return ErrOrderNotFound
+			}
+			return err
+		}
+
+		const listReturnsQ = `
+			SELECT
+				return_id, workspace_id, order_id, refund_id::text, return_type, items,
+				lifecycle_state, COALESCE(source_platform, ''), external_return_id, tracking_number, evidence_photo_url, created_at, updated_at, deleted_at
+			FROM returns
+			WHERE workspace_id = $1 AND order_id = $2 AND deleted_at IS NULL
+			ORDER BY created_at ASC
+			FOR UPDATE;
+		`
+		rows, err := tx.Query(txCtx, listReturnsQ, ret.WorkspaceID, ret.OrderID)
+		if err != nil {
+			return err
+		}
+		var existingReturns []*Return
+		for rows.Next() {
+			ex, scanErr := s.scanReturn(rows)
+			if scanErr != nil {
+				rows.Close()
+				return scanErr
+			}
+			existingReturns = append(existingReturns, ex)
+		}
+		if err := rows.Err(); err != nil {
+			rows.Close()
+			return err
+		}
+		rows.Close()
+
+		for _, ex := range existingReturns {
+			if ex.ReturnID == ret.ReturnID {
+				*ret = *cloneReturn(ex)
+				return nil
+			}
+			if ret.ExternalReturnID != "" && ex.ExternalReturnID == ret.ExternalReturnID &&
+				(ret.SourcePlatform == "" || ex.SourcePlatform == "" || ex.SourcePlatform == ret.SourcePlatform) {
+				*ret = *cloneReturn(ex)
+				return nil
+			}
+		}
+
+		if err := validateAndAccumulateReturnItems(o, existingReturns, ret); err != nil {
+			return err
+		}
+
+		itemsJSON, err := json.Marshal(ret.Items)
+		if err != nil {
+			itemsJSON = []byte("[]")
+		}
+		now := time.Now().UTC()
+		if ret.CreatedAt.IsZero() {
+			ret.CreatedAt = now
+		}
+		ret.UpdatedAt = now
+
+		const q = `
+			INSERT INTO returns (
+				return_id, workspace_id, order_id, refund_id, return_type, items,
+				lifecycle_state, source_platform, external_return_id, tracking_number, evidence_photo_url, created_at, updated_at
+			) VALUES (
+				$1, $2, $3, NULLIF($4, '')::uuid, $5, $6,
+				$7, NULLIF($8, ''), NULLIF($9, ''), $10, $11, $12, $13
+			);
+		`
+		_, err = tx.Exec(txCtx, q,
 			ret.ReturnID, ret.WorkspaceID, ret.OrderID, ret.RefundID, ret.ReturnType, itemsJSON,
-			string(ret.LifecycleState), ret.TrackingNumber, ret.EvidencePhotoURL,
+			string(ret.LifecycleState), ret.SourcePlatform, ret.ExternalReturnID, ret.TrackingNumber, ret.EvidencePhotoURL,
+			ret.CreatedAt, ret.UpdatedAt,
 		)
 		return err
 	})
@@ -1360,13 +2002,13 @@ func (s *PostgresStore) CreateReturn(ctx context.Context, ret *Return) error {
 
 func (s *PostgresStore) scanReturn(row pgx.Row) (*Return, error) {
 	var ret Return
-	var refID, tracking, photo *string
+	var refID, extRetID, tracking, photo *string
 	var lifecycleState string
 	var itemsJSON []byte
 
 	err := row.Scan(
 		&ret.ReturnID, &ret.WorkspaceID, &ret.OrderID, &refID, &ret.ReturnType, &itemsJSON,
-		&lifecycleState, &tracking, &photo, &ret.CreatedAt, &ret.UpdatedAt, &ret.DeletedAt,
+		&lifecycleState, &ret.SourcePlatform, &extRetID, &tracking, &photo, &ret.CreatedAt, &ret.UpdatedAt, &ret.DeletedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -1374,6 +2016,9 @@ func (s *PostgresStore) scanReturn(row pgx.Row) (*Return, error) {
 	ret.LifecycleState = ReturnState(lifecycleState)
 	if refID != nil {
 		ret.RefundID = *refID
+	}
+	if extRetID != nil {
+		ret.ExternalReturnID = *extRetID
 	}
 	if tracking != nil {
 		ret.TrackingNumber = *tracking
@@ -1391,7 +2036,7 @@ func (s *PostgresStore) GetReturn(ctx context.Context, workspaceID, returnID str
 	const q = `
 		SELECT
 			return_id, workspace_id, order_id, refund_id::text, return_type, items,
-			lifecycle_state, tracking_number, evidence_photo_url, created_at, updated_at, deleted_at
+			lifecycle_state, COALESCE(source_platform, ''), external_return_id, tracking_number, evidence_photo_url, created_at, updated_at, deleted_at
 		FROM returns
 		WHERE workspace_id = $1 AND return_id = $2 AND deleted_at IS NULL;
 	`
@@ -1417,7 +2062,7 @@ func (s *PostgresStore) ListReturnsByOrder(ctx context.Context, workspaceID, ord
 	const q = `
 		SELECT
 			return_id, workspace_id, order_id, refund_id::text, return_type, items,
-			lifecycle_state, tracking_number, evidence_photo_url, created_at, updated_at, deleted_at
+			lifecycle_state, COALESCE(source_platform, ''), external_return_id, tracking_number, evidence_photo_url, created_at, updated_at, deleted_at
 		FROM returns
 		WHERE workspace_id = $1 AND order_id = $2 AND deleted_at IS NULL
 		ORDER BY created_at ASC;
@@ -1460,5 +2105,107 @@ func (s *PostgresStore) UpdateReturnStatus(ctx context.Context, workspaceID, ret
 			return ErrReturnNotFound
 		}
 		return nil
+	})
+}
+
+func (s *PostgresStore) GetIdempotencyRecord(ctx context.Context, workspaceID, actorID, rpc, idempotencyKey string) (*IdempotencyRecord, error) {
+	if idempotencyKey == "" {
+		return nil, nil
+	}
+	actorUUID := deterministicActorUUID(actorID)
+	const q = `
+		SELECT workspace_id::text, actor_id::text, rpc, idempotency_key, request_hash, status, response_payload, created_at
+		FROM api_idempotency_records
+		WHERE workspace_id = $1::uuid AND actor_id = $2::uuid AND rpc = $3 AND idempotency_key = $4 AND expires_at > NOW()
+		LIMIT 1;
+	`
+	var rec IdempotencyRecord
+	var found bool
+	err := s.withTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		err := tx.QueryRow(txCtx, q, workspaceID, actorUUID, rpc, idempotencyKey).Scan(
+			&rec.WorkspaceID, &rec.ActorID, &rec.RPC, &rec.IdempotencyKey,
+			&rec.RequestHash, &rec.Status, &rec.ResponsePayload, &rec.CreatedAt,
+		)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return nil
+			}
+			return err
+		}
+		found = true
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if !found {
+		return nil, nil
+	}
+	rec.ActorID = actorID
+	return &rec, nil
+}
+
+func (s *PostgresStore) SaveIdempotencyRecord(ctx context.Context, rec *IdempotencyRecord) error {
+	if rec == nil || rec.IdempotencyKey == "" {
+		return nil
+	}
+	actorUUID := deterministicActorUUID(rec.ActorID)
+	now := time.Now().UTC()
+	if rec.CreatedAt.IsZero() {
+		rec.CreatedAt = now
+	}
+	if rec.Status == "" {
+		rec.Status = "completed"
+	}
+	bodyJSON := rec.ResponsePayload
+	if len(bodyJSON) == 0 {
+		bodyJSON = []byte("{}")
+	}
+
+	const selQ = `
+		SELECT request_hash, status, response_payload, created_at
+		FROM api_idempotency_records
+		WHERE workspace_id = $1::uuid AND actor_id = $2::uuid AND rpc = $3 AND idempotency_key = $4 AND expires_at > NOW()
+		FOR UPDATE;
+	`
+	const upsertQ = `
+		INSERT INTO api_idempotency_records (
+			workspace_id, actor_id, rpc, idempotency_key,
+			request_hash, status, response_payload, created_at, expires_at
+		) VALUES (
+			$1::uuid, $2::uuid, $3, $4,
+			$5, $6, $7::jsonb, $8, $9
+		)
+		ON CONFLICT (workspace_id, actor_id, rpc, idempotency_key) DO UPDATE SET
+			request_hash = EXCLUDED.request_hash,
+			status = EXCLUDED.status,
+			response_payload = EXCLUDED.response_payload,
+			created_at = EXCLUDED.created_at,
+			expires_at = EXCLUDED.expires_at;
+	`
+	return s.withTenantTx(ctx, rec.WorkspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		var existingHash, existingStatus string
+		var existingBody []byte
+		var existingCreated time.Time
+		err := tx.QueryRow(txCtx, selQ, rec.WorkspaceID, actorUUID, rec.RPC, rec.IdempotencyKey).Scan(
+			&existingHash, &existingStatus, &existingBody, &existingCreated,
+		)
+		if err == nil {
+			if existingHash != rec.RequestHash {
+				return fmt.Errorf("%w: idempotency key %s reused with different payload", ErrIdempotencyConflict, rec.IdempotencyKey)
+			}
+			rec.Status = existingStatus
+			rec.ResponsePayload = append([]byte(nil), existingBody...)
+			rec.CreatedAt = existingCreated
+			return nil
+		}
+		if !errors.Is(err, pgx.ErrNoRows) {
+			return err
+		}
+		_, err = tx.Exec(txCtx, upsertQ,
+			rec.WorkspaceID, actorUUID, rec.RPC, rec.IdempotencyKey,
+			rec.RequestHash, rec.Status, bodyJSON, rec.CreatedAt, rec.CreatedAt.Add(24*time.Hour),
+		)
+		return err
 	})
 }
