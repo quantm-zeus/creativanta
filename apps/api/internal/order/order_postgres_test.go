@@ -199,37 +199,26 @@ func TestPostgresLiveOrderStore(t *testing.T) {
 
 	migrationsDir := filepath.Join("..", "..", "..", "..", "infra", "migrations")
 	if _, err := migrate.Up(ctx, pool, migrationsDir); err != nil {
-		if errors.Is(err, migrate.ErrChecksumMismatch) {
-			_, _ = pool.Exec(ctx, `DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO CURRENT_USER; GRANT USAGE ON SCHEMA public TO PUBLIC;`)
-			if _, rErr := migrate.Up(ctx, pool, migrationsDir); rErr != nil {
-				t.Fatalf("migrate.Up after schema reset: %v", rErr)
-			}
-		} else {
-			t.Fatalf("migrate.Up: %v", err)
-		}
+		t.Fatalf("migrate.Up: %v", err)
 	}
 
 	wsID := "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa15"
 	otherWsID := "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbb15"
 	ordID := "33333333-3333-3333-3333-333333333333"
 
-	// Ensure workspace exists
-	_, err = pool.Exec(ctx, `
-		INSERT INTO users (user_id, external_auth_id, email, display_name, created_at, updated_at)
-		VALUES ('11111111-1111-4111-8111-111111111115'::uuid, 'ext_order_user_15', 'order-user@test.com', 'Order User', NOW(), NOW())
-		ON CONFLICT (user_id) DO NOTHING;
-		INSERT INTO workspaces (workspace_id, name, slug, owner_user_id, created_at, updated_at)
-		VALUES ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa15'::uuid, 'Order Workspace', 'order-ws', '11111111-1111-4111-8111-111111111115'::uuid, NOW(), NOW())
-		ON CONFLICT (workspace_id) DO NOTHING;
-		INSERT INTO workspaces (workspace_id, name, slug, owner_user_id, created_at, updated_at)
-		VALUES ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbb15'::uuid, 'Other Order Workspace', 'other-order-ws', '11111111-1111-4111-8111-111111111115'::uuid, NOW(), NOW())
-		ON CONFLICT (workspace_id) DO NOTHING;
-		DELETE FROM returns WHERE order_id = '33333333-3333-3333-3333-333333333333'::uuid;
-		DELETE FROM refunds WHERE order_id = '33333333-3333-3333-3333-333333333333'::uuid;
-		DELETE FROM orders WHERE order_id = '33333333-3333-3333-3333-333333333333'::uuid;
-	`)
-	if err != nil {
-		t.Fatalf("seed order workspace fixtures: %v", err)
+	// Ensure workspace exists and clean prior test rows for ordID
+	seedStmts := []string{
+		`INSERT INTO users (user_id, external_auth_id, email, display_name, created_at, updated_at) VALUES ('11111111-1111-4111-8111-111111111115'::uuid, 'ext_order_user_15', 'order-user@test.com', 'Order User', NOW(), NOW()) ON CONFLICT (user_id) DO NOTHING`,
+		`INSERT INTO workspaces (workspace_id, name, slug, owner_user_id, created_at, updated_at) VALUES ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa15'::uuid, 'Order Workspace', 'order-ws', '11111111-1111-4111-8111-111111111115'::uuid, NOW(), NOW()) ON CONFLICT (workspace_id) DO NOTHING`,
+		`INSERT INTO workspaces (workspace_id, name, slug, owner_user_id, created_at, updated_at) VALUES ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbb15'::uuid, 'Other Order Workspace', 'other-order-ws', '11111111-1111-4111-8111-111111111115'::uuid, NOW(), NOW()) ON CONFLICT (workspace_id) DO NOTHING`,
+		`DELETE FROM returns WHERE order_id = '33333333-3333-3333-3333-333333333333'::uuid`,
+		`DELETE FROM refunds WHERE order_id = '33333333-3333-3333-3333-333333333333'::uuid`,
+		`DELETE FROM orders WHERE order_id = '33333333-3333-3333-3333-333333333333'::uuid`,
+	}
+	for _, stmt := range seedStmts {
+		if _, err := pool.Exec(ctx, stmt); err != nil {
+			t.Fatalf("seed order workspace fixtures: %v", err)
+		}
 	}
 
 	appPool, err := pgxpool.New(ctx, dsn)
@@ -396,7 +385,6 @@ func TestData17_PostgresCrossTenantOrderAndReturnForeignKeysRejected(t *testing.
 	}
 	defer pool.Close()
 
-	_, _ = pool.Exec(ctx, `DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO CURRENT_USER; GRANT USAGE ON SCHEMA public TO PUBLIC;`)
 	migrationsDir := filepath.Join("..", "..", "..", "..", "infra", "migrations")
 	if _, err := migrate.Up(ctx, pool, migrationsDir); err != nil {
 		t.Fatalf("migrate.Up: %v", err)
@@ -415,29 +403,20 @@ func TestData17_PostgresCrossTenantOrderAndReturnForeignKeysRejected(t *testing.
 		ordB    = "55555555-5555-4555-8555-555555555521"
 	)
 
-	_, err = pool.Exec(ctx, `
-		INSERT INTO users (user_id, external_auth_id, email, display_name, status)
-		VALUES ('11111111-1111-4111-8111-111111111121'::uuid, 'ext_u_d17', 'd17@test.com', 'D17 User', 'active');
-		INSERT INTO workspaces (workspace_id, name, slug, owner_user_id, status) VALUES
-		  ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa21'::uuid, 'WS A', 'ws-d17-a', '11111111-1111-4111-8111-111111111121'::uuid, 'active'),
-		  ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbb21'::uuid, 'WS B', 'ws-d17-b', '11111111-1111-4111-8111-111111111121'::uuid, 'active');
-		INSERT INTO connected_accounts (connected_account_id, workspace_id, platform, account_type, external_account_id, connection_state)
-		VALUES ('cccccccc-cccc-4ccc-8ccc-cccccccccc21'::uuid, 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa21'::uuid, 'tiktok', 'creator', 'tt_d17_a', 'connected');
-		INSERT INTO products (product_id, workspace_id, title, product_type, base_price, currency, catalog_status)
-		VALUES ('dddddddd-dddd-4ddd-8ddd-dddddddddd21'::uuid, 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa21'::uuid, 'Prod A', 'physical', 100000, 'VND', 'active');
-		INSERT INTO offers (offer_id, workspace_id, product_id, title, offer_type, pricing_value, pricing_currency, lifecycle_state)
-		VALUES ('eeeeeeee-eeee-4eee-8eee-eeeeeeeeee21'::uuid, 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa21'::uuid, 'dddddddd-dddd-4ddd-8ddd-dddddddddd21'::uuid, 'Offer A', 'direct', 100000, 'VND', 'active');
-		INSERT INTO entities (entity_id, workspace_id, entity_type, display_name)
-		VALUES ('ffffffff-ffff-4fff-8fff-ffffffffff21'::uuid, 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa21'::uuid, 'buyer', 'Customer A');
-		INSERT INTO orders (order_id, workspace_id, source_class, lifecycle_state, amount, currency)
-		VALUES
-		  ('33333333-3333-4333-8333-333333333321'::uuid, 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa21'::uuid, 'official', 'completed', 100000, 'VND'),
-		  ('55555555-5555-4555-8555-555555555521'::uuid, 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbb21'::uuid, 'official', 'completed', 100000, 'VND');
-		INSERT INTO refunds (refund_id, workspace_id, order_id, refund_type, amount, currency, reason, lifecycle_state)
-		VALUES ('44444444-4444-4444-8444-444444444421'::uuid, 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa21'::uuid, '33333333-3333-4333-8333-333333333321'::uuid, 'partial', 20000, 'VND', 'test', 'requested');
-	`)
-	if err != nil {
-		t.Fatalf("seed fixtures failed: %v", err)
+	d17SeedStmts := []string{
+		`INSERT INTO users (user_id, external_auth_id, email, display_name, status) VALUES ('11111111-1111-4111-8111-111111111121'::uuid, 'ext_u_d17', 'd17@test.com', 'D17 User', 'active') ON CONFLICT (user_id) DO NOTHING`,
+		`INSERT INTO workspaces (workspace_id, name, slug, owner_user_id, status) VALUES ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa21'::uuid, 'WS A', 'ws-d17-a', '11111111-1111-4111-8111-111111111121'::uuid, 'active'), ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbb21'::uuid, 'WS B', 'ws-d17-b', '11111111-1111-4111-8111-111111111121'::uuid, 'active') ON CONFLICT (workspace_id) DO NOTHING`,
+		`INSERT INTO connected_accounts (connected_account_id, workspace_id, platform, account_type, external_account_id, connection_state) VALUES ('cccccccc-cccc-4ccc-8ccc-cccccccccc21'::uuid, 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa21'::uuid, 'tiktok', 'creator', 'tt_d17_a', 'connected') ON CONFLICT (connected_account_id) DO NOTHING`,
+		`INSERT INTO products (product_id, workspace_id, title, product_type, base_price, currency, catalog_status) VALUES ('dddddddd-dddd-4ddd-8ddd-dddddddddd21'::uuid, 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa21'::uuid, 'Prod A', 'physical', 100000, 'VND', 'active') ON CONFLICT (product_id) DO NOTHING`,
+		`INSERT INTO offers (offer_id, workspace_id, product_id, title, offer_type, pricing_value, pricing_currency, lifecycle_state) VALUES ('eeeeeeee-eeee-4eee-8eee-eeeeeeeeee21'::uuid, 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa21'::uuid, 'dddddddd-dddd-4ddd-8ddd-dddddddddd21'::uuid, 'Offer A', 'direct', 100000, 'VND', 'active') ON CONFLICT (offer_id) DO NOTHING`,
+		`INSERT INTO entities (entity_id, workspace_id, entity_type, display_name) VALUES ('ffffffff-ffff-4fff-8fff-ffffffffff21'::uuid, 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa21'::uuid, 'buyer', 'Customer A') ON CONFLICT (entity_id) DO NOTHING`,
+		`INSERT INTO orders (order_id, workspace_id, source_class, lifecycle_state, amount, currency) VALUES ('33333333-3333-4333-8333-333333333321'::uuid, 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa21'::uuid, 'official', 'completed', 100000, 'VND'), ('55555555-5555-4555-8555-555555555521'::uuid, 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbb21'::uuid, 'official', 'completed', 100000, 'VND') ON CONFLICT (order_id) DO NOTHING`,
+		`INSERT INTO refunds (refund_id, workspace_id, order_id, refund_type, amount, currency, reason, lifecycle_state) VALUES ('44444444-4444-4444-8444-444444444421'::uuid, 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa21'::uuid, '33333333-3333-4333-8333-333333333321'::uuid, 'partial', 20000, 'VND', 'test', 'requested') ON CONFLICT (refund_id) DO NOTHING`,
+	}
+	for _, stmt := range d17SeedStmts {
+		if _, err := pool.Exec(ctx, stmt); err != nil {
+			t.Fatalf("seed fixtures failed: %v", err)
+		}
 	}
 
 	tx, err := pool.Begin(ctx)
