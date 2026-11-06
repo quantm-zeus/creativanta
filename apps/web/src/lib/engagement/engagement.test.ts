@@ -111,13 +111,14 @@ describe('Acceptance Target 2: Bot-Loop & Viral Surge Handling', () => {
   });
 
   it('blocks compose validation when auto-reply bot loop is tripped', () => {
+    const now = new Date('2026-11-04T14:00:00.000Z');
     const thread = createMockThread({ autoReplyPaused: true });
-    const autoReplyCheck = validateComposeCanSend(thread, mockAccount, 'Auto greeting', true);
+    const autoReplyCheck = validateComposeCanSend(thread, mockAccount, 'Auto greeting', true, now);
     expect(autoReplyCheck.canSend).toBe(false);
     expect(autoReplyCheck.botLoopNotice?.isPaused).toBe(true);
 
     // Operator human reply is still allowed even if auto-reply loop is tripped!
-    const humanCheck = validateComposeCanSend(thread, mockAccount, 'Chào bạn, tôi là Alice.', false);
+    const humanCheck = validateComposeCanSend(thread, mockAccount, 'Chào bạn, tôi là Alice.', false, now);
     expect(humanCheck.canSend).toBe(true);
   });
 
