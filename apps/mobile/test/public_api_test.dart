@@ -182,5 +182,126 @@ void main() {
       expect(find.text('https://hook.client.io/events'), findsOneWidget);
       expect(find.text('New Key'), findsOneWidget);
     });
+
+    testWidgets(
+        'DeveloperApiKeysView fails closed and refuses to mint fake ca_live_ secrets when backend RPC is unavailable',
+        (WidgetTester tester) async {
+      final unwiredNotifier = DeveloperStateNotifier(
+        workspaceId: '22222222-2222-2222-2222-222222222201',
+        initialTier: 'pro',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: DeveloperApiKeysView(notifier: unwiredNotifier),
+        ),
+      );
+
+      await tester.tap(find.text('New Key'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Create'));
+      await tester.pumpAndSettle();
+
+      expect(unwiredNotifier.keys, isEmpty);
+      expect(find.text('DISPLAYED ONCE'), findsNothing);
+      expect(find.byKey(const Key('developer-error-banner')), findsOneWidget);
+      expect(find.textContaining('DEVELOPER_BACKEND_UNAVAILABLE'), findsOneWidget);
+    });
+
+    testWidgets(
+        'DeveloperStateNotifier & DeveloperApiKeysView wire creativanta.platform.v1.APIKeyService and WebhookSubscriptionService',
+        (WidgetTester tester) async {
+      final calls = <Map<String, dynamic>>[];
+      final wiredNotifier = DeveloperStateNotifier(
+        workspaceId: '22222222-2222-2222-2222-222222222201',
+        initialTier: 'pro',
+        rpcCaller: (service, method, payload) async {
+          calls.add({
+            'service': service,
+            'method': method,
+            'payload': payload,
+          });
+          if (service == 'creativanta.platform.v1.APIKeyService' && method == 'Create') {
+            return {
+              'api_key': {
+                'api_key_id': 'ak_server_901',
+                'workspace_id': '22222222-2222-2222-2222-222222222201',
+                'key_prefix': 'ca_live_sv',
+                'name': payload['name'],
+                'scopes': payload['scopes'],
+                'status': 'API_KEY_STATUS_ACTIVE',
+                'logical_key_id': 'lk_server_901',
+              },
+              'secret_key': 'ca_live_server_secret_901',
+            };
+          }
+          if (service == 'creativanta.platform.v1.APIKeyService' && method == 'Rotate') {
+            return {
+              'old_key': {
+                'api_key_id': 'ak_server_901',
+                'status': 'API_KEY_STATUS_ROTATING',
+              },
+              'new_key': {
+                'api_key_id': 'ak_server_902',
+                'workspace_id': '22222222-2222-2222-2222-222222222201',
+                'key_prefix': 'ca_live_rt',
+                'name': 'Mobile Key (Rotated)',
+                'scopes': ['read:content'],
+                'status': 'API_KEY_STATUS_ACTIVE',
+                'logical_key_id': 'lk_server_901',
+              },
+              'new_secret_key': 'ca_live_rotated_server_secret_902',
+              'grace_ends_at': '2026-12-01T00:00:00Z',
+            };
+          }
+          if (service == 'creativanta.platform.v1.WebhookSubscriptionService' &&
+              method == 'CreateWebhookSubscription') {
+            return {
+              'subscription': {
+                'webhook_subscription_id': 'wh_server_501',
+                'workspace_id': '22222222-2222-2222-2222-222222222201',
+                'target_url': payload['target_url'],
+                'event_types': payload['event_types'],
+                'status': 'WEBHOOK_SUBSCRIPTION_STATUS_ACTIVE',
+                'consecutive_failure_count': 0,
+              },
+              'signing_secret': 'whsec_server_501',
+            };
+          }
+          throw StateError('Unexpected RPC $service/$method');
+        },
+      );
+
+      final whOutcome = await wiredNotifier.createWebhookSubscriptionRemote(
+        targetUrl: 'https://hooks.partner.vn/events',
+        eventTypes: ['order.created'],
+      );
+      expect(whOutcome.ok, isTrue);
+      expect(whOutcome.data?.subscriptionId, equals('wh_server_501'));
+      expect(whOutcome.data?.signingSecret, equals('whsec_server_501'));
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: DeveloperApiKeysView(notifier: wiredNotifier),
+        ),
+      );
+
+      await tester.tap(find.text('New Key'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Create'));
+      await tester.pumpAndSettle();
+
+      expect(wiredNotifier.keys.length, equals(1));
+      expect(find.text('DISPLAYED ONCE'), findsOneWidget);
+      expect(find.text('ca_live_server_secret_901'), findsOneWidget);
+
+      final rotateOutcome = await wiredNotifier.rotateKeyRemote('ak_server_901');
+      expect(rotateOutcome.ok, isTrue);
+      expect(rotateOutcome.data?.apiKeyId, equals('ak_server_902'));
+      expect(rotateOutcome.data?.secretKey, equals('ca_live_rotated_server_secret_902'));
+      expect(calls.length, equals(3));
+    });
   });
 }

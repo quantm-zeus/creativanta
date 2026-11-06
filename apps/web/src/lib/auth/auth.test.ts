@@ -1,5 +1,12 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { createAuthStore, sanitizeRedirectTarget, slugifyWorkspaceName } from './store';
+import {
+  createAuthStore,
+  defaultDiscoveryFetcher,
+  parseWorkspaceDiscoveryPayload,
+  registerAuthResetHook,
+  sanitizeRedirectTarget,
+  slugifyWorkspaceName
+} from './store';
 import { CANONICAL_OPERATOR_MODES, type WorkspaceSummary } from './types';
 import {
   resetClerkInstance,
@@ -587,6 +594,272 @@ describe('P0-03 Web User-Facing Identity & Auth Store', () => {
       expect(okCreate.workspace?.role).toBe('owner');
       expect(store.getSnapshot().activeWorkspace?.id).toBe('ws-created-001');
       expect(store.getSnapshot().activeMode).toBe('seller');
+    });
+  });
+
+  describe('10. R7 Remediation: Canonical Discovery Shape & Session Epoch Isolation', () => {
+    it('parses canonical Go /api/workspaces/discovery {"workspaces": [...]} payload for 0, 1, and 3 workspaces and fails closed on malformed payloads', async () => {
+      const originalFetch = globalThis.fetch;
+      try {
+        // 1. Single workspace envelope -> auto-selected with workspace_id and display_name
+        globalThis.fetch = vi.fn().mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              workspaces: [
+                {
+                  workspace_id: '018f7a31-2233-7444-8555-667788990011',
+                  name: 'creativanta-hq',
+                  display_name: 'Creativanta HQ',
+                  role: 'admin',
+                  default_mode: 'seller',
+                  default_operator_mode: 'seller'
+                }
+              ]
+            }),
+            { status: 200, headers: { 'content-type': 'application/json' } }
+          )
+        ) as unknown as typeof fetch;
+
+        const store = createAuthStore();
+        await store.init({
+          publishableKey: 'pk_test_valid_dummy_key',
+          clerkInstance: mockClerk
+        });
+
+        const snap1 = store.getSnapshot();
+        expect(snap1.workspaces).toHaveLength(1);
+        expect(snap1.activeWorkspace?.id).toBe('018f7a31-2233-7444-8555-667788990011');
+        expect(snap1.activeWorkspace?.name).toBe('Creativanta HQ');
+        expect(snap1.activeWorkspace?.role).toBe('admin');
+
+        // 2. Three workspaces (including non-owner member/editor/viewer)
+        globalThis.fetch = vi.fn().mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              workspaces: [
+                {
+                  workspace_id: 'ws-alpha',
+                  name: 'alpha-slug',
+                  display_name: 'Alpha Studio',
+                  role: 'owner'
+                },
+                {
+                  workspace_id: 'ws-beta',
+                  name: 'beta-slug',
+                  display_name: 'Beta Agency',
+                  role: 'editor'
+                },
+                {
+                  workspace_id: 'ws-gamma',
+                  name: 'gamma-slug',
+                  display_name: 'Gamma Brand',
+                  role: 'member'
+                }
+              ]
+            }),
+            { status: 200, headers: { 'content-type': 'application/json' } }
+          )
+        ) as unknown as typeof fetch;
+
+        const store3 = createAuthStore();
+        await store3.init({
+          publishableKey: 'pk_test_valid_dummy_key',
+          clerkInstance: mockClerk
+        });
+        const snap3 = store3.getSnapshot();
+        expect(snap3.workspaces.map((w) => w.id)).toEqual(['ws-alpha', 'ws-beta', 'ws-gamma']);
+        expect(snap3.workspaces.map((w) => w.role)).toEqual(['owner', 'editor', 'member']);
+        const selected = await store3.selectWorkspace('ws-beta');
+        expect(selected.id).toBe('ws-beta');
+        expect(store3.getSnapshot().activeWorkspace?.name).toBe('Beta Agency');
+
+        // 3. Zero workspaces (null or empty array in Go JSON)
+        expect(parseWorkspaceDiscoveryPayload({ workspaces: null })).toEqual([]);
+        expect(parseWorkspaceDiscoveryPayload({ workspaces: [] })).toEqual([]);
+
+        // 4. Malformed payloads fail closed
+        expect(() => parseWorkspaceDiscoveryPayload({ unexpected: true })).toThrow(/fail-closed/);
+        expect(() => parseWorkspaceDiscoveryPayload({ workspaces: 'not-an-array' })).toThrow(
+          /fail-closed/
+        );
+        expect(() =>
+          parseWorkspaceDiscoveryPayload({ workspaces: [{ display_name: 'Missing ID' }] })
+        ).toThrow(/workspace_id/);
+
+        globalThis.fetch = vi.fn().mockResolvedValue(
+          new Response(JSON.stringify({ unexpected: 'shape' }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' }
+          })
+        ) as unknown as typeof fetch;
+        await expect(defaultDiscoveryFetcher('tok_123')).rejects.toThrow(/fail-closed/);
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    });
+
+    it('prevents stale in-flight getToken() or discovery callbacks from re-authenticating after signOut()', async () => {
+      let capturedListener: ((emission: any) => Promise<void> | void) | null = null;
+      const unsubSpy = vi.fn();
+
+      let resolveDeferredToken!: (token: string | null) => void;
+      const deferredTokenPromise = new Promise<string | null>((resolve) => {
+        resolveDeferredToken = resolve;
+      });
+
+      const clerkWithListener: ClerkBrowserInstance = {
+        ...mockClerk,
+        addListener: vi.fn((cb) => {
+          capturedListener = cb;
+          return unsubSpy;
+        })
+      };
+
+      const store = createAuthStore();
+      await store.init({
+        publishableKey: 'pk_test_valid_dummy_key',
+        clerkInstance: clerkWithListener,
+        discoveryFetcher: vi.fn().mockResolvedValue(mockWorkspaces)
+      });
+      expect(store.getSnapshot().state).toBe('authenticated');
+      expect(capturedListener).not.toBeNull();
+
+      // Trigger listener emission whose getToken() is slow / in-flight
+      const emissionPromise = capturedListener!({
+        user: {
+          id: 'user_stale_1',
+          fullName: 'Stale User',
+          primaryEmailAddress: { emailAddress: 'stale@creativanta.vn' }
+        },
+        session: {
+          id: 'sess_stale_1',
+          getToken: () => deferredTokenPromise
+        }
+      });
+
+      // User logs out before getToken() resolves
+      await store.signOut();
+      expect(unsubSpy).toHaveBeenCalledTimes(1);
+      expect(store.getSnapshot().state).toBe('unauthenticated');
+      expect(store.getSnapshot().user).toBeNull();
+      expect(store.getSnapshot().token).toBeNull();
+      expect(store.getSnapshot().activeWorkspace).toBeNull();
+
+      // Now the stale getToken() resolves AFTER signOut()
+      resolveDeferredToken('stale-jwt-after-logout');
+      await emissionPromise;
+
+      // State MUST remain unauthenticated
+      const afterSnap = store.getSnapshot();
+      expect(afterSnap.state).toBe('unauthenticated');
+      expect(afterSnap.user).toBeNull();
+      expect(afterSnap.token).toBeNull();
+      expect(afterSnap.activeWorkspace).toBeNull();
+      expect(afterSnap.workspaces).toHaveLength(0);
+    });
+
+    it('isolates subject switch (User A -> User B) and purges prior workspace & singleton stores', async () => {
+      let capturedListener: ((emission: any) => Promise<void> | void) | null = null;
+      let resolveUserADiscovery!: (items: WorkspaceSummary[]) => void;
+      const userADiscoveryPromise = new Promise<WorkspaceSummary[]>((resolve) => {
+        resolveUserADiscovery = resolve;
+      });
+
+      const userBWorkspaces: WorkspaceSummary[] = [
+        {
+          id: 'ws-user-b-only',
+          name: 'User B Exclusive Workspace',
+          role: 'member',
+          plan: 'Pro',
+          status: 'active'
+        }
+      ];
+
+      const discoveryFetcher = vi.fn((token: string) => {
+        if (token === 'token-user-a-slow') {
+          return userADiscoveryPromise;
+        }
+        return Promise.resolve(userBWorkspaces);
+      });
+
+      const clerkWithListener: ClerkBrowserInstance = {
+        ...mockClerk,
+        addListener: vi.fn((cb) => {
+          capturedListener = cb;
+          return () => {};
+        })
+      };
+
+      let resetHookCalls = 0;
+      const unsubResetHook = registerAuthResetHook(() => {
+        resetHookCalls += 1;
+      });
+
+      try {
+        const store = createAuthStore();
+        await store.init({
+          publishableKey: 'pk_test_valid_dummy_key',
+          clerkInstance: clerkWithListener,
+          discoveryFetcher: vi.fn().mockResolvedValue(mockWorkspaces)
+        });
+        await store.selectWorkspace('ws-owner-1');
+        expect(store.getSnapshot().activeWorkspace?.id).toBe('ws-owner-1');
+
+        // Re-configure discoveryFetcher via listener emissions:
+        // First emit for user_clerk_123 with slow discovery
+        await store.init({
+          publishableKey: 'pk_test_valid_dummy_key',
+          clerkInstance: {
+            ...clerkWithListener,
+            session: {
+              id: 'sess_a',
+              status: 'active',
+              getToken: vi.fn().mockResolvedValue('token-user-a-init')
+            }
+          },
+          discoveryFetcher
+        });
+
+        const slowEmissionA = capturedListener!({
+          user: {
+            id: 'user_clerk_123',
+            fullName: 'User A',
+            primaryEmailAddress: { emailAddress: 'a@creativanta.vn' }
+          },
+          session: {
+            id: 'sess_a',
+            getToken: async () => 'token-user-a-slow'
+          }
+        });
+
+        // Before User A's slow discovery finishes, switch subject to User B
+        const emissionB = capturedListener!({
+          user: {
+            id: 'user_clerk_999',
+            fullName: 'User B',
+            primaryEmailAddress: { emailAddress: 'b@creativanta.vn' }
+          },
+          session: {
+            id: 'sess_b',
+            getToken: async () => 'token-user-b'
+          }
+        });
+
+        await emissionB;
+        expect(resetHookCalls).toBeGreaterThanOrEqual(1);
+        expect(store.getSnapshot().user?.id).toBe('user_clerk_999');
+        expect(store.getSnapshot().activeWorkspace?.id).toBe('ws-user-b-only');
+
+        // Now User A's slow discovery resolves late -> must be ignored
+        resolveUserADiscovery(mockWorkspaces);
+        await slowEmissionA;
+
+        expect(store.getSnapshot().user?.id).toBe('user_clerk_999');
+        expect(store.getSnapshot().activeWorkspace?.id).toBe('ws-user-b-only');
+        expect(store.getSnapshot().workspaces.map((w) => w.id)).toEqual(['ws-user-b-only']);
+      } finally {
+        unsubResetHook();
+      }
     });
   });
 });

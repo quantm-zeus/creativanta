@@ -4,6 +4,7 @@ import 'package:creativanta_mobile/auth/auth_provider_adapter.dart';
 
 class _MockAuthHttpTransport implements AuthHttpTransport {
   final Map<String, AuthHttpResponse Function(Map<String, String>? headers, Map<String, dynamic>? body)> routes;
+  final List<String> calledKeys = <String>[];
 
   _MockAuthHttpTransport(this.routes);
 
@@ -14,12 +15,39 @@ class _MockAuthHttpTransport implements AuthHttpTransport {
     Map<String, dynamic>? body,
   }) async {
     final key = 'POST ${uri.path}';
+    calledKeys.add(key);
     final handler = routes[key];
     if (handler == null) {
       return const AuthHttpResponse(statusCode: 404, body: '{"message":"Not Found"}');
     }
     return handler(headers, body);
   }
+}
+
+class _MockClerkIdpBridge implements ClerkIdpSessionBridge {
+  final Future<ClerkIssuedSession> Function(String publishableKey, String email, String password) onSignIn;
+  final Future<ClerkIssuedSession?> Function(String publishableKey, String sessionId, String currentToken) onRefresh;
+
+  _MockClerkIdpBridge({
+    required this.onSignIn,
+    required this.onRefresh,
+  });
+
+  @override
+  Future<ClerkIssuedSession> signInWithPassword({
+    required String publishableKey,
+    required String email,
+    required String password,
+  }) =>
+      onSignIn(publishableKey, email, password);
+
+  @override
+  Future<ClerkIssuedSession?> refreshSessionToken({
+    required String publishableKey,
+    required String sessionId,
+    required String currentToken,
+  }) =>
+      onRefresh(publishableKey, sessionId, currentToken);
 }
 
 void main() {
@@ -218,51 +246,96 @@ void main() {
     });
   });
 
-  group('UF-03 & IQ-09 ClerkAuthProviderAdapter configured transport lifecycle', () {
-    test('signInWithEmailPassword, workspace discovery, and refreshToken succeed with live HTTP transport', () async {
+  group('UF-03, IQ-09 & R7-02 ClerkAuthProviderAdapter configured transport lifecycle', () {
+    test('fails closed with PROVIDER_UNAVAILABLE_001 when publishableKey is set without ClerkIdpSessionBridge (never calls /api/auth/clerk/sign-in)', () async {
+      final transport = _MockAuthHttpTransport({});
+      final adapter = ClerkAuthProviderAdapter(
+        publishableKey: 'pk_live_configured_key',
+        apiBaseUrl: 'https://api.creativanta.vn',
+        httpTransport: transport,
+      );
+
+      await adapter.initialize();
+      expect(adapter.isConfigured, isFalse);
+      expect(adapter.currentStatus, equals(AuthStatus.unconfigured));
+
+      final res = await adapter.signInWithEmailPassword(
+        email: 'live@creativanta.vn',
+        password: 'valid-pass',
+      );
+      expect(res.isSuccess, isFalse);
+      expect(res.failure?.code, equals('PROVIDER_UNAVAILABLE_001'));
+      expect(res.failure?.externalGateRequired, isTrue);
+      expect(transport.calledKeys, isEmpty,
+          reason: 'Must never call non-existent /api/auth/clerk/sign-in route on Creativanta backend');
+
+      adapter.dispose();
+    });
+
+    test('signInWithEmailPassword, workspace discovery (/api/workspaces/discovery), and refreshToken succeed with ClerkIdpSessionBridge and real backend route', () async {
+      bool sessionRevokedOnBackend = false;
+
       final transport = _MockAuthHttpTransport({
-        'POST /api/auth/clerk/sign-in': (headers, body) {
-          if (body?['password'] != 'valid-pass') {
+        'POST /api/workspaces/discovery': (headers, body) {
+          final authHeader = headers?['Authorization'] ?? '';
+          if (sessionRevokedOnBackend ||
+              (!authHeader.contains('jwt_live_token_001') &&
+                  !authHeader.contains('jwt_live_token_002_refreshed'))) {
             return const AuthHttpResponse(
               statusCode: 401,
-              body: '{"message":"Sai mật khẩu"}',
+              body: '{"error":"unauthorized"}',
             );
           }
           return const AuthHttpResponse(
             statusCode: 200,
             body: '''
             {
-              "session_token": "jwt_live_token_001",
-              "session_id": "sess_live_001",
-              "user": {
-                "id": "usr_clerk_live_01",
-                "email": "live@creativanta.vn",
-                "display_name": "Live Operator"
-              },
               "workspaces": [
                 {
                   "workspace_id": "ws-live-01",
+                  "name": "live-brand-studio",
                   "display_name": "Live Brand Studio",
                   "role": "owner",
-                  "plan_tier": "Pro",
-                  "status": "active"
+                  "default_mode": "creator",
+                  "default_operator_mode": "creator"
                 }
               ]
             }
             ''',
           );
         },
-        'POST /api/auth/clerk/refresh': (headers, body) {
-          return const AuthHttpResponse(
-            statusCode: 200,
-            body: '{"session_token":"jwt_live_token_002_refreshed"}',
+      });
+
+      final idpBridge = _MockClerkIdpBridge(
+        onSignIn: (pk, email, password) async {
+          if (password != 'valid-pass') {
+            throw const AuthFailure(
+              code: 'AUTH_UNAUTHORIZED_001',
+              message: 'Sai mật khẩu',
+            );
+          }
+          return const ClerkIssuedSession(
+            sessionToken: 'jwt_live_token_001',
+            sessionId: 'sess_live_001',
+            user: UserIdentity(
+              id: 'usr_clerk_live_01',
+              email: 'live@creativanta.vn',
+              displayName: 'Live Operator',
+            ),
           );
         },
-      });
+        onRefresh: (pk, sessionId, currentToken) async {
+          return const ClerkIssuedSession(
+            sessionToken: 'jwt_live_token_002_refreshed',
+            sessionId: 'sess_live_001',
+          );
+        },
+      );
 
       final adapter = ClerkAuthProviderAdapter(
         publishableKey: 'pk_live_configured_key',
         apiBaseUrl: 'https://api.creativanta.vn',
+        idpBridge: idpBridge,
         httpTransport: transport,
       );
 
@@ -278,7 +351,7 @@ void main() {
       expect(badLogin.isSuccess, isFalse);
       expect(badLogin.failure?.code, equals('AUTH_UNAUTHORIZED_001'));
 
-      // Positive: valid credentials establish non-test-double session
+      // Positive: valid credentials mint Clerk JWT via bridge and verify via /api/workspaces/discovery
       final okLogin = await adapter.signInWithEmailPassword(
         email: 'live@creativanta.vn',
         password: 'valid-pass',
@@ -287,12 +360,22 @@ void main() {
       expect(adapter.currentStatus, equals(AuthStatus.authenticated));
       expect(adapter.currentSession?.isTestDouble, isFalse);
       expect(adapter.currentSession?.activeWorkspace.id, equals('ws-live-01'));
+      expect(adapter.currentSession?.activeWorkspace.name, equals('Live Brand Studio'));
+      expect(transport.calledKeys, equals(['POST /api/workspaces/discovery']));
 
-      // Refresh token updates sessionToken and keeps activeWorkspace
+      // Refresh token updates sessionToken and verifies via /api/workspaces/discovery
       final refreshed = await adapter.refreshToken();
       expect(refreshed.isSuccess, isTrue);
       expect(adapter.currentSession?.sessionToken, equals('jwt_live_token_002_refreshed'));
       expect(adapter.currentSession?.activeWorkspace.id, equals('ws-live-01'));
+
+      // Negative: when session is revoked on backend (401 on /api/workspaces/discovery), refresh fails closed
+      sessionRevokedOnBackend = true;
+      final revokedRefresh = await adapter.refreshToken();
+      expect(revokedRefresh.isSuccess, isFalse);
+      expect(revokedRefresh.failure?.code, equals('AUTH_EXPIRED_001'));
+      expect(adapter.currentStatus, equals(AuthStatus.unauthenticated));
+      expect(adapter.currentSession, isNull);
 
       adapter.dispose();
     });

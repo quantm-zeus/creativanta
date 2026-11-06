@@ -588,3 +588,40 @@ class RemixBlueprintModel {
 
   bool get hasTrendProvenance => trendId != null && trendId!.isNotEmpty;
 }
+
+class StudioJobCancelOutcome {
+  final bool ok;
+  final String jobId;
+  final bool creditsRefunded;
+  final int refundedCredits;
+  final String? errorMessage;
+
+  const StudioJobCancelOutcome({
+    required this.ok,
+    required this.jobId,
+    this.creditsRefunded = false,
+    this.refundedCredits = 0,
+    this.errorMessage,
+  });
+}
+
+typedef StudioJobCancelCallback = Future<StudioJobCancelOutcome> Function(
+  String jobId,
+  int estimatedCredits,
+);
+
+class StudioBatchRunOutcome {
+  final bool ok;
+  final int reservedCredits;
+  final String? errorMessage;
+
+  const StudioBatchRunOutcome({
+    required this.ok,
+    this.reservedCredits = 0,
+    this.errorMessage,
+  });
+}
+
+typedef StudioBatchRunCallback = Future<StudioBatchRunOutcome> Function(
+  BatchBudgetPreviewModel preview,
+);

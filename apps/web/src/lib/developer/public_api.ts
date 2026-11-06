@@ -458,6 +458,40 @@ function createDeveloperStore(initialTier: string = 'pro') {
 export const developerStore = createDeveloperStore();
 
 import { callCanonicalRpc, generateIdempotencyKey, type CanonicalRpcOptions } from '$lib/api/client';
+import { registerAuthResetHook } from '$lib/auth/store';
+
+registerAuthResetHook(() => {
+  developerStore.reset();
+});
+
+function normalizeApiKeyStatus(raw: unknown): APIKeyStatus {
+  if (typeof raw === 'number') {
+    switch (raw) {
+      case 2:
+        return 'rotating';
+      case 3:
+        return 'revoked';
+      case 4:
+        return 'expired';
+      default:
+        return 'active';
+    }
+  }
+  const str = String(raw || '').toLowerCase();
+  if (str.includes('rotating')) return 'rotating';
+  if (str.includes('revoked')) return 'revoked';
+  if (str.includes('expired')) return 'expired';
+  return 'active';
+}
+
+function normalizeWebhookStatus(raw: unknown): WebhookStatus {
+  if (typeof raw === 'number') {
+    return raw === 2 ? 'suspended' : 'active';
+  }
+  const str = String(raw || '').toLowerCase();
+  if (str.includes('suspended') || str.includes('disabled')) return 'suspended';
+  return 'active';
+}
 
 export interface IssueApiKeyRemoteResult {
   ok: boolean;
@@ -494,21 +528,14 @@ export async function issueApiKeyRemote(
   const rpcRes = await callCanonicalRpc<
     Record<string, unknown>,
     {
-      api_key?: {
-        api_key_id?: string;
-        workspace_id?: string;
-        key_prefix?: string;
-        name?: string;
-        scopes?: string[];
-        status?: APIKeyStatus;
-        logical_key_id?: string;
-        expires_at?: string;
-        created_by?: string;
-      };
+      api_key?: Record<string, any>;
+      apiKey?: Record<string, any>;
+      secret_key?: string;
+      secretKey?: string;
       raw_secret?: string;
     }
   >(
-    'creativanta.workspace.v1.APIKeyService/Create',
+    'creativanta.platform.v1.APIKeyService/Create',
     {
       idempotency_key: options.idempotencyKey || generateIdempotencyKey('apikey-create'),
       workspace_id: params.workspaceId,
@@ -528,28 +555,40 @@ export async function issueApiKeyRemote(
     };
   }
 
-  const remoteKey = rpcRes.data?.api_key;
-  const rawSecret = rpcRes.data?.raw_secret;
-  if (!remoteKey?.api_key_id || !rawSecret) {
+  const remoteKey = rpcRes.data?.api_key || rpcRes.data?.apiKey;
+  const apiKeyId = String(remoteKey?.api_key_id || remoteKey?.apiKeyId || '').trim();
+  const rawSecret = String(
+    rpcRes.data?.secret_key ||
+      rpcRes.data?.secretKey ||
+      remoteKey?.secret_key ||
+      remoteKey?.secretKey ||
+      rpcRes.data?.raw_secret ||
+      ''
+  ).trim();
+
+  if (!apiKeyId || !rawSecret) {
     return {
       ok: false,
-      error: 'Phản hồi từ máy chủ thiếu thông tin khóa API (api_key_id/raw_secret). Không tạo khóa giả lập.'
+      error:
+        'Phản hồi từ máy chủ thiếu thông tin khóa API (api_key_id/secret_key). Không tạo khóa giả lập.'
     };
   }
 
   const key: APIKey = {
-    apiKeyId: remoteKey.api_key_id,
-    workspaceId: remoteKey.workspace_id || params.workspaceId || '',
-    keyPrefix: remoteKey.key_prefix || rawSecret.slice(0, 10),
-    name: remoteKey.name || params.name,
-    scopes: remoteKey.scopes || params.scopes,
-    status: remoteKey.status || 'active',
-    logicalKeyId: remoteKey.logical_key_id || remoteKey.api_key_id,
+    apiKeyId,
+    workspaceId: String(
+      remoteKey?.workspace_id || remoteKey?.workspaceId || params.workspaceId || ''
+    ),
+    keyPrefix: String(remoteKey?.key_prefix || remoteKey?.keyPrefix || rawSecret.slice(0, 10)),
+    name: String(remoteKey?.name || params.name),
+    scopes: Array.isArray(remoteKey?.scopes) ? remoteKey.scopes : params.scopes,
+    status: normalizeApiKeyStatus(remoteKey?.status),
+    logicalKeyId: String(remoteKey?.logical_key_id || remoteKey?.logicalKeyId || apiKeyId),
     requestCount: 0,
     expiresAt:
-      remoteKey.expires_at ||
+      String(remoteKey?.expires_at || remoteKey?.expiresAt || '') ||
       new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
-    createdBy: remoteKey.created_by || 'authenticated_user'
+    createdBy: String(remoteKey?.created_by || remoteKey?.createdBy || 'authenticated_user')
   };
 
   developerStore.upsertRemoteKey(key);
@@ -569,20 +608,18 @@ export async function rotateApiKeyRemote(
   const rpcRes = await callCanonicalRpc<
     Record<string, unknown>,
     {
-      new_key?: {
-        api_key_id?: string;
-        workspace_id?: string;
-        key_prefix?: string;
-        name?: string;
-        scopes?: string[];
-        logical_key_id?: string;
-        expires_at?: string;
-      };
+      old_key?: Record<string, any>;
+      oldKey?: Record<string, any>;
+      new_key?: Record<string, any>;
+      newKey?: Record<string, any>;
+      new_secret_key?: string;
+      newSecretKey?: string;
       new_secret?: string;
       grace_ends_at?: string;
+      graceEndsAt?: string;
     }
   >(
-    'creativanta.workspace.v1.APIKeyService/Rotate',
+    'creativanta.platform.v1.APIKeyService/Rotate',
     {
       idempotency_key: options.idempotencyKey || generateIdempotencyKey('apikey-rotate'),
       workspace_id: params.workspaceId,
@@ -601,31 +638,66 @@ export async function rotateApiKeyRemote(
     };
   }
 
-  const newKeyData = rpcRes.data?.new_key;
-  const newSecret = rpcRes.data?.new_secret;
-  if (!newKeyData?.api_key_id || !newSecret) {
+  const oldKeyData = rpcRes.data?.old_key || rpcRes.data?.oldKey;
+  const newKeyData = rpcRes.data?.new_key || rpcRes.data?.newKey;
+  const newApiKeyId = String(newKeyData?.api_key_id || newKeyData?.apiKeyId || '').trim();
+  const newSecret = String(
+    rpcRes.data?.new_secret_key ||
+      rpcRes.data?.newSecretKey ||
+      newKeyData?.secret_key ||
+      newKeyData?.secretKey ||
+      rpcRes.data?.new_secret ||
+      ''
+  ).trim();
+
+  if (!newApiKeyId || !newSecret) {
     return {
       ok: false,
-      error: 'Phản hồi từ máy chủ thiếu khóa xoay vòng mới (fail-closed).'
+      error: 'Phản hồi từ máy chủ thiếu khóa xoay vòng mới (new_key/new_secret_key, fail-closed).'
     };
   }
 
   const graceEndsAt =
-    rpcRes.data?.grace_ends_at || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    String(
+      rpcRes.data?.grace_ends_at ||
+        rpcRes.data?.graceEndsAt ||
+        oldKeyData?.grace_ends_at ||
+        oldKeyData?.graceEndsAt ||
+        ''
+    ) || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+  const existingOld = get(developerStore).keys.find((k: APIKey) => k.apiKeyId === params.apiKeyId);
+  if (existingOld) {
+    developerStore.upsertRemoteKey({
+      ...existingOld,
+      status: 'rotating',
+      replacedByKeyId: newApiKeyId,
+      rotationGraceEndsAt: graceEndsAt
+    });
+  }
 
   const newKey: APIKey = {
-    apiKeyId: newKeyData.api_key_id,
-    workspaceId: newKeyData.workspace_id || params.workspaceId || '',
-    keyPrefix: newKeyData.key_prefix || newSecret.slice(0, 10),
-    name: newKeyData.name || 'Rotated API Key',
-    scopes: newKeyData.scopes || ['read:content'],
-    status: 'active',
-    logicalKeyId: newKeyData.logical_key_id || params.apiKeyId,
+    apiKeyId: newApiKeyId,
+    workspaceId: String(
+      newKeyData?.workspace_id || newKeyData?.workspaceId || params.workspaceId || ''
+    ),
+    keyPrefix: String(newKeyData?.key_prefix || newKeyData?.keyPrefix || newSecret.slice(0, 10)),
+    name: String(newKeyData?.name || existingOld?.name || 'Rotated API Key'),
+    scopes: Array.isArray(newKeyData?.scopes)
+      ? newKeyData.scopes
+      : existingOld?.scopes || ['read:content'],
+    status: normalizeApiKeyStatus(newKeyData?.status),
+    logicalKeyId: String(
+      newKeyData?.logical_key_id ||
+        newKeyData?.logicalKeyId ||
+        existingOld?.logicalKeyId ||
+        params.apiKeyId
+    ),
     requestCount: 0,
     expiresAt:
-      newKeyData.expires_at ||
+      String(newKeyData?.expires_at || newKeyData?.expiresAt || '') ||
       new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
-    createdBy: 'authenticated_user'
+    createdBy: String(newKeyData?.created_by || newKeyData?.createdBy || 'authenticated_user')
   };
 
   developerStore.upsertRemoteKey(newKey);
@@ -643,9 +715,14 @@ export async function revokeApiKeyRemote(
 ): Promise<{ ok: boolean; error?: string }> {
   const rpcRes = await callCanonicalRpc<
     Record<string, unknown>,
-    { revoked?: boolean; status?: string }
+    {
+      api_key?: Record<string, any>;
+      apiKey?: Record<string, any>;
+      revoked?: boolean;
+      status?: string;
+    }
   >(
-    'creativanta.workspace.v1.APIKeyService/Revoke',
+    'creativanta.platform.v1.APIKeyService/Revoke',
     {
       idempotency_key: options.idempotencyKey || generateIdempotencyKey('apikey-revoke'),
       workspace_id: params.workspaceId,
@@ -691,17 +768,12 @@ export async function registerWebhookRemote(
   const rpcRes = await callCanonicalRpc<
     Record<string, unknown>,
     {
-      subscription?: {
-        subscription_id?: string;
-        workspace_id?: string;
-        target_url?: string;
-        event_types?: string[];
-        status?: WebhookStatus;
-      };
+      subscription?: Record<string, any>;
       signing_secret?: string;
+      signingSecret?: string;
     }
   >(
-    'creativanta.workspace.v1.WebhookService/Create',
+    'creativanta.platform.v1.WebhookSubscriptionService/CreateWebhookSubscription',
     {
       idempotency_key: options.idempotencyKey || generateIdempotencyKey('webhook-create'),
       workspace_id: params.workspaceId,
@@ -722,21 +794,44 @@ export async function registerWebhookRemote(
   }
 
   const remoteSub = rpcRes.data?.subscription;
-  const secret = rpcRes.data?.signing_secret;
-  if (!remoteSub?.subscription_id || !secret) {
+  const subscriptionId = String(
+    remoteSub?.webhook_subscription_id ||
+      remoteSub?.webhookSubscriptionId ||
+      remoteSub?.subscription_id ||
+      remoteSub?.subscriptionId ||
+      ''
+  ).trim();
+  const secret = String(
+    rpcRes.data?.signing_secret ||
+      rpcRes.data?.signingSecret ||
+      remoteSub?.signing_secret ||
+      remoteSub?.signingSecret ||
+      ''
+  ).trim();
+
+  if (!subscriptionId || !secret) {
     return {
       ok: false,
-      error: 'Phản hồi từ máy chủ thiếu subscription_id hoặc signing_secret (fail-closed).'
+      error:
+        'Phản hồi từ máy chủ thiếu webhook_subscription_id hoặc signing_secret (fail-closed).'
     };
   }
 
   const sub: WebhookSubscription = {
-    subscriptionId: remoteSub.subscription_id,
-    workspaceId: remoteSub.workspace_id || params.workspaceId || '',
-    targetUrl: remoteSub.target_url || params.targetUrl.trim(),
-    eventTypes: remoteSub.event_types || params.eventTypes,
-    status: remoteSub.status || 'active',
-    consecutiveFailureCount: 0
+    subscriptionId,
+    workspaceId: String(
+      remoteSub?.workspace_id || remoteSub?.workspaceId || params.workspaceId || ''
+    ),
+    targetUrl: String(remoteSub?.target_url || remoteSub?.targetUrl || params.targetUrl.trim()),
+    eventTypes: Array.isArray(remoteSub?.event_types)
+      ? remoteSub.event_types
+      : Array.isArray(remoteSub?.eventTypes)
+        ? remoteSub.eventTypes
+        : params.eventTypes,
+    status: normalizeWebhookStatus(remoteSub?.status),
+    consecutiveFailureCount: Number(
+      remoteSub?.consecutive_failures ?? remoteSub?.consecutiveFailures ?? 0
+    )
   };
 
   developerStore.upsertRemoteWebhook(sub);

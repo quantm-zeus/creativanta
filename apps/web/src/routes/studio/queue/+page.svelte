@@ -1,6 +1,11 @@
 <script lang="ts">
-	import { LineageInspectionDrawer } from '$lib/production';
+	import {
+		LineageInspectionDrawer,
+		cancelStudioJobRemote,
+		retryStudioJobRemote
+	} from '$lib/production';
 	import type { GenerationJobItem, AssetLineage } from '$lib/production';
+	import { authStore } from '$lib/auth';
 
 	let jobs: GenerationJobItem[] = [
 		{
@@ -77,6 +82,8 @@
 	let selectedAsset: AssetLineage | null = null;
 	let isLineageOpen = false;
 	let refundNotice: string | null = null;
+	let errorNotice: string | null = null;
+	let isMutatingJob = false;
 
 	$: filteredJobs = jobs.filter((j) => {
 		if (currentFilter === 'all') return true;
@@ -88,28 +95,66 @@
 	$: completedCount = jobs.filter((j) => j.status === 'completed').length;
 	$: failedCount = jobs.filter((j) => j.status === 'failed').length;
 
-	function cancelJob(jobId: string) {
+	async function cancelJob(jobId: string) {
 		const job = jobs.find((j) => j.jobId === jobId);
-		if (job && job.status !== 'completed' && job.status !== 'cancelled') {
+		if (!job || job.status === 'completed' || job.status === 'cancelled' || isMutatingJob) {
+			return;
+		}
+		refundNotice = null;
+		errorNotice = null;
+		isMutatingJob = true;
+		try {
+			const res = await cancelStudioJobRemote({
+				workspaceId: $authStore.activeWorkspace?.id || job.workspaceId,
+				jobId
+			});
+			if (!res.ok) {
+				errorNotice =
+					res.error ||
+					`Không thể hủy tiến trình ${jobId} trên máy chủ (StudioService/Cancel). Trạng thái tác vụ và số dư credits được giữ nguyên.`;
+				return;
+			}
 			job.status = 'cancelled';
-			job.stage = 'Đã hủy bởi người dùng';
+			job.stage = 'Đã hủy bởi người dùng (xác nhận từ máy chủ)';
 			jobs = [...jobs];
-			refundNotice = `Đã hủy tiến trình ${jobId} và hoàn trả ${job.estimatedCredits} credits vào ví!`;
-			setTimeout(() => {
-				refundNotice = null;
-			}, 4000);
+			if (res.creditsRefunded && (res.refundedCredits ?? 0) > 0) {
+				refundNotice = `Đã hủy tiến trình ${jobId} và hoàn trả ${res.refundedCredits} credits vào ví!`;
+			} else {
+				refundNotice = `Đã hủy tiến trình ${jobId} theo xác nhận từ máy chủ.`;
+			}
+		} finally {
+			isMutatingJob = false;
 		}
 	}
 
-	function retryJob(jobId: string) {
+	async function retryJob(jobId: string) {
 		const job = jobs.find((j) => j.jobId === jobId);
-		if (job) {
-			job.status = 'processing';
-			job.provider = 'kling'; // Automatically switch to Kling fallback on retry
-			job.stage = 'Đang xếp lịch chạy lại với Kling Fallback';
-			job.progressPct = 15;
+		if (!job || isMutatingJob) {
+			return;
+		}
+		refundNotice = null;
+		errorNotice = null;
+		isMutatingJob = true;
+		try {
+			const res = await retryStudioJobRemote({
+				workspaceId: $authStore.activeWorkspace?.id || job.workspaceId,
+				jobId,
+				useFallbackProvider: true
+			});
+			if (!res.ok) {
+				errorNotice =
+					res.error ||
+					`Không thể thử lại tiến trình ${jobId} trên máy chủ (StudioService/Retry). Trạng thái hiện tại được giữ nguyên.`;
+				return;
+			}
+			job.status = res.status || 'processing';
+			job.provider = res.provider || 'kling';
+			job.stage = res.stage || 'Đang xếp lịch chạy lại với Kling Fallback';
+			job.progressPct = res.progressPct ?? 15;
 			job.errorMessage = undefined;
 			jobs = [...jobs];
+		} finally {
+			isMutatingJob = false;
 		}
 	}
 
@@ -170,6 +215,20 @@
 				<span>{refundNotice}</span>
 			</div>
 			<button on:click={() => (refundNotice = null)} class="text-emerald-400 hover:text-emerald-100">
+				✕
+			</button>
+		</div>
+	{/if}
+
+	{#if errorNotice}
+		<div
+			role="alert"
+			class="bg-rose-950/60 border border-rose-600/50 rounded-lg p-3 text-xs text-rose-200 flex items-center justify-between shadow-lg">
+			<div class="flex items-center gap-2">
+				<span>⚠️</span>
+				<span>{errorNotice}</span>
+			</div>
+			<button on:click={() => (errorNotice = null)} class="text-rose-400 hover:text-rose-100">
 				✕
 			</button>
 		</div>

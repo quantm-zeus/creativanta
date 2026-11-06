@@ -15,6 +15,7 @@ class DeveloperApiKeysView extends StatefulWidget {
 
 class _DeveloperApiKeysViewState extends State<DeveloperApiKeysView> {
   String? _revealedSecret;
+  String? _errorBanner;
 
   @override
   Widget build(BuildContext context) {
@@ -52,6 +53,7 @@ class _DeveloperApiKeysViewState extends State<DeveloperApiKeysView> {
           body: ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              if (_errorBanner != null) _buildErrorCard(_errorBanner!),
               if (_revealedSecret != null) _buildSecretCard(_revealedSecret!),
               _buildUsageCard(),
               const SizedBox(height: 16),
@@ -67,6 +69,37 @@ class _DeveloperApiKeysViewState extends State<DeveloperApiKeysView> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildErrorCard(String errorMessage) {
+    return Card(
+      key: const Key('developer-error-banner'),
+      color: Colors.red.shade50,
+      margin: const EdgeInsets.only(bottom: 16),
+      shape: RoundedRectangleBorder(
+        side: BorderSide(color: Colors.red.shade400),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            const Icon(Icons.error_outline, color: Colors.red),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                errorMessage,
+                style: TextStyle(color: Colors.red.shade900, fontWeight: FontWeight.w600),
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.close, size: 18),
+              onPressed: () => setState(() => _errorBanner = null),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -195,14 +228,31 @@ class _DeveloperApiKeysViewState extends State<DeveloperApiKeysView> {
                     ],
                   ),
                   trailing: PopupMenuButton<String>(
-                    onSelected: (val) {
+                    onSelected: (val) async {
                       if (val == 'rotate') {
-                        widget.notifier.rotateKey(key.apiKeyId);
+                        final outcome = await widget.notifier.rotateKeyRemote(key.apiKeyId);
+                        if (!mounted) return;
                         setState(() {
-                          _revealedSecret = widget.notifier.keys.last.secretKey;
+                          if (outcome.ok && outcome.data != null) {
+                            _errorBanner = null;
+                            _revealedSecret = outcome.data!.secretKey;
+                          } else {
+                            _revealedSecret = null;
+                            _errorBanner =
+                                '${outcome.errorCode ?? 'ERROR'}: ${outcome.message ?? 'Key rotation failed'}';
+                          }
                         });
                       } else if (val == 'revoke') {
-                        widget.notifier.revokeKey(key.apiKeyId);
+                        final outcome = await widget.notifier.revokeKeyRemote(key.apiKeyId);
+                        if (!mounted) return;
+                        setState(() {
+                          if (outcome.ok) {
+                            _errorBanner = null;
+                          } else {
+                            _errorBanner =
+                                '${outcome.errorCode ?? 'ERROR'}: ${outcome.message ?? 'Key revocation failed'}';
+                          }
+                        });
                       }
                     },
                     itemBuilder: (context) => [
@@ -314,21 +364,25 @@ class _DeveloperApiKeysViewState extends State<DeveloperApiKeysView> {
                 child: const Text('Cancel'),
               ),
               ElevatedButton(
-                onPressed: () {
-                  try {
-                    final created = widget.notifier.createKey(
-                      name: nameCtrl.text,
-                      scopes: selectedScopes,
-                    );
-                    Navigator.pop(dialogCtx);
-                    setState(() {
-                      _revealedSecret = created.secretKey;
-                    });
-                  } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(e.toString())),
-                    );
-                  }
+                onPressed: () async {
+                  final requestedName = nameCtrl.text;
+                  final requestedScopes = List<String>.from(selectedScopes);
+                  Navigator.pop(dialogCtx);
+                  final outcome = await widget.notifier.createKeyRemote(
+                    name: requestedName,
+                    scopes: requestedScopes,
+                  );
+                  if (!mounted) return;
+                  setState(() {
+                    if (outcome.ok && outcome.data != null) {
+                      _errorBanner = null;
+                      _revealedSecret = outcome.data!.secretKey;
+                    } else {
+                      _revealedSecret = null;
+                      _errorBanner =
+                          '${outcome.errorCode ?? 'ERROR'}: ${outcome.message ?? 'Failed to create API key'}';
+                    }
+                  });
                 },
                 child: const Text('Create'),
               ),

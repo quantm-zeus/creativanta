@@ -138,6 +138,459 @@ export function formatDiagnostics(diag: DiagnosticsRecord): {
 
 import { callCanonicalRpc, generateIdempotencyKey, type CanonicalRpcOptions } from '$lib/api/client';
 import { validateWorkflowGraph } from './validation';
+import type {
+  ConditionConfig,
+  EdgeBranch,
+  TriggerConfig,
+  TriggerType,
+  WorkflowEdge,
+  WorkflowNode
+} from './types';
+
+function normalizeWorkflowStatus(raw: unknown): 'draft' | 'active' | 'paused' | undefined {
+  if (raw === undefined || raw === null || raw === '') return undefined;
+  if (typeof raw === 'number') {
+    if (raw === 2) return 'active';
+    if (raw === 3) return 'paused';
+    return 'draft';
+  }
+  const str = String(raw).toLowerCase();
+  if (str.includes('active')) return 'active';
+  if (str.includes('paused')) return 'paused';
+  if (str.includes('draft')) return 'draft';
+  return undefined;
+}
+
+function toProtoNodeType(t: NodeType): string {
+  switch (t) {
+    case 'trigger':
+      return 'NODE_TYPE_TRIGGER';
+    case 'condition':
+      return 'NODE_TYPE_CONDITION';
+    case 'transform':
+      return 'NODE_TYPE_TRANSFORM';
+    case 'action':
+      return 'NODE_TYPE_ACTION';
+    case 'approval':
+      return 'NODE_TYPE_APPROVAL';
+    case 'wait':
+      return 'NODE_TYPE_WAIT';
+    case 'fallback':
+      return 'NODE_TYPE_FALLBACK';
+    case 'diagnostics':
+      return 'NODE_TYPE_DIAGNOSTICS';
+    case 'handoff':
+      return 'NODE_TYPE_HANDOFF';
+    case 'terminal':
+      return 'NODE_TYPE_TERMINAL';
+    default:
+      return 'NODE_TYPE_TRIGGER';
+  }
+}
+
+function fromProtoNodeType(raw: unknown): NodeType {
+  if (typeof raw === 'number') {
+    const map: Record<number, NodeType> = {
+      1: 'trigger',
+      2: 'condition',
+      3: 'transform',
+      4: 'action',
+      5: 'approval',
+      6: 'wait',
+      7: 'fallback',
+      8: 'diagnostics',
+      9: 'handoff',
+      10: 'terminal'
+    };
+    return map[raw] || 'trigger';
+  }
+  const s = String(raw || '')
+    .toLowerCase()
+    .replace(/^node_type_/, '');
+  const valid: NodeType[] = [
+    'trigger',
+    'condition',
+    'transform',
+    'action',
+    'approval',
+    'wait',
+    'fallback',
+    'diagnostics',
+    'handoff',
+    'terminal'
+  ];
+  return (valid.includes(s as NodeType) ? s : 'trigger') as NodeType;
+}
+
+function toProtoTriggerType(t?: TriggerType): string {
+  switch (t) {
+    case 'event':
+      return 'TRIGGER_TYPE_EVENT';
+    case 'schedule':
+      return 'TRIGGER_TYPE_SCHEDULE';
+    case 'webhook':
+      return 'TRIGGER_TYPE_WEBHOOK';
+    case 'manual':
+    default:
+      return 'TRIGGER_TYPE_MANUAL';
+  }
+}
+
+function fromProtoTriggerType(raw: unknown): TriggerType {
+  if (typeof raw === 'number') {
+    const map: Record<number, TriggerType> = {
+      1: 'event',
+      2: 'schedule',
+      3: 'manual',
+      4: 'webhook'
+    };
+    return map[raw] || 'manual';
+  }
+  const s = String(raw || '')
+    .toLowerCase()
+    .replace(/^trigger_type_/, '');
+  if (s === 'event' || s === 'schedule' || s === 'manual' || s === 'webhook') {
+    return s;
+  }
+  return 'manual';
+}
+
+function toProtoEdgeBranch(b?: EdgeBranch): string {
+  switch (b) {
+    case 'success':
+      return 'EDGE_BRANCH_SUCCESS';
+    case 'failure':
+      return 'EDGE_BRANCH_FAILURE';
+    case 'true':
+      return 'EDGE_BRANCH_TRUE';
+    case 'false':
+      return 'EDGE_BRANCH_FALSE';
+    default:
+      return 'EDGE_BRANCH_UNSPECIFIED';
+  }
+}
+
+function fromProtoEdgeBranch(raw: unknown): EdgeBranch | undefined {
+  if (typeof raw === 'number') {
+    const map: Record<number, EdgeBranch> = {
+      1: 'success',
+      2: 'failure',
+      3: 'true',
+      4: 'false'
+    };
+    return map[raw];
+  }
+  const s = String(raw || '')
+    .toLowerCase()
+    .replace(/^edge_branch_/, '');
+  if (s === 'success' || s === 'failure' || s === 'true' || s === 'false') {
+    return s;
+  }
+  return undefined;
+}
+
+function toProtoTriggerConfigObject(tc?: TriggerConfig): Record<string, unknown> {
+  if (!tc) {
+    return { type: 'TRIGGER_TYPE_MANUAL' };
+  }
+  return {
+    type: toProtoTriggerType(tc.type),
+    event_type: tc.event_type || '',
+    cron_expression: tc.cron_expression || '',
+    webhook_path: tc.webhook_path || '',
+    filters: (tc.filters || []).map((f) => ({
+      field: f.field,
+      operator: f.operator,
+      value_json: f.value_json
+    }))
+  };
+}
+
+function fromProtoTriggerConfigObject(raw: any): TriggerConfig | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const inner = raw.config && typeof raw.config === 'object' ? raw.config : raw;
+  return {
+    type: fromProtoTriggerType(inner.type),
+    event_type: inner.event_type ?? inner.eventType,
+    cron_expression: inner.cron_expression ?? inner.cronExpression,
+    webhook_path: inner.webhook_path ?? inner.webhookPath,
+    filters: Array.isArray(inner.filters)
+      ? inner.filters.map((f: any) => ({
+          field: String(f.field || ''),
+          operator: String(f.operator || ''),
+          value_json: String(f.value_json ?? f.valueJson ?? '')
+        }))
+      : undefined
+  };
+}
+
+export function toProtoWorkflowGraph(graph: WorkflowGraph): Record<string, unknown> {
+  return {
+    schema_version: graph.schema_version || 1,
+    nodes: graph.nodes.map((n) => {
+      const pbNode: Record<string, unknown> = {
+        node_id: n.node_id,
+        node_type: toProtoNodeType(n.node_type),
+        title: n.title,
+        description: n.description || '',
+        raw_config_json: JSON.stringify(n.config || {})
+      };
+      if (n.trigger_config) {
+        pbNode.trigger_config = {
+          config: toProtoTriggerConfigObject(n.trigger_config)
+        };
+      } else if (n.condition_config) {
+        pbNode.condition_config = {
+          field: n.condition_config.field,
+          operator: n.condition_config.operator,
+          value_json: n.condition_config.value_json
+        };
+      } else if (n.transform_config) {
+        pbNode.transform_config = {
+          mappings: (n.transform_config.mappings || []).map((m) => ({
+            target_field: m.target_field,
+            source_field: m.source_field || '',
+            default_value: m.default_value || '',
+            template: m.template || ''
+          }))
+        };
+      } else if (n.action_config) {
+        pbNode.action_config = {
+          rpc_name: n.action_config.rpc_name,
+          input_json: n.action_config.input_json || '{}',
+          timeout_seconds: n.action_config.timeout_seconds ?? 30,
+          max_retries: n.action_config.max_retries ?? 0,
+          backoff_seconds: n.action_config.backoff_seconds ?? 0
+        };
+      } else if (n.approval_config) {
+        pbNode.approval_config = {
+          approver_ids: n.approval_config.approver_ids || [],
+          required_approvals: n.approval_config.required_approvals ?? 1,
+          expires_at_duration_seconds: n.approval_config.expires_at_duration_seconds ?? 3600,
+          auto_action_on_timeout: n.approval_config.auto_action_on_timeout || 'reject'
+        };
+      } else if (n.wait_config) {
+        pbNode.wait_config = {
+          wait_type: n.wait_config.wait_type,
+          duration_seconds: n.wait_config.duration_seconds ?? 0,
+          resume_condition: n.wait_config.resume_condition || '',
+          until_timestamp: n.wait_config.until_timestamp || ''
+        };
+      } else if (n.fallback_config) {
+        pbNode.fallback_config = {
+          fallback_node_id: n.fallback_config.fallback_node_id,
+          reason_template: n.fallback_config.reason_template,
+          log_level: n.fallback_config.log_level
+        };
+      } else if (n.diagnostics_config) {
+        pbNode.diagnostics_config = {
+          severity: n.diagnostics_config.severity,
+          user_message: n.diagnostics_config.user_message,
+          operator_message: n.diagnostics_config.operator_message || '',
+          recommended_next_step: n.diagnostics_config.recommended_next_step
+        };
+      } else if (n.handoff_config) {
+        pbNode.handoff_config = {
+          target_user_id: n.handoff_config.target_user_id || '',
+          target_role: n.handoff_config.target_role || '',
+          context_note: n.handoff_config.context_note
+        };
+      } else if (n.terminal_config) {
+        pbNode.terminal_config = {
+          outcome: n.terminal_config.outcome,
+          result_template: n.terminal_config.result_template || ''
+        };
+      }
+      return pbNode;
+    }),
+    edges: graph.edges.map((e) => ({
+      from_node_id: e.from_node_id,
+      to_node_id: e.to_node_id,
+      branch: toProtoEdgeBranch(e.branch)
+    }))
+  };
+}
+
+export function fromProtoWorkflowGraph(
+  rawGraph: any,
+  fallbackTriggerConfig?: any
+): WorkflowGraph | undefined {
+  let parsed = rawGraph;
+  if (typeof parsed === 'string' && parsed.trim()) {
+    try {
+      parsed = JSON.parse(parsed);
+    } catch {
+      return undefined;
+    }
+  }
+  if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.nodes)) {
+    return undefined;
+  }
+
+  const nodes: WorkflowNode[] = parsed.nodes.map((n: any) => {
+    let cfg: Record<string, any> = {};
+    const rawCfgJson = n.raw_config_json ?? n.rawConfigJson;
+    if (typeof rawCfgJson === 'string' && rawCfgJson.trim()) {
+      try {
+        cfg = JSON.parse(rawCfgJson);
+      } catch {
+        cfg = {};
+      }
+    } else if (n.config && typeof n.config === 'object') {
+      cfg = n.config;
+    }
+
+    const nodeType = fromProtoNodeType(n.node_type ?? n.nodeType);
+    const node: WorkflowNode = {
+      node_id: String(n.node_id ?? n.nodeId ?? ''),
+      node_type: nodeType,
+      title: String(n.title || ''),
+      description: n.description ? String(n.description) : undefined,
+      config: cfg
+    };
+
+    const trigRaw = n.trigger_config ?? n.triggerConfig ?? (nodeType === 'trigger' ? fallbackTriggerConfig : undefined);
+    if (trigRaw) {
+      node.trigger_config = fromProtoTriggerConfigObject(trigRaw);
+    }
+
+    const condRaw = n.condition_config ?? n.conditionConfig;
+    if (condRaw) {
+      node.condition_config = {
+        field: String(condRaw.field || ''),
+        operator: String(condRaw.operator || 'eq') as ConditionConfig['operator'],
+        value_json: String(condRaw.value_json ?? condRaw.valueJson ?? '')
+      };
+    }
+
+    const transRaw = n.transform_config ?? n.transformConfig;
+    if (transRaw && Array.isArray(transRaw.mappings)) {
+      node.transform_config = {
+        mappings: transRaw.mappings.map((m: any) => ({
+          target_field: String(m.target_field ?? m.targetField ?? ''),
+          source_field: m.source_field ?? m.sourceField,
+          default_value: m.default_value ?? m.defaultValue,
+          template: m.template
+        }))
+      };
+    }
+
+    const actRaw = n.action_config ?? n.actionConfig;
+    if (actRaw) {
+      node.action_config = {
+        rpc_name: String(actRaw.rpc_name ?? actRaw.rpcName ?? ''),
+        input_json: actRaw.input_json ?? actRaw.inputJson,
+        timeout_seconds:
+          actRaw.timeout_seconds !== undefined || actRaw.timeoutSeconds !== undefined
+            ? Number(actRaw.timeout_seconds ?? actRaw.timeoutSeconds)
+            : undefined,
+        max_retries:
+          actRaw.max_retries !== undefined || actRaw.maxRetries !== undefined
+            ? Number(actRaw.max_retries ?? actRaw.maxRetries)
+            : undefined,
+        backoff_seconds:
+          actRaw.backoff_seconds !== undefined || actRaw.backoffSeconds !== undefined
+            ? Number(actRaw.backoff_seconds ?? actRaw.backoffSeconds)
+            : undefined
+      };
+    }
+
+    const appRaw = n.approval_config ?? n.approvalConfig;
+    if (appRaw) {
+      node.approval_config = {
+        approver_ids: Array.isArray(appRaw.approver_ids ?? appRaw.approverIds)
+          ? (appRaw.approver_ids ?? appRaw.approverIds).map(String)
+          : [],
+        required_approvals: Number(appRaw.required_approvals ?? appRaw.requiredApprovals ?? 1),
+        expires_at_duration_seconds: Number(
+          appRaw.expires_at_duration_seconds ?? appRaw.expiresAtDurationSeconds ?? 3600
+        ),
+        auto_action_on_timeout: appRaw.auto_action_on_timeout ?? appRaw.autoActionOnTimeout
+      };
+    }
+
+    const waitRaw = n.wait_config ?? n.waitConfig;
+    if (waitRaw) {
+      node.wait_config = {
+        wait_type: (waitRaw.wait_type ?? waitRaw.waitType ?? 'duration') as
+          | 'duration'
+          | 'external_condition'
+          | 'until_timestamp',
+        duration_seconds:
+          waitRaw.duration_seconds !== undefined || waitRaw.durationSeconds !== undefined
+            ? Number(waitRaw.duration_seconds ?? waitRaw.durationSeconds)
+            : undefined,
+        resume_condition: waitRaw.resume_condition ?? waitRaw.resumeCondition,
+        until_timestamp: waitRaw.until_timestamp ?? waitRaw.untilTimestamp
+      };
+    }
+
+    const fbRaw = n.fallback_config ?? n.fallbackConfig;
+    if (fbRaw) {
+      const rawLogLevel = String(fbRaw.log_level ?? fbRaw.logLevel ?? 'warning');
+      node.fallback_config = {
+        fallback_node_id: String(fbRaw.fallback_node_id ?? fbRaw.fallbackNodeId ?? ''),
+        reason_template: String(fbRaw.reason_template ?? fbRaw.reasonTemplate ?? ''),
+        log_level: (rawLogLevel === 'error' || rawLogLevel === 'info' ? rawLogLevel : 'warning') as
+          | 'info'
+          | 'warning'
+          | 'error'
+      };
+    }
+
+    const diagRaw = n.diagnostics_config ?? n.diagnosticsConfig;
+    if (diagRaw) {
+      const rawSev = String(diagRaw.severity || 'info');
+      node.diagnostics_config = {
+        severity: (
+          rawSev === 'warning' || rawSev === 'error' || rawSev === 'critical' ? rawSev : 'info'
+        ) as 'info' | 'warning' | 'error' | 'critical',
+        user_message: String(diagRaw.user_message ?? diagRaw.userMessage ?? ''),
+        operator_message: diagRaw.operator_message ?? diagRaw.operatorMessage,
+        recommended_next_step: String(
+          diagRaw.recommended_next_step ?? diagRaw.recommendedNextStep ?? ''
+        )
+      };
+    }
+
+    const hoRaw = n.handoff_config ?? n.handoffConfig;
+    if (hoRaw) {
+      node.handoff_config = {
+        target_user_id: hoRaw.target_user_id ?? hoRaw.targetUserId,
+        target_role: hoRaw.target_role ?? hoRaw.targetRole,
+        context_note: String(hoRaw.context_note ?? hoRaw.contextNote ?? '')
+      };
+    }
+
+    const termRaw = n.terminal_config ?? n.terminalConfig;
+    if (termRaw) {
+      node.terminal_config = {
+        outcome: (termRaw.outcome || 'succeeded') as
+          | 'succeeded'
+          | 'partially_succeeded'
+          | 'failed'
+          | 'cancelled',
+        result_template: termRaw.result_template ?? termRaw.resultTemplate
+      };
+    }
+
+    return node;
+  });
+
+  const edges: WorkflowEdge[] = Array.isArray(parsed.edges)
+    ? parsed.edges.map((e: any) => ({
+        from_node_id: String(e.from_node_id ?? e.fromNodeId ?? ''),
+        to_node_id: String(e.to_node_id ?? e.toNodeId ?? ''),
+        branch: fromProtoEdgeBranch(e.branch)
+      }))
+    : [];
+
+  return {
+    schema_version: Number(parsed.schema_version ?? parsed.schemaVersion ?? 1),
+    nodes,
+    edges
+  };
+}
 
 export interface SaveWorkflowRemoteInput {
   workspaceId?: string;
@@ -176,14 +629,7 @@ export async function loadWorkflowRemote(
   const rpcRes = await callCanonicalRpc<
     Record<string, unknown>,
     {
-      workflow?: {
-        workflow_id?: string;
-        title?: string;
-        description?: string;
-        status?: 'draft' | 'active' | 'paused';
-        version?: number;
-        graph?: WorkflowGraph;
-      };
+      workflow?: Record<string, any>;
     }
   >(
     'creativanta.automation.v1.WorkflowService/Get',
@@ -205,22 +651,30 @@ export async function loadWorkflowRemote(
   }
 
   const wf = rpcRes.data?.workflow;
-  if (!wf?.workflow_id) {
+  const workflowId = String(wf?.workflow_id || wf?.workflowId || '').trim();
+  if (!workflowId) {
     return {
       ok: false,
       error: 'Phản hồi từ máy chủ thiếu thông tin workflow_id (fail-closed).'
     };
   }
 
+  const rawGraphSource =
+    wf?.action_chain || wf?.actionChain || wf?.action_chain_json || wf?.actionChainJson || wf?.graph;
+  const graph = fromProtoWorkflowGraph(
+    rawGraphSource,
+    wf?.trigger_config ?? wf?.triggerConfig
+  );
+
   return {
     ok: true,
     workflow: {
-      workflowId: wf.workflow_id,
-      title: wf.title || '',
-      description: wf.description || '',
-      status: wf.status || 'draft',
-      version: wf.version ?? 1,
-      graph: wf.graph
+      workflowId,
+      title: String(wf?.title || ''),
+      description: String(wf?.description || ''),
+      status: normalizeWorkflowStatus(wf?.status) || 'draft',
+      version: typeof wf?.version === 'number' ? wf.version : 1,
+      graph
     }
   };
 }
@@ -242,14 +696,14 @@ export async function saveWorkflowRemote(
     };
   }
 
+  const triggerNode = input.graph.nodes.find((n) => n.node_type === 'trigger');
+  const protoActionChain = toProtoWorkflowGraph(input.graph);
+  const protoTriggerConfig = toProtoTriggerConfigObject(triggerNode?.trigger_config);
+
   const rpcRes = await callCanonicalRpc<
     Record<string, unknown>,
     {
-      workflow?: {
-        workflow_id?: string;
-        version?: number;
-        status?: 'draft' | 'active' | 'paused';
-      };
+      workflow?: Record<string, any>;
       version?: number;
     }
   >(
@@ -261,7 +715,8 @@ export async function saveWorkflowRemote(
       title: input.title,
       description: input.description,
       expected_version: input.expectedVersion,
-      graph: input.graph
+      trigger_config: protoTriggerConfig,
+      action_chain: protoActionChain
     },
     {
       ...options,
@@ -280,20 +735,22 @@ export async function saveWorkflowRemote(
   if (typeof remoteVersion !== 'number') {
     return {
       ok: false,
-      error: 'Phản hồi từ máy chủ thiếu số phiên bản workflow mới (version). Không tăng version giả lập.'
+      error:
+        'Phản hồi từ máy chủ thiếu số phiên bản workflow mới (version). Không tăng version giả lập.'
     };
   }
 
   return {
     ok: true,
     version: remoteVersion,
-    status: rpcRes.data?.workflow?.status
+    status: normalizeWorkflowStatus(rpcRes.data?.workflow?.status)
   };
 }
 
 /**
  * Activates or pauses a workflow via `creativanta.automation.v1.WorkflowService/Activate`
- * or `Pause` (UF-08). Never mutates workflow status locally when the backend call fails.
+ * or `creativanta.automation.v1.WorkflowService/Deactivate` (UF-08).
+ * Never mutates workflow status locally when the backend call fails.
  */
 export async function setWorkflowStatusRemote(
   params: {
@@ -307,32 +764,34 @@ export async function setWorkflowStatusRemote(
   const procedure =
     params.targetStatus === 'active'
       ? 'creativanta.automation.v1.WorkflowService/Activate'
-      : 'creativanta.automation.v1.WorkflowService/Update';
+      : params.targetStatus === 'paused'
+        ? 'creativanta.automation.v1.WorkflowService/Deactivate'
+        : 'creativanta.automation.v1.WorkflowService/Update';
+
+  const requestBody: Record<string, unknown> =
+    params.targetStatus === 'active' || params.targetStatus === 'paused'
+      ? {
+          idempotency_key: options.idempotencyKey || generateIdempotencyKey('wf-status'),
+          workspace_id: params.workspaceId,
+          workflow_id: params.workflowId
+        }
+      : {
+          idempotency_key: options.idempotencyKey || generateIdempotencyKey('wf-status'),
+          workspace_id: params.workspaceId,
+          workflow_id: params.workflowId,
+          expected_version: params.expectedVersion
+        };
 
   const rpcRes = await callCanonicalRpc<
     Record<string, unknown>,
     {
-      workflow?: {
-        workflow_id?: string;
-        status?: 'draft' | 'active' | 'paused';
-        version?: number;
-      };
-      status?: 'draft' | 'active' | 'paused';
+      workflow?: Record<string, any>;
+      status?: unknown;
     }
-  >(
-    procedure,
-    {
-      idempotency_key: options.idempotencyKey || generateIdempotencyKey('wf-status'),
-      workspace_id: params.workspaceId,
-      workflow_id: params.workflowId,
-      status: params.targetStatus,
-      expected_version: params.expectedVersion
-    },
-    {
-      ...options,
-      workspaceId: options.workspaceId ?? params.workspaceId
-    }
-  );
+  >(procedure, requestBody, {
+    ...options,
+    workspaceId: options.workspaceId ?? params.workspaceId
+  });
 
   if (!rpcRes.ok) {
     return {
@@ -341,7 +800,9 @@ export async function setWorkflowStatusRemote(
     };
   }
 
-  const confirmedStatus = rpcRes.data?.workflow?.status || rpcRes.data?.status;
+  const confirmedStatus = normalizeWorkflowStatus(
+    rpcRes.data?.workflow?.status ?? rpcRes.data?.status
+  );
   if (!confirmedStatus) {
     return {
       ok: false,

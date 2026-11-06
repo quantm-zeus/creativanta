@@ -547,10 +547,20 @@ export const supportStore = {
       };
       supportMessagesStore.update((list) => [...list, msg]);
     }
+  },
+
+  reset: () => {
+    supportTicketsStore.set([]);
+    supportMessagesStore.set([]);
   }
 };
 
 import { callCanonicalRpc, generateIdempotencyKey, type CanonicalRpcOptions } from '$lib/api/client';
+import { registerAuthResetHook } from '$lib/auth/store';
+
+registerAuthResetHook(() => {
+  supportStore.reset();
+});
 
 export interface SubmitSupportTicketRemoteInput {
   workspaceId?: string;

@@ -583,8 +583,34 @@ export function calculateStyleExtractionQuote(videoCount: number): {
 
 import { callCanonicalRpc, generateIdempotencyKey, type CanonicalRpcOptions } from '$lib/api/client';
 
+function toProtoImageMotionStyle(styleId?: string): string {
+	switch ((styleId || '').toLowerCase().trim()) {
+		case 'cinematic_pan':
+			return 'IMAGE_MOTION_STYLE_CINEMATIC_PAN';
+		case 'product_rotate':
+			return 'IMAGE_MOTION_STYLE_PRODUCT_ROTATE';
+		case 'parallax_3d':
+			return 'IMAGE_MOTION_STYLE_PARALLAX_3D';
+		case 'subtle_movement':
+			return 'IMAGE_MOTION_STYLE_SUBTLE_MOVEMENT';
+		case 'zoom_in':
+			return 'IMAGE_MOTION_STYLE_ZOOM_IN';
+		case 'custom_prompt':
+			return 'IMAGE_MOTION_STYLE_CUSTOM_PROMPT';
+		case 'ken_burns':
+			return 'IMAGE_MOTION_STYLE_KEN_BURNS';
+		case 'morph':
+			return 'IMAGE_MOTION_STYLE_MORPH';
+		case 'random':
+			return 'IMAGE_MOTION_STYLE_RANDOM';
+		default:
+			return 'IMAGE_MOTION_STYLE_CINEMATIC_PAN';
+	}
+}
+
 export interface ImageToVideoGenerationInput {
 	workspaceId?: string;
+	title?: string;
 	images: Array<{
 		id: string;
 		url: string;
@@ -599,14 +625,157 @@ export interface ImageToVideoGenerationInput {
 	customPrompt?: string;
 	quoteCredits: number;
 	availableBalance: number;
+	quoteId?: string;
+	confirmedCredits?: string;
+	requirePreflightQuote?: boolean;
+}
+
+export interface ImageToVideoQuoteResult {
+	ok: boolean;
+	quoteId?: string;
+	quotedCredits?: string;
+	availableCredits?: string;
+	sufficientCredits?: boolean;
+	quoteExpiresAt?: string;
+	error?: string;
 }
 
 export interface ImageToVideoGenerationResult {
 	ok: boolean;
 	jobId?: string;
+	quoteId?: string;
 	reservedCredits?: number;
 	remainingBalance?: number;
 	error?: string;
+}
+
+function buildImageToVideoGenerateRequest(
+	input: ImageToVideoGenerationInput,
+	params: {
+		idempotencyKey: string;
+		dryRun: boolean;
+		quoteId?: string;
+		confirmedCredits?: string;
+	}
+): Record<string, unknown> {
+	const resolvedTitle =
+		(input.title || input.images[0]?.name || 'Image-to-Video Studio').trim() ||
+		'Image-to-Video Studio';
+	const resolvedPrompt =
+		input.customPrompt && input.customPrompt.trim().length >= 5
+			? input.customPrompt.trim()
+			: `Image-to-Video (${input.selectedMotionStyleId || 'cinematic_pan'}) — ${input.images
+					.map((i) => i.name || i.id)
+					.join(', ')}`;
+	const totalDuration = input.images.reduce((sum, img) => sum + (img.durationSeconds || 0), 0);
+
+	return {
+		context: {
+			workspace_id: { value: input.workspaceId || '' },
+			idempotency_key: params.idempotencyKey
+		},
+		title: resolvedTitle,
+		mode: 'PRODUCTION_MODE_IMAGE_TO_VIDEO',
+		prompt: resolvedPrompt,
+		post_production: {
+			aspect_ratio: input.aspectRatio,
+			normalize_audio: true,
+			target_lufs: -14
+		},
+		dry_run: params.dryRun,
+		quote_id: params.quoteId || '',
+		confirmed_credits: params.confirmedCredits || String(input.quoteCredits),
+		image_to_video_config: {
+			image_urls: input.images.map((img) => img.url),
+			per_image_settings: input.images.map((img) => ({
+				image_url: img.url,
+				duration_seconds: img.durationSeconds,
+				motion_style: toProtoImageMotionStyle(img.customMotionStyle || input.selectedMotionStyleId),
+				focal_point: 'center'
+			})),
+			default_motion_style: toProtoImageMotionStyle(input.selectedMotionStyleId),
+			duration_seconds: totalDuration,
+			loop_friendly: false,
+			auto_music_sync: true,
+			transition_type: input.selectedTransitionId,
+			transition_duration: 0.5,
+			aspect_ratio: input.aspectRatio,
+			quality_tier: 'standard'
+		}
+	};
+}
+
+/**
+ * Requests a bounded server quote for Image-to-Video via
+ * `creativanta.production.v1.AssetService/Generate` (`dry_run: true`).
+ */
+export async function requestImageToVideoQuoteRemote(
+	input: ImageToVideoGenerationInput,
+	options: CanonicalRpcOptions = {}
+): Promise<ImageToVideoQuoteResult> {
+	const idemKey = options.idempotencyKey || generateIdempotencyKey('i2v-quote');
+	const rpcRes = await callCanonicalRpc<
+		Record<string, unknown>,
+		{
+			is_dry_run?: boolean;
+			isDryRun?: boolean;
+			budget_preview?: Record<string, any>;
+			budgetPreview?: Record<string, any>;
+		}
+	>(
+		'creativanta.production.v1.AssetService/Generate',
+		buildImageToVideoGenerateRequest(input, {
+			idempotencyKey: idemKey,
+			dryRun: true
+		}),
+		{
+			...options,
+			idempotencyKey: idemKey,
+			workspaceId: options.workspaceId ?? input.workspaceId
+		}
+	);
+
+	if (!rpcRes.ok) {
+		return {
+			ok: false,
+			error: rpcRes.error.message
+		};
+	}
+
+	const preview = rpcRes.data?.budget_preview || rpcRes.data?.budgetPreview;
+	const quoteId = String(preview?.quote_id || preview?.quoteId || '').trim();
+	const quotedCredits = String(
+		preview?.total_estimated_credits ||
+			preview?.totalEstimatedCredits ||
+			input.quoteCredits
+	).trim();
+	const sufficient = preview?.sufficient_credits ?? preview?.sufficientCredits ?? true;
+
+	if (!quoteId) {
+		return {
+			ok: false,
+			error: 'Phản hồi báo giá từ máy chủ thiếu quote_id hợp lệ (fail-closed).'
+		};
+	}
+
+	if (sufficient === false) {
+		return {
+			ok: false,
+			quoteId,
+			quotedCredits,
+			sufficientCredits: false,
+			error: 'Số dư credits trên máy chủ không đủ để thực hiện tác vụ này (fail-closed).'
+		};
+	}
+
+	return {
+		ok: true,
+		quoteId,
+		quotedCredits,
+		availableCredits: String(preview?.available_credits ?? preview?.availableCredits ?? ''),
+		sufficientCredits: true,
+		quoteExpiresAt: String(preview?.quote_expires_at ?? preview?.quoteExpiresAt ?? '')
+	};
 }
 
 /**
@@ -640,35 +809,49 @@ export async function requestImageToVideoGenerationRemote(
 		};
 	}
 
+	let activeQuoteId = (input.quoteId || '').trim();
+	let activeConfirmedCredits = (input.confirmedCredits || String(input.quoteCredits)).trim();
+
+	if (!activeQuoteId && input.requirePreflightQuote) {
+		const quoteRes = await requestImageToVideoQuoteRemote(input, {
+			...options,
+			idempotencyKey: generateIdempotencyKey('i2v-quote')
+		});
+		if (!quoteRes.ok || !quoteRes.quoteId) {
+			return {
+				ok: false,
+				error: quoteRes.error || 'Không thể lấy báo giá (quote_id) từ máy chủ (fail-closed).'
+			};
+		}
+		activeQuoteId = quoteRes.quoteId;
+		if (quoteRes.quotedCredits) {
+			activeConfirmedCredits = quoteRes.quotedCredits;
+		}
+	}
+
+	const idemKey = options.idempotencyKey || generateIdempotencyKey('i2v-gen');
 	const rpcRes = await callCanonicalRpc<
 		Record<string, unknown>,
 		{
 			job_id?: string;
-			job?: { job_id?: string; reserved_credits?: number };
-			reserved_credits?: number;
-			remaining_balance?: number;
+			jobId?: string;
+			job?: Record<string, any>;
+			reserved_credits?: number | string;
+			reservedCredits?: number | string;
+			remaining_balance?: number | string;
+			remainingBalance?: number | string;
 		}
 	>(
 		'creativanta.production.v1.AssetService/Generate',
-		{
-			idempotency_key: options.idempotencyKey || generateIdempotencyKey('i2v-gen'),
-			workspace_id: input.workspaceId,
-			generation_type: 'image_to_video',
-			images: input.images.map((img) => ({
-				image_id: img.id,
-				source_url: img.url,
-				duration_seconds: img.durationSeconds,
-				motion_style: img.customMotionStyle || input.selectedMotionStyleId
-			})),
-			motion_style: input.selectedMotionStyleId,
-			motion_intensity: input.motionIntensity,
-			aspect_ratio: input.aspectRatio,
-			transition_style: input.selectedTransitionId,
-			prompt: input.customPrompt || '',
-			quoted_credits: String(input.quoteCredits)
-		},
+		buildImageToVideoGenerateRequest(input, {
+			idempotencyKey: idemKey,
+			dryRun: false,
+			quoteId: activeQuoteId,
+			confirmedCredits: activeConfirmedCredits
+		}),
 		{
 			...options,
+			idempotencyKey: idemKey,
 			workspaceId: options.workspaceId ?? input.workspaceId
 		}
 	);
@@ -680,7 +863,14 @@ export async function requestImageToVideoGenerationRemote(
 		};
 	}
 
-	const jobId = rpcRes.data?.job_id || rpcRes.data?.job?.job_id;
+	const jobObj = rpcRes.data?.job;
+	const jobId = String(
+		rpcRes.data?.job_id ||
+			rpcRes.data?.jobId ||
+			jobObj?.job_id ||
+			jobObj?.jobId ||
+			''
+	).trim();
 	if (!jobId) {
 		return {
 			ok: false,
@@ -688,19 +878,206 @@ export async function requestImageToVideoGenerationRemote(
 		};
 	}
 
-	const reserved =
+	const rawReserved =
 		rpcRes.data?.reserved_credits ??
-		rpcRes.data?.job?.reserved_credits ??
-		input.quoteCredits;
-	const remaining =
-		typeof rpcRes.data?.remaining_balance === 'number'
-			? rpcRes.data.remaining_balance
-			: Math.max(0, input.availableBalance - reserved);
+		rpcRes.data?.reservedCredits ??
+		jobObj?.reserved_credits ??
+		jobObj?.reservedCredits ??
+		jobObj?.estimated_credits ??
+		jobObj?.estimatedCredits ??
+		activeConfirmedCredits;
+	const parsedReserved = Number(rawReserved);
+	const reserved = Number.isFinite(parsedReserved) && parsedReserved > 0 ? parsedReserved : input.quoteCredits;
+
+	const rawRemaining = rpcRes.data?.remaining_balance ?? rpcRes.data?.remainingBalance;
+	const parsedRemaining = rawRemaining !== undefined ? Number(rawRemaining) : NaN;
+	const remaining = Number.isFinite(parsedRemaining)
+		? parsedRemaining
+		: Math.max(0, input.availableBalance - reserved);
 
 	return {
 		ok: true,
 		jobId,
+		quoteId: activeQuoteId || String(jobObj?.quote_id || jobObj?.quoteId || ''),
 		reservedCredits: reserved,
 		remainingBalance: remaining
+	};
+}
+
+export interface CancelStudioJobResult {
+	ok: boolean;
+	jobId?: string;
+	status?: string;
+	creditsRefunded?: boolean;
+	refundedCredits?: number;
+	error?: string;
+}
+
+/**
+ * Cancels an in-flight studio job via `creativanta.production.v1.StudioService/Cancel`.
+ * Fails closed without mutating local job status or credit balance when backend fails
+ * or does not confirm cancellation.
+ */
+export async function cancelStudioJobRemote(
+	params: { workspaceId?: string; jobId: string },
+	options: CanonicalRpcOptions = {}
+): Promise<CancelStudioJobResult> {
+	const jobId = (params.jobId || '').trim();
+	if (!jobId) {
+		return {
+			ok: false,
+			error: 'Thiếu mã tiến trình (job_id) cần hủy.'
+		};
+	}
+
+	const idemKey = options.idempotencyKey || generateIdempotencyKey('studio-cancel');
+	const rpcRes = await callCanonicalRpc<
+		Record<string, unknown>,
+		{
+			job?: Record<string, any>;
+			credits_refunded?: boolean;
+			creditsRefunded?: boolean;
+			refunded_credits?: string | number;
+			refundedCredits?: string | number;
+		}
+	>(
+		'creativanta.production.v1.StudioService/Cancel',
+		{
+			context: {
+				workspace_id: { value: params.workspaceId || '' },
+				idempotency_key: idemKey
+			},
+			job_id: jobId
+		},
+		{
+			...options,
+			idempotencyKey: idemKey,
+			workspaceId: options.workspaceId ?? params.workspaceId
+		}
+	);
+
+	if (!rpcRes.ok) {
+		return {
+			ok: false,
+			error: rpcRes.error.message
+		};
+	}
+
+	const jobObj = rpcRes.data?.job;
+	const confirmedJobId = String(jobObj?.job_id || jobObj?.jobId || '').trim();
+	const confirmedStatus = String(jobObj?.status || '')
+		.trim()
+		.toLowerCase();
+
+	if (!confirmedJobId || (confirmedStatus && !confirmedStatus.includes('cancel'))) {
+		return {
+			ok: false,
+			error: 'Phản hồi từ máy chủ không xác nhận trạng thái đã hủy (fail-closed).'
+		};
+	}
+
+	const creditsRefunded = Boolean(
+		rpcRes.data?.credits_refunded ?? rpcRes.data?.creditsRefunded ?? false
+	);
+	const rawRefunded = rpcRes.data?.refunded_credits ?? rpcRes.data?.refundedCredits ?? 0;
+	const parsedRefunded = Number(rawRefunded);
+	const refundedCredits =
+		creditsRefunded && Number.isFinite(parsedRefunded) && parsedRefunded > 0 ? parsedRefunded : 0;
+
+	return {
+		ok: true,
+		jobId: confirmedJobId,
+		status: 'cancelled',
+		creditsRefunded,
+		refundedCredits
+	};
+}
+
+export interface RetryStudioJobResult {
+	ok: boolean;
+	jobId?: string;
+	status?: 'queued' | 'processing' | 'completed' | 'failed' | 'cancelled';
+	provider?: 'veo' | 'kling';
+	stage?: string;
+	progressPct?: number;
+	message?: string;
+	error?: string;
+}
+
+/**
+ * Retries a failed studio job via `creativanta.production.v1.StudioService/Retry`.
+ * Fails closed without mutating local job status when the backend call fails.
+ */
+export async function retryStudioJobRemote(
+	params: { workspaceId?: string; jobId: string; useFallbackProvider?: boolean },
+	options: CanonicalRpcOptions = {}
+): Promise<RetryStudioJobResult> {
+	const jobId = (params.jobId || '').trim();
+	if (!jobId) {
+		return {
+			ok: false,
+			error: 'Thiếu mã tiến trình (job_id) cần thử lại.'
+		};
+	}
+
+	const idemKey = options.idempotencyKey || generateIdempotencyKey('studio-retry');
+	const rpcRes = await callCanonicalRpc<
+		Record<string, unknown>,
+		{
+			job?: Record<string, any>;
+			message?: string;
+		}
+	>(
+		'creativanta.production.v1.StudioService/Retry',
+		{
+			context: {
+				workspace_id: { value: params.workspaceId || '' },
+				idempotency_key: idemKey
+			},
+			job_id: jobId,
+			use_fallback_provider: params.useFallbackProvider ?? true
+		},
+		{
+			...options,
+			idempotencyKey: idemKey,
+			workspaceId: options.workspaceId ?? params.workspaceId
+		}
+	);
+
+	if (!rpcRes.ok) {
+		return {
+			ok: false,
+			error: rpcRes.error.message
+		};
+	}
+
+	const jobObj = rpcRes.data?.job;
+	const confirmedJobId = String(jobObj?.job_id || jobObj?.jobId || '').trim();
+	if (!confirmedJobId) {
+		return {
+			ok: false,
+			error: 'Phản hồi từ máy chủ thiếu thông tin tiến trình thử lại (job_id, fail-closed).'
+		};
+	}
+
+	const rawStatus = String(jobObj?.status || 'processing').toLowerCase();
+	const status: RetryStudioJobResult['status'] = rawStatus.includes('queue')
+		? 'queued'
+		: rawStatus.includes('complete')
+			? 'completed'
+			: rawStatus.includes('fail')
+				? 'failed'
+				: 'processing';
+	const provider: 'veo' | 'kling' =
+		String(jobObj?.provider || '').toLowerCase() === 'veo' ? 'veo' : 'kling';
+
+	return {
+		ok: true,
+		jobId: confirmedJobId,
+		status,
+		provider,
+		stage: String(jobObj?.current_step || jobObj?.currentStep || 'Submitting to provider'),
+		progressPct: Number(jobObj?.progress_pct ?? jobObj?.progressPct ?? 15),
+		message: rpcRes.data?.message
 	};
 }

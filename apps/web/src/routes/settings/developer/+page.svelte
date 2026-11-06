@@ -122,7 +122,9 @@
         eventTypes: webhookEvents
       });
       if (!res.ok || !res.secret) {
-        actionFeedback = res.error || 'Không thể đăng ký Webhook trên máy chủ (WebhookService/Create).';
+        actionFeedback =
+          res.error ||
+          'Không thể đăng ký Webhook trên máy chủ (WebhookSubscriptionService/CreateWebhookSubscription).';
         return;
       }
       newWebhookSecret = res.secret;

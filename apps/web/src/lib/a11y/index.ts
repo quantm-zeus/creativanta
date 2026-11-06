@@ -281,3 +281,5 @@ export const CANONICAL_LEGAL_LINKS: readonly LegalComplianceLink[] = [
     labelEn: 'AI Transparency Disclaimer'
   }
 ] as const;
+
+export * from './legal_documents';

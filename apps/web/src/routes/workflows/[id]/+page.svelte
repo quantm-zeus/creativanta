@@ -289,8 +289,7 @@
   async function toggleStatus() {
     errorNotification = null;
     saveNotification = null;
-    const nextStatus: 'draft' | 'active' | 'paused' =
-      status === 'draft' ? 'active' : status === 'active' ? 'paused' : 'draft';
+    const nextStatus: 'active' | 'paused' = status === 'active' ? 'paused' : 'active';
 
     if (nextStatus === 'active' && !validation.valid) {
       errorNotification = `Cannot activate invalid workflow: ${validation.errors.join('; ')}`;

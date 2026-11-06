@@ -71,7 +71,7 @@ void main() {
       expect(sufficientPreview.sufficientCredits, true);
     });
 
-    testWidgets('Acceptance Target 1: Cancel and recovery immediately refunds balance on UI',
+    testWidgets('Acceptance Target 1 & R7-07: Cancel fails closed without backend confirmation and refunds balance only when server confirms',
         (WidgetTester tester) async {
       const initialBalance = 100;
       final testJobs = [
@@ -90,11 +90,38 @@ void main() {
         ),
       ];
 
+      // 1. Negative / fail-closed: without onCancelJobRemote (backend disconnected), balance and job stay unchanged
       await tester.pumpWidget(
         MaterialApp(
           home: StudioLauncherView(
             initialBalance: initialBalance,
-            initialJobs: testJobs,
+            initialJobs: List.of(testJobs),
+          ),
+        ),
+      );
+
+      expect(find.text('100 cr'), findsOneWidget);
+      final cancelBtnDisconnected = find.byKey(const ValueKey('cancel_job_job-cancel-test-1'));
+      await tester.tap(cancelBtnDisconnected);
+      await tester.pump();
+
+      expect(find.text('100 cr'), findsOneWidget,
+          reason: 'Balance must NOT be refunded when StudioService/Cancel is not connected');
+      expect(find.textContaining('fail-closed'), findsOneWidget);
+      expect(find.text('Review serum Niacinamide'), findsOneWidget);
+
+      // 2. Positive: with server-confirmed StudioService/Cancel outcome, job cancels and refunds 20 credits
+      await tester.pumpWidget(
+        MaterialApp(
+          home: StudioLauncherView(
+            initialBalance: initialBalance,
+            initialJobs: List.of(testJobs),
+            onCancelJobRemote: (jobId, estimatedCredits) async => StudioJobCancelOutcome(
+              ok: true,
+              jobId: jobId,
+              creditsRefunded: true,
+              refundedCredits: estimatedCredits,
+            ),
           ),
         ),
       );
@@ -108,7 +135,7 @@ void main() {
       final cancelBtn = find.byKey(const ValueKey('cancel_job_job-cancel-test-1'));
       expect(cancelBtn, findsOneWidget);
       await tester.tap(cancelBtn);
-      await tester.pump();
+      await tester.pumpAndSettle();
 
       // Balance must be refunded: 100 + 20 = 120 cr
       expect(find.text('120 cr'), findsOneWidget);

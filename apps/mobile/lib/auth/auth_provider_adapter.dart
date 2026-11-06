@@ -88,12 +88,46 @@ abstract class AuthProviderAdapter {
   void dispose();
 }
 
+/// Represents a short-lived Clerk session token issued/refreshed directly by the
+/// Clerk IdP SDK / Frontend API bridge per `RULE-AUTH-002` (`docs/02_features/platform/auth.md`).
+class ClerkIssuedSession {
+  final String sessionToken;
+  final String sessionId;
+  final UserIdentity? user;
+  final int expiresInSeconds;
+
+  const ClerkIssuedSession({
+    required this.sessionToken,
+    required this.sessionId,
+    this.user,
+    this.expiresInSeconds = 3600,
+  });
+}
+
+/// Bridge to the external Clerk Identity Provider SDK / Frontend API.
+/// Per `RULE-AUTH-002`, Clerk issues and refreshes short-lived session JWTs directly;
+/// the Creativanta Go backend does NOT host `/api/auth/clerk/sign-in` or `/api/auth/clerk/refresh`.
+abstract class ClerkIdpSessionBridge {
+  Future<ClerkIssuedSession> signInWithPassword({
+    required String publishableKey,
+    required String email,
+    required String password,
+  });
+
+  Future<ClerkIssuedSession?> refreshSessionToken({
+    required String publishableKey,
+    required String sessionId,
+    required String currentToken,
+  });
+}
+
 /// Production Clerk provider adapter with fail-closed security boundary and
-/// live HTTP session/refresh/workspace-discovery integration (UF-03, IQ-09).
+/// live HTTP workspace-discovery integration (`POST /api/workspaces/discovery`, UF-03, IQ-09).
 class ClerkAuthProviderAdapter implements AuthProviderAdapter {
   ClerkAuthProviderAdapter({
     this.publishableKey,
     this.apiBaseUrl,
+    this.idpBridge,
     SecureTokenStore? tokenStore,
     AuthHttpTransport? httpTransport,
   })  : _tokenStore = tokenStore ?? EphemeralSecureTokenStore(),
@@ -101,6 +135,7 @@ class ClerkAuthProviderAdapter implements AuthProviderAdapter {
 
   /// Factory reading compile-time `--dart-define` configuration (`IQ-09`).
   factory ClerkAuthProviderAdapter.fromEnvironment({
+    ClerkIdpSessionBridge? idpBridge,
     SecureTokenStore? tokenStore,
     AuthHttpTransport? httpTransport,
   }) {
@@ -109,6 +144,7 @@ class ClerkAuthProviderAdapter implements AuthProviderAdapter {
     return ClerkAuthProviderAdapter(
       publishableKey: envPublishableKey.isNotEmpty ? envPublishableKey : null,
       apiBaseUrl: envApiBaseUrl.isNotEmpty ? envApiBaseUrl : null,
+      idpBridge: idpBridge,
       tokenStore: tokenStore,
       httpTransport: httpTransport,
     );
@@ -121,6 +157,7 @@ class ClerkAuthProviderAdapter implements AuthProviderAdapter {
 
   final String? publishableKey;
   final String? apiBaseUrl;
+  final ClerkIdpSessionBridge? idpBridge;
   final SecureTokenStore _tokenStore;
   final AuthHttpTransport _httpTransport;
 
@@ -143,11 +180,17 @@ class ClerkAuthProviderAdapter implements AuthProviderAdapter {
   @override
   String? get currentError => _currentError;
 
-  @override
-  bool get isConfigured =>
+  bool get _hasValidPublishableKey =>
       publishableKey != null &&
       publishableKey!.trim().isNotEmpty &&
       publishableKey!.startsWith('pk_');
+
+  /// Live password sign-in and SDK token refresh require BOTH a valid Clerk
+  /// publishable key (`pk_...`) and a configured `ClerkIdpSessionBridge`.
+  /// Without `idpBridge`, the adapter fails closed (`EXT-GATE-CLERK-MOBILE`)
+  /// rather than posting credentials to non-existent backend routes.
+  @override
+  bool get isConfigured => _hasValidPublishableKey && idpBridge != null;
 
   String get _resolvedApiBaseUrl {
     final trimmed = (apiBaseUrl ?? '').trim();
@@ -171,21 +214,35 @@ class ClerkAuthProviderAdapter implements AuthProviderAdapter {
     return OperatorMode.creator;
   }
 
-  List<WorkspaceSummary> _parseWorkspaces(dynamic rawList, String? preferredWorkspaceId) {
+  List<WorkspaceSummary> _parseWorkspaces(dynamic rawPayload, String? preferredWorkspaceId) {
+    dynamic rawList = rawPayload;
+    if (rawPayload is Map<String, dynamic>) {
+      if (!rawPayload.containsKey('workspaces')) {
+        return const [];
+      }
+      rawList = rawPayload['workspaces'];
+      if (rawList == null) {
+        return const [];
+      }
+    }
     if (rawList is! List || rawList.isEmpty) {
       return const [];
     }
     final parsed = <WorkspaceSummary>[];
     for (final item in rawList) {
       if (item is Map<String, dynamic>) {
-        final id = (item['id'] ?? item['workspace_id'] ?? '').toString();
+        final id = (item['workspace_id'] ?? item['id'] ?? '').toString().trim();
         if (id.isEmpty) continue;
+        final displayName = (item['display_name'] ?? '').toString().trim();
+        final slugName = (item['name'] ?? '').toString().trim();
         parsed.add(
           WorkspaceSummary(
             id: id,
-            name: (item['name'] ?? item['display_name'] ?? 'Workspace').toString(),
-            role: (item['role'] ?? 'viewer').toString(),
-            plan: (item['plan'] ?? item['plan_tier'] ?? 'Starter').toString(),
+            name: displayName.isNotEmpty
+                ? displayName
+                : (slugName.isNotEmpty ? slugName : 'Workspace'),
+            role: (item['role'] ?? 'viewer').toString().trim(),
+            plan: (item['plan'] ?? item['plan_tier'] ?? 'Starter').toString().trim(),
             unreadCount: item['unread_count'] is int ? item['unread_count'] as int : 0,
             isActive: false,
           ),
@@ -205,20 +262,20 @@ class ClerkAuthProviderAdapter implements AuthProviderAdapter {
 
   @override
   Future<void> initialize() async {
-    if (!isConfigured) {
+    if (!_hasValidPublishableKey) {
       _currentStatus = AuthStatus.unconfigured;
       _currentError = externalGateDescription;
       _statusController.add(_currentStatus);
       return;
     }
 
-    _currentStatus = AuthStatus.authenticating;
-    _statusController.add(_currentStatus);
-
     try {
       final existingToken = await _tokenStore.readToken(key: _jwtKey);
       final existingSessionId = await _tokenStore.readToken(key: _sessionIdKey);
       if (existingToken != null && existingToken.isNotEmpty) {
+        _currentStatus = AuthStatus.authenticating;
+        _statusController.add(_currentStatus);
+
         final discoveryUri = Uri.parse('$_resolvedApiBaseUrl/api/workspaces/discovery');
         try {
           final resp = await _httpTransport.postJson(
@@ -232,10 +289,7 @@ class ClerkAuthProviderAdapter implements AuthProviderAdapter {
             final decoded = jsonDecode(resp.body);
             final savedWsId = await _tokenStore.readToken(key: _activeWorkspaceKey);
             final savedMode = await _readPersistedMode();
-            final wsList = _parseWorkspaces(
-              decoded is Map<String, dynamic> ? decoded['workspaces'] ?? decoded : decoded,
-              savedWsId,
-            );
+            final wsList = _parseWorkspaces(decoded, savedWsId);
             if (wsList.isNotEmpty) {
               final activeWs = wsList.firstWhere((w) => w.isActive, orElse: () => wsList.first);
               final userMap = decoded is Map<String, dynamic> && decoded['user'] is Map<String, dynamic>
@@ -261,12 +315,17 @@ class ClerkAuthProviderAdapter implements AuthProviderAdapter {
             }
           }
         } catch (_) {
-          // Network or verification failure during cold start falls back to unauthenticated
+          // Network or verification failure during cold start falls back below
         }
         await _tokenStore.clearAll();
-        _currentStatus = AuthStatus.unauthenticated;
+      }
+
+      if (!isConfigured) {
+        _currentStatus = AuthStatus.unconfigured;
+        _currentError = externalGateDescription;
       } else {
         _currentStatus = AuthStatus.unauthenticated;
+        _currentError = null;
       }
     } catch (e) {
       _currentStatus = AuthStatus.error;
@@ -281,7 +340,7 @@ class ClerkAuthProviderAdapter implements AuthProviderAdapter {
     required String email,
     required String password,
   }) async {
-    if (!isConfigured) {
+    if (!isConfigured || idpBridge == null) {
       final failure = AuthFailure(
         code: 'PROVIDER_UNAVAILABLE_001',
         message: externalGateDescription,
@@ -297,36 +356,42 @@ class ClerkAuthProviderAdapter implements AuthProviderAdapter {
     _statusController.add(_currentStatus);
 
     try {
-      final signInUri = Uri.parse('$_resolvedApiBaseUrl/api/auth/clerk/sign-in');
-      final response = await _httpTransport.postJson(
-        signInUri,
+      final issued = await idpBridge!.signInWithPassword(
+        publishableKey: publishableKey!,
+        email: email.trim(),
+        password: password,
+      );
+
+      final token = issued.sessionToken.trim();
+      final sessionId = issued.sessionId.trim();
+      if (token.isEmpty || sessionId.isEmpty) {
+        const failure = AuthFailure(
+          code: 'AUTH_INVALID_PAYLOAD_001',
+          message: 'Clerk IdP không trả về session_token hợp lệ (fail-closed).',
+        );
+        _currentStatus = AuthStatus.error;
+        _currentError = failure.message;
+        _statusController.add(_currentStatus);
+        return const AuthResult.failure(failure);
+      }
+
+      final discoveryUri = Uri.parse('$_resolvedApiBaseUrl/api/workspaces/discovery');
+      final discResp = await _httpTransport.postJson(
+        discoveryUri,
         headers: {
+          'Authorization': 'Bearer $token',
           'X-Clerk-Publishable-Key': publishableKey!,
-        },
-        body: {
-          'identifier': email.trim(),
-          'password': password,
-          'strategy': 'password',
         },
       );
 
-      if (!response.isOk) {
-        String serverMsg = 'Kết nối máy chủ xác thực Clerk không thành công.';
-        String serverCode = 'AUTH_UNAUTHORIZED_001';
-        try {
-          final parsed = jsonDecode(response.body);
-          if (parsed is Map<String, dynamic>) {
-            if (parsed['message'] is String && (parsed['message'] as String).isNotEmpty) {
-              serverMsg = parsed['message'] as String;
-            }
-            if (parsed['code'] is String && (parsed['code'] as String).isNotEmpty) {
-              serverCode = parsed['code'] as String;
-            }
-          }
-        } catch (_) {}
+      if (!discResp.isOk) {
         final failure = AuthFailure(
-          code: serverCode,
-          message: serverMsg,
+          code: discResp.statusCode == 401 || discResp.statusCode == 403
+              ? 'AUTH_UNAUTHORIZED_001'
+              : 'WORKSPACE_DISCOVERY_FAILED_001',
+          message: discResp.statusCode == 401 || discResp.statusCode == 403
+              ? 'Token phiên Clerk bị từ chối bởi máy chủ Creativanta (fail-closed).'
+              : 'Dịch vụ khám phá Workspace (/api/workspaces/discovery) trả về lỗi (${discResp.statusCode}).',
         );
         _currentStatus = AuthStatus.error;
         _currentError = failure.message;
@@ -334,50 +399,9 @@ class ClerkAuthProviderAdapter implements AuthProviderAdapter {
         return AuthResult.failure(failure);
       }
 
-      final payload = jsonDecode(response.body);
-      if (payload is! Map<String, dynamic>) {
-        const failure = AuthFailure(
-          code: 'AUTH_INVALID_PAYLOAD_001',
-          message: 'Phản hồi xác thực từ máy chủ không hợp lệ.',
-        );
-        _currentStatus = AuthStatus.error;
-        _currentError = failure.message;
-        _statusController.add(_currentStatus);
-        return const AuthResult.failure(failure);
-      }
-
-      final token = (payload['session_token'] ?? payload['token'] ?? '').toString();
-      final sessionId = (payload['session_id'] ?? payload['id'] ?? '').toString();
-      if (token.isEmpty || sessionId.isEmpty) {
-        const failure = AuthFailure(
-          code: 'AUTH_INVALID_PAYLOAD_001',
-          message: 'Máy chủ xác thực không trả về session_token hợp lệ (fail-closed).',
-        );
-        _currentStatus = AuthStatus.error;
-        _currentError = failure.message;
-        _statusController.add(_currentStatus);
-        return const AuthResult.failure(failure);
-      }
-
+      final discJson = jsonDecode(discResp.body);
       final savedWsId = await _tokenStore.readToken(key: _activeWorkspaceKey);
-      var workspaces = _parseWorkspaces(payload['workspaces'], savedWsId);
-      if (workspaces.isEmpty) {
-        final discoveryUri = Uri.parse('$_resolvedApiBaseUrl/api/workspaces/discovery');
-        final discResp = await _httpTransport.postJson(
-          discoveryUri,
-          headers: {
-            'Authorization': 'Bearer $token',
-            'X-Clerk-Publishable-Key': publishableKey!,
-          },
-        );
-        if (discResp.isOk) {
-          final discJson = jsonDecode(discResp.body);
-          workspaces = _parseWorkspaces(
-            discJson is Map<String, dynamic> ? discJson['workspaces'] ?? discJson : discJson,
-            savedWsId,
-          );
-        }
-      }
+      final workspaces = _parseWorkspaces(discJson, savedWsId);
 
       if (workspaces.isEmpty) {
         const failure = AuthFailure(
@@ -392,24 +416,17 @@ class ClerkAuthProviderAdapter implements AuthProviderAdapter {
 
       final activeWs = workspaces.firstWhere((w) => w.isActive, orElse: () => workspaces.first);
       final savedMode = await _readPersistedMode();
-      final userMap = payload['user'] is Map<String, dynamic>
-          ? payload['user'] as Map<String, dynamic>
-          : const <String, dynamic>{};
-
-      final expiresInSec = payload['expires_in_seconds'] is int
-          ? payload['expires_in_seconds'] as int
-          : 3600;
 
       final session = AuthSession(
-        user: UserIdentity(
-          id: (userMap['id'] ?? payload['user_id'] ?? 'usr_clerk').toString(),
-          email: (userMap['email'] ?? email.trim()).toString(),
-          displayName: (userMap['display_name'] ?? email.split('@').first).toString(),
-          avatarUrl: userMap['avatar_url'] as String?,
-        ),
+        user: issued.user ??
+            UserIdentity(
+              id: 'usr_clerk',
+              email: email.trim(),
+              displayName: email.trim().split('@').first,
+            ),
         sessionToken: token,
         sessionId: sessionId,
-        expiresAt: DateTime.now().add(Duration(seconds: expiresInSec)),
+        expiresAt: DateTime.now().add(Duration(seconds: issued.expiresInSeconds)),
         activeWorkspace: activeWs,
         availableWorkspaces: workspaces,
         activeMode: savedMode,
@@ -424,10 +441,15 @@ class ClerkAuthProviderAdapter implements AuthProviderAdapter {
       _currentError = null;
       _statusController.add(_currentStatus);
       return AuthResult.success(session);
+    } on AuthFailure catch (failure) {
+      _currentStatus = AuthStatus.error;
+      _currentError = failure.message;
+      _statusController.add(_currentStatus);
+      return AuthResult.failure(failure);
     } catch (_) {
       const failure = AuthFailure(
         code: 'AUTH_UNAUTHORIZED_001',
-        message: 'Kết nối máy chủ xác thực Clerk không thành công.',
+        message: 'Xác thực Clerk hoặc khám phá Workspace không thành công.',
       );
       _currentStatus = AuthStatus.error;
       _currentError = failure.message;
@@ -462,41 +484,49 @@ class ClerkAuthProviderAdapter implements AuthProviderAdapter {
 
   @override
   Future<AuthResult> refreshToken() async {
-    if (!isConfigured || _currentSession == null) {
+    if (!isConfigured || idpBridge == null || _currentSession == null) {
       const failure = AuthFailure(
         code: 'AUTH_UNAUTHORIZED_001',
         message: 'Không có phiên hợp lệ để làm mới.',
       );
-      _currentStatus = AuthStatus.unauthenticated;
+      _currentStatus = isConfigured ? AuthStatus.unauthenticated : AuthStatus.unconfigured;
       _statusController.add(_currentStatus);
       return const AuthResult.failure(failure);
     }
 
     try {
-      final refreshUri = Uri.parse('$_resolvedApiBaseUrl/api/auth/clerk/refresh');
-      final response = await _httpTransport.postJson(
-        refreshUri,
-        headers: {
-          'Authorization': 'Bearer ${_currentSession!.sessionToken}',
-          'X-Clerk-Publishable-Key': publishableKey!,
-        },
-        body: {
-          'session_id': _currentSession!.sessionId,
-        },
+      final refreshed = await idpBridge!.refreshSessionToken(
+        publishableKey: publishableKey!,
+        sessionId: _currentSession!.sessionId,
+        currentToken: _currentSession!.sessionToken,
       );
 
-      if (response.isOk) {
-        final payload = jsonDecode(response.body);
-        if (payload is Map<String, dynamic>) {
-          final freshToken = (payload['session_token'] ?? payload['token'] ?? '').toString();
-          if (freshToken.isNotEmpty) {
-            final expiresInSec = payload['expires_in_seconds'] is int
-                ? payload['expires_in_seconds'] as int
-                : 3600;
+      final freshToken = (refreshed?.sessionToken ?? '').trim();
+      if (freshToken.isNotEmpty) {
+        final discoveryUri = Uri.parse('$_resolvedApiBaseUrl/api/workspaces/discovery');
+        final discResp = await _httpTransport.postJson(
+          discoveryUri,
+          headers: {
+            'Authorization': 'Bearer $freshToken',
+            'X-Clerk-Publishable-Key': publishableKey!,
+          },
+        );
+        if (discResp.isOk) {
+          final decoded = jsonDecode(discResp.body);
+          final workspaces = _parseWorkspaces(decoded, _currentSession!.activeWorkspace.id);
+          if (workspaces.isNotEmpty) {
+            final activeWs = workspaces.firstWhere(
+              (w) => w.isActive,
+              orElse: () => workspaces.first,
+            );
             await _tokenStore.writeToken(key: _jwtKey, token: freshToken);
             _currentSession = _currentSession!.copyWith(
               sessionToken: freshToken,
-              expiresAt: DateTime.now().add(Duration(seconds: expiresInSec)),
+              expiresAt: DateTime.now().add(
+                Duration(seconds: refreshed?.expiresInSeconds ?? 3600),
+              ),
+              activeWorkspace: activeWs,
+              availableWorkspaces: workspaces,
             );
             _currentStatus = AuthStatus.authenticated;
             _currentError = null;
@@ -509,6 +539,8 @@ class ClerkAuthProviderAdapter implements AuthProviderAdapter {
       // Fall through to fail-closed session expiry below
     }
 
+    await _tokenStore.clearAll();
+    _currentSession = null;
     _currentStatus = AuthStatus.unauthenticated;
     _statusController.add(_currentStatus);
     return const AuthResult.failure(
