@@ -52,9 +52,8 @@ type Service struct {
 	eventSink EventSink
 	clock     func() time.Time
 
-	// Internal tracker for orders with missing COGS
-	missingCOGSOrders map[string]bool
 	pendingOrders     map[string]OrderPostingInput
+	refundOrderIDs    map[string]string
 	attributionEngine *AttributionEngine
 }
 
@@ -66,8 +65,8 @@ func NewService(store Store, eventSink EventSink, clock func() time.Time) *Servi
 		store:             store,
 		eventSink:         eventSink,
 		clock:             clock,
-		missingCOGSOrders: make(map[string]bool),
 		pendingOrders:     make(map[string]OrderPostingInput),
+		refundOrderIDs:    make(map[string]string),
 		attributionEngine: NewAttributionEngine(),
 	}
 }
@@ -81,6 +80,16 @@ func (s *Service) AttributionEngine() *AttributionEngine {
 
 func (s *Service) Store() Store {
 	return s.store
+}
+
+func effectiveBaseCurrency(currency string, fx ExchangeRateSnapshot) string {
+	if base := strings.ToUpper(strings.TrimSpace(fx.BaseCurrency)); base != "" {
+		return base
+	}
+	if curr := strings.ToUpper(strings.TrimSpace(currency)); curr != "" {
+		return curr
+	}
+	return "VND"
 }
 
 // RecordOrderPosting recognizes completed orders into financial_postings or tracks pending orders.
@@ -99,24 +108,57 @@ func (s *Service) RecordOrderPosting(ctx context.Context, input OrderPostingInpu
 		input.EffectiveAt = s.clock()
 	}
 
-	// If order is not completed (e.g. created, confirmed, fulfilled), keep in pending pool
-	if input.LifecycleState != "completed" {
-		s.mu.Lock()
-		s.pendingOrders[input.OrderID] = input
-		s.mu.Unlock()
-		return nil
-	}
-
-	// Order is completed: remove from pending pool if present
-	s.mu.Lock()
-	delete(s.pendingOrders, input.OrderID)
-	s.mu.Unlock()
-
-	// FX Conversion to base currency
+	baseCurrency := effectiveBaseCurrency(input.Currency, input.ExchangeRateSnapshot)
 	baseRevenue, err := ComputeBaseAmount(input.GrossAmount, input.ExchangeRateSnapshot)
 	if err != nil {
 		return fmt.Errorf("fx conversion for revenue: %w", err)
 	}
+
+	var baseCOGS *tenantdb.ExactDecimal
+	if input.COGSAmount != nil {
+		cVal, cErr := ComputeBaseAmount(*input.COGSAmount, input.ExchangeRateSnapshot)
+		if cErr != nil {
+			return fmt.Errorf("fx conversion for cogs: %w", cErr)
+		}
+		baseCOGS = &cVal
+	}
+
+	pendingKey := orderStoreKey(input.WorkspaceID, input.OrderID)
+
+	// If order is not completed (e.g. created, confirmed, fulfilled), keep in pending pool and persist order state
+	if input.LifecycleState != "completed" {
+		s.mu.Lock()
+		s.pendingOrders[pendingKey] = input
+		s.mu.Unlock()
+		_ = s.store.CreateOrder(ctx, &Order{
+			OrderID:             input.OrderID,
+			WorkspaceID:         input.WorkspaceID,
+			Amount:              baseRevenue,
+			Currency:            baseCurrency,
+			LifecycleState:      input.LifecycleState,
+			ReconciliationState: ReconciliationImportedOnly,
+			COGSAmount:          baseCOGS,
+			OrderedAt:           input.EffectiveAt,
+		})
+		return nil
+	}
+
+	// Order is completed: remove from pending pool if present and persist durable order state
+	s.mu.Lock()
+	delete(s.pendingOrders, pendingKey)
+	delete(s.pendingOrders, input.OrderID)
+	s.mu.Unlock()
+
+	_ = s.store.CreateOrder(ctx, &Order{
+		OrderID:             input.OrderID,
+		WorkspaceID:         input.WorkspaceID,
+		Amount:              baseRevenue,
+		Currency:            baseCurrency,
+		LifecycleState:      input.LifecycleState,
+		ReconciliationState: ReconciliationImportedOnly,
+		COGSAmount:          baseCOGS,
+		OrderedAt:           input.EffectiveAt,
+	})
 
 	// 1. Post Revenue (positive)
 	revPosting := &FinancialPosting{
@@ -126,7 +168,7 @@ func (s *Service) RecordOrderPosting(ctx context.Context, input OrderPostingInpu
 		OriginVersion:        input.OrderVersion,
 		Component:            ComponentRevenue,
 		Amount:               baseRevenue,
-		Currency:             input.Currency,
+		Currency:             baseCurrency,
 		SourceClass:          input.SourceClass,
 		Confidence:           input.Confidence,
 		ExchangeRateSnapshot: input.ExchangeRateSnapshot,
@@ -144,7 +186,7 @@ func (s *Service) RecordOrderPosting(ctx context.Context, input OrderPostingInpu
 		GrossRevenue:      baseRevenue,
 		RefundDeduction:   tenantdb.ZeroDecimal(),
 		NetRevenue:        baseRevenue,
-		Currency:          input.Currency,
+		Currency:          baseCurrency,
 		SourceClass:       input.SourceClass,
 		Confidence:        input.Confidence,
 		LifecycleState:    input.LifecycleState,
@@ -165,7 +207,7 @@ func (s *Service) RecordOrderPosting(ctx context.Context, input OrderPostingInpu
 			OriginVersion:        input.OrderVersion,
 			Component:            ComponentPlatformFee,
 			Amount:               negFee,
-			Currency:             input.Currency,
+			Currency:             baseCurrency,
 			SourceClass:          input.SourceClass,
 			Confidence:           input.Confidence,
 			ExchangeRateSnapshot: input.ExchangeRateSnapshot,
@@ -191,7 +233,7 @@ func (s *Service) RecordOrderPosting(ctx context.Context, input OrderPostingInpu
 			OriginVersion:        input.OrderVersion,
 			Component:            ComponentShipping,
 			Amount:               negShip,
-			Currency:             input.Currency,
+			Currency:             baseCurrency,
 			SourceClass:          input.SourceClass,
 			Confidence:           input.Confidence,
 			ExchangeRateSnapshot: input.ExchangeRateSnapshot,
@@ -203,38 +245,25 @@ func (s *Service) RecordOrderPosting(ctx context.Context, input OrderPostingInpu
 		}
 	}
 
-	// 4. Post COGS (negative) if present, or flag missing
-	if input.COGSAmount == nil {
-		s.mu.Lock()
-		s.missingCOGSOrders[input.OrderID] = true
-		s.mu.Unlock()
-	} else {
-		s.mu.Lock()
-		delete(s.missingCOGSOrders, input.OrderID)
-		s.mu.Unlock()
-		if !input.COGSAmount.IsZero() {
-			baseCOGS, err := ComputeBaseAmount(*input.COGSAmount, input.ExchangeRateSnapshot)
-			if err != nil {
-				return fmt.Errorf("fx conversion for cogs: %w", err)
-			}
-			negCOGS, _ := tenantdb.ZeroDecimal().Sub(baseCOGS)
-			cogsPosting := &FinancialPosting{
-				WorkspaceID:          input.WorkspaceID,
-				OriginType:           "order",
-				OriginID:             input.OrderID,
-				OriginVersion:        input.OrderVersion,
-				Component:            ComponentCOGS,
-				Amount:               negCOGS,
-				Currency:             input.Currency,
-				SourceClass:          input.SourceClass,
-				Confidence:           input.Confidence,
-				ExchangeRateSnapshot: input.ExchangeRateSnapshot,
-				EffectiveAt:          input.EffectiveAt,
-				CreatedAt:            s.clock(),
-			}
-			if err := s.store.CreatePosting(ctx, cogsPosting); err != nil && err != ErrDuplicatePosting {
-				return err
-			}
+	// 4. Post COGS (negative) if present
+	if baseCOGS != nil && !baseCOGS.IsZero() {
+		negCOGS, _ := tenantdb.ZeroDecimal().Sub(*baseCOGS)
+		cogsPosting := &FinancialPosting{
+			WorkspaceID:          input.WorkspaceID,
+			OriginType:           "order",
+			OriginID:             input.OrderID,
+			OriginVersion:        input.OrderVersion,
+			Component:            ComponentCOGS,
+			Amount:               negCOGS,
+			Currency:             baseCurrency,
+			SourceClass:          input.SourceClass,
+			Confidence:           input.Confidence,
+			ExchangeRateSnapshot: input.ExchangeRateSnapshot,
+			EffectiveAt:          input.EffectiveAt,
+			CreatedAt:            s.clock(),
+		}
+		if err := s.store.CreatePosting(ctx, cogsPosting); err != nil && err != ErrDuplicatePosting {
+			return err
 		}
 	}
 
@@ -252,7 +281,7 @@ func (s *Service) RecordOrderPosting(ctx context.Context, input OrderPostingInpu
 			OriginVersion:        input.OrderVersion,
 			Component:            ComponentCommission,
 			Amount:               negComm,
-			Currency:             input.Currency,
+			Currency:             baseCurrency,
 			SourceClass:          input.SourceClass,
 			Confidence:           input.Confidence,
 			ExchangeRateSnapshot: input.ExchangeRateSnapshot,
@@ -268,6 +297,20 @@ func (s *Service) RecordOrderPosting(ctx context.Context, input OrderPostingInpu
 }
 
 // RecordOrderCorrection reverses a prior component posting and appends a corrected one (F06).
+func (s *Service) effectiveAtFromDate(effectiveDate string) time.Time {
+	trimmed := strings.TrimSpace(effectiveDate)
+	if trimmed == "" {
+		return s.clock()
+	}
+	if t, err := time.Parse("2006-01-02", trimmed); err == nil {
+		return t.UTC().Add(12 * time.Hour)
+	}
+	if t, err := time.Parse(time.RFC3339, trimmed); err == nil {
+		return t.UTC()
+	}
+	return s.clock()
+}
+
 func (s *Service) RecordOrderCorrection(
 	ctx context.Context,
 	workspaceID, orderID, component string,
@@ -278,10 +321,7 @@ func (s *Service) RecordOrderCorrection(
 ) error {
 	now := s.clock()
 	effectiveAt := now
-	currency := fx.QuoteCurrency
-	if currency == "" {
-		currency = fx.BaseCurrency
-	}
+	currency := effectiveBaseCurrency("", fx)
 
 	existing, err := s.store.FindPostingByOrigin(ctx, workspaceID, "order", orderID, component)
 	if err != nil && !errors.Is(err, ErrPostingNotFound) {
@@ -331,6 +371,17 @@ func (s *Service) RecordOrderCorrection(
 	if err := s.store.CreatePosting(ctx, corrected); err != nil && !errors.Is(err, ErrDuplicatePosting) {
 		return err
 	}
+
+	if component == ComponentCOGS && !newAmount.IsZero() {
+		if ord, ordErr := s.store.GetOrder(ctx, workspaceID, orderID); ordErr == nil && ord != nil {
+			absCOGS := newAmount
+			if absCOGS.IsNegative() {
+				absCOGS = absCOGS.Neg()
+			}
+			ord.COGSAmount = &absCOGS
+			_ = s.store.CreateOrder(ctx, ord)
+		}
+	}
 	return nil
 }
 
@@ -355,6 +406,12 @@ func (s *Service) RecordRefundPosting(
 		return err
 	}
 	negRefund, _ := tenantdb.ZeroDecimal().Sub(baseRefund)
+	baseCurrency := effectiveBaseCurrency(currency, fx)
+
+	effectiveAt := s.clock()
+	if ord, ordErr := s.store.GetOrder(ctx, workspaceID, orderID); ordErr == nil && ord != nil && !ord.OrderedAt.IsZero() {
+		effectiveAt = ord.OrderedAt
+	}
 
 	posting := &FinancialPosting{
 		WorkspaceID:          workspaceID,
@@ -363,12 +420,17 @@ func (s *Service) RecordRefundPosting(
 		OriginVersion:        "v1",
 		Component:            ComponentRefund,
 		Amount:               negRefund,
-		Currency:             currency,
+		Currency:             baseCurrency,
 		SourceClass:          sourceClass,
 		Confidence:           confidence,
 		ExchangeRateSnapshot: fx,
-		EffectiveAt:          s.clock(),
+		EffectiveAt:          effectiveAt,
 		CreatedAt:            s.clock(),
+	}
+	if orderID != "" {
+		s.mu.Lock()
+		s.refundOrderIDs[orderStoreKey(workspaceID, refundID)] = orderID
+		s.mu.Unlock()
 	}
 	if s.attributionEngine != nil {
 		s.attributionEngine.RecordRefundDeduction(orderID, baseRefund)
@@ -381,40 +443,44 @@ func (s *Service) RecordRefundPosting(
 
 // CreateCostItem creates a cost item and posts to financial ledger if recorded/reconciled.
 func (s *Service) CreateCostItem(ctx context.Context, item *CostItem) (*CostItem, error) {
-	if item.WorkspaceID == "" {
+	if item == nil || strings.TrimSpace(item.WorkspaceID) == "" {
 		return nil, ErrMissingTenant
 	}
 	if err := s.store.CreateCostItem(ctx, item); err != nil {
 		return nil, err
 	}
 
-	// Map cost_type to financial component
-	comp := mapCostTypeToComponent(item.CostType)
+	if item.CostState != CostStateSuperseded {
+		// Map cost_type to financial component
+		comp := mapCostTypeToComponent(item.CostType)
 
-	// Costs are negative financial postings
-	negAmount, _ := tenantdb.ZeroDecimal().Sub(item.Amount)
-	fx := ExchangeRateSnapshot{
-		BaseCurrency:  item.Currency,
-		QuoteCurrency: item.Currency,
-		RateToBase:    "1",
-		SourceClass:   item.SourceClass,
-	}
+		// Costs are negative financial postings
+		negAmount, _ := tenantdb.ZeroDecimal().Sub(item.Amount)
+		fx := ExchangeRateSnapshot{
+			BaseCurrency:  item.Currency,
+			QuoteCurrency: item.Currency,
+			RateToBase:    "1",
+			SourceClass:   item.SourceClass,
+		}
 
-	posting := &FinancialPosting{
-		WorkspaceID:          item.WorkspaceID,
-		OriginType:           "cost_item",
-		OriginID:             item.CostItemID,
-		OriginVersion:        "v1",
-		Component:            comp,
-		Amount:               negAmount,
-		Currency:             item.Currency,
-		SourceClass:          item.SourceClass,
-		Confidence:           ConfidenceMedium,
-		ExchangeRateSnapshot: fx,
-		EffectiveAt:          s.clock(),
-		CreatedAt:            s.clock(),
+		posting := &FinancialPosting{
+			WorkspaceID:          item.WorkspaceID,
+			OriginType:           "cost_item",
+			OriginID:             item.CostItemID,
+			OriginVersion:        "v1",
+			Component:            comp,
+			Amount:               negAmount,
+			Currency:             item.Currency,
+			SourceClass:          item.SourceClass,
+			Confidence:           ConfidenceMedium,
+			ExchangeRateSnapshot: fx,
+			EffectiveAt:          s.effectiveAtFromDate(item.EffectiveDate),
+			CreatedAt:            s.clock(),
+		}
+		if err := s.store.CreatePosting(ctx, posting); err != nil && !errors.Is(err, ErrDuplicatePosting) {
+			return nil, err
+		}
 	}
-	_ = s.store.CreatePosting(ctx, posting)
 
 	if s.eventSink != nil {
 		payload, _ := json.Marshal(map[string]any{
@@ -443,13 +509,177 @@ func (s *Service) ListCostItems(ctx context.Context, workspaceID string, filter 
 }
 
 func (s *Service) UpdateCostItem(ctx context.Context, item *CostItem) (*CostItem, error) {
+	if item == nil || strings.TrimSpace(item.WorkspaceID) == "" {
+		return nil, ErrMissingTenant
+	}
+	existing, err := s.store.GetCostItem(ctx, item.WorkspaceID, item.CostItemID)
+	if err != nil {
+		return nil, err
+	}
+	if item.CostType == "" {
+		item.CostType = existing.CostType
+	}
+	if item.Currency == "" {
+		item.Currency = existing.Currency
+	}
+	if item.SourceClass == "" {
+		item.SourceClass = existing.SourceClass
+	}
+	if item.CostState == "" {
+		item.CostState = existing.CostState
+	}
+	if item.EffectiveDate == "" {
+		item.EffectiveDate = existing.EffectiveDate
+	}
+	if item.RelatedScopeType == "" {
+		item.RelatedScopeType = existing.RelatedScopeType
+	}
+	if item.RelatedScopeID == "" {
+		item.RelatedScopeID = existing.RelatedScopeID
+	}
+	if item.EvidenceID == "" {
+		item.EvidenceID = existing.EvidenceID
+	}
+	if item.ConfidenceReason == "" {
+		item.ConfidenceReason = existing.ConfidenceReason
+	}
+	if item.Description == "" {
+		item.Description = existing.Description
+	}
+	if item.CreatedAt.IsZero() {
+		item.CreatedAt = existing.CreatedAt
+	}
+
 	if err := s.store.UpdateCostItem(ctx, item); err != nil {
 		return nil, err
 	}
+
+	postings, err := s.store.ListPostings(ctx, item.WorkspaceID, PostingFilter{
+		OriginType: "cost_item",
+		OriginID:   item.CostItemID,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	reversedIDs := make(map[string]bool)
+	nonReversalCount := 0
+	for _, p := range postings {
+		if p.ReversalOf != nil && *p.ReversalOf != "" {
+			reversedIDs[*p.ReversalOf] = true
+		} else {
+			nonReversalCount++
+		}
+	}
+
+	now := s.clock()
+	for _, p := range postings {
+		if p.ReversalOf != nil || reversedIDs[p.PostingID] {
+			continue
+		}
+		oldID := p.PostingID
+		revAmount, _ := tenantdb.ZeroDecimal().Sub(p.Amount)
+		reversal := &FinancialPosting{
+			WorkspaceID:          item.WorkspaceID,
+			OriginType:           "cost_item",
+			OriginID:             item.CostItemID,
+			OriginVersion:        p.OriginVersion + "-reversal",
+			Component:            p.Component,
+			Amount:               revAmount,
+			Currency:             p.Currency,
+			SourceClass:          p.SourceClass,
+			Confidence:           p.Confidence,
+			ExchangeRateSnapshot: p.ExchangeRateSnapshot,
+			ReversalOf:           &oldID,
+			EffectiveAt:          p.EffectiveAt,
+			CreatedAt:            now,
+		}
+		if err := s.store.CreatePosting(ctx, reversal); err != nil && !errors.Is(err, ErrDuplicatePosting) {
+			return nil, fmt.Errorf("reverse cost item posting: %w", err)
+		}
+	}
+
+	if item.CostState != CostStateSuperseded {
+		comp := mapCostTypeToComponent(item.CostType)
+		negAmount, _ := tenantdb.ZeroDecimal().Sub(item.Amount)
+		fx := ExchangeRateSnapshot{
+			BaseCurrency:  item.Currency,
+			QuoteCurrency: item.Currency,
+			RateToBase:    "1",
+			SourceClass:   item.SourceClass,
+		}
+		replacement := &FinancialPosting{
+			WorkspaceID:          item.WorkspaceID,
+			OriginType:           "cost_item",
+			OriginID:             item.CostItemID,
+			OriginVersion:        fmt.Sprintf("v%d", nonReversalCount+1),
+			Component:            comp,
+			Amount:               negAmount,
+			Currency:             item.Currency,
+			SourceClass:          item.SourceClass,
+			Confidence:           ConfidenceMedium,
+			ExchangeRateSnapshot: fx,
+			EffectiveAt:          s.effectiveAtFromDate(item.EffectiveDate),
+			CreatedAt:            now,
+		}
+		if err := s.store.CreatePosting(ctx, replacement); err != nil && !errors.Is(err, ErrDuplicatePosting) {
+			return nil, fmt.Errorf("create updated cost item posting: %w", err)
+		}
+	}
+
 	return item, nil
 }
 
 func (s *Service) DeleteCostItem(ctx context.Context, workspaceID, costItemID string) error {
+	if strings.TrimSpace(workspaceID) == "" {
+		return ErrMissingTenant
+	}
+	if _, err := s.store.GetCostItem(ctx, workspaceID, costItemID); err != nil {
+		return err
+	}
+
+	postings, err := s.store.ListPostings(ctx, workspaceID, PostingFilter{
+		OriginType: "cost_item",
+		OriginID:   costItemID,
+	})
+	if err != nil {
+		return err
+	}
+
+	reversedIDs := make(map[string]bool)
+	for _, p := range postings {
+		if p.ReversalOf != nil && *p.ReversalOf != "" {
+			reversedIDs[*p.ReversalOf] = true
+		}
+	}
+
+	now := s.clock()
+	for _, p := range postings {
+		if p.ReversalOf != nil || reversedIDs[p.PostingID] {
+			continue
+		}
+		oldID := p.PostingID
+		revAmount, _ := tenantdb.ZeroDecimal().Sub(p.Amount)
+		reversal := &FinancialPosting{
+			WorkspaceID:          workspaceID,
+			OriginType:           "cost_item",
+			OriginID:             costItemID,
+			OriginVersion:        p.OriginVersion + "-deleted",
+			Component:            p.Component,
+			Amount:               revAmount,
+			Currency:             p.Currency,
+			SourceClass:          p.SourceClass,
+			Confidence:           p.Confidence,
+			ExchangeRateSnapshot: p.ExchangeRateSnapshot,
+			ReversalOf:           &oldID,
+			EffectiveAt:          p.EffectiveAt,
+			CreatedAt:            now,
+		}
+		if err := s.store.CreatePosting(ctx, reversal); err != nil && !errors.Is(err, ErrDuplicatePosting) {
+			return fmt.Errorf("reverse deleted cost item posting: %w", err)
+		}
+	}
+
 	return s.store.DeleteCostItem(ctx, workspaceID, costItemID)
 }
 
@@ -584,14 +814,170 @@ func (s *Service) AllocateSettlementLine(
 	return s.store.UpdateSettlementLineMatched(ctx, workspaceID, lineID, newMatched, newState)
 }
 
+type workspaceOrderLister interface {
+	ListOrders(ctx context.Context, workspaceID string) ([]Order, error)
+}
+
+func parseReportPeriodBounds(periodStart, periodEnd string) (*time.Time, *time.Time, error) {
+	var startUTC *time.Time
+	var endUTC *time.Time
+
+	if s := strings.TrimSpace(periodStart); s != "" {
+		if t, err := time.Parse("2006-01-02", s); err == nil {
+			u := t.UTC()
+			startUTC = &u
+		} else if t, err := time.Parse(time.RFC3339, s); err == nil {
+			u := t.UTC()
+			startUTC = &u
+		} else {
+			return nil, nil, fmt.Errorf("%w: invalid period_start %q", ErrInvalidReportPeriod, periodStart)
+		}
+	}
+
+	if e := strings.TrimSpace(periodEnd); e != "" {
+		if t, err := time.Parse("2006-01-02", e); err == nil {
+			u := t.UTC().Add(24*time.Hour - time.Nanosecond)
+			endUTC = &u
+		} else if t, err := time.Parse(time.RFC3339, e); err == nil {
+			u := t.UTC()
+			endUTC = &u
+		} else {
+			return nil, nil, fmt.Errorf("%w: invalid period_end %q", ErrInvalidReportPeriod, periodEnd)
+		}
+	}
+
+	if startUTC != nil && endUTC != nil && endUTC.Before(*startUTC) {
+		return nil, nil, fmt.Errorf("%w: period_end (%s) is before period_start (%s)", ErrInvalidReportPeriod, periodEnd, periodStart)
+	}
+	return startUTC, endUTC, nil
+}
+
+func timeWithinPeriodBounds(ts time.Time, startUTC, endUTC *time.Time) bool {
+	if ts.IsZero() {
+		return true
+	}
+	if startUTC != nil && ts.Before(*startUTC) {
+		return false
+	}
+	if endUTC != nil && ts.After(*endUTC) {
+		return false
+	}
+	return true
+}
+
+func (s *Service) getRefundOrderID(workspaceID, refundID string) string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.refundOrderIDs[orderStoreKey(workspaceID, refundID)]
+}
+
+func (s *Service) postingMatchesScope(
+	workspaceID string,
+	p FinancialPosting,
+	scopeType, scopeID string,
+	costItemsByID map[string]CostItem,
+	settlementLinesByID map[string]SettlementLine,
+	settlementsByID map[string]Settlement,
+) bool {
+	st := strings.ToLower(strings.TrimSpace(scopeType))
+	sid := strings.TrimSpace(scopeID)
+	if st == "" || st == "workspace" || st == "period" {
+		return true
+	}
+	if sid == "" {
+		return true
+	}
+
+	switch st {
+	case "order":
+		if p.OriginType == "order" {
+			return p.OriginID == sid
+		}
+		if p.OriginType == "cost_item" {
+			if ci, ok := costItemsByID[p.OriginID]; ok {
+				return strings.EqualFold(ci.RelatedScopeType, "order") && ci.RelatedScopeID == sid
+			}
+			return false
+		}
+		if p.OriginType == "settlement_line" {
+			if l, ok := settlementLinesByID[p.OriginID]; ok {
+				return l.OrderID == sid
+			}
+			return false
+		}
+		if p.OriginType == "refund" {
+			return p.OriginID == sid || s.getRefundOrderID(workspaceID, p.OriginID) == sid
+		}
+		return p.OriginID == sid
+
+	case "platform":
+		if p.OriginType == "cost_item" {
+			if ci, ok := costItemsByID[p.OriginID]; ok {
+				return strings.EqualFold(ci.RelatedScopeType, "platform") && strings.EqualFold(ci.RelatedScopeID, sid)
+			}
+			return false
+		}
+		if p.OriginType == "settlement_line" {
+			if l, ok := settlementLinesByID[p.OriginID]; ok {
+				if sm, ok := settlementsByID[l.SettlementID]; ok {
+					return strings.EqualFold(sm.SourcePlatform, sid)
+				}
+			}
+			return false
+		}
+		return strings.EqualFold(p.OriginID, sid)
+
+	default:
+		if p.OriginID == sid {
+			return true
+		}
+		if p.OriginType == "cost_item" {
+			if ci, ok := costItemsByID[p.OriginID]; ok {
+				return strings.EqualFold(ci.RelatedScopeType, st) && ci.RelatedScopeID == sid
+			}
+		}
+		return false
+	}
+}
+
+func orderMatchesScope(orderID, scopeType, scopeID string) bool {
+	st := strings.ToLower(strings.TrimSpace(scopeType))
+	sid := strings.TrimSpace(scopeID)
+	if st == "" || st == "workspace" || st == "period" || sid == "" {
+		return true
+	}
+	if st == "order" {
+		return orderID == sid
+	}
+	return false
+}
+
 // GetOrComputeProfitSnapshot retrieves the latest snapshot or computes a fresh one from postings.
 func (s *Service) GetOrComputeProfitSnapshot(
 	ctx context.Context,
 	workspaceID, scopeType, scopeID, periodStart, periodEnd string,
 	forceRefresh bool,
 ) (*ProfitSnapshot, error) {
-	if workspaceID == "" {
+	if strings.TrimSpace(workspaceID) == "" {
 		return nil, ErrMissingTenant
+	}
+
+	normScopeType := strings.ToLower(strings.TrimSpace(scopeType))
+	if normScopeType == "" {
+		normScopeType = "workspace"
+	}
+	normScopeID := strings.TrimSpace(scopeID)
+	if normScopeType == "workspace" {
+		if normScopeID == "" {
+			normScopeID = workspaceID
+		} else if normScopeID != workspaceID {
+			return nil, tenantdb.ErrScopeMismatch
+		}
+	}
+
+	startUTC, endUTC, err := parseReportPeriodBounds(periodStart, periodEnd)
+	if err != nil {
+		return nil, err
 	}
 
 	if !forceRefresh {
@@ -601,54 +987,173 @@ func (s *Service) GetOrComputeProfitSnapshot(
 		}
 	}
 
-	// Compute fresh snapshot from active postings
-	postings, err := s.store.ListPostings(ctx, workspaceID, PostingFilter{})
+	// Fetch all postings in workspace so reversal links are resolved deterministically before scope/period filtering
+	allPostings, err := s.store.ListPostings(ctx, workspaceID, PostingFilter{})
 	if err != nil {
 		return nil, err
 	}
 
-	s.mu.RLock()
-	missingCOGSCount := len(s.missingCOGSOrders)
-	hasMissingCOGS := missingCOGSCount > 0
-	var wsPending []OrderPostingInput
-	for _, p := range s.pendingOrders {
-		if p.WorkspaceID == workspaceID {
-			wsPending = append(wsPending, p)
+	reversedIDs := make(map[string]bool)
+	for _, p := range allPostings {
+		if p.ReversalOf != nil && *p.ReversalOf != "" {
+			reversedIDs[*p.ReversalOf] = true
 		}
 	}
-	s.mu.RUnlock()
 
-	summary, err := SummarizePostings(postings, hasMissingCOGS)
-	if err != nil {
-		return nil, err
+	costItems, _, _ := s.store.ListCostItems(ctx, workspaceID, CostItemFilter{}, 10000, 0)
+	costItemsByID := make(map[string]CostItem, len(costItems))
+	for _, ci := range costItems {
+		costItemsByID[ci.CostItemID] = ci
 	}
 
-	// Calculate pending revenue from pending orders
-	pendingRevenue := tenantdb.ZeroDecimal()
-	for _, p := range wsPending {
-		baseP, _ := ComputeBaseAmount(p.GrossAmount, p.ExchangeRateSnapshot)
-		pendingRevenue, _ = pendingRevenue.Add(baseP)
+	sments, _, _ := s.store.ListSettlements(ctx, workspaceID, SettlementFilter{}, 1000, 0)
+	settlementsByID := make(map[string]Settlement, len(sments))
+	settlementLinesByID := make(map[string]SettlementLine)
+	for _, sm := range sments {
+		settlementsByID[sm.SettlementID] = sm
+		for _, l := range sm.Lines {
+			settlementLinesByID[l.LineID] = l
+		}
 	}
 
-	// Calculate unreconciled bucket from settlements
-	unreconciledAmount := tenantdb.ZeroDecimal()
-	unreconciledCount := 0
-	sments, _, err := s.store.ListSettlements(ctx, workspaceID, SettlementFilter{}, 1000, 0)
-	if err == nil {
-		for _, sm := range sments {
-			for _, l := range sm.Lines {
-				if l.ReconciliationState == ReconciliationImportedOnly || l.ReconciliationState == ReconciliationAwaitingEvidence {
-					unreconciledCount++
-					unmatched, _ := l.NetAmount.Sub(l.MatchedAmount)
-					unreconciledAmount, _ = unreconciledAmount.Add(unmatched)
-				}
+	var storedOrders []Order
+	if lister, ok := s.store.(workspaceOrderLister); ok {
+		storedOrders, _ = lister.ListOrders(ctx, workspaceID)
+	}
+
+	// Filter postings by period bounds and requested scope
+	var filteredPostings []FinancialPosting
+	for _, p := range allPostings {
+		if p.ReversalOf != nil && *p.ReversalOf != "" {
+			continue
+		}
+		if reversedIDs[p.PostingID] {
+			continue
+		}
+		if !timeWithinPeriodBounds(p.EffectiveAt, startUTC, endUTC) {
+			continue
+		}
+		if !s.postingMatchesScope(workspaceID, p, normScopeType, normScopeID, costItemsByID, settlementLinesByID, settlementsByID) {
+			continue
+		}
+		filteredPostings = append(filteredPostings, p)
+	}
+
+	// Determine durable tenant-isolated missing-COGS count within the requested scope and period
+	ordersWithCOGS := make(map[string]bool)
+	for _, o := range storedOrders {
+		if o.COGSAmount != nil && !o.COGSAmount.IsZero() {
+			ordersWithCOGS[o.OrderID] = true
+		}
+	}
+	for _, p := range allPostings {
+		if p.ReversalOf != nil || reversedIDs[p.PostingID] || p.Component != ComponentCOGS || p.Amount.IsZero() {
+			continue
+		}
+		if p.OriginType == "order" {
+			ordersWithCOGS[p.OriginID] = true
+		} else if p.OriginType == "cost_item" {
+			if ci, ok := costItemsByID[p.OriginID]; ok &&
+				ci.CostState != CostStateSuperseded &&
+				strings.EqualFold(ci.RelatedScopeType, "order") &&
+				ci.RelatedScopeID != "" {
+				ordersWithCOGS[ci.RelatedScopeID] = true
 			}
 		}
 	}
 
-	currency := "VND"
-	if len(postings) > 0 {
-		currency = postings[0].Currency
+	missingCOGSOrders := make(map[string]bool)
+	for _, p := range filteredPostings {
+		if p.OriginType == "order" && p.Component == ComponentRevenue && !ordersWithCOGS[p.OriginID] {
+			missingCOGSOrders[p.OriginID] = true
+		}
+	}
+	for _, o := range storedOrders {
+		if o.LifecycleState != "completed" {
+			continue
+		}
+		if !timeWithinPeriodBounds(o.OrderedAt, startUTC, endUTC) {
+			continue
+		}
+		if !orderMatchesScope(o.OrderID, normScopeType, normScopeID) {
+			continue
+		}
+		if !ordersWithCOGS[o.OrderID] {
+			missingCOGSOrders[o.OrderID] = true
+		}
+	}
+
+	missingCOGSCount := len(missingCOGSOrders)
+	hasMissingCOGS := missingCOGSCount > 0
+
+	summary, err := SummarizePostings(filteredPostings, hasMissingCOGS)
+	if err != nil {
+		return nil, err
+	}
+
+	// Calculate pending revenue from pending orders in this workspace, period, and scope
+	pendingRevenue := tenantdb.ZeroDecimal()
+	seenPendingOrders := make(map[string]bool)
+	s.mu.RLock()
+	for _, p := range s.pendingOrders {
+		if p.WorkspaceID != workspaceID {
+			continue
+		}
+		if !timeWithinPeriodBounds(p.EffectiveAt, startUTC, endUTC) {
+			continue
+		}
+		if !orderMatchesScope(p.OrderID, normScopeType, normScopeID) {
+			continue
+		}
+		seenPendingOrders[p.OrderID] = true
+		baseP, _ := ComputeBaseAmount(p.GrossAmount, p.ExchangeRateSnapshot)
+		pendingRevenue, _ = pendingRevenue.Add(baseP)
+	}
+	s.mu.RUnlock()
+	for _, o := range storedOrders {
+		if seenPendingOrders[o.OrderID] {
+			continue
+		}
+		if o.LifecycleState == "completed" || o.LifecycleState == "cancelled" || o.LifecycleState == "refunded" || o.LifecycleState == "" {
+			continue
+		}
+		if !timeWithinPeriodBounds(o.OrderedAt, startUTC, endUTC) {
+			continue
+		}
+		if !orderMatchesScope(o.OrderID, normScopeType, normScopeID) {
+			continue
+		}
+		pendingRevenue, _ = pendingRevenue.Add(o.Amount)
+	}
+
+	// Calculate unreconciled bucket from settlements within period and scope
+	unreconciledAmount := tenantdb.ZeroDecimal()
+	unreconciledCount := 0
+	for _, sm := range sments {
+		if sm.EffectiveDate != "" {
+			effTime := s.effectiveAtFromDate(sm.EffectiveDate)
+			if !timeWithinPeriodBounds(effTime, startUTC, endUTC) {
+				continue
+			}
+		}
+		for _, l := range sm.Lines {
+			if normScopeType == "order" && normScopeID != "" && l.OrderID != normScopeID {
+				continue
+			}
+			if normScopeType == "platform" && normScopeID != "" && !strings.EqualFold(sm.SourcePlatform, normScopeID) {
+				continue
+			}
+			if l.ReconciliationState == ReconciliationImportedOnly || l.ReconciliationState == ReconciliationAwaitingEvidence {
+				unreconciledCount++
+				unmatched, _ := l.NetAmount.Sub(l.MatchedAmount)
+				unreconciledAmount, _ = unreconciledAmount.Add(unmatched)
+			}
+		}
+	}
+
+	currency := summary.Currency
+	if currency == "" {
+		currency = "VND"
 	}
 
 	snapshot := &ProfitSnapshot{
@@ -920,9 +1425,17 @@ func (s *Service) ListPendingGaps(
 		}
 	}
 
-	s.mu.RLock()
-	missingCOGS := int32(len(s.missingCOGSOrders))
-	s.mu.RUnlock()
+	// Compute tenant-scoped missing COGS count from durable store gaps
+	missingCOGS := int32(0)
+	if _, cogsTotal, cogsErr := s.store.ListDataGaps(ctx, workspaceID, DataGapFilter{GapType: "missing_cogs"}, 0, 0); cogsErr == nil {
+		missingCOGS = int32(cogsTotal)
+	} else {
+		for _, item := range items {
+			if item.GapType == "missing_cogs" {
+				missingCOGS++
+			}
+		}
+	}
 
 	return items, total, missingCOGS, unreconciledAmount, int32(unreconciledCount), nil
 }

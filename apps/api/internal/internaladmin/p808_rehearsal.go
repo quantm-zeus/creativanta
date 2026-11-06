@@ -292,6 +292,93 @@ type FileBackedDisposableDBTarget struct {
 	CorruptCount int
 }
 
+func verifyRestoredFinancialPostingsBalance(workspaces []WorkspaceSnapshot, postings []FinancialPostingSnapshot) (int64, int64, error) {
+	validWorkspaces := make(map[string]struct{}, len(workspaces))
+	for _, ws := range workspaces {
+		wsID := strings.TrimSpace(ws.WorkspaceID)
+		if wsID != "" {
+			validWorkspaces[wsID] = struct{}{}
+		}
+	}
+
+	type wsCurrencyKey struct {
+		workspaceID string
+		currency    string
+	}
+	type wsCurrencyOpKey struct {
+		workspaceID    string
+		currency       string
+		idempotencyKey string
+	}
+
+	perWsCurrDebit := make(map[wsCurrencyKey]int64)
+	perWsCurrCredit := make(map[wsCurrencyKey]int64)
+	perOpDebit := make(map[wsCurrencyOpKey]int64)
+	perOpCredit := make(map[wsCurrencyOpKey]int64)
+	var totalDebitMicro, totalCreditMicro int64
+
+	for _, p := range postings {
+		if p.AmountMicro <= 0 {
+			return 0, 0, fmt.Errorf("%w: invalid non-positive financial posting amount %d", ErrRestoreIntegrityFailed, p.AmountMicro)
+		}
+		wsID := strings.TrimSpace(p.WorkspaceID)
+		if wsID == "" {
+			return 0, 0, fmt.Errorf("%w: financial posting %s missing workspace_id", ErrRestoreIntegrityFailed, p.PostingID)
+		}
+		if _, ok := validWorkspaces[wsID]; !ok {
+			return 0, 0, fmt.Errorf("%w: financial posting %s references unknown workspace %s", ErrRestoreIntegrityFailed, p.PostingID, wsID)
+		}
+		curr := strings.ToUpper(strings.TrimSpace(p.Currency))
+		if curr == "" {
+			return 0, 0, fmt.Errorf("%w: financial posting %s missing currency", ErrRestoreIntegrityFailed, p.PostingID)
+		}
+		opKeyStr := strings.TrimSpace(p.IdempotencyKey)
+		if opKeyStr == "" {
+			return 0, 0, fmt.Errorf("%w: financial posting %s missing idempotency_key", ErrRestoreIntegrityFailed, p.PostingID)
+		}
+		key := wsCurrencyKey{workspaceID: wsID, currency: curr}
+		opKey := wsCurrencyOpKey{workspaceID: wsID, currency: curr, idempotencyKey: opKeyStr}
+		switch strings.ToLower(p.Direction) {
+		case "debit":
+			totalDebitMicro += p.AmountMicro
+			perWsCurrDebit[key] += p.AmountMicro
+			perOpDebit[opKey] += p.AmountMicro
+		case "credit":
+			totalCreditMicro += p.AmountMicro
+			perWsCurrCredit[key] += p.AmountMicro
+			perOpCredit[opKey] += p.AmountMicro
+		default:
+			return 0, 0, fmt.Errorf("%w: unknown posting direction %q", ErrRestoreIntegrityFailed, p.Direction)
+		}
+	}
+
+	if totalDebitMicro != totalCreditMicro {
+		return 0, 0, fmt.Errorf("%w: double-entry ledger imbalance after restore (debit=%d, credit=%d)", ErrRestoreIntegrityFailed, totalDebitMicro, totalCreditMicro)
+	}
+	for key, d := range perWsCurrDebit {
+		if c := perWsCurrCredit[key]; d != c {
+			return 0, 0, fmt.Errorf("%w: double-entry ledger imbalance for workspace %s currency %s (debit=%d, credit=%d)", ErrRestoreIntegrityFailed, key.workspaceID, key.currency, d, c)
+		}
+	}
+	for key, c := range perWsCurrCredit {
+		if d := perWsCurrDebit[key]; d != c {
+			return 0, 0, fmt.Errorf("%w: double-entry ledger imbalance for workspace %s currency %s (debit=%d, credit=%d)", ErrRestoreIntegrityFailed, key.workspaceID, key.currency, d, c)
+		}
+	}
+	for opKey, d := range perOpDebit {
+		if c := perOpCredit[opKey]; d != c {
+			return 0, 0, fmt.Errorf("%w: double-entry ledger imbalance for workspace %s currency %s operation %s (debit=%d, credit=%d)", ErrRestoreIntegrityFailed, opKey.workspaceID, opKey.currency, opKey.idempotencyKey, d, c)
+		}
+	}
+	for opKey, c := range perOpCredit {
+		if d := perOpDebit[opKey]; d != c {
+			return 0, 0, fmt.Errorf("%w: double-entry ledger imbalance for workspace %s currency %s operation %s (debit=%d, credit=%d)", ErrRestoreIntegrityFailed, opKey.workspaceID, opKey.currency, opKey.idempotencyKey, d, c)
+		}
+	}
+
+	return totalDebitMicro, totalCreditMicro, nil
+}
+
 // RestoreAndVerifySnapshot materializes tables into TargetDir and reads them back for post-restore reconciliation.
 func (t *FileBackedDisposableDBTarget) RestoreAndVerifySnapshot(ctx context.Context, snap DatabaseSnapshot) (DisposableRestoreOutcome, error) {
 	if err := ctx.Err(); err != nil {
@@ -356,13 +443,9 @@ func (t *FileBackedDisposableDBTarget) RestoreAndVerifySnapshot(ctx context.Cont
 		return DisposableRestoreOutcome{}, err
 	}
 
-	var debitMicro, creditMicro int64
-	for _, p := range postings {
-		if strings.EqualFold(p.Direction, "debit") {
-			debitMicro += p.AmountMicro
-		} else if strings.EqualFold(p.Direction, "credit") {
-			creditMicro += p.AmountMicro
-		}
+	debitMicro, creditMicro, err := verifyRestoredFinancialPostingsBalance(ws, postings)
+	if err != nil {
+		return DisposableRestoreOutcome{}, err
 	}
 
 	wsCount := len(ws) - t.CorruptCount
@@ -478,49 +561,13 @@ func (s *Service) executeRestoreRehearsalInternal(
 		return nil, fmt.Errorf("%w: RTO %ds exceeds 3600s (1 hour) maximum recovery target", ErrRestoreIntegrityFailed, rtoSeconds)
 	}
 
-	// 3. Reconcile double-entry financial postings (exact integer micro-units; debits must equal credits globally AND per workspace/currency).
+	// 3. Reconcile double-entry financial postings (exact integer micro-units; debits must equal credits globally, per workspace/currency, and per operation).
 	if len(restored.Workspaces) == 0 || len(restored.FinancialPostings) == 0 || len(restored.EvidenceObjects) == 0 {
 		return nil, fmt.Errorf("%w: snapshot is missing required workspaces, financial postings, or evidence objects", ErrRestoreIntegrityFailed)
 	}
-	type wsCurrencyKey struct {
-		workspaceID string
-		currency    string
-	}
-	perWsCurrDebit := make(map[wsCurrencyKey]int64)
-	perWsCurrCredit := make(map[wsCurrencyKey]int64)
-	var totalDebitMicro, totalCreditMicro int64
-	for _, p := range restored.FinancialPostings {
-		if p.AmountMicro <= 0 {
-			return nil, fmt.Errorf("%w: invalid non-positive financial posting amount %d", ErrRestoreIntegrityFailed, p.AmountMicro)
-		}
-		curr := strings.ToUpper(strings.TrimSpace(p.Currency))
-		if curr == "" {
-			return nil, fmt.Errorf("%w: financial posting %s missing currency", ErrRestoreIntegrityFailed, p.PostingID)
-		}
-		key := wsCurrencyKey{workspaceID: strings.TrimSpace(p.WorkspaceID), currency: curr}
-		switch strings.ToLower(p.Direction) {
-		case "debit":
-			totalDebitMicro += p.AmountMicro
-			perWsCurrDebit[key] += p.AmountMicro
-		case "credit":
-			totalCreditMicro += p.AmountMicro
-			perWsCurrCredit[key] += p.AmountMicro
-		default:
-			return nil, fmt.Errorf("%w: unknown posting direction %q", ErrRestoreIntegrityFailed, p.Direction)
-		}
-	}
-	if totalDebitMicro != totalCreditMicro {
-		return nil, fmt.Errorf("%w: double-entry ledger imbalance after restore (debit=%d, credit=%d)", ErrRestoreIntegrityFailed, totalDebitMicro, totalCreditMicro)
-	}
-	for key, d := range perWsCurrDebit {
-		if c := perWsCurrCredit[key]; d != c {
-			return nil, fmt.Errorf("%w: double-entry ledger imbalance for workspace %s currency %s (debit=%d, credit=%d)", ErrRestoreIntegrityFailed, key.workspaceID, key.currency, d, c)
-		}
-	}
-	for key, c := range perWsCurrCredit {
-		if d := perWsCurrDebit[key]; d != c {
-			return nil, fmt.Errorf("%w: double-entry ledger imbalance for workspace %s currency %s (debit=%d, credit=%d)", ErrRestoreIntegrityFailed, key.workspaceID, key.currency, d, c)
-		}
+	totalDebitMicro, totalCreditMicro, err := verifyRestoredFinancialPostingsBalance(restored.Workspaces, restored.FinancialPostings)
+	if err != nil {
+		return nil, err
 	}
 
 	// 4. Reconcile AI credit lots per workspace against workspace.AICreditsRemaining.

@@ -372,9 +372,13 @@ func (h *AttributionHandler) RecordAttribution(ctx context.Context, req *connect
 		return nil, err
 	}
 
-	ordAmt, err := tenantdb.ParseExactDecimal(msg.OrderAmount)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	var ordAmt tenantdb.ExactDecimal
+	if msg.OrderAmount != "" {
+		parsedAmt, err := tenantdb.ParseExactDecimal(msg.OrderAmount)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+		ordAmt = parsedAmt
 	}
 
 	var creatorID *string
@@ -457,9 +461,13 @@ func (h *AffiliateCommissionHandler) CalculateCommission(ctx context.Context, re
 		return nil, err
 	}
 
-	ordAmt, err := tenantdb.ParseExactDecimal(msg.OrderAmount)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	var ordAmt tenantdb.ExactDecimal
+	if msg.OrderAmount != "" {
+		parsedAmt, err := tenantdb.ParseExactDecimal(msg.OrderAmount)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+		ordAmt = parsedAmt
 	}
 
 	var creatorID *string

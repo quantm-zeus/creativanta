@@ -426,10 +426,143 @@ func (s *Service) GetAttributionReport(ctx context.Context, workspaceID string, 
 // Commissions & Reversals (Clawbacks)
 // ----------------------------------------------------------------------------
 
+func isEligibleCommissionOrderState(state string) bool {
+	switch strings.ToLower(strings.TrimSpace(state)) {
+	case "paid", "confirmed", "fulfilled", "delivered", "completed", "partially_refunded":
+		return true
+	default:
+		return false
+	}
+}
+
+func isVerifiedSettlementStatus(status string) bool {
+	switch strings.ToLower(strings.TrimSpace(status)) {
+	case "verified", "confirmed", "reconciled", "fully_reconciled":
+		return true
+	default:
+		return false
+	}
+}
+
+func (s *Service) RegisterVerifiedOrder(ctx context.Context, ord *VerifiedOrder) error {
+	if ord == nil || strings.TrimSpace(ord.WorkspaceID) == "" || strings.TrimSpace(ord.OrderID) == "" {
+		return ErrOrderNotVerified
+	}
+	if ord.GrossAmount.Cmp(tenantdb.ZeroDecimal()) <= 0 || ord.RefundedAmount.IsNegative() {
+		return ErrOrderIneligible
+	}
+	if ord.RefundedAmount.Cmp(ord.GrossAmount) > 0 {
+		return ErrOrderIneligible
+	}
+	curr := strings.ToUpper(strings.TrimSpace(ord.Currency))
+	if curr == "" {
+		return ErrOrderCurrencyMismatch
+	}
+	now := s.nowFunc()
+	cp := *ord
+	cp.WorkspaceID = strings.TrimSpace(ord.WorkspaceID)
+	cp.OrderID = strings.TrimSpace(ord.OrderID)
+	cp.Currency = curr
+	if cp.LifecycleState == "" {
+		cp.LifecycleState = "completed"
+	}
+	if cp.CreatedAt.IsZero() {
+		cp.CreatedAt = now
+	}
+	cp.UpdatedAt = now
+	return s.store.UpsertVerifiedOrder(ctx, &cp)
+}
+
+func (s *Service) RegisterVerifiedSettlement(ctx context.Context, settle *VerifiedSettlement) error {
+	if settle == nil || strings.TrimSpace(settle.WorkspaceID) == "" || strings.TrimSpace(settle.SettlementID) == "" {
+		return ErrSettlementRequired
+	}
+	if settle.NetAmount.Cmp(tenantdb.ZeroDecimal()) <= 0 || settle.AllocatedAmount.IsNegative() {
+		return ErrSettlementAmountMismatch
+	}
+	curr := strings.ToUpper(strings.TrimSpace(settle.Currency))
+	if curr == "" {
+		return ErrSettlementCurrencyMismatch
+	}
+	now := s.nowFunc()
+	cp := *settle
+	cp.WorkspaceID = strings.TrimSpace(settle.WorkspaceID)
+	cp.SettlementID = strings.TrimSpace(settle.SettlementID)
+	cp.CreatorEntityID = strings.TrimSpace(settle.CreatorEntityID)
+	cp.Currency = curr
+	if cp.VerificationStatus == "" {
+		cp.VerificationStatus = "verified"
+	}
+	if cp.CreatedAt.IsZero() {
+		cp.CreatedAt = now
+	}
+	cp.UpdatedAt = now
+	return s.store.UpsertVerifiedSettlement(ctx, &cp)
+}
+
 func (s *Service) CalculateCommission(ctx context.Context, wsID, linkID, orderID string, creatorID *string, orderAmount tenantdb.ExactDecimal, currency string, holdDays int) (*AffiliateCommission, error) {
+	wsID = strings.TrimSpace(wsID)
+	linkID = strings.TrimSpace(linkID)
+	orderID = strings.TrimSpace(orderID)
+	if wsID == "" || linkID == "" || orderID == "" {
+		return nil, ErrOrderNotVerified
+	}
+
+	s.payoutMu.Lock()
+	defer s.payoutMu.Unlock()
+
 	link, err := s.store.GetLink(ctx, wsID, linkID)
 	if err != nil {
 		return nil, err
+	}
+	if link.LifecycleState == LinkStateRevoked {
+		return nil, ErrLinkPermanentlyRevoked
+	}
+
+	// 1. Resolve authoritative tenant-scoped order snapshot
+	ord, err := s.store.GetVerifiedOrder(ctx, wsID, orderID)
+	if err != nil {
+		return nil, ErrOrderNotVerified
+	}
+	if !isEligibleCommissionOrderState(ord.LifecycleState) {
+		return nil, fmt.Errorf("%w: order %s is in state %q", ErrOrderIneligible, orderID, ord.LifecycleState)
+	}
+	eligibleAmount, err := ord.GrossAmount.Sub(ord.RefundedAmount)
+	if err != nil || ord.RefundedAmount.IsNegative() || eligibleAmount.Cmp(tenantdb.ZeroDecimal()) <= 0 {
+		return nil, fmt.Errorf("%w: order %s has non-positive net eligible amount after refunds", ErrOrderIneligible, orderID)
+	}
+	canonicalCurrency := strings.ToUpper(strings.TrimSpace(ord.Currency))
+	if canonicalCurrency == "" {
+		return nil, ErrOrderNotVerified
+	}
+	if strings.TrimSpace(currency) != "" && !strings.EqualFold(strings.TrimSpace(currency), canonicalCurrency) {
+		return nil, fmt.Errorf("%w: requested %s but canonical order currency is %s", ErrOrderCurrencyMismatch, currency, canonicalCurrency)
+	}
+	if orderAmount.IsNegative() || (!orderAmount.IsZero() && orderAmount.Cmp(eligibleAmount) != 0) {
+		return nil, fmt.Errorf("%w: requested %s but canonical eligible order amount is %s", ErrOrderAmountMismatch, orderAmount.Fixed6String(), eligibleAmount.Fixed6String())
+	}
+
+	// 2. If attribution exists for this order, verify link and creator consistency
+	if attr, attrErr := s.store.GetAttributionByOrder(ctx, wsID, orderID); attrErr == nil && attr != nil {
+		if attr.AffiliateLinkID != "" && attr.AffiliateLinkID != linkID {
+			return nil, fmt.Errorf("%w: order %s attributed to link %s, not %s", ErrAttributionMismatch, orderID, attr.AffiliateLinkID, linkID)
+		}
+		if attr.CreatorEntityID != nil && strings.TrimSpace(*attr.CreatorEntityID) != "" && creatorID != nil && strings.TrimSpace(*creatorID) != "" {
+			if strings.TrimSpace(*attr.CreatorEntityID) != strings.TrimSpace(*creatorID) {
+				return nil, fmt.Errorf("%w: order %s attributed to creator %s, not %s", ErrAttributionMismatch, orderID, *attr.CreatorEntityID, *creatorID)
+			}
+		}
+	}
+
+	// 3. Enforce unique commission per (workspace_id, order_id)
+	if existing, existErr := s.store.GetCommissionByOrder(ctx, wsID, orderID); existErr == nil && existing != nil {
+		if existing.AffiliateLinkID != linkID {
+			return nil, fmt.Errorf("%w: order %s already commissioned under link %s", ErrDuplicateCommission, orderID, existing.AffiliateLinkID)
+		}
+		if existing.CreatorEntityID != nil && creatorID != nil && strings.TrimSpace(*existing.CreatorEntityID) != strings.TrimSpace(*creatorID) {
+			return nil, fmt.Errorf("%w: order %s already commissioned for creator %s", ErrDuplicateCommission, orderID, *existing.CreatorEntityID)
+		}
+		return existing, nil
 	}
 
 	now := s.nowFunc()
@@ -438,16 +571,23 @@ func (s *Service) CalculateCommission(ctx context.Context, wsID, linkID, orderID
 	}
 	holdUntil := now.Add(time.Duration(holdDays) * 24 * time.Hour)
 
-	commAmt := calculateCommissionAmount(orderAmount, link.CommissionRate)
+	commAmt := calculateCommissionAmount(eligibleAmount, link.CommissionRate)
+
+	var cleanCreatorID *string
+	if creatorID != nil && strings.TrimSpace(*creatorID) != "" {
+		c := strings.TrimSpace(*creatorID)
+		cleanCreatorID = &c
+	}
 
 	comm := &AffiliateCommission{
 		CommissionID:     newUUID(),
 		WorkspaceID:      wsID,
 		AffiliateLinkID:  linkID,
 		OrderID:          orderID,
-		CreatorEntityID:  creatorID,
+		CreatorEntityID:  cleanCreatorID,
+		OrderAmount:      eligibleAmount,
 		CommissionAmount: commAmt,
-		Currency:         currency,
+		Currency:         canonicalCurrency,
 		Status:           CommissionPending,
 		HoldUntil:        holdUntil,
 		CreatedAt:        now,
@@ -655,6 +795,8 @@ func (s *Service) CreatePayoutBatch(ctx context.Context, wsID, creatorID string,
 }
 
 func (s *Service) ExecutePayoutBatch(ctx context.Context, wsID, payoutID, settlementID string) (*AffiliatePayout, error) {
+	wsID = strings.TrimSpace(wsID)
+	payoutID = strings.TrimSpace(payoutID)
 	settlementID = strings.TrimSpace(settlementID)
 	if settlementID == "" {
 		return nil, ErrSettlementRequired
@@ -676,6 +818,28 @@ func (s *Service) ExecutePayoutBatch(ctx context.Context, wsID, payoutID, settle
 	}
 	if len(payout.CommissionIDs) == 0 {
 		return nil, ErrInvalidPayoutBatch
+	}
+
+	// Verify authoritative settlement record in the same workspace
+	settle, err := s.store.GetVerifiedSettlement(ctx, wsID, settlementID)
+	if err != nil || settle == nil {
+		return nil, fmt.Errorf("%w: settlement %s not found or unverified in workspace", ErrSettlementRequired, settlementID)
+	}
+	if !isVerifiedSettlementStatus(settle.VerificationStatus) {
+		return nil, fmt.Errorf("%w: settlement %s has unverified status %q", ErrSettlementRequired, settlementID, settle.VerificationStatus)
+	}
+	if strings.TrimSpace(settle.CreatorEntityID) == "" || strings.TrimSpace(settle.CreatorEntityID) != strings.TrimSpace(payout.CreatorEntityID) {
+		return nil, fmt.Errorf("%w (%w): settlement beneficiary %q does not match payout creator %q", ErrSettlementBeneficiaryMismatch, ErrSettlementRequired, settle.CreatorEntityID, payout.CreatorEntityID)
+	}
+	if !strings.EqualFold(strings.TrimSpace(settle.Currency), strings.TrimSpace(payout.Currency)) {
+		return nil, fmt.Errorf("%w (%w): settlement currency %q does not match payout currency %q", ErrSettlementCurrencyMismatch, ErrSettlementRequired, settle.Currency, payout.Currency)
+	}
+	if settle.BoundPayoutID != nil && strings.TrimSpace(*settle.BoundPayoutID) != "" && strings.TrimSpace(*settle.BoundPayoutID) != payout.PayoutID {
+		return nil, fmt.Errorf("%w (%w): settlement %s is already bound to payout %s", ErrSettlementAlreadyUsed, ErrSettlementRequired, settlementID, *settle.BoundPayoutID)
+	}
+	remainingSettle, err := settle.NetAmount.Sub(settle.AllocatedAmount)
+	if err != nil || settle.NetAmount.Cmp(payout.TotalAmount) != 0 || remainingSettle.Cmp(payout.TotalAmount) < 0 {
+		return nil, fmt.Errorf("%w (%w): settlement net amount %s (remaining %s) does not match payout total %s", ErrSettlementAmountMismatch, ErrSettlementRequired, settle.NetAmount.Fixed6String(), remainingSettle.Fixed6String(), payout.TotalAmount.Fixed6String())
 	}
 
 	now := s.nowFunc()
@@ -706,6 +870,18 @@ func (s *Service) ExecutePayoutBatch(ctx context.Context, wsID, payoutID, settle
 
 	if expectedTotal.Cmp(payout.TotalAmount) != 0 {
 		return nil, fmt.Errorf("%w: commission total %s does not match batch total %s", ErrInvalidPayoutBatch, expectedTotal.Fixed6String(), payout.TotalAmount.Fixed6String())
+	}
+
+	// Atomically bind settlement capacity to this payout batch
+	newAllocated, err := settle.AllocatedAmount.Add(payout.TotalAmount)
+	if err != nil {
+		return nil, err
+	}
+	settle.AllocatedAmount = newAllocated
+	settle.BoundPayoutID = &payout.PayoutID
+	settle.UpdatedAt = now
+	if err := s.store.UpsertVerifiedSettlement(ctx, settle); err != nil {
+		return nil, err
 	}
 
 	// Update each commission status to paid_out first, checking errors

@@ -265,6 +265,81 @@ func TestP808AcceptanceTarget1_RealRestoreAndFailingSmoke(t *testing.T) {
 		t.Fatalf("expected ErrRestoreIntegrityFailed on cross-currency ledger imbalance, got %v", err)
 	}
 
+	// 3c. Data Review #19: Per-operation (idempotency_key) imbalance within the same workspace/currency
+	// and cross-tenant imbalance in FileBackedDisposableDBTarget.RestoreAndVerifySnapshot must fail closed.
+	crossOpSnap := snap
+	crossOpSnap.FinancialPostings = []internaladmin.FinancialPostingSnapshot{
+		{
+			PostingID:      "30000000-0000-4000-8000-000000000093",
+			WorkspaceID:    wsA,
+			AccountCode:    "1100_CASH_CLEARING",
+			Direction:      "debit",
+			AmountMicro:    15000000000,
+			Currency:       "VND",
+			IdempotencyKey: "idem-op-1",
+			CreatedAt:      now.Add(-10 * time.Minute),
+		},
+		{
+			PostingID:      "30000000-0000-4000-8000-000000000094",
+			WorkspaceID:    wsA,
+			AccountCode:    "4000_MERCHANT_REVENUE",
+			Direction:      "credit",
+			AmountMicro:    15000000000,
+			Currency:       "VND",
+			IdempotencyKey: "idem-op-2",
+			CreatedAt:      now.Add(-10 * time.Minute),
+		},
+	}
+	crossOpArtifact, err := internaladmin.CreateVerifiedBackupSnapshot(t.TempDir(), crossOpSnap)
+	if err != nil {
+		t.Fatalf("CreateVerifiedBackupSnapshot cross-op: %v", err)
+	}
+	if _, err := svc.ExecuteRestoreRehearsal(context.Background(), superAdminID, crossOpArtifact, 0, 300); !errors.Is(err, internaladmin.ErrRestoreIntegrityFailed) {
+		t.Fatalf("Data #19 regression: expected ErrRestoreIntegrityFailed on per-operation ledger imbalance, got %v", err)
+	}
+	dbTarget := &internaladmin.FileBackedDisposableDBTarget{TargetDir: t.TempDir()}
+	if _, err := dbTarget.RestoreAndVerifySnapshot(context.Background(), crossCurrencySnap); !errors.Is(err, internaladmin.ErrRestoreIntegrityFailed) {
+		t.Fatalf("Data #19 regression: expected FileBackedDisposableDBTarget.RestoreAndVerifySnapshot to reject cross-currency ledger imbalance, got %v", err)
+	}
+	if _, err := dbTarget.RestoreAndVerifySnapshot(context.Background(), crossOpSnap); !errors.Is(err, internaladmin.ErrRestoreIntegrityFailed) {
+		t.Fatalf("Data #19 regression: expected FileBackedDisposableDBTarget.RestoreAndVerifySnapshot to reject per-operation ledger imbalance, got %v", err)
+	}
+
+	// Cross-tenant imbalance (wsA debit 100 VND, wsB credit 100 VND -> global sum equal, per-tenant imbalanced) must fail closed.
+	crossTenantSnap := snap
+	crossTenantSnap.FinancialPostings = []internaladmin.FinancialPostingSnapshot{
+		{
+			PostingID:      "30000000-0000-4000-8000-000000000095",
+			WorkspaceID:    wsA,
+			AccountCode:    "1100_CASH_CLEARING",
+			Direction:      "debit",
+			AmountMicro:    15000000000,
+			Currency:       "VND",
+			IdempotencyKey: "idem-cross-tenant",
+			CreatedAt:      now.Add(-10 * time.Minute),
+		},
+		{
+			PostingID:      "30000000-0000-4000-8000-000000000096",
+			WorkspaceID:    wsB,
+			AccountCode:    "4000_MERCHANT_REVENUE",
+			Direction:      "credit",
+			AmountMicro:    15000000000,
+			Currency:       "VND",
+			IdempotencyKey: "idem-cross-tenant",
+			CreatedAt:      now.Add(-10 * time.Minute),
+		},
+	}
+	crossTenantArtifact, err := internaladmin.CreateVerifiedBackupSnapshot(t.TempDir(), crossTenantSnap)
+	if err != nil {
+		t.Fatalf("CreateVerifiedBackupSnapshot cross-tenant: %v", err)
+	}
+	if _, err := svc.ExecuteRestoreRehearsal(context.Background(), superAdminID, crossTenantArtifact, 0, 300); !errors.Is(err, internaladmin.ErrRestoreIntegrityFailed) {
+		t.Fatalf("Data #19 regression: expected ErrRestoreIntegrityFailed on cross-tenant ledger imbalance, got %v", err)
+	}
+	if _, err := dbTarget.RestoreAndVerifySnapshot(context.Background(), crossTenantSnap); !errors.Is(err, internaladmin.ErrRestoreIntegrityFailed) {
+		t.Fatalf("Data #19 regression: expected FileBackedDisposableDBTarget.RestoreAndVerifySnapshot to reject cross-tenant ledger imbalance, got %v", err)
+	}
+
 	// 4. Blue/Green slot promotion succeeds when /healthz, /readyz, and authenticated business smoke pass.
 	greenDigest := "sha256:2222222222222222222222222222222222222222222222222222222222222222"
 	healthyProbe := internaladmin.CandidateSlotProbeInput{

@@ -557,3 +557,272 @@ func TestP802MeasuredCohortEconomicsAll7CanonicalMetrics(t *testing.T) {
 		t.Fatalf("expected missing repair time to set IsRepairTimeUnknown=true and MedianRepairBurdenSeconds='unknown', got %+v", econZero)
 	}
 }
+
+func TestF18_ProfitSnapshotScopePeriodAndMixedCurrencyRegression(t *testing.T) {
+	ctx := context.Background()
+	store := finance.NewMemoryStore()
+	now := time.Date(2026, 11, 5, 12, 0, 0, 0, time.UTC)
+	svc := finance.NewService(store, nil, func() time.Time { return now })
+	wsID := "ws-f18"
+
+	cogs100 := tenantdb.MustParseExactDecimal("100000")
+	// Order in October 2026
+	if err := svc.RecordOrderPosting(ctx, finance.OrderPostingInput{
+		WorkspaceID:          wsID,
+		OrderID:              "ord-oct-1",
+		OrderVersion:         "v1",
+		LifecycleState:       "completed",
+		GrossAmount:          tenantdb.MustParseExactDecimal("500000"),
+		COGSAmount:           &cogs100,
+		Currency:             "VND",
+		SourceClass:          finance.SourceClassOfficial,
+		Confidence:           finance.ConfidenceHigh,
+		ExchangeRateSnapshot: finance.ExchangeRateSnapshot{BaseCurrency: "VND", QuoteCurrency: "VND", RateToBase: "1"},
+		EffectiveAt:          time.Date(2026, 10, 15, 10, 0, 0, 0, time.UTC),
+	}); err != nil {
+		t.Fatalf("RecordOrderPosting oct: %v", err)
+	}
+	// Order in November 2026
+	if err := svc.RecordOrderPosting(ctx, finance.OrderPostingInput{
+		WorkspaceID:          wsID,
+		OrderID:              "ord-nov-1",
+		OrderVersion:         "v1",
+		LifecycleState:       "completed",
+		GrossAmount:          tenantdb.MustParseExactDecimal("800000"),
+		COGSAmount:           &cogs100,
+		Currency:             "VND",
+		SourceClass:          finance.SourceClassOfficial,
+		Confidence:           finance.ConfidenceHigh,
+		ExchangeRateSnapshot: finance.ExchangeRateSnapshot{BaseCurrency: "VND", QuoteCurrency: "VND", RateToBase: "1"},
+		EffectiveAt:          time.Date(2026, 11, 2, 10, 0, 0, 0, time.UTC),
+	}); err != nil {
+		t.Fatalf("RecordOrderPosting nov: %v", err)
+	}
+
+	// Snapshot for November only must NOT include October order
+	snapNov, err := svc.GetOrComputeProfitSnapshot(ctx, wsID, "workspace", wsID, "2026-11-01", "2026-11-30", true)
+	if err != nil {
+		t.Fatalf("GetOrComputeProfitSnapshot nov: %v", err)
+	}
+	if snapNov.GrossRevenue.String() != "800000" {
+		t.Fatalf("F18 regression: expected November GrossRevenue = 800000, got %s (period filter ignored)", snapNov.GrossRevenue.String())
+	}
+
+	// Snapshot scoped to order ord-oct-1 must only include ord-oct-1
+	snapOrdOct, err := svc.GetOrComputeProfitSnapshot(ctx, wsID, "order", "ord-oct-1", "2026-10-01", "2026-11-30", true)
+	if err != nil {
+		t.Fatalf("GetOrComputeProfitSnapshot order scope: %v", err)
+	}
+	if snapOrdOct.GrossRevenue.String() != "500000" {
+		t.Fatalf("F18 regression: expected order-scoped GrossRevenue = 500000, got %s (scope filter ignored)", snapOrdOct.GrossRevenue.String())
+	}
+
+	// Mixed currency without conversion to same base currency must fail closed
+	wsMixed := "ws-f18-mixed"
+	if err := svc.RecordOrderPosting(ctx, finance.OrderPostingInput{
+		WorkspaceID:          wsMixed,
+		OrderID:              "ord-vnd",
+		OrderVersion:         "v1",
+		LifecycleState:       "completed",
+		GrossAmount:          tenantdb.MustParseExactDecimal("1000000"),
+		COGSAmount:           &cogs100,
+		Currency:             "VND",
+		SourceClass:          finance.SourceClassOfficial,
+		Confidence:           finance.ConfidenceHigh,
+		ExchangeRateSnapshot: finance.ExchangeRateSnapshot{BaseCurrency: "VND", QuoteCurrency: "VND", RateToBase: "1"},
+		EffectiveAt:          now,
+	}); err != nil {
+		t.Fatalf("RecordOrderPosting vnd: %v", err)
+	}
+	cogs10USD := tenantdb.MustParseExactDecimal("10")
+	if err := svc.RecordOrderPosting(ctx, finance.OrderPostingInput{
+		WorkspaceID:          wsMixed,
+		OrderID:              "ord-usd",
+		OrderVersion:         "v1",
+		LifecycleState:       "completed",
+		GrossAmount:          tenantdb.MustParseExactDecimal("100"),
+		COGSAmount:           &cogs10USD,
+		Currency:             "USD",
+		SourceClass:          finance.SourceClassOfficial,
+		Confidence:           finance.ConfidenceHigh,
+		ExchangeRateSnapshot: finance.ExchangeRateSnapshot{BaseCurrency: "USD", QuoteCurrency: "USD", RateToBase: "1"},
+		EffectiveAt:          now,
+	}); err != nil {
+		t.Fatalf("RecordOrderPosting usd: %v", err)
+	}
+	if _, err := svc.GetOrComputeProfitSnapshot(ctx, wsMixed, "workspace", wsMixed, "2026-11-01", "2026-11-30", true); !errors.Is(err, finance.ErrCurrencyMismatch) {
+		t.Fatalf("F18 regression: expected mixed base currencies (VND and USD) to fail closed with ErrCurrencyMismatch, got %v", err)
+	}
+
+	// Invalid report period (periodEnd < periodStart) must fail closed with ErrInvalidReportPeriod
+	if _, err := svc.GetOrComputeProfitSnapshot(ctx, wsID, "workspace", wsID, "2026-11-30", "2026-11-01", true); !errors.Is(err, finance.ErrInvalidReportPeriod) {
+		t.Fatalf("F18 regression: expected ErrInvalidReportPeriod for inverted period, got %v", err)
+	}
+
+	// Cross-tenant workspace scope mismatch must fail closed with tenantdb.ErrScopeMismatch
+	if _, err := svc.GetOrComputeProfitSnapshot(ctx, wsID, "workspace", "ws-other-tenant", "2026-11-01", "2026-11-30", true); !errors.Is(err, tenantdb.ErrScopeMismatch) {
+		t.Fatalf("F18 regression: expected ErrScopeMismatch for mismatched workspace scopeID, got %v", err)
+	}
+}
+
+func TestF20_CostItemUpdateAndDeleteReversesLedgerPostings(t *testing.T) {
+	ctx := context.Background()
+	store := finance.NewMemoryStore()
+	now := time.Date(2026, 11, 5, 12, 0, 0, 0, time.UTC)
+	svc := finance.NewService(store, nil, func() time.Time { return now })
+	wsID := "ws-f20"
+
+	item, err := svc.CreateCostItem(ctx, &finance.CostItem{
+		WorkspaceID:   wsID,
+		CostType:      "ads_spend",
+		Amount:        tenantdb.MustParseExactDecimal("200000"),
+		Currency:      "VND",
+		SourceClass:   finance.SourceClassOfficial,
+		EffectiveDate: "2026-11-05",
+	})
+	if err != nil {
+		t.Fatalf("CreateCostItem: %v", err)
+	}
+
+	// Update cost item to 350,000 VND
+	item.Amount = tenantdb.MustParseExactDecimal("350000")
+	if _, err := svc.UpdateCostItem(ctx, item); err != nil {
+		t.Fatalf("UpdateCostItem: %v", err)
+	}
+
+	snapAfterUpdate, err := svc.GetOrComputeProfitSnapshot(ctx, wsID, "workspace", wsID, "2026-11-01", "2026-11-30", true)
+	if err != nil {
+		t.Fatalf("GetOrComputeProfitSnapshot after update: %v", err)
+	}
+	if snapAfterUpdate.AdsSpend.String() != "350000" {
+		t.Fatalf("F20 regression: expected AdsSpend = 350000 after UpdateCostItem, got %s", snapAfterUpdate.AdsSpend.String())
+	}
+
+	// Second update changing both CostType (ads_spend -> seeding) and Amount (350,000 -> 120,000)
+	item.CostType = "seeding"
+	item.Amount = tenantdb.MustParseExactDecimal("120000")
+	if _, err := svc.UpdateCostItem(ctx, item); err != nil {
+		t.Fatalf("UpdateCostItem v3: %v", err)
+	}
+	snapAfterTypeChange, err := svc.GetOrComputeProfitSnapshot(ctx, wsID, "workspace", wsID, "2026-11-01", "2026-11-30", true)
+	if err != nil {
+		t.Fatalf("GetOrComputeProfitSnapshot after type change: %v", err)
+	}
+	if !snapAfterTypeChange.AdsSpend.IsZero() || snapAfterTypeChange.SeedingCosts.String() != "120000" {
+		t.Fatalf("F20 regression: expected AdsSpend=0 and SeedingCosts=120000 after type change, got AdsSpend=%s SeedingCosts=%s",
+			snapAfterTypeChange.AdsSpend.String(), snapAfterTypeChange.SeedingCosts.String())
+	}
+
+	// Cross-tenant delete attempt must fail closed without reversing postings
+	if err := svc.DeleteCostItem(ctx, "ws-other-tenant", item.CostItemID); !errors.Is(err, finance.ErrCostItemNotFound) {
+		t.Fatalf("F20 regression: expected cross-tenant DeleteCostItem to fail with ErrCostItemNotFound, got %v", err)
+	}
+
+	// Delete cost item -> SeedingCosts and AdsSpend in ledger must both return to 0
+	if err := svc.DeleteCostItem(ctx, wsID, item.CostItemID); err != nil {
+		t.Fatalf("DeleteCostItem: %v", err)
+	}
+	snapAfterDelete, err := svc.GetOrComputeProfitSnapshot(ctx, wsID, "workspace", wsID, "2026-11-01", "2026-11-30", true)
+	if err != nil {
+		t.Fatalf("GetOrComputeProfitSnapshot after delete: %v", err)
+	}
+	if !snapAfterDelete.AdsSpend.IsZero() || !snapAfterDelete.SeedingCosts.IsZero() {
+		t.Fatalf("F20 regression: expected AdsSpend=0 and SeedingCosts=0 after DeleteCostItem, got AdsSpend=%s SeedingCosts=%s",
+			snapAfterDelete.AdsSpend.String(), snapAfterDelete.SeedingCosts.String())
+	}
+}
+
+func TestF23_MissingCOGSStateTenantIsolatedAndSurvivesRestart(t *testing.T) {
+	ctx := context.Background()
+	store := finance.NewMemoryStore()
+	now := time.Date(2026, 11, 5, 12, 0, 0, 0, time.UTC)
+	svc1 := finance.NewService(store, nil, func() time.Time { return now })
+
+	wsA := "ws-f23-a"
+	wsB := "ws-f23-b"
+
+	// Tenant A records an order with MISSING COGS (COGSAmount == nil)
+	if err := svc1.RecordOrderPosting(ctx, finance.OrderPostingInput{
+		WorkspaceID:          wsA,
+		OrderID:              "ord-missing-cogs-a",
+		OrderVersion:         "v1",
+		LifecycleState:       "completed",
+		GrossAmount:          tenantdb.MustParseExactDecimal("500000"),
+		COGSAmount:           nil,
+		Currency:             "VND",
+		SourceClass:          finance.SourceClassOfficial,
+		Confidence:           finance.ConfidenceHigh,
+		ExchangeRateSnapshot: finance.ExchangeRateSnapshot{BaseCurrency: "VND", QuoteCurrency: "VND", RateToBase: "1"},
+		EffectiveAt:          now,
+	}); err != nil {
+		t.Fatalf("RecordOrderPosting wsA: %v", err)
+	}
+
+	// Tenant B records an order WITH valid COGS
+	cogsB := tenantdb.MustParseExactDecimal("150000")
+	if err := svc1.RecordOrderPosting(ctx, finance.OrderPostingInput{
+		WorkspaceID:          wsB,
+		OrderID:              "ord-valid-cogs-b",
+		OrderVersion:         "v1",
+		LifecycleState:       "completed",
+		GrossAmount:          tenantdb.MustParseExactDecimal("600000"),
+		COGSAmount:           &cogsB,
+		Currency:             "VND",
+		SourceClass:          finance.SourceClassOfficial,
+		Confidence:           finance.ConfidenceHigh,
+		ExchangeRateSnapshot: finance.ExchangeRateSnapshot{BaseCurrency: "VND", QuoteCurrency: "VND", RateToBase: "1"},
+		EffectiveAt:          now,
+	}); err != nil {
+		t.Fatalf("RecordOrderPosting wsB: %v", err)
+	}
+
+	// Tenant B must NOT be contaminated by Tenant A's missing COGS!
+	snapB, err := svc1.GetOrComputeProfitSnapshot(ctx, wsB, "workspace", wsB, "2026-11-01", "2026-11-30", true)
+	if err != nil {
+		t.Fatalf("GetOrComputeProfitSnapshot wsB: %v", err)
+	}
+	if snapB.IsIncomplete || snapB.UnknownRequiredComponentsCount != 0 {
+		t.Fatalf("F23 regression: Tenant B contaminated by Tenant A missing COGS: IsIncomplete=%v, UnknownCount=%d", snapB.IsIncomplete, snapB.UnknownRequiredComponentsCount)
+	}
+	_, _, missingCOGSCountB, _, _, err := svc1.ListPendingGaps(ctx, wsB, "admin", finance.DataGapFilter{}, 10, 0)
+	if err != nil || missingCOGSCountB != 0 {
+		t.Fatalf("F23 regression: Tenant B ListPendingGaps reported missingCOGS=%d, err=%v", missingCOGSCountB, err)
+	}
+
+	// Simulate service restart on the same durable store: Tenant A must STILL report IsIncomplete=true and UnknownRequiredComponentsCount=1
+	svc2 := finance.NewService(store, nil, func() time.Time { return now })
+	snapAAfterRestart, err := svc2.GetOrComputeProfitSnapshot(ctx, wsA, "workspace", wsA, "2026-11-01", "2026-11-30", true)
+	if err != nil {
+		t.Fatalf("GetOrComputeProfitSnapshot wsA after restart: %v", err)
+	}
+	if !snapAAfterRestart.IsIncomplete || snapAAfterRestart.UnknownRequiredComponentsCount != 1 || snapAAfterRestart.Confidence != finance.ConfidenceLow {
+		t.Fatalf("F23 regression: Tenant A missing COGS lost after service restart: IsIncomplete=%v, UnknownCount=%d, Confidence=%s",
+			snapAAfterRestart.IsIncomplete, snapAAfterRestart.UnknownRequiredComponentsCount, snapAAfterRestart.Confidence)
+	}
+	gapsA, totalGapsA, missingCOGSCountA, _, _, err := svc2.ListPendingGaps(ctx, wsA, "admin", finance.DataGapFilter{}, 10, 0)
+	if err != nil || totalGapsA != 1 || missingCOGSCountA != 1 || len(gapsA) != 1 {
+		t.Fatalf("F23 regression: Tenant A ListPendingGaps after restart expected 1 missing_cogs gap, got total=%d missingCOGS=%d err=%v",
+			totalGapsA, missingCOGSCountA, err)
+	}
+
+	// Supply COGS for ord-missing-cogs-a via order-scoped cost item and verify gap resolves
+	if _, err := svc2.CreateCostItem(ctx, &finance.CostItem{
+		WorkspaceID:      wsA,
+		CostType:         "cogs",
+		Amount:           tenantdb.MustParseExactDecimal("180000"),
+		Currency:         "VND",
+		RelatedScopeType: "order",
+		RelatedScopeID:   "ord-missing-cogs-a",
+		SourceClass:      finance.SourceClassOfficial,
+		EffectiveDate:    "2026-11-05",
+	}); err != nil {
+		t.Fatalf("CreateCostItem cogs repair: %v", err)
+	}
+	snapARepaired, err := svc2.GetOrComputeProfitSnapshot(ctx, wsA, "workspace", wsA, "2026-11-01", "2026-11-30", true)
+	if err != nil {
+		t.Fatalf("GetOrComputeProfitSnapshot wsA repaired: %v", err)
+	}
+	if snapARepaired.IsIncomplete || snapARepaired.UnknownRequiredComponentsCount != 0 || snapARepaired.COGS.String() != "180000" {
+		t.Fatalf("F23 regression: expected repaired Tenant A snapshot to have IsIncomplete=false, UnknownCount=0, COGS=180000, got %+v", snapARepaired)
+	}
+}
