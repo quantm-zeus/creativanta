@@ -20,6 +20,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -31,6 +32,7 @@ import (
 	"github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/commerce/v1/commercev1connect"
 	commonv1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/common/v1"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/bootstrap"
+	"github.com/quantm-zeus/creativanta/apps/api/internal/internaladmin"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/migrate"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/runtimeassembly"
 )
@@ -42,13 +44,26 @@ const (
 	testViewerA  = "bbbbbbbb-cccc-4ddd-8eee-ffffffffff02"
 	testOwnerB   = "bbbbbbbb-cccc-4ddd-8eee-ffffffffff03"
 	testSysAdmin = "bbbbbbbb-cccc-4ddd-8eee-ffffffffff04"
+
+	testClerkSecretKey    = "sk_test_runtime_e2e_secret_key"
+	testAdminValidToken   = "adm_sess_valid_token_99990001_verified"
+	testAdminNoMFAToken   = "adm_sess_no_mfa_token_99990002_unverified"
+	testAdminNoVPNToken   = "adm_sess_no_vpn_token_99990003_unverified"
+	testAdminRevokedToken = "adm_sess_revoked_token_99990004_revoked"
 )
 
+type testSessionRecord struct {
+	subject string
+	status  string
+}
+
 type testJWKSProvider struct {
-	server *httptest.Server
-	priv   *rsa.PrivateKey
-	kid    string
-	issuer string
+	server   *httptest.Server
+	priv     *rsa.PrivateKey
+	kid      string
+	issuer   string
+	mu       sync.Mutex
+	sessions map[string]testSessionRecord
 }
 
 func newTestJWKSProvider(t *testing.T) *testJWKSProvider {
@@ -60,6 +75,12 @@ func newTestJWKSProvider(t *testing.T) *testJWKSProvider {
 	kid := "test-key-runtime-1"
 	nB64 := base64.RawURLEncoding.EncodeToString(priv.PublicKey.N.Bytes())
 	eB64 := base64.RawURLEncoding.EncodeToString(big.NewInt(int64(priv.PublicKey.E)).Bytes())
+
+	p := &testJWKSProvider{
+		priv:     priv,
+		kid:      kid,
+		sessions: make(map[string]testSessionRecord),
+	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/.well-known/jwks.json", func(w http.ResponseWriter, r *http.Request) {
@@ -77,20 +98,61 @@ func newTestJWKSProvider(t *testing.T) *testJWKSProvider {
 			},
 		})
 	})
+	mux.HandleFunc("/v1/sessions/", func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "Bearer "+testClerkSecretKey {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		sid := strings.TrimPrefix(r.URL.Path, "/v1/sessions/")
+		p.mu.Lock()
+		rec, ok := p.sessions[sid]
+		p.mu.Unlock()
+		if !ok {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		now := time.Now().UTC()
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"id":             sid,
+			"user_id":        rec.subject,
+			"status":         rec.status,
+			"expire_at":      now.Add(15 * time.Minute).UnixMilli(),
+			"abandon_at":     now.Add(30 * time.Minute).UnixMilli(),
+			"last_active_at": now.UnixMilli(),
+			"updated_at":     now.UnixMilli(),
+			"created_at":     now.Add(-5 * time.Minute).UnixMilli(),
+		})
+	})
 
 	srv := httptest.NewTLSServer(mux)
 	t.Cleanup(srv.Close)
 
-	return &testJWKSProvider{
-		server: srv,
-		priv:   priv,
-		kid:    kid,
-		issuer: srv.URL,
-	}
+	p.server = srv
+	p.issuer = srv.URL
+	return p
+}
+
+func (p *testJWKSProvider) setSessionStatus(sessionID, status string) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	rec := p.sessions[sessionID]
+	rec.status = status
+	p.sessions[sessionID] = rec
 }
 
 func (p *testJWKSProvider) signToken(t *testing.T, subject, sessionID string) string {
 	t.Helper()
+	status := "active"
+	if strings.Contains(strings.ToLower(sessionID), "revoked") {
+		status = "revoked"
+	}
+	p.mu.Lock()
+	p.sessions[sessionID] = testSessionRecord{
+		subject: subject,
+		status:  status,
+	}
+	p.mu.Unlock()
 	now := time.Now().UTC()
 	headerJSON, _ := json.Marshal(map[string]any{
 		"alg": "RS256",
@@ -212,6 +274,17 @@ func setupDisposableRuntimeDB(t *testing.T) (*pgxpool.Pool, string) {
 			('%s'::uuid, 'sysadmin@creativanta.test', 'Internal Admin', '$2a$12$test_hash_only', 'super_admin', 'active', true)
 		ON CONFLICT (admin_id) DO NOTHING;
 
+		INSERT INTO admin_sessions (
+			session_id, admin_id, ip_address, user_agent,
+			vpn_verified, mfa_verified, expired_at, revoked_at, session_token_hash
+		)
+		VALUES
+			('99990000-0000-4000-8000-000000000001'::uuid, '%s'::uuid, '127.0.0.1'::inet, 'runtime-e2e', true, true, NOW() + INTERVAL '4 hours', NULL, '%s'),
+			('99990000-0000-4000-8000-000000000002'::uuid, '%s'::uuid, '127.0.0.1'::inet, 'runtime-e2e', true, false, NOW() + INTERVAL '4 hours', NULL, '%s'),
+			('99990000-0000-4000-8000-000000000003'::uuid, '%s'::uuid, '127.0.0.1'::inet, 'runtime-e2e', false, true, NOW() + INTERVAL '4 hours', NULL, '%s'),
+			('99990000-0000-4000-8000-000000000004'::uuid, '%s'::uuid, '127.0.0.1'::inet, 'runtime-e2e', true, true, NOW() + INTERVAL '4 hours', NOW() - INTERVAL '1 minute', '%s')
+		ON CONFLICT (session_id) DO NOTHING;
+
 		INSERT INTO workspaces (
 			workspace_id, name, slug, owner_user_id, subscription_tier,
 			default_mode, enabled_modes, locale, timezone, status
@@ -230,6 +303,10 @@ func setupDisposableRuntimeDB(t *testing.T) (*pgxpool.Pool, string) {
 	`,
 		testOwnerA, testViewerA, testOwnerB, testSysAdmin,
 		testSysAdmin,
+		testSysAdmin, internaladmin.HashSessionToken(testAdminValidToken),
+		testSysAdmin, internaladmin.HashSessionToken(testAdminNoMFAToken),
+		testSysAdmin, internaladmin.HashSessionToken(testAdminNoVPNToken),
+		testSysAdmin, internaladmin.HashSessionToken(testAdminRevokedToken),
 		testWsA, testOwnerA,
 		testWsB, testOwnerB,
 		testWsA, testOwnerA,
@@ -371,6 +448,15 @@ func TestRealProcessAPIAndAdminAPIRuntimeAndOutboxWorkerPipeline(t *testing.T) {
 	apiAddr := allocateFreeLoopbackAddr(t)
 	adminAddr := allocateFreeLoopbackAddr(t)
 
+	// 0. Verify db_active session mode is strictly forbidden and fails closed at startup.
+	if _, _, err := runtimeassembly.NewHandlerFromConfig(ctx, runtimeassembly.Config{
+		Role:        bootstrap.RoleAPI,
+		DatabaseURL: dsn,
+		SessionMode: "db_active",
+	}); err == nil {
+		t.Fatalf("expected SessionMode=db_active to be rejected at startup")
+	}
+
 	commonEnv := append(os.Environ(),
 		"CREATIVANTA_API_DATABASE_URL="+dsn,
 		"CREATIVANTA_ADMIN_DATABASE_URL="+dsn,
@@ -380,8 +466,9 @@ func TestRealProcessAPIAndAdminAPIRuntimeAndOutboxWorkerPipeline(t *testing.T) {
 		"CREATIVANTA_CLERK_ISSUER="+jwks.issuer,
 		"CREATIVANTA_CLERK_AUDIENCE=creativanta-api",
 		"CREATIVANTA_CLERK_AUTHORIZED_PARTIES=http://localhost:3000",
+		"CREATIVANTA_CLERK_SECRET_KEY="+testClerkSecretKey,
+		"CREATIVANTA_CLERK_SESSION_URL="+jwks.server.URL+"/v1/sessions/",
 		"CREATIVANTA_CLERK_JWKS_INSECURE_TLS=true",
-		"CREATIVANTA_SESSION_MODE=db_active",
 		"CREATIVANTA_API_LISTEN_ADDR="+apiAddr,
 		"CREATIVANTA_ADMIN_LISTEN_ADDR="+adminAddr,
 	)
@@ -422,11 +509,11 @@ func TestRealProcessAPIAndAdminAPIRuntimeAndOutboxWorkerPipeline(t *testing.T) {
 	ownerAToken := jwks.signToken(t, "user_api_owner_a", "sess_owner_a")
 	viewerAToken := jwks.signToken(t, "user_api_viewer_a", "sess_viewer_a")
 	ownerBToken := jwks.signToken(t, "user_api_owner_b", "sess_owner_b")
-	sysAdminToken := jwks.signToken(t, "user_api_sysadmin", "sess_sysadmin")
+	sysAdminClerkToken := jwks.signToken(t, "user_api_sysadmin", "sess_sysadmin")
 	revokedToken := jwks.signToken(t, "user_api_owner_a", "sess_revoked_1")
 	_ = tls.VersionTLS13
 
-	// 2. Verify /api/workspaces/discovery on real cmd/api process.
+	// 2. Verify /api/workspaces/discovery on real cmd/api process under app_user RLS (owner + non-owner viewer).
 	unauthDiscResp, err := http.Get(apiBaseURL + "/api/workspaces/discovery")
 	if err != nil {
 		t.Fatalf("unauthenticated discovery request: %v", err)
@@ -444,9 +531,12 @@ func TestRealProcessAPIAndAdminAPIRuntimeAndOutboxWorkerPipeline(t *testing.T) {
 	}
 	var discBody struct {
 		Workspaces []struct {
-			ID   string `json:"workspace_id"`
-			Name string `json:"name"`
-			Role string `json:"role"`
+			ID                  string `json:"workspace_id"`
+			Name                string `json:"name"`
+			DisplayName         string `json:"display_name"`
+			Role                string `json:"role"`
+			DefaultMode         string `json:"default_mode"`
+			DefaultOperatorMode string `json:"default_operator_mode"`
 		} `json:"workspaces"`
 	}
 	if err := json.NewDecoder(discResp.Body).Decode(&discBody); err != nil {
@@ -454,8 +544,36 @@ func TestRealProcessAPIAndAdminAPIRuntimeAndOutboxWorkerPipeline(t *testing.T) {
 		t.Fatalf("decode discovery response: %v", err)
 	}
 	_ = discResp.Body.Close()
-	if discResp.StatusCode != http.StatusOK || len(discBody.Workspaces) != 1 || discBody.Workspaces[0].ID != testWsA {
-		t.Fatalf("unexpected discovery payload: status=%d body=%+v", discResp.StatusCode, discBody)
+	if discResp.StatusCode != http.StatusOK || len(discBody.Workspaces) != 1 || discBody.Workspaces[0].ID != testWsA || discBody.Workspaces[0].Role != "owner" {
+		t.Fatalf("unexpected owner discovery payload: status=%d body=%+v", discResp.StatusCode, discBody)
+	}
+
+	// Non-owner viewer discovery under app_user RLS must also succeed and isolate foreign workspaces.
+	viewerDiscReq, _ := http.NewRequestWithContext(ctx, http.MethodGet, apiBaseURL+"/api/workspaces/discovery", nil)
+	viewerDiscReq.Header.Set("Authorization", "Bearer "+viewerAToken)
+	viewerDiscResp, err := http.DefaultClient.Do(viewerDiscReq)
+	if err != nil {
+		t.Fatalf("viewer discovery request: %v", err)
+	}
+	var viewerDiscBody struct {
+		Workspaces []struct {
+			ID                  string `json:"workspace_id"`
+			Name                string `json:"name"`
+			DisplayName         string `json:"display_name"`
+			Role                string `json:"role"`
+			DefaultMode         string `json:"default_mode"`
+			DefaultOperatorMode string `json:"default_operator_mode"`
+		} `json:"workspaces"`
+	}
+	if err := json.NewDecoder(viewerDiscResp.Body).Decode(&viewerDiscBody); err != nil {
+		_ = viewerDiscResp.Body.Close()
+		t.Fatalf("decode viewer discovery response: %v", err)
+	}
+	_ = viewerDiscResp.Body.Close()
+	if viewerDiscResp.StatusCode != http.StatusOK || len(viewerDiscBody.Workspaces) != 1 ||
+		viewerDiscBody.Workspaces[0].ID != testWsA || viewerDiscBody.Workspaces[0].Role != "viewer" ||
+		viewerDiscBody.Workspaces[0].DisplayName != "Runtime Workspace A" || viewerDiscBody.Workspaces[0].DefaultOperatorMode != "seller" {
+		t.Fatalf("unexpected viewer discovery payload under app_user RLS: status=%d body=%+v", viewerDiscResp.StatusCode, viewerDiscBody)
 	}
 
 	// 3. Real-process authorized business RPC -> disposable PostgreSQL mutation -> readback!
@@ -598,11 +716,16 @@ func TestRealProcessAPIAndAdminAPIRuntimeAndOutboxWorkerPipeline(t *testing.T) {
 		t.Fatalf("expected CodeUnauthenticated for missing token, got %v", err)
 	}
 
-	// 5b. Revoked session -> CodeUnauthenticated
+	// 5b. Revoked session -> CodeUnauthenticated (both pre-revoked session ID and live revocation of normal session ID)
 	revokedClient := commercev1connect.NewProductServiceClient(newAuthHTTPClient(revokedToken, testWsA), apiBaseURL)
 	if _, err := revokedClient.List(ctx, connect.NewRequest(&commercev1.ListRequest{})); connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("expected CodeUnauthenticated for revoked session, got %v", err)
 	}
+	jwks.setSessionStatus("sess_owner_a", "revoked")
+	if _, err := ownerAProductClient.List(ctx, connect.NewRequest(&commercev1.ListRequest{})); connect.CodeOf(err) != connect.CodeUnauthenticated {
+		t.Fatalf("expected CodeUnauthenticated when normal session sess_owner_a is revoked at Clerk provider, got %v", err)
+	}
+	jwks.setSessionStatus("sess_owner_a", "active")
 
 	// 5c. Viewer role calling ProductService/Create (requires products:write) -> CodePermissionDenied
 	viewerClient := commercev1connect.NewProductServiceClient(newAuthHTTPClient(viewerAToken, testWsA), apiBaseURL)
@@ -662,7 +785,7 @@ func TestRealProcessAPIAndAdminAPIRuntimeAndOutboxWorkerPipeline(t *testing.T) {
 	// 6. Verify isolated cmd/admin-api listener:
 	// 6a. Rejects any request carrying x-workspace-id with 403 Forbidden
 	adminWithWsReq, _ := http.NewRequestWithContext(ctx, http.MethodGet, adminBaseURL+"/admin/v1/whoami", nil)
-	adminWithWsReq.Header.Set("Authorization", "Bearer "+sysAdminToken)
+	adminWithWsReq.Header.Set("Authorization", "Bearer "+testAdminValidToken)
 	adminWithWsReq.Header.Set("x-workspace-id", testWsA)
 	adminWithWsResp, err := http.DefaultClient.Do(adminWithWsReq)
 	if err != nil {
@@ -673,28 +796,73 @@ func TestRealProcessAPIAndAdminAPIRuntimeAndOutboxWorkerPipeline(t *testing.T) {
 		t.Fatalf("expected 403 Forbidden when x-workspace-id sent to admin-api, got %d", adminWithWsResp.StatusCode)
 	}
 
-	// 6b. Rejects non-internal-admin user on admin-api with 403 Forbidden
-	nonAdminReq, _ := http.NewRequestWithContext(ctx, http.MethodGet, adminBaseURL+"/admin/v1/whoami", nil)
-	nonAdminReq.Header.Set("Authorization", "Bearer "+ownerAToken)
-	nonAdminResp, err := http.DefaultClient.Do(nonAdminReq)
-	if err != nil {
-		t.Fatalf("admin-api request with non-admin token: %v", err)
-	}
-	_ = nonAdminResp.Body.Close()
-	if nonAdminResp.StatusCode != http.StatusForbidden {
-		t.Fatalf("expected 403 Forbidden when non-admin calls admin-api, got %d", nonAdminResp.StatusCode)
+	// 6b. Rejects workspace/user Clerk JWTs on admin-api with 403 Forbidden (even if user email matches internal_admins!)
+	for _, badJWTToken := range []string{ownerAToken, sysAdminClerkToken} {
+		nonAdminReq, _ := http.NewRequestWithContext(ctx, http.MethodGet, adminBaseURL+"/admin/v1/whoami", nil)
+		nonAdminReq.Header.Set("Authorization", "Bearer "+badJWTToken)
+		nonAdminResp, err := http.DefaultClient.Do(nonAdminReq)
+		if err != nil {
+			t.Fatalf("admin-api request with user JWT token: %v", err)
+		}
+		_ = nonAdminResp.Body.Close()
+		if nonAdminResp.StatusCode != http.StatusForbidden {
+			t.Fatalf("expected 403 Forbidden when workspace/user Clerk JWT calls admin-api, got %d", nonAdminResp.StatusCode)
+		}
 	}
 
-	// 6c. Accepts verified internal admin without x-workspace-id
+	// 6b-2. Rejects admin sessions lacking MFA verification, VPN verification, or revoked with 401 Unauthorized
+	for _, invalidAdminToken := range []string{testAdminNoMFAToken, testAdminNoVPNToken, testAdminRevokedToken, "adm_sess_unknown_token_0000000000"} {
+		badAdminReq, _ := http.NewRequestWithContext(ctx, http.MethodGet, adminBaseURL+"/admin/v1/whoami", nil)
+		badAdminReq.Header.Set("Authorization", "Bearer "+invalidAdminToken)
+		badAdminResp, err := http.DefaultClient.Do(badAdminReq)
+		if err != nil {
+			t.Fatalf("admin-api request with unverified/revoked admin token: %v", err)
+		}
+		_ = badAdminResp.Body.Close()
+		if badAdminResp.StatusCode != http.StatusUnauthorized {
+			t.Fatalf("expected 401 Unauthorized for invalid/unverified admin token %q, got %d", invalidAdminToken, badAdminResp.StatusCode)
+		}
+	}
+
+	// 6b-3. Rejects non-VPN / non-loopback peer IP on admin-api handler with 403 Forbidden
+	adminHandler, adminCleanup, err := runtimeassembly.NewHandlerFromConfig(ctx, runtimeassembly.Config{
+		Role:        bootstrap.RoleAdminAPI,
+		DatabaseURL: dsn,
+	})
+	if err != nil {
+		t.Fatalf("NewHandlerFromConfig(admin-api): %v", err)
+	}
+	defer adminCleanup()
+	nonVPNReq := httptest.NewRequest(http.MethodGet, "/admin/v1/whoami", nil)
+	nonVPNReq.RemoteAddr = "203.0.113.50:44321"
+	nonVPNReq.Header.Set("Authorization", "Bearer "+testAdminValidToken)
+	nonVPNRec := httptest.NewRecorder()
+	adminHandler.ServeHTTP(nonVPNRec, nonVPNReq)
+	if nonVPNRec.Code != http.StatusForbidden {
+		t.Fatalf("expected 403 Forbidden when admin-api called from non-VPN peer IP, got %d", nonVPNRec.Code)
+	}
+
+	// 6c. Accepts verified isolated internal admin session (VPN + MFA verified) without x-workspace-id
 	sysAdminReq, _ := http.NewRequestWithContext(ctx, http.MethodGet, adminBaseURL+"/admin/v1/whoami", nil)
-	sysAdminReq.Header.Set("Authorization", "Bearer "+sysAdminToken)
+	sysAdminReq.Header.Set("Authorization", "Bearer "+testAdminValidToken)
 	sysAdminResp, err := http.DefaultClient.Do(sysAdminReq)
 	if err != nil {
 		t.Fatalf("admin-api request with sysAdmin token: %v", err)
 	}
+	var adminWhoami struct {
+		AdminID       string `json:"admin_id"`
+		AdminRole     string `json:"admin_role"`
+		InternalAdmin bool   `json:"internal_admin"`
+		VPNVerified   bool   `json:"vpn_verified"`
+		MFAVerified   bool   `json:"mfa_verified"`
+	}
+	if err := json.NewDecoder(sysAdminResp.Body).Decode(&adminWhoami); err != nil {
+		_ = sysAdminResp.Body.Close()
+		t.Fatalf("decode admin whoami response: %v", err)
+	}
 	_ = sysAdminResp.Body.Close()
-	if sysAdminResp.StatusCode != http.StatusOK {
-		t.Fatalf("expected 200 OK for valid internal admin on admin-api, got %d", sysAdminResp.StatusCode)
+	if sysAdminResp.StatusCode != http.StatusOK || !adminWhoami.InternalAdmin || !adminWhoami.VPNVerified || !adminWhoami.MFAVerified || adminWhoami.AdminID != testSysAdmin || adminWhoami.AdminRole != "super_admin" {
+		t.Fatalf("expected 200 OK with verified MFA+VPN admin session on admin-api, got status=%d body=%+v", sysAdminResp.StatusCode, adminWhoami)
 	}
 
 	// 6d. Does not expose tenant ProductService or unguarded AdminAuthService/Login on admin-api
@@ -703,7 +871,7 @@ func TestRealProcessAPIAndAdminAPIRuntimeAndOutboxWorkerPipeline(t *testing.T) {
 		"/creativanta.admin.v1.AdminAuthService/Login",
 	} {
 		req, _ := http.NewRequestWithContext(ctx, http.MethodPost, adminBaseURL+unmountedAdminPath, strings.NewReader(`{}`))
-		req.Header.Set("Authorization", "Bearer "+sysAdminToken)
+		req.Header.Set("Authorization", "Bearer "+testAdminValidToken)
 		req.Header.Set("Content-Type", "application/json")
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {

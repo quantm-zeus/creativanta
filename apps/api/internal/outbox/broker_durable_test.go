@@ -1,21 +1,31 @@
 package outbox_test
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"crypto/rand"
+	"crypto/rsa"
+	"crypto/tls"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"math/big"
 	"net"
 	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/migrate"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/outbox"
@@ -615,4 +625,453 @@ func TestUnknownExternalEffectBlocksBlindRetryAndUnreachableBrokerFailsClosed(t 
 		t.Fatalf("expected PendingCount=1 when external effect is unknown, got %d", pending)
 	}
 	_ = dsn
+}
+
+// TestPgStreamBrokerMultiInstanceUniqueStreamEntryIDsAndSelectiveXAck verifies R1 Issue 6:
+// Two separate PgStreamBroker instances publishing different events at the exact same millisecond
+// timestamp must allocate globally unique StreamEntryIDs from PostgreSQL, and XAck must acknowledge
+// only the targeted entry (failing closed if an unknown StreamEntryID is passed).
+func TestPgStreamBrokerMultiInstanceUniqueStreamEntryIDsAndSelectiveXAck(t *testing.T) {
+	pool, _ := setupDisposableOutboxDB(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	brokerInstance1 := outbox.NewPgStreamBroker(pool, false)
+	brokerInstance2 := outbox.NewPgStreamBroker(pool, false)
+
+	sameTimestamp := time.Date(2026, 11, 6, 17, 0, 0, 0, time.UTC)
+	const (
+		eventID1 = "0195f000-0000-7000-8000-000000000401"
+		eventID2 = "0195f000-0000-7000-8000-000000000402"
+	)
+
+	entryID1, err := brokerInstance1.XAdd(ctx, outbox.QueueSearchIndexing, outbox.StreamMessage{
+		EventID:       eventID1,
+		EventType:     "product.created",
+		TargetStream:  outbox.QueueSearchIndexing,
+		AggregateType: "product",
+		AggregateID:   eventID1,
+		WorkspaceID:   durableTestWsA,
+		ActorID:       durableTestOwnerA,
+		ActorType:     "user",
+		Payload:       json.RawMessage(`{"product_id":"0195f000-0000-7000-8000-000000000401"}`),
+		PublishedAt:   sameTimestamp,
+	})
+	if err != nil {
+		t.Fatalf("brokerInstance1.XAdd: %v", err)
+	}
+
+	entryID2, err := brokerInstance2.XAdd(ctx, outbox.QueueSearchIndexing, outbox.StreamMessage{
+		EventID:       eventID2,
+		EventType:     "product.created",
+		TargetStream:  outbox.QueueSearchIndexing,
+		AggregateType: "product",
+		AggregateID:   eventID2,
+		WorkspaceID:   durableTestWsA,
+		ActorID:       durableTestOwnerA,
+		ActorType:     "user",
+		Payload:       json.RawMessage(`{"product_id":"0195f000-0000-7000-8000-000000000402"}`),
+		PublishedAt:   sameTimestamp,
+	})
+	if err != nil {
+		t.Fatalf("brokerInstance2.XAdd: %v", err)
+	}
+
+	if entryID1 == entryID2 {
+		t.Fatalf("CRITICAL: separate PgStreamBroker instances generated colliding StreamEntryID %q", entryID1)
+	}
+
+	msgs, err := brokerInstance1.XReadGroup(ctx, outbox.QueueSearchIndexing, "cg-multi-instance", "consumer-1", sameTimestamp, 10)
+	if err != nil {
+		t.Fatalf("XReadGroup: %v", err)
+	}
+	if len(msgs) != 2 {
+		t.Fatalf("expected 2 messages from XReadGroup, got %d", len(msgs))
+	}
+	if pending := brokerInstance1.PendingCount(outbox.QueueSearchIndexing, "cg-multi-instance"); pending != 2 {
+		t.Fatalf("expected PendingCount=2 before XAck, got %d", pending)
+	}
+
+	// Acknowledge only entryID1; entryID2 must remain pending in the PEL.
+	if err := brokerInstance2.XAck(ctx, outbox.QueueSearchIndexing, "cg-multi-instance", entryID1); err != nil {
+		t.Fatalf("XAck(entryID1) failed: %v", err)
+	}
+	if pending := brokerInstance1.PendingCount(outbox.QueueSearchIndexing, "cg-multi-instance"); pending != 1 {
+		t.Fatalf("expected PendingCount=1 after ACKing only entryID1, got %d", pending)
+	}
+
+	// Unknown StreamEntryID must return an error instead of silently succeeding.
+	if err := brokerInstance1.XAck(ctx, outbox.QueueSearchIndexing, "cg-multi-instance", "9999999999999-999999"); err == nil {
+		t.Fatalf("expected XAck with unknown StreamEntryID to return an error")
+	}
+
+	if err := brokerInstance1.XAck(ctx, outbox.QueueSearchIndexing, "cg-multi-instance", entryID2); err != nil {
+		t.Fatalf("XAck(entryID2) failed: %v", err)
+	}
+	if pending := brokerInstance1.PendingCount(outbox.QueueSearchIndexing, "cg-multi-instance"); pending != 0 {
+		t.Fatalf("expected PendingCount=0 after ACKing both entries, got %d", pending)
+	}
+}
+
+type failingTxBeginner struct {
+	err error
+}
+
+func (f failingTxBeginner) Begin(_ context.Context) (pgx.Tx, error) {
+	return nil, f.err
+}
+
+// TestLiveAuthInfrastructureErrorPreservesMessageInPELWithoutAck verifies R1 Issue 5:
+//  1. When PgLiveAuthVerifier encounters a transient DB/network outage (rather than an actual
+//     membership/permission revocation), it returns a non-revocation error and ConsumerWorker
+//     leaves the message un-ACKed in the PEL for retry.
+//  2. When live auth is genuinely revoked but RecordAbortedAudit fails due to a DB outage,
+//     ConsumerWorker does NOT XAck the message until the mandatory aborted audit record is persisted.
+func TestLiveAuthInfrastructureErrorPreservesMessageInPELWithoutAck(t *testing.T) {
+	pool, _ := setupDisposableOutboxDB(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	const (
+		eventID     = "0195f000-0000-7000-8000-000000000501"
+		aggregateID = "0195f000-0000-7000-8000-000000000502"
+	)
+
+	enqueueTenantOutboxEvent(
+		t, ctx, pool,
+		durableTestWsA, durableTestOwnerA,
+		eventID, "product.created", outbox.QueueSearchIndexing,
+		"product", aggregateID,
+		map[string]any{"product_id": aggregateID, "workspace_id": durableTestWsA},
+		map[string]any{"actor_id": durableTestOwnerA, "actor_type": "user", "required_perm": "product:manage"},
+	)
+
+	now := time.Now().UTC().Truncate(time.Millisecond)
+	broker := outbox.NewPgStreamBroker(pool, false)
+	poller := outbox.NewOutboxPoller("poller-auth-infra", outbox.NewPgOutboxStore(pool, false), broker)
+	if _, err := poller.PollOnce(ctx, now); err != nil {
+		t.Fatalf("PollOnce: %v", err)
+	}
+
+	// Simulate transient database outage in PgLiveAuthVerifier.
+	transientDBErr := errors.New("simulated pg connection reset during live auth check")
+	brokenVerifier := outbox.NewPgLiveAuthVerifier(failingTxBeginner{err: transientDBErr})
+	healthyInbox := outbox.NewPgConsumerInboxEngine(pool)
+
+	worker := outbox.NewConsumerWorker(outbox.QueueSearchIndexing, "worker-main", "worker-infra-err", broker, healthyInbox)
+	worker.AuthVerifier = brokenVerifier
+
+	_, err := worker.ProcessNext(ctx, now, 10, outbox.NewPgDomainActionHandler().Handle)
+	if !errors.Is(err, transientDBErr) {
+		t.Fatalf("expected transientDBErr from ProcessNext, got %v", err)
+	}
+	if errors.Is(err, outbox.ErrLiveActorAuthorizationRevoked) {
+		t.Fatalf("transient DB outage must NOT be classified as ErrLiveActorAuthorizationRevoked")
+	}
+	if pending := broker.PendingCount(outbox.QueueSearchIndexing, "worker-main"); pending != 1 {
+		t.Fatalf("expected PendingCount=1 after transient auth DB error (must not XAck), got %d", pending)
+	}
+
+	// Restore healthy PgLiveAuthVerifier, advance clock past 60s idle claim timeout, and verify retry succeeds.
+	now = now.Add(65 * time.Second)
+	worker.AuthVerifier = outbox.NewPgLiveAuthVerifier(pool)
+	outcomes, err := worker.ProcessNext(ctx, now, 10, outbox.NewPgDomainActionHandler().Handle)
+	if err != nil {
+		t.Fatalf("ProcessNext after DB recovery failed: %v", err)
+	}
+	if len(outcomes) != 1 || !outcomes[0].Executed || !outcomes[0].Acked {
+		t.Fatalf("expected Executed+Acked outcome after recovery, got %+v", outcomes)
+	}
+	if pending := broker.PendingCount(outbox.QueueSearchIndexing, "worker-main"); pending != 0 {
+		t.Fatalf("expected PendingCount=0 after recovery execution, got %d", pending)
+	}
+}
+
+// TestWorkerFailsClosedWhenNoDomainOrProviderExecutorRegistered verifies R1 Issue 4:
+// Messages for unimplemented domain queues or external providers without a registered executor
+// must fail closed with ErrNoDomainExecutorRegistered, rolling back consumer_inbox, leaving
+// external_effects with 0 succeeded rows, and keeping the message un-ACKed in the PEL.
+func TestWorkerFailsClosedWhenNoDomainOrProviderExecutorRegistered(t *testing.T) {
+	pool, _ := setupDisposableOutboxDB(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	const (
+		publishEventID = "0195f000-0000-7000-8000-000000000601"
+		publishAggID   = "0195f000-0000-7000-8000-000000000602"
+	)
+
+	enqueueTenantOutboxEvent(
+		t, ctx, pool,
+		durableTestWsA, durableTestOwnerA,
+		publishEventID, "publish.scheduled", outbox.QueuePublishJobs,
+		"publish_job", publishAggID,
+		map[string]any{
+			"publish_job_id": publishAggID,
+			"workspace_id":   durableTestWsA,
+			"provider":       "tiktok_shop",
+		},
+		map[string]any{
+			"actor_id":      durableTestOwnerA,
+			"actor_type":    "user",
+			"required_perm": "publish:schedule",
+		},
+	)
+
+	now := time.Now().UTC().Truncate(time.Millisecond)
+	broker := outbox.NewPgStreamBroker(pool, false)
+	poller := outbox.NewOutboxPoller("poller-fail-closed", outbox.NewPgOutboxStore(pool, false), broker)
+	if _, err := poller.PollOnce(ctx, now); err != nil {
+		t.Fatalf("PollOnce: %v", err)
+	}
+
+	handler := outbox.NewPgDomainActionHandler()
+	worker := outbox.NewConsumerWorker(
+		outbox.QueuePublishJobs,
+		"worker-main",
+		"worker-publish-fail-closed",
+		broker,
+		outbox.NewPgConsumerInboxEngine(pool),
+	)
+	worker.AuthVerifier = outbox.NewPgLiveAuthVerifier(pool)
+
+	_, err := worker.ProcessNext(ctx, now, 10, handler.Handle)
+	if !errors.Is(err, outbox.ErrNoDomainExecutorRegistered) {
+		t.Fatalf("expected ErrNoDomainExecutorRegistered when no publish/provider executor is registered, got %v", err)
+	}
+
+	// Verify zero succeeded external_effects, zero consumer_inbox rows, and message still pending in PEL.
+	var succeededEffects, inboxRows int
+	if err := pool.QueryRow(ctx, `SELECT COUNT(*) FROM external_effects WHERE workspace_id = $1::uuid AND status = 'succeeded'`, durableTestWsA).Scan(&succeededEffects); err != nil {
+		t.Fatalf("query external_effects: %v", err)
+	}
+	if succeededEffects != 0 {
+		t.Fatalf("CRITICAL: worker falsely marked external_effects succeeded (%d rows) without a domain executor", succeededEffects)
+	}
+	if err := pool.QueryRow(ctx, `SELECT COUNT(*) FROM consumer_inbox WHERE event_id = $1::uuid`, publishEventID).Scan(&inboxRows); err != nil {
+		t.Fatalf("query consumer_inbox: %v", err)
+	}
+	if inboxRows != 0 {
+		t.Fatalf("expected consumer_inbox rollback (0 rows) on missing executor, got %d", inboxRows)
+	}
+	if pending := broker.PendingCount(outbox.QueuePublishJobs, "worker-main"); pending != 1 {
+		t.Fatalf("expected PendingCount=1 when domain executor is missing, got %d", pending)
+	}
+
+	// Register an authorized provider executor and verify retry succeeds after idle reclaim window.
+	var executorInvoked bool
+	handler.RegisterProviderExecutor("tiktok_shop", func(execCtx context.Context, q *tenantdb.Queries, msg outbox.StreamMessage) (outbox.DomainActionResult, error) {
+		executorInvoked = true
+		if _, err := q.GetWorkspace(execCtx, msg.WorkspaceID); err != nil {
+			return outbox.DomainActionResult{}, err
+		}
+		return outbox.DomainActionResult{
+			ProviderRequestID: "tiktok_pub_receipt_601",
+			ResultPayload:     json.RawMessage(`{"platform":"tiktok_shop","status":"published"}`),
+		}, nil
+	})
+
+	now = now.Add(65 * time.Second)
+	outcomes, err := worker.ProcessNext(ctx, now, 10, handler.Handle)
+	if err != nil {
+		t.Fatalf("ProcessNext with registered provider executor failed: %v", err)
+	}
+	if !executorInvoked || len(outcomes) != 1 || !outcomes[0].Executed || !outcomes[0].Acked {
+		t.Fatalf("expected registered executor to run and ACK, got invoked=%v outcomes=%+v", executorInvoked, outcomes)
+	}
+	if err := pool.QueryRow(ctx, `SELECT COUNT(*) FROM external_effects WHERE workspace_id = $1::uuid AND status = 'succeeded' AND provider_request_id = 'tiktok_pub_receipt_601'`, durableTestWsA).Scan(&succeededEffects); err != nil {
+		t.Fatalf("query succeeded external_effects: %v", err)
+	}
+	if succeededEffects != 1 {
+		t.Fatalf("expected 1 succeeded external_effects row with real provider receipt, got %d", succeededEffects)
+	}
+}
+
+// TestRedisStreamBrokerTLSHandshakeAndCredentialSafeErrors verifies R1 Issue 7:
+//  1. Invalid Redis URLs never leak passwords or raw URLs in error messages.
+//  2. rediss:// connections perform a TLS 1.2+ handshake BEFORE sending AUTH; if connected to a
+//     plaintext TCP listener, AUTH credentials are never transmitted in cleartext.
+//  3. rediss:// connections succeed against a valid TLS RESP2 endpoint with AUTH + PING.
+func TestRedisStreamBrokerTLSHandshakeAndCredentialSafeErrors(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	const secretPassword = "super_secret_redis_password_do_not_leak_98765"
+	badURLs := []string{
+		"http://default:" + secretPassword + "@127.0.0.1:6379/0",
+		"://default:" + secretPassword + "@127.0.0.1:6379/0",
+		"redis://default:" + secretPassword + "@:6379/0",
+		"redis://default:" + secretPassword + "@127.0.0.1:99999/0",
+		"redis://default:" + secretPassword + "@127.0.0.1:6379/notanumber",
+		"rediss://default:" + secretPassword + "@127.0.0.1:6379/0 extra",
+	}
+	for _, rawURL := range badURLs {
+		_, err := outbox.NewRedisStreamBroker(rawURL, "")
+		if err == nil {
+			t.Fatalf("expected error for invalid redis URL, got nil")
+		}
+		if strings.Contains(err.Error(), secretPassword) {
+			t.Fatalf("CRITICAL: NewRedisStreamBroker leaked secret password in error: %v", err)
+		}
+	}
+
+	// Part 2: Plaintext TCP listener receiving a rediss:// client must fail in TLS handshake
+	// and never receive cleartext AUTH credentials.
+	plainLn, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("net.Listen plaintext: %v", err)
+	}
+	defer plainLn.Close()
+
+	var capturedMu sync.Mutex
+	var capturedPlaintext bytes.Buffer
+	go func() {
+		conn, acceptErr := plainLn.Accept()
+		if acceptErr != nil {
+			return
+		}
+		defer conn.Close()
+		_ = conn.SetDeadline(time.Now().Add(2 * time.Second))
+		buf := make([]byte, 512)
+		n, _ := conn.Read(buf)
+		capturedMu.Lock()
+		capturedPlaintext.Write(buf[:n])
+		capturedMu.Unlock()
+		_, _ = conn.Write([]byte("-ERR plaintext server\r\n"))
+	}()
+
+	redissPlainBroker, err := outbox.NewRedisStreamBroker("rediss://default:"+secretPassword+"@"+plainLn.Addr().String()+"/0", "")
+	if err != nil {
+		t.Fatalf("NewRedisStreamBroker rediss: %v", err)
+	}
+	if err := redissPlainBroker.Ping(ctx); err == nil {
+		t.Fatalf("expected rediss:// Ping against plaintext TCP listener to fail TLS handshake")
+	}
+	capturedMu.Lock()
+	wireBytes := capturedPlaintext.String()
+	capturedMu.Unlock()
+	if strings.Contains(wireBytes, secretPassword) || strings.Contains(wireBytes, "AUTH") {
+		t.Fatalf("CRITICAL: rediss:// sent cleartext AUTH or password before TLS handshake! wire=%q", wireBytes)
+	}
+
+	// Part 3: Valid TLS 1.2+ RESP2 listener with ephemeral certificate verifies TLS handshake + AUTH + PING.
+	privKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("rsa.GenerateKey: %v", err)
+	}
+	certTmpl := &x509.Certificate{
+		SerialNumber: big.NewInt(20261106),
+		Subject:      pkix.Name{CommonName: "127.0.0.1"},
+		NotBefore:    time.Now().Add(-1 * time.Hour),
+		NotAfter:     time.Now().Add(24 * time.Hour),
+		KeyUsage:     x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		IPAddresses:  []net.IP{net.ParseIP("127.0.0.1")},
+	}
+	certDER, err := x509.CreateCertificate(rand.Reader, certTmpl, certTmpl, &privKey.PublicKey, privKey)
+	if err != nil {
+		t.Fatalf("x509.CreateCertificate: %v", err)
+	}
+	leafCert, err := x509.ParseCertificate(certDER)
+	if err != nil {
+		t.Fatalf("x509.ParseCertificate: %v", err)
+	}
+	rootPool := x509.NewCertPool()
+	rootPool.AddCert(leafCert)
+
+	serverTLS := &tls.Config{
+		MinVersion: tls.VersionTLS12,
+		Certificates: []tls.Certificate{
+			{
+				Certificate: [][]byte{certDER},
+				PrivateKey:  privKey,
+			},
+		},
+	}
+	tlsLn, err := tls.Listen("tcp", "127.0.0.1:0", serverTLS)
+	if err != nil {
+		t.Fatalf("tls.Listen: %v", err)
+	}
+	defer tlsLn.Close()
+
+	go func() {
+		for {
+			conn, acceptErr := tlsLn.Accept()
+			if acceptErr != nil {
+				return
+			}
+			go func(c net.Conn) {
+				defer c.Close()
+				_ = c.SetDeadline(time.Now().Add(5 * time.Second))
+				br := bufio.NewReader(c)
+				authed := false
+				for {
+					line, err := br.ReadString('\n')
+					if err != nil {
+						return
+					}
+					line = strings.TrimSpace(line)
+					if !strings.HasPrefix(line, "*") {
+						return
+					}
+					var count int
+					_, _ = fmt.Sscanf(line, "*%d", &count)
+					args := make([]string, 0, count)
+					for i := 0; i < count; i++ {
+						lenLine, err := br.ReadString('\n')
+						if err != nil {
+							return
+						}
+						var argLen int
+						_, _ = fmt.Sscanf(strings.TrimSpace(lenLine), "$%d", &argLen)
+						buf := make([]byte, argLen+2)
+						if _, err := io.ReadFull(br, buf); err != nil {
+							return
+						}
+						args = append(args, string(buf[:argLen]))
+					}
+					if len(args) == 0 {
+						return
+					}
+					switch strings.ToUpper(args[0]) {
+					case "AUTH":
+						if len(args) == 2 && args[1] == secretPassword {
+							authed = true
+							_, _ = c.Write([]byte("+OK\r\n"))
+						} else {
+							_, _ = c.Write([]byte("-ERR invalid password\r\n"))
+						}
+					case "PING":
+						if !authed {
+							_, _ = c.Write([]byte("-NOAUTH Authentication required.\r\n"))
+							return
+						}
+						_, _ = c.Write([]byte("+PONG\r\n"))
+						return
+					default:
+						_, _ = c.Write([]byte("+OK\r\n"))
+					}
+				}
+			}(conn)
+		}
+	}()
+
+	redissTLSBroker, err := outbox.NewRedisStreamBroker("rediss://default:"+secretPassword+"@"+tlsLn.Addr().String()+"/0", "")
+	if err != nil {
+		t.Fatalf("NewRedisStreamBroker TLS: %v", err)
+	}
+	// Without trusting the ephemeral self-signed CA, TLS verification must fail closed.
+	if err := redissTLSBroker.Ping(ctx); err == nil {
+		t.Fatalf("expected rediss:// Ping with untrusted self-signed cert to fail verification")
+	}
+
+	// With RootCAs configured for the test listener, TLS handshake + AUTH + PING must succeed.
+	redissTLSBroker.SetTLSConfig(&tls.Config{
+		MinVersion: tls.VersionTLS12,
+		RootCAs:    rootPool,
+		ServerName: "127.0.0.1",
+	})
+	if err := redissTLSBroker.Ping(ctx); err != nil {
+		t.Fatalf("expected rediss:// Ping over verified TLS to succeed, got: %v", err)
+	}
 }

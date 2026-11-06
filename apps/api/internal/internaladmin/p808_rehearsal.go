@@ -478,26 +478,49 @@ func (s *Service) executeRestoreRehearsalInternal(
 		return nil, fmt.Errorf("%w: RTO %ds exceeds 3600s (1 hour) maximum recovery target", ErrRestoreIntegrityFailed, rtoSeconds)
 	}
 
-	// 3. Reconcile double-entry financial postings (exact integer micro-units; debits must equal credits).
+	// 3. Reconcile double-entry financial postings (exact integer micro-units; debits must equal credits globally AND per workspace/currency).
 	if len(restored.Workspaces) == 0 || len(restored.FinancialPostings) == 0 || len(restored.EvidenceObjects) == 0 {
 		return nil, fmt.Errorf("%w: snapshot is missing required workspaces, financial postings, or evidence objects", ErrRestoreIntegrityFailed)
 	}
+	type wsCurrencyKey struct {
+		workspaceID string
+		currency    string
+	}
+	perWsCurrDebit := make(map[wsCurrencyKey]int64)
+	perWsCurrCredit := make(map[wsCurrencyKey]int64)
 	var totalDebitMicro, totalCreditMicro int64
 	for _, p := range restored.FinancialPostings {
 		if p.AmountMicro <= 0 {
 			return nil, fmt.Errorf("%w: invalid non-positive financial posting amount %d", ErrRestoreIntegrityFailed, p.AmountMicro)
 		}
+		curr := strings.ToUpper(strings.TrimSpace(p.Currency))
+		if curr == "" {
+			return nil, fmt.Errorf("%w: financial posting %s missing currency", ErrRestoreIntegrityFailed, p.PostingID)
+		}
+		key := wsCurrencyKey{workspaceID: strings.TrimSpace(p.WorkspaceID), currency: curr}
 		switch strings.ToLower(p.Direction) {
 		case "debit":
 			totalDebitMicro += p.AmountMicro
+			perWsCurrDebit[key] += p.AmountMicro
 		case "credit":
 			totalCreditMicro += p.AmountMicro
+			perWsCurrCredit[key] += p.AmountMicro
 		default:
 			return nil, fmt.Errorf("%w: unknown posting direction %q", ErrRestoreIntegrityFailed, p.Direction)
 		}
 	}
 	if totalDebitMicro != totalCreditMicro {
 		return nil, fmt.Errorf("%w: double-entry ledger imbalance after restore (debit=%d, credit=%d)", ErrRestoreIntegrityFailed, totalDebitMicro, totalCreditMicro)
+	}
+	for key, d := range perWsCurrDebit {
+		if c := perWsCurrCredit[key]; d != c {
+			return nil, fmt.Errorf("%w: double-entry ledger imbalance for workspace %s currency %s (debit=%d, credit=%d)", ErrRestoreIntegrityFailed, key.workspaceID, key.currency, d, c)
+		}
+	}
+	for key, c := range perWsCurrCredit {
+		if d := perWsCurrDebit[key]; d != c {
+			return nil, fmt.Errorf("%w: double-entry ledger imbalance for workspace %s currency %s (debit=%d, credit=%d)", ErrRestoreIntegrityFailed, key.workspaceID, key.currency, d, c)
+		}
 	}
 
 	// 4. Reconcile AI credit lots per workspace against workspace.AICreditsRemaining.
@@ -656,6 +679,7 @@ type CandidateSlotProbeInput struct {
 	NATSReady                   bool
 	SmokeAuthValid              bool
 	SmokeWorkspaceID            string
+	SmokeExpectedWorkspaceID    string
 	SmokeResponseValidJSON      bool
 	SmokeExpectedNetProfitMicro int64
 	SmokeObservedNetProfitMicro int64
@@ -722,6 +746,7 @@ func (s *Service) ExecuteLiveBlueGreenReleaseSmokeRehearsal(
 	probe := CandidateSlotProbeInput{
 		CandidateSlot:               candidateSlot,
 		CandidateImageDigest:        candidateImageDigest,
+		SmokeExpectedWorkspaceID:    strings.TrimSpace(expectedWorkspaceID),
 		SmokeExpectedNetProfitMicro: expectedNetProfitMicro,
 		SmokeExpectedCreditsBalance: expectedCreditsBalance,
 	}
@@ -853,7 +878,8 @@ func (s *Service) evaluateBlueGreenProbe(
 	if !strings.HasPrefix(strings.TrimSpace(probe.CandidateImageDigest), "sha256:") || len(strings.TrimSpace(probe.CandidateImageDigest)) < 15 {
 		return failAndRollback("SMOKE_INVALID_DIGEST", "candidate image digest must be a pinned sha256 digest")
 	}
-	if probe.HealthzHTTPStatus != 200 || strings.ToLower(strings.TrimSpace(probe.HealthzStatusField)) != "ok" {
+	healthStatus := strings.ToLower(strings.TrimSpace(probe.HealthzStatusField))
+	if probe.HealthzHTTPStatus != 200 || (healthStatus != "ok" && healthStatus != "alive") {
 		return failAndRollback("SMOKE_HEALTHZ_FAILED", fmt.Sprintf("/healthz returned status=%d body=%q", probe.HealthzHTTPStatus, probe.HealthzStatusField))
 	}
 	if probe.ReadyzHTTPStatus != 200 || strings.ToLower(strings.TrimSpace(probe.ReadyzStatusField)) != "ready" ||
@@ -868,6 +894,9 @@ func (s *Service) evaluateBlueGreenProbe(
 	}
 	if !tenantdb.IsValidNonZeroUUID(probe.SmokeWorkspaceID) {
 		return failAndRollback("SMOKE_MISSING_WORKSPACE_ID", "business smoke probe returned empty or invalid workspace_id")
+	}
+	if strings.TrimSpace(probe.SmokeExpectedWorkspaceID) != "" && probe.SmokeWorkspaceID != strings.TrimSpace(probe.SmokeExpectedWorkspaceID) {
+		return failAndRollback("SMOKE_WORKSPACE_MISMATCH", fmt.Sprintf("expected smoke workspace_id %q, observed %q", probe.SmokeExpectedWorkspaceID, probe.SmokeWorkspaceID))
 	}
 	if probe.SmokeObservedNetProfitMicro != probe.SmokeExpectedNetProfitMicro {
 		return failAndRollback("SMOKE_PROFIT_LEDGER_MISMATCH", fmt.Sprintf("expected net profit %d micro-units, observed %d", probe.SmokeExpectedNetProfitMicro, probe.SmokeObservedNetProfitMicro))

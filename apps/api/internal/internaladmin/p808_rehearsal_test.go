@@ -233,6 +233,38 @@ func TestP808AcceptanceTarget1_RealRestoreAndFailingSmoke(t *testing.T) {
 		t.Fatalf("expected RTO > 3600s to fail with ErrRestoreIntegrityFailed, got %v", err)
 	}
 
+	// 3b. Cross-currency or cross-workspace ledger imbalance (even when global raw micro sum matches) must fail closed.
+	crossCurrencySnap := snap
+	crossCurrencySnap.FinancialPostings = []internaladmin.FinancialPostingSnapshot{
+		{
+			PostingID:      "30000000-0000-4000-8000-000000000091",
+			WorkspaceID:    wsA,
+			AccountCode:    "1100_CASH_CLEARING",
+			Direction:      "debit",
+			AmountMicro:    15000000000,
+			Currency:       "VND",
+			IdempotencyKey: "idem-cross-curr",
+			CreatedAt:      now.Add(-10 * time.Minute),
+		},
+		{
+			PostingID:      "30000000-0000-4000-8000-000000000092",
+			WorkspaceID:    wsA,
+			AccountCode:    "4000_MERCHANT_REVENUE",
+			Direction:      "credit",
+			AmountMicro:    15000000000,
+			Currency:       "USD",
+			IdempotencyKey: "idem-cross-curr",
+			CreatedAt:      now.Add(-10 * time.Minute),
+		},
+	}
+	crossCurrencyArtifact, err := internaladmin.CreateVerifiedBackupSnapshot(t.TempDir(), crossCurrencySnap)
+	if err != nil {
+		t.Fatalf("CreateVerifiedBackupSnapshot cross-currency: %v", err)
+	}
+	if _, err := svc.ExecuteRestoreRehearsal(context.Background(), superAdminID, crossCurrencyArtifact, 0, 300); !errors.Is(err, internaladmin.ErrRestoreIntegrityFailed) {
+		t.Fatalf("expected ErrRestoreIntegrityFailed on cross-currency ledger imbalance, got %v", err)
+	}
+
 	// 4. Blue/Green slot promotion succeeds when /healthz, /readyz, and authenticated business smoke pass.
 	greenDigest := "sha256:2222222222222222222222222222222222222222222222222222222222222222"
 	healthyProbe := internaladmin.CandidateSlotProbeInput{
@@ -384,6 +416,13 @@ func TestP808AcceptanceTarget1_RealRestoreAndFailingSmoke(t *testing.T) {
 				p.SmokeObservedCreditsBalance = 2400
 			},
 			expectedCode: "SMOKE_CREDITS_BALANCE_MISMATCH",
+		},
+		{
+			name: "smoke workspace id mismatch",
+			mutate: func(p *internaladmin.CandidateSlotProbeInput) {
+				p.SmokeExpectedWorkspaceID = wsB
+			},
+			expectedCode: "SMOKE_WORKSPACE_MISMATCH",
 		},
 	}
 

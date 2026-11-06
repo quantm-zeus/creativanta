@@ -21,12 +21,30 @@ type ClerkSessionStatus struct {
 }
 
 func NewClerkSessionStatus(secret string) (*ClerkSessionStatus, error) {
+	return NewClerkSessionStatusWithEndpoint(secret, clerkSessionAPI, nil)
+}
+
+func NewClerkSessionStatusWithEndpoint(secret, endpoint string, client *http.Client) (*ClerkSessionStatus, error) {
 	if len(secret) < 12 || !strings.HasPrefix(secret, "sk_") || strings.ContainsAny(secret, " \t\r\n") {
 		return nil, ErrNotConfigured
 	}
+	ep := strings.TrimSpace(endpoint)
+	if ep == "" {
+		ep = clerkSessionAPI
+	}
+	if !strings.HasPrefix(ep, "https://") {
+		return nil, ErrNotConfigured
+	}
+	if !strings.HasSuffix(ep, "/") {
+		ep += "/"
+	}
+	if client == nil {
+		client = &http.Client{Timeout: 4 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return errors.New("session lookup redirect forbidden") }}
+	}
 	return &ClerkSessionStatus{
-		endpoint: clerkSessionAPI, authorization: "Bearer " + secret,
-		client: &http.Client{Timeout: 4 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return errors.New("session lookup redirect forbidden") }},
+		endpoint:      ep,
+		authorization: "Bearer " + secret,
+		client:        client,
 	}, nil
 }
 

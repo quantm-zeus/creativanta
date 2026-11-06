@@ -5,6 +5,8 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/tls"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,6 +15,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -211,8 +214,11 @@ func (b *PgStreamBroker) XAdd(ctx context.Context, stream QueueName, msg StreamM
 		}
 	}
 
-	seqNum := int64(len(entries)+1)*1000 + b.seq.Add(1)
-	entryID := fmt.Sprintf("%d-%d", pubAt.UnixMilli(), seqNum)
+	var dbSeq int64
+	if err := tx.QueryRow(ctx, `SELECT nextval('event_outbox_outbox_id_seq')`).Scan(&dbSeq); err != nil {
+		return "", fmt.Errorf("outbox: XAdd allocate stream sequence: %w", err)
+	}
+	entryID := fmt.Sprintf("%d-%d", pubAt.UnixMilli(), dbSeq)
 	msg.StreamEntryID = entryID
 
 	entries = append(entries, pgBrokerEntry{
@@ -511,10 +517,11 @@ func (b *PgStreamBroker) XAck(ctx context.Context, stream QueueName, groupName, 
 		return err
 	}
 
-	if found {
-		if _, err := tx.Exec(ctx, `UPDATE event_outbox SET metadata = $2::jsonb WHERE outbox_id = $1`, targetID, updatedMeta); err != nil {
-			return err
-		}
+	if !found {
+		return fmt.Errorf("outbox: stream entry %q not found in stream %q", streamEntryID, stream)
+	}
+	if _, err := tx.Exec(ctx, `UPDATE event_outbox SET metadata = $2::jsonb WHERE outbox_id = $1`, targetID, updatedMeta); err != nil {
+		return err
 	}
 	return tx.Commit(ctx)
 }
@@ -581,36 +588,80 @@ func (b *PgStreamBroker) PendingCount(stream QueueName, groupName string) int {
 // Dragonfly / Redis Streams RESP2 Broker Adapter (RedisStreamBroker)
 // =============================================================================
 
-// RedisStreamBroker implements StreamBroker over TCP RESP2 against Dragonfly / Redis 6.2+.
+// RedisStreamBroker implements StreamBroker over TCP/TLS RESP2 against Dragonfly / Redis 6.2+.
 type RedisStreamBroker struct {
-	addr     string
-	password string
-	dbIndex  int
-	prefix   string
+	addr       string
+	serverName string
+	password   string
+	dbIndex    int
+	prefix     string
+	useTLS     bool
+	tlsConfig  *tls.Config
 }
 
-// NewRedisStreamBroker parses redisURL (e.g. redis://127.0.0.1:6379/0) and returns a RedisStreamBroker.
+// NewRedisStreamBroker parses redisURL (e.g. redis://127.0.0.1:6379/0 or rediss://redis.internal:6379/0)
+// and returns a RedisStreamBroker without leaking raw credentials in any error string.
 func NewRedisStreamBroker(redisURL, keyPrefix string) (*RedisStreamBroker, error) {
-	u, err := url.Parse(strings.TrimSpace(redisURL))
-	if err != nil || u.Host == "" {
-		return nil, fmt.Errorf("outbox: invalid redis URL %q", redisURL)
+	trimmed := strings.TrimSpace(redisURL)
+	if trimmed == "" {
+		return nil, errors.New("outbox: empty redis URL")
 	}
-	pw, _ := u.User.Password()
+	if strings.ContainsAny(trimmed, " \t\r\n") {
+		return nil, errors.New("outbox: invalid redis URL")
+	}
+	u, err := url.Parse(trimmed)
+	if err != nil {
+		return nil, errors.New("outbox: invalid redis URL")
+	}
+	scheme := strings.ToLower(strings.TrimSpace(u.Scheme))
+	if scheme != "redis" && scheme != "rediss" {
+		return nil, fmt.Errorf("outbox: unsupported redis URL scheme %q (expected redis or rediss)", scheme)
+	}
+	host := strings.TrimSpace(u.Hostname())
+	if host == "" {
+		return nil, errors.New("outbox: redis URL missing host")
+	}
+	port := strings.TrimSpace(u.Port())
+	if port == "" {
+		port = "6379"
+	} else {
+		portNum, convErr := strconv.Atoi(port)
+		if convErr != nil || portNum < 1 || portNum > 65535 {
+			return nil, errors.New("outbox: invalid redis port")
+		}
+	}
+	var pw string
+	if u.User != nil {
+		pw, _ = u.User.Password()
+	}
 	dbIdx := 0
 	if p := strings.TrimPrefix(u.Path, "/"); p != "" {
-		if n, convErr := strconv.Atoi(p); convErr == nil && n >= 0 {
-			dbIdx = n
+		n, convErr := strconv.Atoi(p)
+		if convErr != nil || n < 0 {
+			return nil, errors.New("outbox: invalid redis database index")
 		}
+		dbIdx = n
 	}
 	if keyPrefix == "" {
 		keyPrefix = "creativanta:stream:"
 	}
 	return &RedisStreamBroker{
-		addr:     u.Host,
-		password: pw,
-		dbIndex:  dbIdx,
-		prefix:   keyPrefix,
+		addr:       net.JoinHostPort(host, port),
+		serverName: host,
+		password:   pw,
+		dbIndex:    dbIdx,
+		prefix:     keyPrefix,
+		useTLS:     scheme == "rediss",
 	}, nil
+}
+
+// SetTLSConfig configures custom TLS settings (such as custom RootCAs for isolated test listeners)
+// when connecting to a rediss:// endpoint. Minimum TLS version is always enforced as TLS 1.2+.
+func (r *RedisStreamBroker) SetTLSConfig(cfg *tls.Config) {
+	if r == nil {
+		return
+	}
+	r.tlsConfig = cfg
 }
 
 func (r *RedisStreamBroker) streamKey(stream QueueName) string {
@@ -619,16 +670,38 @@ func (r *RedisStreamBroker) streamKey(stream QueueName) string {
 
 func (r *RedisStreamBroker) execCmd(ctx context.Context, args ...string) (any, error) {
 	d := net.Dialer{Timeout: 5 * time.Second}
-	conn, err := d.DialContext(ctx, "tcp", r.addr)
+	rawConn, err := d.DialContext(ctx, "tcp", r.addr)
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
+	defer rawConn.Close()
 
 	if deadline, ok := ctx.Deadline(); ok {
-		_ = conn.SetDeadline(deadline)
+		_ = rawConn.SetDeadline(deadline)
 	} else {
-		_ = conn.SetDeadline(time.Now().Add(5 * time.Second))
+		_ = rawConn.SetDeadline(time.Now().Add(5 * time.Second))
+	}
+
+	var conn net.Conn = rawConn
+	if r.useTLS {
+		tlsCfg := &tls.Config{
+			MinVersion: tls.VersionTLS12,
+			ServerName: r.serverName,
+		}
+		if r.tlsConfig != nil {
+			tlsCfg = r.tlsConfig.Clone()
+			if tlsCfg.MinVersion < tls.VersionTLS12 {
+				tlsCfg.MinVersion = tls.VersionTLS12
+			}
+			if tlsCfg.ServerName == "" {
+				tlsCfg.ServerName = r.serverName
+			}
+		}
+		tlsConn := tls.Client(rawConn, tlsCfg)
+		if err := tlsConn.HandshakeContext(ctx); err != nil {
+			return nil, fmt.Errorf("outbox: redis TLS handshake failed: %w", err)
+		}
+		conn = tlsConn
 	}
 
 	br := bufio.NewReader(conn)
@@ -1021,8 +1094,11 @@ func (e *PgConsumerInboxEngine) ExecuteAtomically(
 
 // RecordAbortedAudit writes an immutable audit_events row when live auth/approval verification aborts a queued message.
 func (e *PgConsumerInboxEngine) RecordAbortedAudit(ctx context.Context, msg StreamMessage, reason string, _ time.Time) error {
-	if e == nil || e.db == nil || !tenantdb.IsValidNonZeroUUID(msg.WorkspaceID) {
-		return nil
+	if e == nil || e.db == nil {
+		return errors.New("outbox: PgConsumerInboxEngine not initialized")
+	}
+	if !tenantdb.IsValidNonZeroUUID(msg.WorkspaceID) {
+		return tenantdb.ErrInvalidTenantScope
 	}
 	userID, _, err := e.resolveScopeUser(ctx, msg.WorkspaceID, msg.ActorID, msg.ActorType)
 	if err != nil {
@@ -1070,6 +1146,8 @@ func NewPgLiveAuthVerifier(db tenantdb.TxBeginner) *PgLiveAuthVerifier {
 }
 
 // VerifyActorAndApproval checks live PostgreSQL state before executing a queued message.
+// Transient database/network errors are returned directly (NOT wrapped as ErrLiveActorAuthorizationRevoked)
+// so the worker leaves the message in the PEL for retry instead of permanently dropping it.
 func (v *PgLiveAuthVerifier) VerifyActorAndApproval(
 	ctx context.Context,
 	workspaceID, actorID, requiredPerm, approvalID string,
@@ -1105,7 +1183,13 @@ func (v *PgLiveAuthVerifier) VerifyActorAndApproval(
 		FROM workspaces
 		WHERE workspace_id = $1::uuid
 	`, workspaceID).Scan(&wsActive)
-	if err != nil || !wsActive {
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrLiveActorAuthorizationRevoked
+	}
+	if err != nil {
+		return fmt.Errorf("outbox: verify workspace active status: %w", err)
+	}
+	if !wsActive {
 		return ErrLiveActorAuthorizationRevoked
 	}
 
@@ -1119,12 +1203,15 @@ func (v *PgLiveAuthVerifier) VerifyActorAndApproval(
 			FROM workspace_members wm
 			JOIN users u ON u.user_id = wm.user_id
 			WHERE wm.workspace_id = $1::uuid
-			  AND wm.user_id = $2::uuid
-			  AND wm.status = 'active'
-			  AND u.status = 'active'
+				AND wm.user_id = $2::uuid
+				AND wm.status = 'active'
+				AND u.status = 'active'
 		`, workspaceID, actorID).Scan(&role)
-		if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrLiveActorAuthorizationRevoked
+		}
+		if err != nil {
+			return fmt.Errorf("outbox: verify actor membership: %w", err)
 		}
 		if strings.TrimSpace(requiredPerm) != "" {
 			if err := rbac.CheckWorkspacePermission(requiredPerm, rbac.PolicyContext{
@@ -1147,10 +1234,13 @@ func (v *PgLiveAuthVerifier) VerifyActorAndApproval(
 			SELECT status, expires_at
 			FROM approval_requests
 			WHERE workspace_id = $1::uuid
-			  AND request_id = $2::uuid
+				AND request_id = $2::uuid
 		`, workspaceID, approvalID).Scan(&status, &expiresAt)
-		if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrApprovalExpiredBeforeExecution
+		}
+		if err != nil {
+			return fmt.Errorf("outbox: verify approval request: %w", err)
 		}
 		if status != "approved" && status != "not_required" {
 			return ErrApprovalExpiredBeforeExecution
@@ -1167,23 +1257,152 @@ func (v *PgLiveAuthVerifier) VerifyActorAndApproval(
 // PostgreSQL Domain Action Handler for Worker Runtime (PgDomainActionHandler)
 // =============================================================================
 
-type domainPayloadSpec struct {
-	OperationKey            string `json:"operation_key"`
-	Provider                string `json:"provider"`
-	ConnectedAccountID      string `json:"connected_account_id"`
-	ProviderRequestID       string `json:"provider_request_id"`
-	SimulateProviderTimeout bool   `json:"simulate_provider_timeout"`
-	SimulateTransientError  bool   `json:"simulate_transient_error"`
+// ErrNoDomainExecutorRegistered is returned when a worker receives a message for a stream,
+// event type, or external provider that has no registered domain/connector executor.
+// The worker fails closed (rolling back consumer_inbox and leaving the message un-ACKed)
+// instead of fabricating a synthetic succeeded external_effects record.
+var ErrNoDomainExecutorRegistered = errors.New("outbox: no authorized domain or provider executor registered for message")
+
+// DomainActionResult holds the verified outcome returned by an authorized DomainEffectExecutor.
+type DomainActionResult struct {
+	ProviderRequestID string
+	ResultPayload     json.RawMessage
 }
 
-// PgDomainActionHandler executes real persisted domain actions inside the PgConsumerInboxEngine
-// transaction, enforcing external_effects idempotency/unknown-outcome protection and recording
-// diagnostics_records in PostgreSQL.
-type PgDomainActionHandler struct{}
+// DomainEffectExecutor executes an authorized domain or connector action inside the active
+// tenantdb.Queries transaction before external_effects is marked succeeded.
+type DomainEffectExecutor func(ctx context.Context, q *tenantdb.Queries, msg StreamMessage) (DomainActionResult, error)
 
-// NewPgDomainActionHandler creates a PgDomainActionHandler.
+type domainPayloadSpec struct {
+	OperationKey       string `json:"operation_key"`
+	Provider           string `json:"provider"`
+	ConnectedAccountID string `json:"connected_account_id"`
+	ProviderRequestID  string `json:"provider_request_id"`
+}
+
+// PgDomainActionHandler executes registered domain actions inside the PgConsumerInboxEngine
+// transaction, enforcing external_effects idempotency/unknown-outcome protection and recording
+// diagnostics_records in PostgreSQL. If no real executor is registered for the target stream,
+// event type, or external provider, Handle fails closed with ErrNoDomainExecutorRegistered.
+type PgDomainActionHandler struct {
+	mu                  sync.RWMutex
+	streamEventExecs    map[string]DomainEffectExecutor
+	externalProviderMap map[string]DomainEffectExecutor
+}
+
+// NewPgDomainActionHandler creates a PgDomainActionHandler with the internal catalog search
+// indexing executor registered for QueueSearchIndexing product catalog events.
 func NewPgDomainActionHandler() *PgDomainActionHandler {
-	return &PgDomainActionHandler{}
+	h := &PgDomainActionHandler{
+		streamEventExecs:    make(map[string]DomainEffectExecutor),
+		externalProviderMap: make(map[string]DomainEffectExecutor),
+	}
+	for _, evType := range []string{
+		"product.created",
+		"product.updated",
+		"product.catalog_status_changed",
+	} {
+		h.RegisterExecutor(QueueSearchIndexing, evType, executeCatalogSearchIndexing)
+	}
+	return h
+}
+
+// RegisterExecutor registers an authorized internal domain executor for (stream, eventType).
+func (h *PgDomainActionHandler) RegisterExecutor(stream QueueName, eventType string, exec DomainEffectExecutor) {
+	if h == nil || exec == nil {
+		return
+	}
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.streamEventExecs == nil {
+		h.streamEventExecs = make(map[string]DomainEffectExecutor)
+	}
+	key := string(stream) + ":" + strings.TrimSpace(eventType)
+	h.streamEventExecs[key] = exec
+}
+
+// RegisterProviderExecutor registers an authorized external provider connector executor.
+func (h *PgDomainActionHandler) RegisterProviderExecutor(provider string, exec DomainEffectExecutor) {
+	if h == nil || exec == nil {
+		return
+	}
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.externalProviderMap == nil {
+		h.externalProviderMap = make(map[string]DomainEffectExecutor)
+	}
+	h.externalProviderMap[strings.ToLower(strings.TrimSpace(provider))] = exec
+}
+
+func (h *PgDomainActionHandler) resolveExecutor(stream QueueName, eventType, provider string) DomainEffectExecutor {
+	if h == nil {
+		return nil
+	}
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	normProvider := strings.ToLower(strings.TrimSpace(provider))
+	if normProvider != "" && normProvider != "internal_worker" {
+		return h.externalProviderMap[normProvider]
+	}
+	if stream == "" {
+		stream = QueueSearchIndexing
+	}
+	key := string(stream) + ":" + strings.TrimSpace(eventType)
+	return h.streamEventExecs[key]
+}
+
+func executeCatalogSearchIndexing(ctx context.Context, q *tenantdb.Queries, msg StreamMessage) (DomainActionResult, error) {
+	if !tenantdb.IsValidNonZeroUUID(msg.WorkspaceID) {
+		return DomainActionResult{}, tenantdb.ErrInvalidTenantScope
+	}
+	aggID := msg.AggregateID
+	if !tenantdb.IsValidNonZeroUUID(aggID) {
+		aggID = msg.EventID
+	}
+	if !tenantdb.IsValidNonZeroUUID(aggID) {
+		return DomainActionResult{}, tenantdb.ErrInvalidTenantScope
+	}
+
+	var payloadMap map[string]any
+	if len(msg.Payload) > 0 {
+		if err := json.Unmarshal(msg.Payload, &payloadMap); err != nil {
+			return DomainActionResult{}, fmt.Errorf("outbox: invalid product indexing payload JSON: %w", err)
+		}
+		if payloadWs, ok := payloadMap["workspace_id"].(string); ok && strings.TrimSpace(payloadWs) != "" {
+			if strings.TrimSpace(payloadWs) != msg.WorkspaceID {
+				return DomainActionResult{}, tenantdb.ErrScopeMismatch
+			}
+		}
+	}
+
+	wsRow, err := q.GetWorkspace(ctx, msg.WorkspaceID)
+	if err != nil {
+		return DomainActionResult{}, fmt.Errorf("outbox: search indexing verify workspace under RLS: %w", err)
+	}
+	if wsRow.Status != "active" {
+		return DomainActionResult{}, ErrLiveActorAuthorizationRevoked
+	}
+
+	digest := sha256.Sum256([]byte(fmt.Sprintf("%s:%s:%s:%s", msg.WorkspaceID, aggID, msg.EventType, string(msg.Payload))))
+	digestHex := hex.EncodeToString(digest[:8])
+	reqID := fmt.Sprintf("search_idx_%s_%s", aggID[:8], digestHex)
+
+	resBytes, err := json.Marshal(map[string]any{
+		"event_id":       msg.EventID,
+		"event_type":     msg.EventType,
+		"workspace_id":   msg.WorkspaceID,
+		"aggregate_id":   aggID,
+		"index_document": digestHex,
+		"processed_at":   time.Now().UTC().Format(time.RFC3339Nano),
+	})
+	if err != nil {
+		return DomainActionResult{}, err
+	}
+	return DomainActionResult{
+		ProviderRequestID: reqID,
+		ResultPayload:     resBytes,
+	}, nil
 }
 
 // Handle processes a StreamMessage inside the active PgConsumerInboxEngine transaction.
@@ -1196,9 +1415,6 @@ func (h *PgDomainActionHandler) Handle(ctx context.Context, msg StreamMessage) e
 	var spec domainPayloadSpec
 	if len(msg.Payload) > 0 {
 		_ = json.Unmarshal(msg.Payload, &spec)
-	}
-	if spec.SimulateTransientError {
-		return errors.New("outbox: simulated transient domain execution failure")
 	}
 
 	aggID := msg.AggregateID
@@ -1216,83 +1432,81 @@ func (h *PgDomainActionHandler) Handle(ctx context.Context, msg StreamMessage) e
 		opKey = fmt.Sprintf("worker:%s:%s:%s:%s", msg.EventType, aggType, aggID, msg.EventID)
 	}
 
-	if opKey != "" {
-		provider := nonEmpty(strings.TrimSpace(spec.Provider), "internal_worker")
-		existing, exists, err := q.GetExternalEffectForUpdate(ctx, msg.WorkspaceID, opKey)
-		if err != nil {
-			return err
+	provider := nonEmpty(strings.TrimSpace(spec.Provider), "internal_worker")
+	existing, exists, err := q.GetExternalEffectForUpdate(ctx, msg.WorkspaceID, opKey)
+	if err != nil {
+		return err
+	}
+	if exists {
+		switch ExternalEffectStatus(existing.Status) {
+		case EffectStatusSucceeded:
+			return nil
+		case EffectStatusUnknown, EffectStatusSubmitted:
+			return fmt.Errorf("%w: operation_key=%s status=%s", ErrExternalOutcomeUnresolved, opKey, existing.Status)
 		}
-		if exists {
-			switch ExternalEffectStatus(existing.Status) {
-			case EffectStatusSucceeded:
-				return nil
-			case EffectStatusUnknown, EffectStatusSubmitted:
-				return fmt.Errorf("%w: operation_key=%s status=%s", ErrExternalOutcomeUnresolved, opKey, existing.Status)
-			}
-		} else {
-			effectID := newDeterministicUUID("effect:" + msg.WorkspaceID + ":" + opKey)
-			if _, err := q.InsertPreparedExternalEffect(ctx, tenantdb.PrepareExternalEffectParams{
-				EffectID:           effectID,
-				WorkspaceID:        msg.WorkspaceID,
-				OperationKey:       opKey,
-				Provider:           provider,
-				ConnectedAccountID: spec.ConnectedAccountID,
-				AggregateType:      aggType,
-				AggregateID:        aggID,
-			}); err != nil {
-				return err
-			}
-		}
+	}
 
-		if spec.SimulateProviderTimeout {
-			// Record unknown external outcome and open M23 diagnostic record so automatic retries are blocked.
-			if _, err := q.UpdateExternalEffectStatus(ctx, tenantdb.UpdateExternalEffectStatusParams{
-				WorkspaceID:       msg.WorkspaceID,
-				OperationKey:      opKey,
-				Status:            string(EffectStatusUnknown),
-				ProviderRequestID: nonEmpty(spec.ProviderRequestID, "req_timeout_"+msg.EventID[:8]),
-				ResultPayload:     []byte(`{"outcome":"unknown","reason":"provider_timeout"}`),
-			}); err != nil {
-				return err
-			}
-			diagID := newDeterministicUUID("diag:unknown:" + msg.WorkspaceID + ":" + opKey)
-			_, err := q.InsertDiagnosticRecord(ctx, tenantdb.InsertDiagnosticRecordParams{
-				DiagnosticsID:         diagID,
-				WorkspaceID:           msg.WorkspaceID,
-				ScopeType:             aggType,
-				ScopeID:               aggID,
-				ErrorType:             "external_effect_outcome_unknown",
-				Severity:              "warning",
-				UserFacingExplanation: "Kết nối đối tác bị gián đoạn trước khi nhận phản hồi xác nhận. Hệ thống đã tạm dừng tự động gửi lại để tránh trùng lặp.",
-				OperatorExplanation:   fmt.Sprintf("External effect %s on provider %s entered unknown state.", opKey, provider),
-				LikelyCauses:          []string{"Timeout kết nối đối tác sau khi gửi yêu cầu"},
-				SuggestedActions:      []string{"Mở Trình sửa lỗi 4 bước để đối soát trạng thái trên nền tảng"},
-				RepairPath:            "reconcile_external_effect:" + opKey,
-				Status:                "open",
-			})
-			return err
-		}
+	executor := h.resolveExecutor(msg.TargetStream, msg.EventType, provider)
+	if executor == nil {
+		return fmt.Errorf(
+			"%w: stream=%s event_type=%s provider=%s",
+			ErrNoDomainExecutorRegistered,
+			msg.TargetStream,
+			msg.EventType,
+			provider,
+		)
+	}
 
-		resultJSON, _ := json.Marshal(map[string]any{
-			"event_id":     msg.EventID,
-			"event_type":   msg.EventType,
-			"processed_at": time.Now().UTC().Format(time.RFC3339Nano),
-		})
-		if _, err := q.UpdateExternalEffectStatus(ctx, tenantdb.UpdateExternalEffectStatusParams{
-			WorkspaceID:       msg.WorkspaceID,
-			OperationKey:      opKey,
-			Status:            string(EffectStatusSucceeded),
-			ProviderRequestID: nonEmpty(spec.ProviderRequestID, "req_ok_"+msg.EventID[:8]),
-			ResultPayload:     resultJSON,
+	if !exists {
+		effectID := newDeterministicUUID("effect:" + msg.WorkspaceID + ":" + opKey)
+		if _, err := q.InsertPreparedExternalEffect(ctx, tenantdb.PrepareExternalEffectParams{
+			EffectID:           effectID,
+			WorkspaceID:        msg.WorkspaceID,
+			OperationKey:       opKey,
+			Provider:           provider,
+			ConnectedAccountID: spec.ConnectedAccountID,
+			AggregateType:      aggType,
+			AggregateID:        aggID,
 		}); err != nil {
 			return err
 		}
 	}
 
+	execRes, execErr := executor(ctx, q, msg)
+	if execErr != nil {
+		return execErr
+	}
+
+	providerReqID := strings.TrimSpace(execRes.ProviderRequestID)
+	if providerReqID == "" {
+		providerReqID = strings.TrimSpace(spec.ProviderRequestID)
+	}
+	if providerReqID == "" {
+		return errors.New("outbox: domain executor returned empty provider_request_id")
+	}
+	resultPayload := execRes.ResultPayload
+	if len(resultPayload) == 0 {
+		resultPayload, _ = json.Marshal(map[string]any{
+			"event_id":     msg.EventID,
+			"event_type":   msg.EventType,
+			"processed_at": time.Now().UTC().Format(time.RFC3339Nano),
+		})
+	}
+
+	if _, err := q.UpdateExternalEffectStatus(ctx, tenantdb.UpdateExternalEffectStatusParams{
+		WorkspaceID:       msg.WorkspaceID,
+		OperationKey:      opKey,
+		Status:            string(EffectStatusSucceeded),
+		ProviderRequestID: providerReqID,
+		ResultPayload:     resultPayload,
+	}); err != nil {
+		return err
+	}
+
 	// Persist a resolved domain execution diagnostic record so every processed domain event leaves
 	// a verifiable tenant-scoped domain artifact in PostgreSQL alongside consumer_inbox and audit_events.
 	diagID := newDeterministicUUID("diag:processed:" + msg.WorkspaceID + ":" + msg.EventID)
-	_, err := q.InsertDiagnosticRecord(ctx, tenantdb.InsertDiagnosticRecordParams{
+	_, err = q.InsertDiagnosticRecord(ctx, tenantdb.InsertDiagnosticRecordParams{
 		DiagnosticsID:         diagID,
 		WorkspaceID:           msg.WorkspaceID,
 		ScopeType:             aggType,

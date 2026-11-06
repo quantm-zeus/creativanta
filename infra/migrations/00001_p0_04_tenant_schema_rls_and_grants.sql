@@ -232,6 +232,15 @@ CREATE POLICY user_self ON users
   USING (user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid)
   WITH CHECK (user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid);
 
+CREATE POLICY user_self_clerk_bootstrap ON users FOR SELECT TO app_user
+  USING (
+    NULLIF(current_setting('app.current_clerk_id', true), '') IS NOT NULL
+    AND (
+      clerk_id = NULLIF(current_setting('app.current_clerk_id', true), '')
+      OR external_auth_id = NULLIF(current_setting('app.current_clerk_id', true), '')
+    )
+  );
+
 CREATE POLICY member_profile_read ON users FOR SELECT
   USING (EXISTS (
     SELECT 1 FROM workspace_members wm
