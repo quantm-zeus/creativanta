@@ -116,7 +116,9 @@ type CreditReservationRecord struct {
 	IdempotencyKey  string                `json:"idempotency_key"`
 	RequestHash     string                `json:"request_hash"`
 	ReservedCredits tenantdb.ExactDecimal `json:"reserved_credits"`
+	ActualCredits   tenantdb.ExactDecimal `json:"actual_credits"`
 	Status          string                `json:"status"` // reserved, in_flight, reconciling, committed, released
+	CancelRequested bool                  `json:"cancel_requested"`
 	CreatedAt       time.Time             `json:"created_at"`
 	UpdatedAt       time.Time             `json:"updated_at"`
 }
@@ -764,6 +766,7 @@ type ProductionConsentRecord struct {
 	ConsentID   string
 	UserID      string
 	WorkspaceID string
+	CharacterID string
 	ConsentType string
 	Version     string
 	Granted     bool

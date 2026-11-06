@@ -66,29 +66,102 @@ func NewPreflightEngine(capProvider CapabilityStatusProvider) *PreflightEngine {
 	return &PreflightEngine{capProvider: capProvider}
 }
 
-// ActionsRequiringApproval per RULE-M20-004 and Pack 03 §6.1
-var sensitiveActionsRequiringApproval = map[string]bool{
-	"publish":                 true,
-	"publishservice/publish":  true,
-	"offer_activation":        true,
-	"price_change":            true,
-	"monetization/activate":   true,
-	"destructive_archive":     true,
-	"reconciliation_override": true,
-	"payout_affecting":        true,
-	"affiliateservice/payout": true,
-	"force_cancel":            true,
-	"force_complete":          true,
+// workflowActionPolicy defines the canonical RBAC permission and approval sensitivity for a workflow action RPC.
+type workflowActionPolicy struct {
+	PermissionKey string
+	Sensitive     bool
 }
 
-// ActionPermissionMap maps canonical RPCs to required RBAC permission tokens.
-var actionPermissionMap = map[string]string{
-	"creativanta.publish.v1.PublishService/Publish":             "publish:create",
-	"creativanta.commerce.v1.InventoryService/ReserveStock":     "commerce:inventory:manage",
-	"creativanta.commerce.v1.MonetizationService/ActivateOffer": "commerce:monetization:manage",
-	"creativanta.commerce.v1.AffiliateService/Payout":           "payout:manage",
-	"creativanta.production.v1.ProductionService/GenerateVideo": "production:create",
-	"creativanta.engagement.v1.ThreadService/Reply":             "engagement:reply",
+// canonicalWorkflowActionPolicies maps normalized "service/method" keys (and symbolic action categories)
+// to their canonical RBAC permission in docs/04_contracts/rbac_permission_matrix.md and RULE-M20-004 sensitivity.
+var canonicalWorkflowActionPolicies = map[string]workflowActionPolicy{
+	// Publishing
+	"publishservice/publish":          {PermissionKey: "publish:create", Sensitive: true},
+	"publishservice/execute":          {PermissionKey: "publish:execute", Sensitive: true},
+	"publishservice/publishnow":       {PermissionKey: "publish:execute", Sensitive: true},
+	"publishservice/schedule":         {PermissionKey: "publish:schedule", Sensitive: true},
+	"publishservice/createitem":       {PermissionKey: "publish:create", Sensitive: false},
+	"publishservice/reconcilepublish": {PermissionKey: "publish:execute", Sensitive: true},
+	"publish":                         {PermissionKey: "publish:execute", Sensitive: true},
+
+	// Commerce: Offers & Monetization
+	"offerservice/activate":             {PermissionKey: "offer:activate", Sensitive: true},
+	"offerservice/activateoffer":        {PermissionKey: "offer:activate", Sensitive: true},
+	"monetizationservice/activateoffer": {PermissionKey: "offer:activate", Sensitive: true},
+	"monetizationservice/activate":      {PermissionKey: "offer:activate", Sensitive: true},
+	"monetization/activate":             {PermissionKey: "offer:activate", Sensitive: true},
+	"offer_activation":                  {PermissionKey: "offer:activate", Sensitive: true},
+	"offerservice/updateprice":          {PermissionKey: "offer:price_change", Sensitive: true},
+	"offerservice/changeprice":          {PermissionKey: "offer:price_change", Sensitive: true},
+	"price_change":                      {PermissionKey: "offer:price_change", Sensitive: true},
+	"offerservice/create":               {PermissionKey: "offer:manage", Sensitive: false},
+	"offerservice/update":               {PermissionKey: "offer:manage", Sensitive: false},
+	"offerservice/deactivate":           {PermissionKey: "offer:manage", Sensitive: true},
+
+	// Commerce: Products & Inventory
+	"inventoryservice/reservestock": {PermissionKey: "product:manage", Sensitive: false},
+	"inventoryservice/adjuststock":  {PermissionKey: "product:manage", Sensitive: false},
+	"productservice/create":         {PermissionKey: "product:manage", Sensitive: false},
+	"productservice/update":         {PermissionKey: "product:manage", Sensitive: false},
+	"productservice/delete":         {PermissionKey: "product:delete", Sensitive: true},
+	"productservice/deleteproduct":  {PermissionKey: "product:delete", Sensitive: true},
+	"productservice/archive":        {PermissionKey: "product:delete", Sensitive: true},
+	"destructive_archive":           {PermissionKey: "product:delete", Sensitive: true},
+
+	// Commerce: Orders, Refunds, Reconciliation, Payouts
+	"orderservice/cancel":            {PermissionKey: "order:manage", Sensitive: true},
+	"orderservice/forcecancel":       {PermissionKey: "order:manage", Sensitive: true},
+	"orderservice/forcecomplete":     {PermissionKey: "order:manage", Sensitive: true},
+	"force_cancel":                   {PermissionKey: "order:manage", Sensitive: true},
+	"force_complete":                 {PermissionKey: "order:manage", Sensitive: true},
+	"refundservice/approve":          {PermissionKey: "refund:manage", Sensitive: true},
+	"refundservice/process":          {PermissionKey: "refund:manage", Sensitive: true},
+	"reconciliationservice/override": {PermissionKey: "reconciliation:override", Sensitive: true},
+	"reconciliation_override":        {PermissionKey: "reconciliation:override", Sensitive: true},
+	"affiliateservice/payout":        {PermissionKey: "reconciliation:override", Sensitive: true},
+	"payoutservice/execute":          {PermissionKey: "reconciliation:override", Sensitive: true},
+	"payout_affecting":               {PermissionKey: "reconciliation:override", Sensitive: true},
+
+	// Billing
+	"billingservice/manage":          {PermissionKey: "workspace:billing:manage", Sensitive: true},
+	"workspaceservice/updatebilling": {PermissionKey: "workspace:billing:manage", Sensitive: true},
+
+	// Production & Engagement
+	"productionservice/generatevideo": {PermissionKey: "asset:generate", Sensitive: false},
+	"productionservice/generate":      {PermissionKey: "asset:generate", Sensitive: false},
+	"threadservice/reply":             {PermissionKey: "thread:reply", Sensitive: false},
+}
+
+// normalizeWorkflowRPCKey normalizes a full or short RPC identifier (e.g. "creativanta.commerce.v1.OfferService/Activate")
+// to its canonical "service/method" lowercase key ("offerservice/activate").
+func normalizeWorkflowRPCKey(rpcName string) string {
+	trimmed := strings.ToLower(strings.TrimSpace(rpcName))
+	if trimmed == "" {
+		return ""
+	}
+	if slashIdx := strings.LastIndex(trimmed, "/"); slashIdx > 0 {
+		servicePart := trimmed[:slashIdx]
+		methodPart := trimmed[slashIdx+1:]
+		if dotIdx := strings.LastIndex(servicePart, "."); dotIdx >= 0 {
+			servicePart = servicePart[dotIdx+1:]
+		}
+		return servicePart + "/" + methodPart
+	}
+	return trimmed
+}
+
+// lookupWorkflowActionPolicy resolves the canonical RBAC permission and sensitivity for an action RPC.
+// Returns false if the RPC is not in the canonical allowlist (fail-closed).
+func lookupWorkflowActionPolicy(rpcName string) (workflowActionPolicy, bool) {
+	norm := normalizeWorkflowRPCKey(rpcName)
+	if policy, ok := canonicalWorkflowActionPolicies[norm]; ok {
+		return policy, true
+	}
+	rawLower := strings.ToLower(strings.TrimSpace(rpcName))
+	if policy, ok := canonicalWorkflowActionPolicies[rawLower]; ok {
+		return policy, true
+	}
+	return workflowActionPolicy{}, false
 }
 
 // ActionPlatformDetector extracts target platform from RPC name or input JSON.
@@ -136,14 +209,12 @@ func estimateActionCredits(rpcName string) float64 {
 }
 
 // IsSensitiveAction checks if an RPC requires approval under RULE-M20-004.
+// Fails closed (returns true) if the RPC is not in the canonical allowlist.
 func IsSensitiveAction(rpcName string) bool {
-	lower := strings.ToLower(rpcName)
-	for pattern := range sensitiveActionsRequiringApproval {
-		if strings.Contains(lower, pattern) {
-			return true
-		}
+	if policy, ok := lookupWorkflowActionPolicy(rpcName); ok {
+		return policy.Sensitive
 	}
-	return false
+	return true
 }
 
 // PreflightWorkflow inspects every action in the workflow graph and produces an audit report.
@@ -190,9 +261,14 @@ func (pe *PreflightEngine) PreflightWorkflow(
 		}
 
 		rpc := cfg.RPCName
-		reqPerm := actionPermissionMap[rpc]
-		if reqPerm == "" {
-			reqPerm = "workflow:edit"
+		policy, ok := lookupWorkflowActionPolicy(rpc)
+		var reqPerm string
+		if !ok {
+			reqPerm = "UNREGISTERED_RPC"
+			report.Errors = append(report.Errors, fmt.Sprintf("Action node %s references unregistered or unsupported RPC %q (fail-closed)", node.NodeID, rpc))
+			report.Valid = false
+		} else {
+			reqPerm = policy.PermissionKey
 		}
 
 		platform := detectPlatform(rpc, cfg.InputJSON)

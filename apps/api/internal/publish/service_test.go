@@ -1041,3 +1041,307 @@ func TestRemediation_R10_FailClosedAndRestartSurvival(t *testing.T) {
 		t.Fatalf("expected ErrStoreNotConfigured on nil PostgresStore.SaveEffect, got %v", err)
 	}
 }
+
+// ============================================================================
+// REMEDIATION TESTS: R4 (Hard-Block Gate, Missing Connector, Log Atomicity, Job-Item Binding)
+// ============================================================================
+
+type testComplianceChecker struct {
+	scanResult    string
+	hasHardBlocks bool
+	details       map[string]any
+	err           error
+}
+
+func (c *testComplianceChecker) CheckPublishCompliance(_ context.Context, _, _, _ string) (string, bool, map[string]any, error) {
+	return c.scanResult, c.hasHardBlocks, c.details, c.err
+}
+
+type failingAppendLogStore struct {
+	Store
+	failAppendLog bool
+}
+
+func (s *failingAppendLogStore) AppendLog(ctx context.Context, log *PublishLog) error {
+	if s.failAppendLog {
+		return errors.New("simulated immutable publish_logs write failure")
+	}
+	return s.Store.AppendLog(ctx, log)
+}
+
+type staticApprovalChecker struct {
+	requireApproval bool
+	approvedIDs     map[string]bool
+}
+
+func (a *staticApprovalChecker) RequiresApproval(_, _ string) bool {
+	return a.requireApproval
+}
+
+func (a *staticApprovalChecker) IsApproved(_, approvalRequestID string) bool {
+	return a.approvedIDs[approvalRequestID]
+}
+
+func TestR4_Publish_ComplianceHardBlockAndDiagnosticsGateCannotBeBypassed(t *testing.T) {
+	now := time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC)
+	checker := &testComplianceChecker{
+		scanResult:    "blocked",
+		hasHardBlocks: true,
+		details:       map[string]any{"violation": "music_license_hard_block"},
+	}
+	svc := NewService(ServiceConfig{
+		Clock:             func() time.Time { return now },
+		ComplianceChecker: checker,
+	})
+	mockConn := &MockConnector{platform: "tiktok", publishOutcome: "success"}
+	svc.RegisterConnector(mockConn)
+
+	// Even Owner cannot bypass a compliance hard block!
+	ctxOwner := WithCaller(context.Background(), testWorkspaceA, testUserA, rbac.RoleOwner)
+	createResp, err := svc.CreateItem(ctxOwner, connect.NewRequest(&publishv1.CreateItemRequest{
+		TargetPlatform:  "tiktok",
+		TargetAccountId: "acc-r4-hb",
+		AssetId:         "asset-hard-blocked-1",
+		Title:           "Hard Blocked Asset",
+	}))
+	if err != nil {
+		t.Fatalf("CreateItem draft should succeed and record blocked diagnostics, got: %v", err)
+	}
+	itemID := createResp.Msg.Item.PublishItemId
+
+	// 1. Schedule must fail with CodeFailedPrecondition (ErrComplianceHardBlocked)
+	if _, err := svc.Schedule(ctxOwner, connect.NewRequest(&publishv1.ScheduleRequest{
+		PublishItemId: itemID,
+		ScheduledAt:   timestamppb.New(now.Add(15 * time.Minute)),
+	})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("expected Schedule to be blocked by compliance hard block, got: %v", err)
+	}
+
+	// 2. Execute must fail with CodeFailedPrecondition and 0 connector calls
+	if _, err := svc.Execute(ctxOwner, connect.NewRequest(&publishv1.ExecuteRequest{
+		PublishItemId: itemID,
+	})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("expected Execute to be blocked by compliance hard block even for Owner, got: %v", err)
+	}
+	if mockConn.publishCalls != 0 {
+		t.Fatalf("expected 0 connector calls on hard-blocked item, got %d", mockConn.publishCalls)
+	}
+
+	// 3. SubmitManualProof must also fail on hard-blocked item
+	if _, err := svc.SubmitManualProof(ctxOwner, connect.NewRequest(&publishv1.SubmitManualProofRequest{
+		PublishItemId:   itemID,
+		ExternalPostUrl: "https://tiktok.com/@brand/video/123",
+	})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("expected SubmitManualProof to be blocked by compliance hard block, got: %v", err)
+	}
+
+	// 4. Soft-flag review_required without override acknowledgement/reason must fail, then succeed once overridden
+	checker.scanResult = "review_required"
+	checker.hasHardBlocks = false
+	checker.details = map[string]any{"soft_flag": "borderline_claim"}
+
+	softResp, err := svc.CreateItem(ctxOwner, connect.NewRequest(&publishv1.CreateItemRequest{
+		TargetPlatform:  "tiktok",
+		TargetAccountId: "acc-r4-hb",
+		AssetId:         "asset-soft-review-1",
+		Title:           "Soft Flagged Asset",
+	}))
+	if err != nil {
+		t.Fatalf("CreateItem soft-flagged failed: %v", err)
+	}
+	softID := softResp.Msg.Item.PublishItemId
+
+	if _, err := svc.Execute(ctxOwner, connect.NewRequest(&publishv1.ExecuteRequest{
+		PublishItemId: softID,
+	})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("expected review_required without override to fail with FailedPrecondition, got: %v", err)
+	}
+
+	// Acknowledge soft-flag override with reason
+	softItem, _ := svc.Store().GetItem(ctxOwner, testWorkspaceA, softID)
+	softItem.ComplianceDetails["override_acknowledged"] = true
+	softItem.ComplianceDetails["override_reason"] = "Legal team approved substantiation doc #442"
+	softItem.DiagnosticsState = DiagnosticsHealthy
+	_ = svc.Store().SaveItem(ctxOwner, softItem)
+
+	if _, err := svc.Execute(ctxOwner, connect.NewRequest(&publishv1.ExecuteRequest{
+		PublishItemId: softID,
+	})); err != nil {
+		t.Fatalf("expected review_required with valid override to succeed, got: %v", err)
+	}
+}
+
+func TestR4_Publish_UnconfiguredConnectorFailsClosedWithoutFakeSuccess(t *testing.T) {
+	now := time.Date(2026, 11, 6, 13, 0, 0, 0, time.UTC)
+	svc := NewService(ServiceConfig{
+		Clock: func() time.Time { return now },
+		// No connectors registered!
+	})
+	ctxOwner := WithCaller(context.Background(), testWorkspaceA, testUserA, rbac.RoleOwner)
+
+	createResp, err := svc.CreateItem(ctxOwner, connect.NewRequest(&publishv1.CreateItemRequest{
+		TargetPlatform:  "youtube",
+		TargetAccountId: "acc-yt-unconf",
+		Title:           "Unconfigured Connector Video",
+	}))
+	if err != nil {
+		t.Fatalf("CreateItem failed: %v", err)
+	}
+	itemID := createResp.Msg.Item.PublishItemId
+
+	_, execErr := svc.Execute(ctxOwner, connect.NewRequest(&publishv1.ExecuteRequest{
+		PublishItemId: itemID,
+	}))
+	if connect.CodeOf(execErr) != connect.CodeFailedPrecondition {
+		t.Fatalf("expected Execute without configured connector to fail closed with CodeFailedPrecondition, got: %v", execErr)
+	}
+
+	itemAfter, _ := svc.Store().GetItem(ctxOwner, testWorkspaceA, itemID)
+	if itemAfter.LifecycleState == StatePublished {
+		t.Fatalf("item must NOT be marked published when connector is missing!")
+	}
+	logs, _ := svc.Store().ListLogsByItemID(ctxOwner, testWorkspaceA, itemID)
+	if len(logs) != 0 {
+		t.Fatalf("expected 0 publish logs when connector is missing, got %d", len(logs))
+	}
+	post, _ := svc.Store().GetPostByItemID(ctxOwner, testWorkspaceA, itemID)
+	if post != nil {
+		t.Fatalf("expected nil ChannelPost when connector is missing, got %+v", post)
+	}
+}
+
+func TestR4_Publish_AppendLogFailurePreventsPublishedStateAndRecoversOnRetry(t *testing.T) {
+	now := time.Date(2026, 11, 6, 14, 0, 0, 0, time.UTC)
+	baseStore := NewMemoryStore()
+	wrapStore := &failingAppendLogStore{
+		Store:         baseStore,
+		failAppendLog: true,
+	}
+	svc := NewService(ServiceConfig{
+		Store: wrapStore,
+		Clock: func() time.Time { return now },
+	})
+	mockConn := &MockConnector{
+		platform:       "tiktok",
+		publishOutcome: "success",
+	}
+	svc.RegisterConnector(mockConn)
+
+	ctxOwner := WithCaller(context.Background(), testWorkspaceA, testUserA, rbac.RoleOwner)
+	createResp, err := svc.CreateItem(ctxOwner, connect.NewRequest(&publishv1.CreateItemRequest{
+		TargetPlatform:  "tiktok",
+		TargetAccountId: "acc-tt-logfail",
+		Title:           "Log Atomicity Video",
+	}))
+	if err != nil {
+		t.Fatalf("CreateItem failed: %v", err)
+	}
+	itemID := createResp.Msg.Item.PublishItemId
+
+	// 1. First Execute: connector succeeds, but AppendLog fails -> MUST return Internal error and NOT mark item published!
+	_, err = svc.Execute(ctxOwner, connect.NewRequest(&publishv1.ExecuteRequest{
+		PublishItemId: itemID,
+	}))
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("expected CodeInternal when AppendLog fails, got: %v", err)
+	}
+	if mockConn.publishCalls != 1 {
+		t.Fatalf("expected 1 connector publish call, got %d", mockConn.publishCalls)
+	}
+	itemMid, _ := baseStore.GetItem(ctxOwner, testWorkspaceA, itemID)
+	if itemMid.LifecycleState == StatePublished {
+		t.Fatalf("RULE-M11-002 VIOLATION: item marked published despite AppendLog failure!")
+	}
+
+	// 2. Restore AppendLog and retry Execute: must repair log/item/job/post from succeeded ExternalEffect WITHOUT calling connector again!
+	wrapStore.failAppendLog = false
+	execResp, err := svc.Execute(ctxOwner, connect.NewRequest(&publishv1.ExecuteRequest{
+		PublishItemId: itemID,
+	}))
+	if err != nil {
+		t.Fatalf("expected retry Execute after transient AppendLog failure to repair state, got: %v", err)
+	}
+	if mockConn.publishCalls != 1 {
+		t.Fatalf("expected 1 total connector publish call (no duplicate post on repair), got %d", mockConn.publishCalls)
+	}
+	if execResp.Msg.Item.LifecycleState != publishv1.PublishItemLifecycleState_PUBLISH_ITEM_LIFECYCLE_STATE_PUBLISHED {
+		t.Fatalf("expected item state PUBLISHED after repair, got %v", execResp.Msg.Item.LifecycleState)
+	}
+	if execResp.Msg.Log == nil || execResp.Msg.Log.ResultStatus != publishv1.PublishResultStatus_PUBLISH_RESULT_STATUS_SUCCESS {
+		t.Fatalf("expected repaired success log, got %+v", execResp.Msg.Log)
+	}
+}
+
+func TestR4_Publish_ApprovedJobCannotBeReusedForDifferentItem(t *testing.T) {
+	now := time.Date(2026, 11, 6, 15, 0, 0, 0, time.UTC)
+	store := NewMemoryStore()
+	approvals := &staticApprovalChecker{
+		requireApproval: true,
+		approvedIDs:     map[string]bool{"apr-item-a": true},
+	}
+	svc := NewService(ServiceConfig{
+		Store:           store,
+		Clock:           func() time.Time { return now },
+		ApprovalChecker: approvals,
+	})
+	mockConn := &MockConnector{platform: "tiktok", publishOutcome: "success"}
+	svc.RegisterConnector(mockConn)
+
+	ctxOwner := WithCaller(context.Background(), testWorkspaceA, testUserA, rbac.RoleOwner)
+
+	itemAResp, _ := svc.CreateItem(ctxOwner, connect.NewRequest(&publishv1.CreateItemRequest{
+		TargetPlatform:  "tiktok",
+		TargetAccountId: "acc-tt-apr",
+		Title:           "Approved Item A",
+	}))
+	itemAID := itemAResp.Msg.Item.PublishItemId
+
+	itemBResp, _ := svc.CreateItem(ctxOwner, connect.NewRequest(&publishv1.CreateItemRequest{
+		TargetPlatform:  "tiktok",
+		TargetAccountId: "acc-tt-apr",
+		Title:           "Unapproved Item B",
+	}))
+	itemBID := itemBResp.Msg.Item.PublishItemId
+
+	// Create an approved job bound to Item A
+	jobA := &PublishJob{
+		PublishJobID:      "job-approved-for-a",
+		WorkspaceID:       testWorkspaceA,
+		PublishItemID:     itemAID,
+		DispatchStrategy:  "direct",
+		LifecycleState:    JobStateCreated,
+		ApprovalRequestID: "apr-item-a",
+		CreatedAt:         now,
+		UpdatedAt:         now,
+	}
+	_ = store.SaveJob(ctxOwner, jobA)
+
+	// Attempting to execute Item B using Item A's approved job MUST fail with CodeInvalidArgument (ErrJobItemMismatch)
+	_, err := svc.Execute(ctxOwner, connect.NewRequest(&publishv1.ExecuteRequest{
+		PublishItemId: itemBID,
+		PublishJobId:  jobA.PublishJobID,
+	}))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("expected CodeInvalidArgument when reusing Item A's approved job for Item B, got: %v", err)
+	}
+	if mockConn.publishCalls != 0 {
+		t.Fatalf("expected 0 connector calls when job-item binding fails, got %d", mockConn.publishCalls)
+	}
+
+	// Attempting ReconcilePublish on Item B with Item A's job ID MUST also fail with CodeInvalidArgument
+	_, err = svc.ReconcilePublish(ctxOwner, connect.NewRequest(&publishv1.ReconcilePublishRequest{
+		PublishItemId: itemBID,
+		PublishJobId:  jobA.PublishJobID,
+	}))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("expected CodeInvalidArgument on ReconcilePublish with mismatched job ID, got: %v", err)
+	}
+
+	// Executing Item A with its own approved jobA succeeds
+	if _, err := svc.Execute(ctxOwner, connect.NewRequest(&publishv1.ExecuteRequest{
+		PublishItemId: itemAID,
+		PublishJobId:  jobA.PublishJobID,
+	})); err != nil {
+		t.Fatalf("expected Item A with its own approved job to succeed, got: %v", err)
+	}
+}

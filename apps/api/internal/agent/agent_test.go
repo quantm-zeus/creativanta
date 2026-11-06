@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"sync"
 	"testing"
@@ -773,5 +774,109 @@ func TestPrincipalWorkspaceMismatch_Denied(t *testing.T) {
 	_, _, _, err = svc.LaunchAgent(authCtx, spoofedCaller, AgentTypeGeneric, "Spoofed workspace task", "", "", "10.000000", "", false, nil)
 	if !errors.Is(err, ErrCrossTenantDenied) {
 		t.Fatalf("expected ErrCrossTenantDenied on workspace mismatch against verified principal, got: %v", err)
+	}
+}
+
+type trackingOverrunExecutor struct {
+	mu          sync.Mutex
+	callsByStep map[int]int
+	seenRem     map[int]string
+}
+
+func (e *trackingOverrunExecutor) ExecuteStep(_ context.Context, req StepExecutionRequest) (*StepExecutionResult, error) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if e.callsByStep == nil {
+		e.callsByStep = make(map[int]int)
+	}
+	if e.seenRem == nil {
+		e.seenRem = make(map[int]string)
+	}
+	e.callsByStep[req.Step.StepOrder]++
+	e.seenRem[req.Step.StepOrder] = req.RemainingBudgetCredits
+
+	actual := req.Step.EstimatedCredits
+	if req.Step.StepOrder == 1 {
+		// Step 1 estimated 2.000000, but actual provider spend is 9.000000 (exceeding a 6.000000 ceiling!)
+		actual = "9.000000"
+	}
+	return &StepExecutionResult{
+		ObservedOutcome: fmt.Sprintf("Executed step %d", req.Step.StepOrder),
+		ActualCredits:   actual,
+		Outputs: []AgentOutput{
+			{
+				OutputType: OutputTypeText,
+				Title:      fmt.Sprintf("Step %d Artifact", req.Step.StepOrder),
+				Summary:    "Generated output",
+			},
+		},
+	}, nil
+}
+
+func TestR4_Agent_ActualBudgetOverrunRecordsSpendPreservesOutputAndNeverReplaysExecutedStep(t *testing.T) {
+	ctx := context.Background()
+	store := NewMemStore()
+	exec := &trackingOverrunExecutor{}
+	svc := NewService(store)
+	svc.SetStepExecutor(exec)
+
+	wsID := "11111111-1111-4111-8111-111111111109"
+	caller := CallerContext{
+		UserID:        "user-mgr-r4",
+		WorkspaceID:   wsID,
+		WorkspaceRole: "manager",
+	}
+
+	// Launch with a 6.000000 ceiling. Step 1 estimates 2.000000 (so pre-step check passes),
+	// but Step 1 actual spend is 9.000000 (> 6.000000 ceiling).
+	run, _, _, err := svc.LaunchAgent(
+		ctx,
+		caller,
+		AgentTypeContentOptimizer,
+		"Optimize campaign copy",
+		"",
+		"",
+		"6.000000",
+		"",
+		true,
+		nil,
+	)
+	if !errors.Is(err, ErrBudgetCeilingExceeded) {
+		t.Fatalf("expected ErrBudgetCeilingExceeded when step 1 actual credits exceed ceiling, got: %v", err)
+	}
+	if run.CurrentState != StateWaitingContext {
+		t.Fatalf("expected run paused in StateWaitingContext, got %s", run.CurrentState)
+	}
+	// Step 1 already executed: its actual spend (9.000000), completion status, and output MUST be recorded!
+	if run.CreditsUsed != "9.000000" {
+		t.Fatalf("expected CreditsUsed to record actual 9.000000 spend, got %s", run.CreditsUsed)
+	}
+	if run.Steps[0].Status != StepStatusCompleted || run.Steps[0].ActualCredits != "9.000000" {
+		t.Fatalf("expected step 1 marked completed with ActualCredits=9.000000, got status=%s actual=%s", run.Steps[0].Status, run.Steps[0].ActualCredits)
+	}
+	if len(run.Outputs) != 1 {
+		t.Fatalf("expected step 1 output to be preserved, got %d outputs", len(run.Outputs))
+	}
+	if exec.seenRem[1] != "6.000000" {
+		t.Fatalf("expected RemainingBudgetCredits=6.000000 passed to step 1, got %q", exec.seenRem[1])
+	}
+	if exec.callsByStep[1] != 1 || exec.callsByStep[2] != 0 {
+		t.Fatalf("expected step 1 called once and step 2 not called, got calls=%+v", exec.callsByStep)
+	}
+
+	// Now increase budget ceiling by +20.000000 (to 26.000000) via ProvideInput:
+	// Step 1 MUST NOT be re-executed (callsByStep[1] stays 1), and remaining steps complete!
+	resumedRun, err := svc.ProvideInput(ctx, caller, run.AgentRunID, "", "", false, "20.000000", "")
+	if err != nil {
+		t.Fatalf("expected ProvideInput with sufficient budget increase to complete remaining steps, got: %v", err)
+	}
+	if resumedRun.CurrentState != StateCompleted {
+		t.Fatalf("expected StateCompleted after budget increase, got %s", resumedRun.CurrentState)
+	}
+	if exec.callsByStep[1] != 1 {
+		t.Fatalf("CRITICAL REPLAY BUG: step 1 was executed %d times (expected 1)!", exec.callsByStep[1])
+	}
+	if exec.callsByStep[2] != 1 {
+		t.Fatalf("expected step 2 to execute once after resume, got %d", exec.callsByStep[2])
 	}
 }

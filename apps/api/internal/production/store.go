@@ -955,8 +955,8 @@ func (s *MemoryStore) GetVoiceClone(ctx context.Context, workspaceID, cloneID st
 		return nil, fmt.Errorf("voice clone %q not found in workspace %q", cloneID, workspaceID)
 	}
 	vc, ok := ws[cloneID]
-	if !ok || vc.CloneStatus == "revoked" {
-		return nil, fmt.Errorf("voice clone %q not found or revoked in workspace %q", cloneID, workspaceID)
+	if !ok {
+		return nil, fmt.Errorf("voice clone %q not found in workspace %q", cloneID, workspaceID)
 	}
 	cp := *vc
 	return &cp, nil
@@ -1505,6 +1505,15 @@ func (s *MemoryStore) RevokeConsentRecord(ctx context.Context, workspaceID, cons
 			if c.ConsentRecordID == consentID {
 				c.ConsentVerified = false
 				c.Status = "archived"
+			}
+		}
+	}
+	// Cascade revocation to any voice clones in workspace referencing this consent record
+	if clones := s.voiceClones[workspaceID]; clones != nil {
+		for _, vc := range clones {
+			if vc.ConsentRecordID == consentID {
+				vc.CloneStatus = "revoked"
+				vc.UpdatedAt = now
 			}
 		}
 	}

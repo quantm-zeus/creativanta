@@ -184,18 +184,27 @@ func (p *VideoEngineProvider) Generate(ctx context.Context, req ProviderGenReque
 
 	renderResp, err := p.client.Do(renderReq)
 	if err != nil {
-		return nil, err
+		// Once POST /v1/render-jobs has been dispatched, any network/transport error means
+		// the server may have already accepted and started the render job.
+		return nil, fmt.Errorf("%w: video-engine POST /v1/render-jobs transport failure: %w", ErrOutcomeUnknown, err)
 	}
 	defer renderResp.Body.Close()
 
-	renderRespBytes, _ := io.ReadAll(io.LimitReader(renderResp.Body, 1<<20))
+	renderRespBytes, readErr := io.ReadAll(io.LimitReader(renderResp.Body, 1<<20))
 	if renderResp.StatusCode != http.StatusAccepted && renderResp.StatusCode != http.StatusCreated && renderResp.StatusCode != http.StatusOK {
+		if renderResp.StatusCode == http.StatusBadGateway || renderResp.StatusCode == http.StatusGatewayTimeout {
+			return nil, fmt.Errorf("%w: video-engine: POST /v1/render-jobs returned ambiguous gateway status %d: %s", ErrOutcomeUnknown, renderResp.StatusCode, strings.TrimSpace(string(renderRespBytes)))
+		}
 		return nil, fmt.Errorf("video-engine: POST /v1/render-jobs returned status %d: %s", renderResp.StatusCode, strings.TrimSpace(string(renderRespBytes)))
+	}
+	if readErr != nil {
+		return nil, fmt.Errorf("%w: video-engine: failed reading 2xx render-job response body: %w", ErrOutcomeUnknown, readErr)
 	}
 
 	var jobParsed cveJobResponse
 	if err := json.Unmarshal(renderRespBytes, &jobParsed); err != nil || strings.TrimSpace(jobParsed.ID) == "" {
-		return nil, fmt.Errorf("video-engine: invalid render-job response: %w", err)
+		// Server returned 2xx (accepted the render job), so outcome is in-flight/unknown if payload cannot be decoded.
+		return nil, fmt.Errorf("%w: video-engine: invalid render-job response after 2xx acceptance: %v", ErrOutcomeUnknown, err)
 	}
 
 	initStatus := strings.ToLower(strings.TrimSpace(jobParsed.Status))
