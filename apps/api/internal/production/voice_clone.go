@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"connectrpc.com/connect"
@@ -18,10 +19,12 @@ import (
 
 // VoiceCloneManager handles voice cloning, likeness consent gating, tier gating, and quality repair.
 type VoiceCloneManager struct {
-	store          Store
-	service        *Service
-	workspaceTiers map[string]string // workspaceID -> tier ("free", "starter", "pro", "business", "enterprise")
-	consentStatus  map[string]bool   // consentRecordID -> isValid
+	mu               sync.RWMutex
+	store            Store
+	service          *Service
+	workspaceTiers   map[string]string // workspaceID -> tier ("free", "starter", "pro", "business", "enterprise")
+	consentStatus    map[string]bool   // consentRecordID -> isValid
+	consentWorkspace map[string]string // consentRecordID -> workspaceID
 }
 
 var _ productionv1connect.VoiceCloneServiceHandler = (*VoiceCloneManager)(nil)
@@ -29,19 +32,24 @@ var _ productionv1connect.VoiceCloneServiceHandler = (*VoiceCloneManager)(nil)
 // NewVoiceCloneManager creates a new VoiceCloneManager.
 func NewVoiceCloneManager(store Store, svc *Service) *VoiceCloneManager {
 	return &VoiceCloneManager{
-		store:          store,
-		service:        svc,
-		workspaceTiers: make(map[string]string),
-		consentStatus:  make(map[string]bool),
+		store:            store,
+		service:          svc,
+		workspaceTiers:   make(map[string]string),
+		consentStatus:    make(map[string]bool),
+		consentWorkspace: make(map[string]string),
 	}
 }
 
 // SetWorkspaceTier overrides the subscription tier for a workspace (default: "pro" in tests).
 func (m *VoiceCloneManager) SetWorkspaceTier(workspaceID, tier string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.workspaceTiers[workspaceID] = strings.ToLower(tier)
 }
 
 func (m *VoiceCloneManager) getWorkspaceTier(workspaceID string) string {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	if t, ok := m.workspaceTiers[workspaceID]; ok {
 		return t
 	}
@@ -50,7 +58,74 @@ func (m *VoiceCloneManager) getWorkspaceTier(workspaceID string) string {
 
 // SetConsentStatus overrides whether a consent record is valid or revoked.
 func (m *VoiceCloneManager) SetConsentStatus(consentRecordID string, valid bool) {
+	m.mu.Lock()
 	m.consentStatus[consentRecordID] = valid
+	boundWS := m.consentWorkspace[consentRecordID]
+	m.mu.Unlock()
+
+	if !valid && boundWS != "" && m.store != nil {
+		_ = m.store.RevokeConsentRecord(context.Background(), boundWS, consentRecordID)
+	}
+}
+
+// VerifyConsent validates that a consent record exists in the canonical store (or explicit test fixture),
+// belongs to the caller's workspace, matches the character if character-bound, and has not been revoked.
+func (m *VoiceCloneManager) VerifyConsent(ctx context.Context, workspaceID, characterID, consentRecordID string) error {
+	consentRecordID = strings.TrimSpace(consentRecordID)
+	if consentRecordID == "" {
+		return connect.NewError(connect.CodeFailedPrecondition, ErrConsentRequired)
+	}
+
+	m.mu.Lock()
+	explicitValid, hasExplicit := m.consentStatus[consentRecordID]
+	boundWS := m.consentWorkspace[consentRecordID]
+	m.mu.Unlock()
+
+	if boundWS != "" && boundWS != workspaceID {
+		return connect.NewError(connect.CodePermissionDenied, fmt.Errorf("%w: consent record %q belongs to another workspace", ErrCrossTenantDenied, consentRecordID))
+	}
+	if hasExplicit && !explicitValid {
+		return connect.NewError(connect.CodeFailedPrecondition, ErrConsentRevoked)
+	}
+
+	if m.store != nil {
+		if cr, err := m.store.GetConsentRecord(ctx, workspaceID, consentRecordID); err == nil && cr != nil {
+			if cr.WorkspaceID != "" && cr.WorkspaceID != workspaceID {
+				return connect.NewError(connect.CodePermissionDenied, fmt.Errorf("%w: consent record %q workspace mismatch", ErrCrossTenantDenied, consentRecordID))
+			}
+			if !cr.Granted || cr.RevokedAt != nil {
+				return connect.NewError(connect.CodeFailedPrecondition, ErrConsentRevoked)
+			}
+			if cr.CharacterID != "" && characterID != "" && cr.CharacterID != characterID {
+				return connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("%w: consent record %q is bound to character %q, not %q", ErrConsentNotVerified, consentRecordID, cr.CharacterID, characterID))
+			}
+			m.mu.Lock()
+			m.consentWorkspace[consentRecordID] = workspaceID
+			m.mu.Unlock()
+			return nil
+		}
+	}
+
+	// If not found in canonical store for workspaceID, only allow if explicitly registered via SetConsentStatus
+	// and not bound to a different workspace; otherwise reject unknown/unregistered consent IDs!
+	if !hasExplicit {
+		return connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("%w: consent record %q not found or unverified", ErrConsentNotVerified, consentRecordID))
+	}
+
+	now := time.Now().UTC()
+	m.mu.Lock()
+	m.consentWorkspace[consentRecordID] = workspaceID
+	m.mu.Unlock()
+	if m.store != nil {
+		_ = m.store.SaveConsentRecord(ctx, &ProductionConsentRecord{
+			ConsentID:   consentRecordID,
+			WorkspaceID: workspaceID,
+			ConsentType: "voice_likeness",
+			Granted:     true,
+			GrantedAt:   &now,
+		})
+	}
+	return nil
 }
 
 // Create implements VoiceCloneService.Create.
@@ -83,8 +158,8 @@ func (m *VoiceCloneManager) Create(
 	if !msg.ConsentConfirmed || strings.TrimSpace(msg.ConsentRecordId) == "" {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, ErrConsentRequired)
 	}
-	if valid, ok := m.consentStatus[msg.ConsentRecordId]; ok && !valid {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, ErrConsentRevoked)
+	if err := m.VerifyConsent(ctx, wsID, msg.CharacterId, msg.ConsentRecordId); err != nil {
+		return nil, err
 	}
 
 	// 3. Measured Quote & Credit Check
@@ -137,7 +212,6 @@ func (m *VoiceCloneManager) Create(
 
 	// Deduct reserved credits
 	m.service.deductCredits(wsID, requiredCredits)
-	m.consentStatus[msg.ConsentRecordId] = true
 
 	res := &productionv1.VoiceCloneServiceCreateResponse{
 		Record: &productionv1.VoiceCloneRecord{
@@ -176,7 +250,10 @@ func (m *VoiceCloneManager) Get(
 	wsID := msg.WorkspaceId.Value
 
 	rec, err := m.store.GetVoiceClone(ctx, wsID, msg.VoiceCloneId)
-	if err != nil {
+	if err != nil || rec.CloneStatus == "revoked" {
+		if err == nil {
+			err = fmt.Errorf("voice clone %q not found or revoked in workspace %q", msg.VoiceCloneId, wsID)
+		}
 		return nil, connect.NewError(connect.CodeNotFound, err)
 	}
 
@@ -270,7 +347,10 @@ func (m *VoiceCloneManager) Delete(
 	}
 
 	rec, err := m.store.GetVoiceClone(ctx, wsID, msg.VoiceCloneId)
-	if err != nil {
+	if err != nil || rec.CloneStatus == "revoked" {
+		if err == nil {
+			err = fmt.Errorf("voice clone %q not found or revoked in workspace %q", msg.VoiceCloneId, wsID)
+		}
 		return nil, connect.NewError(connect.CodeNotFound, err)
 	}
 
@@ -279,7 +359,10 @@ func (m *VoiceCloneManager) Delete(
 	}
 
 	if msg.RevokeConsent && rec.ConsentRecordID != "" {
-		m.consentStatus[rec.ConsentRecordID] = false
+		m.SetConsentStatus(rec.ConsentRecordID, false)
+		if m.store != nil {
+			_ = m.store.RevokeConsentRecord(ctx, wsID, rec.ConsentRecordID)
+		}
 	}
 
 	return connect.NewResponse(&productionv1.VoiceCloneServiceDeleteResponse{
@@ -311,11 +394,11 @@ func (m *VoiceCloneManager) GenerateVoiceover(
 		return nil, connect.NewError(connect.CodeNotFound, err)
 	}
 
-	// Verify consent has not been revoked (Acceptance Target 1)
+	// Verify consent has not been revoked and remains valid in store (Acceptance Target 1)
 	if rec.CloneStatus == "revoked" {
 		return nil, connect.NewError(connect.CodePermissionDenied, ErrConsentRevoked)
 	}
-	if valid, ok := m.consentStatus[rec.ConsentRecordID]; ok && !valid {
+	if err := m.VerifyConsent(ctx, wsID, rec.CharacterID, rec.ConsentRecordID); err != nil {
 		return nil, connect.NewError(connect.CodePermissionDenied, ErrConsentRevoked)
 	}
 
@@ -378,7 +461,7 @@ func (m *VoiceCloneManager) GetConsentStatus(
 		isValid = false
 		status = "revoked"
 	}
-	if val, ok := m.consentStatus[rec.ConsentRecordID]; ok && !val {
+	if err := m.VerifyConsent(ctx, wsID, rec.CharacterID, rec.ConsentRecordID); err != nil {
 		isValid = false
 		status = "revoked"
 	}

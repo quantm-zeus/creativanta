@@ -435,6 +435,16 @@ func (s *Service) ProvideInput(
 		}
 		run.BudgetCeiling = newCeiling.Fixed6String()
 
+		usedDec, err := tenantdb.ParseExactDecimal(run.CreditsUsed)
+		if err != nil {
+			usedDec = tenantdb.MustParseExactDecimal("0.000000")
+		}
+		if !newCeiling.IsZero() && usedDec.Cmp(newCeiling) > 0 {
+			// Still over budget ceiling even after increase: remain paused in StateWaitingContext
+			_ = s.store.UpdateRun(ctx, run)
+			return run, ErrBudgetCeilingExceeded
+		}
+
 		// Resume if paused on budget
 		if run.CurrentState == StateWaitingContext {
 			run.CurrentState = StateExecuting

@@ -3,7 +3,9 @@ package workflow
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"strings"
 	"sync"
 	"time"
@@ -308,41 +310,17 @@ func (e *ExecutionEngine) FailRunWithDiagnostics(
 }
 
 func resolveActionPermissionKey(rpcName string) string {
-	if perm, ok := actionPermissionMap[rpcName]; ok {
-		switch perm {
-		case "commerce:inventory:manage":
-			return "product:manage"
-		case "commerce:monetization:manage":
-			return "offer:activate"
-		case "payout:manage":
-			return "reconciliation:override"
-		case "production:create":
-			return "asset:generate"
-		case "engagement:reply":
-			return "thread:reply"
-		default:
-			return perm
-		}
+	if policy, ok := lookupWorkflowActionPolicy(rpcName); ok {
+		return policy.PermissionKey
 	}
-	lower := strings.ToLower(rpcName)
-	switch {
-	case strings.Contains(lower, "deleteproduct") || strings.Contains(lower, "productservice/delete"):
-		return "product:delete"
-	case strings.Contains(lower, "payout") || strings.Contains(lower, "reconciliation"):
-		return "reconciliation:override"
-	case strings.Contains(lower, "activateoffer") || strings.Contains(lower, "price_change"):
-		return "offer:activate"
-	case strings.Contains(lower, "billing"):
-		return "workspace:billing:manage"
-	case strings.Contains(lower, "publish"):
-		return "publish:create"
-	default:
-		return "workflow:edit"
-	}
+	return ""
 }
 
 func checkDelegatedActionPermission(actorUserID, workspaceID, actorRole, rpcName string) error {
 	permKey := resolveActionPermissionKey(rpcName)
+	if permKey == "" {
+		return fmt.Errorf("%w: unregistered or unsupported workflow action RPC %q", rbac.ErrPermissionDenied, rpcName)
+	}
 	role := strings.ToLower(strings.TrimSpace(actorRole))
 	if role == "member" {
 		role = "contributor"
@@ -352,6 +330,26 @@ func checkDelegatedActionPermission(actorUserID, workspaceID, actorRole, rpcName
 		WorkspaceID: workspaceID,
 		Role:        role,
 	})
+}
+
+func isUncertainDispatchError(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, context.DeadlineExceeded) ||
+		errors.Is(err, context.Canceled) ||
+		errors.Is(err, io.EOF) ||
+		errors.Is(err, io.ErrUnexpectedEOF) ||
+		errors.Is(err, ErrUncertainStepEffect) {
+		return true
+	}
+	lower := strings.ToLower(err.Error())
+	return strings.Contains(lower, "timeout") ||
+		strings.Contains(lower, "deadline exceeded") ||
+		strings.Contains(lower, "unknown") ||
+		strings.Contains(lower, "unexpected eof") ||
+		strings.Contains(lower, "connection reset") ||
+		strings.Contains(lower, "broken pipe")
 }
 
 func (e *ExecutionEngine) hasValidApprovedRequestForAction(
@@ -925,6 +923,43 @@ func (e *ExecutionEngine) runLoop(
 			dispatchCtx := WithActionIdempotencyKey(ctx, fmt.Sprintf("%s:%s", runID, node.NodeID))
 			output, affectedObjs, dispatchErr := e.dispatcher.Dispatch(dispatchCtx, workspaceID, rpcName, inputJSON)
 			if dispatchErr != nil {
+				if isUncertainDispatchError(dispatchErr) {
+					// Keep step in 'running' state so RetryRun / ResumeRun cannot blindly re-dispatch or route to fallback!
+					runningStep.Status = "running"
+					runningStep.OutputSnapshot = fmt.Sprintf(`{"uncertain_error":%q}`, dispatchErr.Error())
+					runningStep.UpdatedAt = now
+					if err := e.store.UpdateWorkflowRunStep(ctx, runningStep); err != nil {
+						return nil, fmt.Errorf("persist uncertain action step: %w", err)
+					}
+
+					run.Status = WorkflowRunStatusRequiresManualIntervention
+					run.CurrentNode = node.NodeID
+					run.UpdatedAt = now
+					if run.ResultSummary == nil {
+						run.ResultSummary = make(map[string]any)
+					}
+					run.ResultSummary["failure_type"] = "ACTION_EFFECT_UNCERTAIN"
+					run.ResultSummary["user_facing_explanation"] = fmt.Sprintf("Action step %s (%s) encountered an ambiguous outcome (%v); manual reconciliation is required before fallback or retry.", node.NodeID, rpcName, dispatchErr)
+					if err := e.store.UpdateWorkflowRun(ctx, run); err != nil {
+						return nil, err
+					}
+					_ = e.dlqMgr.PushToDLQ(ctx, &DLQItem{
+						DLQID:               newUUID(),
+						QueueName:           "workflow_runs",
+						OriginalMessageID:   runID,
+						Payload:             run.TriggerEvent,
+						ErrorClass:          "ACTION_EFFECT_UNCERTAIN",
+						ErrorMessage:        dispatchErr.Error(),
+						LastErrorAt:         now,
+						AttemptCount:        1,
+						WorkspaceID:         workspaceID,
+						Status:              "pending",
+						SuggestedRepairPath: "Reconcile external action outcome before resuming or retrying run.",
+						CreatedAt:           now,
+					})
+					return run, ErrUncertainStepEffect
+				}
+
 				runningStep.Status = "failed"
 				runningStep.OutputSnapshot = fmt.Sprintf(`{"error":%q}`, dispatchErr.Error())
 				runningStep.CompletedAt = &now

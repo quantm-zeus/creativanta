@@ -586,8 +586,8 @@ func TestP409_AcceptanceTarget4_ProviderRoutingAndHonestDisabledPath(t *testing.
 		t.Fatalf("expected lineage provider 'kling', got %+v", asset.LineageRefs)
 	}
 
-	// Verify single debit occurred: 80 credits
-	expectedBal, _ := initBal.Sub(tenantdb.MustParseExactDecimal("80.000000"))
+	// Verify single debit occurred for Kling actual cost (60 credits; unused 20-credit Veo hold refunded per F08)
+	expectedBal, _ := initBal.Sub(tenantdb.MustParseExactDecimal("60.000000"))
 	currentBal := svc.GetWorkspaceBalance(wsID)
 	if currentBal.Cmp(expectedBal) != 0 {
 		t.Fatalf("expected balance %s after single failover debit, got %s (double debit occurred!)", expectedBal.String(), currentBal.String())

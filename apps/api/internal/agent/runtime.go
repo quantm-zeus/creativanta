@@ -288,12 +288,20 @@ func (r *Runtime) ExecuteNextStep(ctx context.Context, caller CallerContext, run
 		return r.HandlePartialFailure(ctx, caller, run, stepIndex, ErrExecutorNotConfigured, caller.UserID)
 	}
 
+	var remainingBudgetStr string
+	if !ceilingDec.IsZero() {
+		if remDec, rErr := ceilingDec.Sub(usedDec); rErr == nil {
+			remainingBudgetStr = remDec.Fixed6String()
+		}
+	}
+
 	execRes, err := r.executor.ExecuteStep(ctx, StepExecutionRequest{
-		WorkspaceID: run.WorkspaceID,
-		AgentRunID:  run.AgentRunID,
-		AgentType:   run.AgentType,
-		Caller:      caller,
-		Step:        *currentStep,
+		WorkspaceID:            run.WorkspaceID,
+		AgentRunID:             run.AgentRunID,
+		AgentType:              run.AgentType,
+		Caller:                 caller,
+		Step:                   *currentStep,
+		RemainingBudgetCredits: remainingBudgetStr,
 	})
 	if err != nil {
 		currentStep.Status = StepStatusFailed
@@ -322,14 +330,6 @@ func (r *Runtime) ExecuteNextStep(ctx context.Context, caller CallerContext, run
 		newTotalDec, err = usedDec.Add(actualStepCostDec)
 		if err != nil {
 			return fmt.Errorf("credit addition overflow: %w", err)
-		}
-		if !ceilingDec.IsZero() && newTotalDec.Cmp(ceilingDec) > 0 {
-			run.CurrentState = StateWaitingContext
-			currentStep.Status = StepStatusWaitingContext
-			currentStep.ObservedOutcome = fmt.Sprintf("Budget ceiling reached: step requires %s credits, cumulative %s exceeds ceiling %s. Pausing execution.",
-				actualStepCostDec.Fixed6String(), newTotalDec.Fixed6String(), ceilingDec.Fixed6String())
-			_ = r.store.UpdateRun(ctx, run)
-			return ErrBudgetCeilingExceeded
 		}
 	}
 
@@ -362,7 +362,8 @@ func (r *Runtime) ExecuteNextStep(ctx context.Context, caller CallerContext, run
 		run.Outputs = append(run.Outputs, out)
 	}
 
-	// Success execution of the step
+	// Step has already executed: record its actual credits, outputs, and completion status
+	// so ProvideInput never replays an already-executed step!
 	currentStep.Status = StepStatusCompleted
 	currentStep.CompletedAt = &now
 	currentStep.ActualCredits = actualStepCostDec.Fixed6String()
@@ -373,6 +374,31 @@ func (r *Runtime) ExecuteNextStep(ctx context.Context, caller CallerContext, run
 	// Update working memory (RULE-M21-003: bounded, non-canonical)
 	if run.Memory != nil {
 		_ = run.Memory.AddObservation(currentStep.Title, currentStep.ObservedOutcome)
+	}
+
+	// If actual post-step spend exceeded the configured budget ceiling, pause the run before any further work
+	if !ceilingDec.IsZero() && newTotalDec.Cmp(ceilingDec) > 0 {
+		run.CurrentState = StateWaitingContext
+		pauseMsg := fmt.Sprintf("Budget ceiling reached after step %d: actual %s credits brought cumulative spend to %s (ceiling %s). Pausing execution.",
+			currentStep.StepOrder, actualStepCostDec.Fixed6String(), newTotalDec.Fixed6String(), ceilingDec.Fixed6String())
+		if stepIndex+1 < len(run.Steps) && run.Steps[stepIndex+1].Status == StepStatusPlanning {
+			run.Steps[stepIndex+1].Status = StepStatusWaitingContext
+			run.Steps[stepIndex+1].ObservedOutcome = pauseMsg
+		}
+		_ = r.store.UpdateRun(ctx, run)
+		r.store.PublishEvent(ctx, DomainEvent{
+			EventType:   "agent_run.waiting_context",
+			WorkspaceID: run.WorkspaceID,
+			Payload: map[string]any{
+				"run_id":                 run.AgentRunID,
+				"requested_context_type": "budget_increase",
+				"prompt":                 pauseMsg,
+				"credits_used":           run.CreditsUsed,
+				"budget_ceiling":         run.BudgetCeiling,
+			},
+			OccurredAt: now,
+		})
+		return ErrBudgetCeilingExceeded
 	}
 
 	if err := r.store.UpdateRun(ctx, run); err != nil {

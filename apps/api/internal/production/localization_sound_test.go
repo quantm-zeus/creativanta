@@ -481,3 +481,98 @@ func TestAcceptanceTarget3_LicensedInputAndMeasuredQuote(t *testing.T) {
 		t.Fatalf("expected downbeat timestamps to be populated")
 	}
 }
+
+func TestR4_VoiceClone_UnverifiedCrossTenantOrMismatchedConsentRejected(t *testing.T) {
+	ctx := context.Background()
+	svc, store := setupLocalizationService(t)
+	wsA := "01908700-0001-7000-8000-0000000000a1"
+	wsB := "01908700-0002-7000-8000-0000000000b2"
+	ctxOwnerA := createLocalizationTestContext(wsA, "Owner")
+	ctxOwnerB := createLocalizationTestContext(wsB, "Owner")
+	svc.SetWorkspaceBalance(wsA, tenantdb.MustParseExactDecimal("500.00"))
+	svc.SetWorkspaceBalance(wsB, tenantdb.MustParseExactDecimal("500.00"))
+
+	vcMgr := svc.VoiceClone
+	vcMgr.SetWorkspaceTier(wsA, "pro")
+	vcMgr.SetWorkspaceTier(wsB, "pro")
+
+	// 1. Arbitrary/nonexistent ConsentRecordId with ConsentConfirmed=true MUST be rejected (and MUST NOT self-authenticate!)
+	for attempt := 1; attempt <= 2; attempt++ {
+		_, err := vcMgr.Create(ctxOwnerA, connect.NewRequest(&productionv1.VoiceCloneServiceCreateRequest{
+			Context:          &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: wsA}},
+			CharacterId:      "char-a1",
+			Name:             "Unverified Clone",
+			SampleAudioUrls:  []string{"https://assets.creativanta.com/sample1.mp3"},
+			ConsentRecordId:  "consent-arbitrary-fake-999",
+			ConsentConfirmed: true,
+		}))
+		if err == nil || connect.CodeOf(err) != connect.CodeFailedPrecondition {
+			t.Fatalf("attempt %d: expected unverified ConsentRecordId to fail with FailedPrecondition, got: %v", attempt, err)
+		}
+	}
+	if bal := svc.GetWorkspaceBalance(wsA); bal.Cmp(tenantdb.MustParseExactDecimal("500.00")) != 0 {
+		t.Fatalf("expected 0 credits deducted on rejected consent, got balance %s", bal.String())
+	}
+
+	// 2. Seed a canonical consent record in store for Workspace A and Character "char-a1"
+	_ = store.SaveConsentRecord(ctx, &ProductionConsentRecord{
+		ConsentID:   "consent-canonical-a1",
+		WorkspaceID: wsA,
+		CharacterID: "char-a1",
+		ConsentType: "voice_likeness",
+		Granted:     true,
+	})
+
+	// 3. Cross-tenant reuse: Workspace B attempting to use Workspace A's consent record MUST fail
+	_, err := vcMgr.Create(ctxOwnerB, connect.NewRequest(&productionv1.VoiceCloneServiceCreateRequest{
+		Context:          &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: wsB}},
+		CharacterId:      "char-a1",
+		Name:             "Cross Tenant Clone",
+		SampleAudioUrls:  []string{"https://assets.creativanta.com/sample1.mp3"},
+		ConsentRecordId:  "consent-canonical-a1",
+		ConsentConfirmed: true,
+	}))
+	if err == nil {
+		t.Fatalf("expected cross-tenant consent record usage to fail, got nil")
+	}
+
+	// 4. Wrong character in same workspace: using char-a1's consent record for char-other MUST fail
+	_, err = vcMgr.Create(ctxOwnerA, connect.NewRequest(&productionv1.VoiceCloneServiceCreateRequest{
+		Context:          &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: wsA}},
+		CharacterId:      "char-other",
+		Name:             "Mismatched Character Clone",
+		SampleAudioUrls:  []string{"https://assets.creativanta.com/sample1.mp3"},
+		ConsentRecordId:  "consent-canonical-a1",
+		ConsentConfirmed: true,
+	}))
+	if err == nil || connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("expected character mismatch on consent record to fail with FailedPrecondition, got: %v", err)
+	}
+
+	// 5. Matching workspace + character + granted consent succeeds
+	createResp, err := vcMgr.Create(ctxOwnerA, connect.NewRequest(&productionv1.VoiceCloneServiceCreateRequest{
+		Context:          &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: wsA}},
+		CharacterId:      "char-a1",
+		Name:             "Authorized Clone",
+		SampleAudioUrls:  []string{"https://assets.creativanta.com/sample1.mp3", "https://assets.creativanta.com/sample2.mp3"},
+		ConsentRecordId:  "consent-canonical-a1",
+		ConsentConfirmed: true,
+	}))
+	if err != nil {
+		t.Fatalf("expected valid canonical consent to succeed, got: %v", err)
+	}
+
+	// 6. Revoking consent in canonical store blocks GenerateVoiceover even without calling vcMgr.SetConsentStatus
+	if err := store.RevokeConsentRecord(ctx, wsA, "consent-canonical-a1"); err != nil {
+		t.Fatalf("RevokeConsentRecord failed: %v", err)
+	}
+	_, err = vcMgr.GenerateVoiceover(ctxOwnerA, connect.NewRequest(&productionv1.VoiceCloneServiceGenerateVoiceoverRequest{
+		Context:      &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: wsA}},
+		VoiceCloneId: createResp.Msg.GetRecord().GetVoiceCloneId(),
+		Text:         "Should be blocked by store consent revocation",
+		Language:     "en",
+	}))
+	if err == nil || connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("expected GenerateVoiceover to fail with PermissionDenied after store consent revocation, got: %v", err)
+	}
+}
