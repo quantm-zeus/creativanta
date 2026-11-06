@@ -1,7 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
+import { get } from 'svelte/store';
 import { callCanonicalRpc } from './client';
 import { createIdeaRemote } from '../idea';
-import { requestImageToVideoGenerationRemote } from '../production';
+import {
+  requestImageToVideoGenerationRemote,
+  requestImageToVideoQuoteRemote,
+  cancelStudioJobRemote,
+  retryStudioJobRemote
+} from '../production';
 import {
   issueApiKeyRemote,
   rotateApiKeyRemote,
@@ -10,7 +16,12 @@ import {
   developerStore
 } from '../developer/public_api';
 import { submitSupportTicketRemote } from '../help/store';
-import { saveWorkflowRemote, setWorkflowStatusRemote } from '../workflow/runtime';
+import {
+  loadWorkflowRemote,
+  saveWorkflowRemote,
+  setWorkflowStatusRemote
+} from '../workflow/runtime';
+import { CANONICAL_LEGAL_LINKS, getLegalDocumentBySlug } from '../a11y';
 import { executeVideoAgentStepRemote, planVideoAgent } from '../automation/agent';
 import {
   applyOperationalRepairRemote,
@@ -380,5 +391,510 @@ describe('Remediation Canonical RPC Flows (UF-04..UF-08, AI-02, R04)', () => {
     expect(failRes.updatedOutcomes[2].resolved).toBe(false);
     expect(failRes.updatedOutcomes[2].sourceClass).toBe('unreconciled');
     expect(failRes.result).toBeUndefined();
+  });
+
+  it('R7-04 Developer Public API client uses canonical creativanta.platform.v1 services and proto field names', async () => {
+    developerStore.reset();
+    const calledUrls: string[] = [];
+
+    const createFetch = vi.fn(async (url: string) => {
+      calledUrls.push(String(url));
+      return jsonResponse({
+        api_key: {
+          api_key_id: 'key_platform_01',
+          workspace_id: 'ws-1',
+          key_prefix: 'ca_live_ab',
+          name: 'Platform Key',
+          scopes: ['read:content', 'write:content'],
+          status: 'API_KEY_STATUS_ACTIVE',
+          logical_key_id: 'logical_01'
+        },
+        secret_key: 'ca_live_ab_real_secret_key_value'
+      });
+    });
+
+    const createRes = await issueApiKeyRemote(
+      {
+        workspaceId: 'ws-1',
+        tier: 'pro',
+        activeKeysCount: 0,
+        name: 'Platform Key',
+        scopes: ['read:content', 'write:content']
+      },
+      {
+        token: 'jwt_valid',
+        workspaceId: 'ws-1',
+        fetchFn: createFetch as unknown as typeof fetch
+      }
+    );
+    expect(createRes.ok).toBe(true);
+    expect(createRes.rawSecret).toBe('ca_live_ab_real_secret_key_value');
+    expect(createRes.key?.status).toBe('active');
+    expect(calledUrls[0]).toContain('/creativanta.platform.v1.APIKeyService/Create');
+
+    const rotateFetch = vi.fn(async (url: string) => {
+      calledUrls.push(String(url));
+      return jsonResponse({
+        old_key: {
+          api_key_id: 'key_platform_01',
+          status: 'API_KEY_STATUS_ROTATING',
+          grace_ends_at: '2026-11-07T21:00:00Z'
+        },
+        new_key: {
+          api_key_id: 'key_platform_02',
+          workspace_id: 'ws-1',
+          key_prefix: 'ca_live_cd',
+          name: 'Platform Key',
+          scopes: ['read:content', 'write:content'],
+          status: 'API_KEY_STATUS_ACTIVE',
+          logical_key_id: 'logical_01'
+        },
+        new_secret_key: 'ca_live_cd_rotated_secret_key',
+        grace_ends_at: '2026-11-07T21:00:00Z'
+      });
+    });
+
+    const rotateRes = await rotateApiKeyRemote(
+      { workspaceId: 'ws-1', apiKeyId: 'key_platform_01' },
+      {
+        token: 'jwt_valid',
+        workspaceId: 'ws-1',
+        fetchFn: rotateFetch as unknown as typeof fetch
+      }
+    );
+    expect(rotateRes.ok).toBe(true);
+    expect(rotateRes.newSecret).toBe('ca_live_cd_rotated_secret_key');
+    expect(rotateRes.graceEndsAt).toBe('2026-11-07T21:00:00Z');
+    expect(calledUrls[1]).toContain('/creativanta.platform.v1.APIKeyService/Rotate');
+
+    const stateAfterRotate = get(developerStore);
+    expect(stateAfterRotate.keys.find((k) => k.apiKeyId === 'key_platform_01')?.status).toBe(
+      'rotating'
+    );
+    expect(stateAfterRotate.keys.find((k) => k.apiKeyId === 'key_platform_02')?.status).toBe(
+      'active'
+    );
+
+    const revokeFetch = vi.fn(async (url: string) => {
+      calledUrls.push(String(url));
+      return jsonResponse({
+        api_key: {
+          api_key_id: 'key_platform_02',
+          status: 'API_KEY_STATUS_REVOKED'
+        }
+      });
+    });
+
+    const revokeRes = await revokeApiKeyRemote(
+      { workspaceId: 'ws-1', apiKeyId: 'key_platform_02' },
+      {
+        token: 'jwt_valid',
+        workspaceId: 'ws-1',
+        fetchFn: revokeFetch as unknown as typeof fetch
+      }
+    );
+    expect(revokeRes.ok).toBe(true);
+    expect(calledUrls[2]).toContain('/creativanta.platform.v1.APIKeyService/Revoke');
+
+    const webhookFetch = vi.fn(async (url: string) => {
+      calledUrls.push(String(url));
+      return jsonResponse({
+        subscription: {
+          webhook_subscription_id: 'whsub_platform_01',
+          workspace_id: 'ws-1',
+          target_url: 'https://hooks.creativanta.vn/events',
+          event_types: ['order.created', 'workflow.completed'],
+          status: 'WEBHOOK_SUBSCRIPTION_STATUS_ACTIVE'
+        },
+        signing_secret: 'whsec_platform_signing_secret_01'
+      });
+    });
+
+    const whRes = await registerWebhookRemote(
+      {
+        workspaceId: 'ws-1',
+        targetUrl: 'https://hooks.creativanta.vn/events',
+        eventTypes: ['order.created', 'workflow.completed']
+      },
+      {
+        token: 'jwt_valid',
+        workspaceId: 'ws-1',
+        fetchFn: webhookFetch as unknown as typeof fetch
+      }
+    );
+    expect(whRes.ok).toBe(true);
+    expect(whRes.subscription?.subscriptionId).toBe('whsub_platform_01');
+    expect(whRes.subscription?.status).toBe('active');
+    expect(whRes.secret).toBe('whsec_platform_signing_secret_01');
+    expect(calledUrls[3]).toContain(
+      '/creativanta.platform.v1.WebhookSubscriptionService/CreateWebhookSubscription'
+    );
+  });
+
+  it('R7-05 Workflow editor round-trips action_chain & trigger_config and calls Deactivate on pause', async () => {
+    const requests: Array<{ url: string; body: any }> = [];
+
+    // 1. Load workflow from proto shape (action_chain + trigger_config + proto enums)
+    const loadFetch = vi.fn(async (url: string, init?: RequestInit) => {
+      requests.push({ url: String(url), body: init?.body ? JSON.parse(String(init.body)) : null });
+      return jsonResponse({
+        workflow: {
+          workflow_id: 'wf-roundtrip-1',
+          workspace_id: 'ws-1',
+          title: 'VIP Order Flow',
+          description: 'Proto-backed graph',
+          status: 'WORKFLOW_STATUS_ACTIVE',
+          version: 3,
+          trigger_config: {
+            type: 'TRIGGER_TYPE_EVENT',
+            event_type: 'commerce.order.created'
+          },
+          action_chain: {
+            schema_version: 1,
+            nodes: [
+              {
+                node_id: 'n-trig',
+                node_type: 'NODE_TYPE_TRIGGER',
+                title: 'Order Trigger',
+                trigger_config: {
+                  config: {
+                    type: 'TRIGGER_TYPE_EVENT',
+                    event_type: 'commerce.order.created'
+                  }
+                }
+              },
+              {
+                node_id: 'n-act',
+                node_type: 'NODE_TYPE_ACTION',
+                title: 'Notify Ops',
+                action_config: {
+                  rpc_name: 'creativanta.commerce.v1.OrderService/FulfillOrder',
+                  input_json: '{"priority":"high"}',
+                  timeout_seconds: 30
+                }
+              },
+              {
+                node_id: 'n-term',
+                node_type: 'NODE_TYPE_TERMINAL',
+                title: 'Done',
+                terminal_config: {
+                  outcome: 'succeeded'
+                }
+              }
+            ],
+            edges: [
+              { from_node_id: 'n-trig', to_node_id: 'n-act', branch: 'EDGE_BRANCH_SUCCESS' },
+              { from_node_id: 'n-act', to_node_id: 'n-term', branch: 'EDGE_BRANCH_SUCCESS' }
+            ]
+          }
+        }
+      });
+    });
+
+    const loaded = await loadWorkflowRemote(
+      { workspaceId: 'ws-1', workflowId: 'wf-roundtrip-1' },
+      {
+        token: 'jwt_valid',
+        workspaceId: 'ws-1',
+        fetchFn: loadFetch as unknown as typeof fetch
+      }
+    );
+    expect(loaded.ok).toBe(true);
+    expect(loaded.workflow?.status).toBe('active');
+    expect(loaded.workflow?.version).toBe(3);
+    expect(loaded.workflow?.graph?.nodes).toHaveLength(3);
+    expect(loaded.workflow?.graph?.nodes[0].node_type).toBe('trigger');
+    expect(loaded.workflow?.graph?.nodes[1].action_config?.rpc_name).toBe(
+      'creativanta.commerce.v1.OrderService/FulfillOrder'
+    );
+
+    // 2. Edit node title & save via WorkflowService/Update -> verify action_chain and trigger_config are sent
+    const editedGraph = structuredClone(loaded.workflow!.graph!);
+    editedGraph.nodes[1].title = 'Notify VIP Ops Team';
+
+    const saveFetch = vi.fn(async (url: string, init?: RequestInit) => {
+      const parsedBody = init?.body ? JSON.parse(String(init.body)) : null;
+      requests.push({ url: String(url), body: parsedBody });
+      return jsonResponse({
+        workflow: {
+          workflow_id: 'wf-roundtrip-1',
+          version: 4,
+          status: 'WORKFLOW_STATUS_ACTIVE'
+        }
+      });
+    });
+
+    const saved = await saveWorkflowRemote(
+      {
+        workspaceId: 'ws-1',
+        workflowId: 'wf-roundtrip-1',
+        title: 'VIP Order Flow Updated',
+        description: 'Proto-backed graph',
+        expectedVersion: 3,
+        graph: editedGraph
+      },
+      {
+        token: 'jwt_valid',
+        workspaceId: 'ws-1',
+        fetchFn: saveFetch as unknown as typeof fetch
+      }
+    );
+    expect(saved.ok).toBe(true);
+    expect(saved.version).toBe(4);
+    expect(saved.status).toBe('active');
+    const updateBody = requests[1].body;
+    expect(updateBody.action_chain).toBeDefined();
+    expect(updateBody.action_chain.nodes).toHaveLength(3);
+    expect(updateBody.action_chain.nodes[1].title).toBe('Notify VIP Ops Team');
+    expect(updateBody.action_chain.nodes[1].node_type).toBe('NODE_TYPE_ACTION');
+    expect(updateBody.trigger_config.type).toBe('TRIGGER_TYPE_EVENT');
+
+    // 3. Pause workflow -> must call WorkflowService/Deactivate and normalize WORKFLOW_STATUS_PAUSED -> 'paused'
+    const pauseFetch = vi.fn(async (url: string, init?: RequestInit) => {
+      requests.push({ url: String(url), body: init?.body ? JSON.parse(String(init.body)) : null });
+      return jsonResponse({
+        workflow: {
+          workflow_id: 'wf-roundtrip-1',
+          version: 5,
+          status: 'WORKFLOW_STATUS_PAUSED'
+        }
+      });
+    });
+
+    const paused = await setWorkflowStatusRemote(
+      {
+        workspaceId: 'ws-1',
+        workflowId: 'wf-roundtrip-1',
+        targetStatus: 'paused',
+        expectedVersion: 4
+      },
+      {
+        token: 'jwt_valid',
+        workspaceId: 'ws-1',
+        fetchFn: pauseFetch as unknown as typeof fetch
+      }
+    );
+    expect(paused.ok).toBe(true);
+    expect(paused.status).toBe('paused');
+    expect(paused.version).toBe(5);
+    expect(requests[2].url).toContain('/creativanta.automation.v1.WorkflowService/Deactivate');
+  });
+
+  it('R7-06 Image-to-Video acquires bounded quote (dry_run) and sends canonical GenerateRequest with image_to_video_config', async () => {
+    const capturedCalls: Array<{ url: string; body: any }> = [];
+
+    const twoStepFetch = vi.fn(async (url: string, init?: RequestInit) => {
+      const body = init?.body ? JSON.parse(String(init.body)) : {};
+      capturedCalls.push({ url: String(url), body });
+      if (body.dry_run === true) {
+        return jsonResponse({
+          is_dry_run: true,
+          budget_preview: {
+            quote_id: 'quote_server_i2v_99',
+            quote_expires_at: '2026-11-06T22:00:00Z',
+            total_estimated_credits: '80',
+            available_credits: '450',
+            sufficient_credits: true
+          }
+        });
+      }
+      return jsonResponse({
+        is_dry_run: false,
+        job: {
+          job_id: 'job_i2v_confirmed_01',
+          estimated_credits: '80',
+          quote_id: body.quote_id,
+          status: 'processing'
+        }
+      });
+    });
+
+    const res = await requestImageToVideoGenerationRemote(
+      {
+        workspaceId: 'ws-1',
+        title: 'Lookbook Thu Đông',
+        images: [
+          {
+            id: 'img-a',
+            url: 'https://cdn.creativanta.vn/look1.jpg',
+            name: 'look1.jpg',
+            durationSeconds: 4,
+            customMotionStyle: 'parallax_3d'
+          }
+        ],
+        selectedMotionStyleId: 'cinematic_pan',
+        motionIntensity: 70,
+        aspectRatio: '9:16',
+        selectedTransitionId: 'morph',
+        customPrompt: 'Chuyển động 3D mượt mà cho bộ sưu tập thu đông',
+        quoteCredits: 80,
+        availableBalance: 450,
+        requirePreflightQuote: true
+      },
+      {
+        token: 'jwt_valid',
+        workspaceId: 'ws-1',
+        fetchFn: twoStepFetch as unknown as typeof fetch
+      }
+    );
+
+    expect(res.ok).toBe(true);
+    expect(res.jobId).toBe('job_i2v_confirmed_01');
+    expect(res.quoteId).toBe('quote_server_i2v_99');
+    expect(res.reservedCredits).toBe(80);
+    expect(res.remainingBalance).toBe(370);
+    expect(capturedCalls).toHaveLength(2);
+
+    // Verify dry_run preflight request
+    expect(capturedCalls[0].body.dry_run).toBe(true);
+    expect(capturedCalls[0].body.mode).toBe('PRODUCTION_MODE_IMAGE_TO_VIDEO');
+    expect(capturedCalls[0].body.context.workspace_id.value).toBe('ws-1');
+    expect(capturedCalls[0].body.image_to_video_config.image_urls).toEqual([
+      'https://cdn.creativanta.vn/look1.jpg'
+    ]);
+    expect(capturedCalls[0].body.image_to_video_config.per_image_settings[0].motion_style).toBe(
+      'IMAGE_MOTION_STYLE_PARALLAX_3D'
+    );
+
+    // Verify live Generate request uses server-issued quote_id & confirmed_credits
+    expect(capturedCalls[1].body.dry_run).toBe(false);
+    expect(capturedCalls[1].body.quote_id).toBe('quote_server_i2v_99');
+    expect(capturedCalls[1].body.confirmed_credits).toBe('80');
+    expect(capturedCalls[1].body.post_production.aspect_ratio).toBe('9:16');
+
+    // Negative: server reports insufficient_credits in dry_run -> fails closed without calling live Generate
+    const insufficientFetch = vi.fn(async () =>
+      jsonResponse({
+        is_dry_run: true,
+        budget_preview: {
+          quote_id: 'quote_insufficient_01',
+          total_estimated_credits: '80',
+          available_credits: '10',
+          sufficient_credits: false
+        }
+      })
+    );
+    const failQuote = await requestImageToVideoQuoteRemote(
+      {
+        workspaceId: 'ws-1',
+        images: [
+          {
+            id: 'img-a',
+            url: 'https://cdn.creativanta.vn/look1.jpg',
+            name: 'look1.jpg',
+            durationSeconds: 4
+          }
+        ],
+        selectedMotionStyleId: 'cinematic_pan',
+        motionIntensity: 70,
+        aspectRatio: '9:16',
+        selectedTransitionId: 'morph',
+        quoteCredits: 80,
+        availableBalance: 450
+      },
+      {
+        token: 'jwt_valid',
+        workspaceId: 'ws-1',
+        fetchFn: insufficientFetch as unknown as typeof fetch
+      }
+    );
+    expect(failQuote.ok).toBe(false);
+    expect(failQuote.sufficientCredits).toBe(false);
+  });
+
+  it('R7-07 StudioService/Cancel and StudioService/Retry fail closed on backend error and confirm refund only from server', async () => {
+    const fetch503 = vi.fn().mockResolvedValue(
+      jsonResponse({ message: 'Studio service unavailable' }, 503)
+    );
+
+    const cancelFail = await cancelStudioJobRemote(
+      { workspaceId: 'ws-1', jobId: 'job-q-101' },
+      {
+        token: 'jwt_valid',
+        workspaceId: 'ws-1',
+        fetchFn: fetch503 as unknown as typeof fetch
+      }
+    );
+    expect(cancelFail.ok).toBe(false);
+    expect(cancelFail.creditsRefunded).toBeUndefined();
+
+    const cancelOkFetch = vi.fn(async (url: string, init?: RequestInit) => {
+      const body = init?.body ? JSON.parse(String(init.body)) : {};
+      expect(url).toContain('/creativanta.production.v1.StudioService/Cancel');
+      expect(body.context.workspace_id.value).toBe('ws-1');
+      expect(body.job_id).toBe('job-q-101');
+      return jsonResponse({
+        job: {
+          job_id: 'job-q-101',
+          status: 'cancelled'
+        },
+        credits_refunded: true,
+        refunded_credits: '80'
+      });
+    });
+
+    const cancelOk = await cancelStudioJobRemote(
+      { workspaceId: 'ws-1', jobId: 'job-q-101' },
+      {
+        token: 'jwt_valid',
+        workspaceId: 'ws-1',
+        fetchFn: cancelOkFetch as unknown as typeof fetch
+      }
+    );
+    expect(cancelOk.ok).toBe(true);
+    expect(cancelOk.creditsRefunded).toBe(true);
+    expect(cancelOk.refundedCredits).toBe(80);
+
+    const retryFail = await retryStudioJobRemote(
+      { workspaceId: 'ws-1', jobId: 'job-q-103' },
+      {
+        token: 'jwt_valid',
+        workspaceId: 'ws-1',
+        fetchFn: fetch503 as unknown as typeof fetch
+      }
+    );
+    expect(retryFail.ok).toBe(false);
+
+    const retryOkFetch = vi.fn(async (url: string, init?: RequestInit) => {
+      const body = init?.body ? JSON.parse(String(init.body)) : {};
+      expect(url).toContain('/creativanta.production.v1.StudioService/Retry');
+      expect(body.use_fallback_provider).toBe(true);
+      return jsonResponse({
+        job: {
+          job_id: 'job-q-103',
+          status: 'processing',
+          provider: 'kling',
+          current_step: 'Retrying on Kling fallback',
+          progress_pct: 15
+        },
+        message: 'Retrying job on Kling fallback provider'
+      });
+    });
+
+    const retryOk = await retryStudioJobRemote(
+      { workspaceId: 'ws-1', jobId: 'job-q-103', useFallbackProvider: true },
+      {
+        token: 'jwt_valid',
+        workspaceId: 'ws-1',
+        fetchFn: retryOkFetch as unknown as typeof fetch
+      }
+    );
+    expect(retryOk.ok).toBe(true);
+    expect(retryOk.provider).toBe('kling');
+    expect(retryOk.status).toBe('processing');
+  });
+
+  it('R7-10 All 6 canonical legal footer links resolve to engineering-approved legal documents with LEG-H-001 metadata', () => {
+    expect(CANONICAL_LEGAL_LINKS).toHaveLength(6);
+    for (const link of CANONICAL_LEGAL_LINKS) {
+      expect(link.href.startsWith('/legal/')).toBe(true);
+      const slug = link.href.replace('/legal/', '');
+      const doc = getLegalDocumentBySlug(slug);
+      expect(doc).not.toBeNull();
+      expect(doc?.href).toBe(link.href);
+      expect(doc?.blockerRef).toBe('LEG-H-001');
+      expect(doc?.sections.length).toBeGreaterThanOrEqual(2);
+    }
+    expect(getLegalDocumentBySlug('non-existent-policy')).toBeNull();
   });
 });

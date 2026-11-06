@@ -5,11 +5,15 @@ import '../../production/production_models.dart';
 class StudioLauncherView extends StatefulWidget {
   final int initialBalance;
   final List<ProductionJobModel>? initialJobs;
+  final StudioJobCancelCallback? onCancelJobRemote;
+  final StudioBatchRunCallback? onRunBatchRemote;
 
   const StudioLauncherView({
     super.key,
     this.initialBalance = 500,
     this.initialJobs,
+    this.onCancelJobRemote,
+    this.onRunBatchRemote,
   });
 
   @override
@@ -20,6 +24,7 @@ class _StudioLauncherViewState extends State<StudioLauncherView> {
   late int _balance;
   late List<ProductionJobModel> _jobs;
   String? _snackBarMessage;
+  bool _isMutatingJob = false;
 
   @override
   void initState() {
@@ -56,28 +61,89 @@ class _StudioLauncherViewState extends State<StudioLauncherView> {
         ];
   }
 
-  void _cancelJob(String jobId) {
-    setState(() {
-      final index = _jobs.indexWhere((j) => j.jobId == jobId);
-      if (index != -1) {
-        final job = _jobs[index];
-        _balance += job.estimatedCredits; // Refund credits
-        _jobs[index] = job.copyWith(
-          status: 'cancelled',
-          stage: 'Đã hủy bởi người dùng',
-          progressPct: 0,
+  Future<void> _cancelJob(String jobId) async {
+    if (_isMutatingJob) return;
+    final index = _jobs.indexWhere((j) => j.jobId == jobId);
+    if (index == -1) return;
+    final job = _jobs[index];
+    if (job.status == 'completed' || job.status == 'cancelled') return;
+
+    if (widget.onCancelJobRemote == null) {
+      if (!mounted) return;
+      const failClosedMsg =
+          'Không thể hủy tiến trình: Dịch vụ StudioService/Cancel chưa kết nối máy chủ (fail-closed). Số dư và trạng thái tác vụ được giữ nguyên.';
+      setState(() {
+        _snackBarMessage = failClosedMsg;
+      });
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: const Text(failClosedMsg),
+            backgroundColor: Colors.red.shade800,
+            duration: const Duration(seconds: 3),
+          ),
         );
-        _snackBarMessage = 'Đã hủy job $jobId và hoàn trả ${job.estimatedCredits} credits!';
-      }
+      return;
+    }
+
+    setState(() {
+      _isMutatingJob = true;
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(_snackBarMessage ?? 'Đã hủy job'),
-        backgroundColor: Colors.green.shade800,
-        duration: const Duration(seconds: 3),
-      ),
-    );
+    try {
+      final outcome = await widget.onCancelJobRemote!(jobId, job.estimatedCredits);
+      if (!mounted) return;
+
+      if (!outcome.ok) {
+        final errMsg = outcome.errorMessage ??
+            'Không thể hủy tiến trình $jobId trên máy chủ (StudioService/Cancel fail-closed). Số dư được giữ nguyên.';
+        setState(() {
+          _snackBarMessage = errMsg;
+        });
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              content: Text(errMsg),
+              backgroundColor: Colors.red.shade800,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        return;
+      }
+
+      setState(() {
+        if (outcome.creditsRefunded && outcome.refundedCredits > 0) {
+          _balance += outcome.refundedCredits;
+          _snackBarMessage =
+              'Đã hủy job $jobId và hoàn trả ${outcome.refundedCredits} credits!';
+        } else {
+          _snackBarMessage = 'Đã hủy job $jobId theo xác nhận từ máy chủ.';
+        }
+        _jobs[index] = job.copyWith(
+          status: 'cancelled',
+          stage: 'Đã hủy bởi người dùng (xác nhận từ máy chủ)',
+          progressPct: 0,
+        );
+      });
+
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(_snackBarMessage ?? 'Đã hủy job'),
+            backgroundColor: Colors.green.shade800,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isMutatingJob = false;
+        });
+      }
+    }
   }
 
   void _showBatchPreviewDialog() {
@@ -204,11 +270,39 @@ class _StudioLauncherViewState extends State<StudioLauncherView> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent),
             onPressed: preview.sufficientCredits && preview.validCount > 0
-                ? () {
-                    setState(() {
-                      _balance -= preview.totalCredits;
-                    });
+                ? () async {
                     Navigator.of(ctx).pop();
+                    if (widget.onRunBatchRemote == null) {
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: const Text(
+                            'Không thể khởi chạy Batch: Dịch vụ AssetService/Generate chưa kết nối máy chủ (fail-closed). Số dư được giữ nguyên.',
+                          ),
+                          backgroundColor: Colors.red.shade800,
+                        ),
+                      );
+                      return;
+                    }
+                    final outcome = await widget.onRunBatchRemote!(preview);
+                    if (!mounted) return;
+                    if (!outcome.ok) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            outcome.errorMessage ??
+                                'Không thể khởi chạy Batch trên máy chủ (fail-closed). Số dư được giữ nguyên.',
+                          ),
+                          backgroundColor: Colors.red.shade800,
+                        ),
+                      );
+                      return;
+                    }
+                    setState(() {
+                      _balance -= outcome.reservedCredits > 0
+                          ? outcome.reservedCredits
+                          : preview.totalCredits;
+                    });
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text('Đã khởi chạy mẻ ${preview.validCount} sản phẩm!'),

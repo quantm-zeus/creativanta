@@ -184,9 +184,66 @@ bool canMutate(String tier, List<String> scopes) {
   return !isReadOnlyScopes(scopes);
 }
 
+typedef DeveloperRpcCaller = Future<Map<String, dynamic>> Function(
+  String service,
+  String method,
+  Map<String, dynamic> payload,
+);
+
+class DeveloperMutationOutcome<T> {
+  final bool ok;
+  final T? data;
+  final String? errorCode;
+  final String? message;
+
+  const DeveloperMutationOutcome({
+    required this.ok,
+    this.data,
+    this.errorCode,
+    this.message,
+  });
+}
+
+ApiKeyStatus _parseApiKeyStatus(String? raw) {
+  switch ((raw ?? '').trim().toUpperCase()) {
+    case 'API_KEY_STATUS_ROTATING':
+    case 'ROTATING':
+      return ApiKeyStatus.rotating;
+    case 'API_KEY_STATUS_SUSPENDED':
+    case 'SUSPENDED':
+      return ApiKeyStatus.suspended;
+    case 'API_KEY_STATUS_REVOKED':
+    case 'REVOKED':
+      return ApiKeyStatus.revoked;
+    case 'API_KEY_STATUS_EXPIRED':
+    case 'EXPIRED':
+      return ApiKeyStatus.expired;
+    case 'API_KEY_STATUS_ACTIVE':
+    case 'ACTIVE':
+    default:
+      return ApiKeyStatus.active;
+  }
+}
+
+WebhookStatus _parseWebhookStatus(String? raw) {
+  switch ((raw ?? '').trim().toUpperCase()) {
+    case 'WEBHOOK_SUBSCRIPTION_STATUS_SUSPENDED':
+    case 'SUSPENDED':
+      return WebhookStatus.suspended;
+    case 'WEBHOOK_SUBSCRIPTION_STATUS_REVOKED':
+    case 'REVOKED':
+      return WebhookStatus.revoked;
+    case 'WEBHOOK_SUBSCRIPTION_STATUS_ACTIVE':
+    case 'ACTIVE':
+    default:
+      return WebhookStatus.active;
+  }
+}
+
 class DeveloperStateNotifier extends ChangeNotifier {
   String _tier;
   final String workspaceId;
+  final DeveloperRpcCaller? rpcCaller;
   final List<ApiKeyItem> _keys = [];
   final List<WebhookSubscriptionItem> _webhooks = [];
   int _monthRequests = 0;
@@ -195,8 +252,10 @@ class DeveloperStateNotifier extends ChangeNotifier {
   DeveloperStateNotifier({
     required this.workspaceId,
     String initialTier = 'pro',
+    this.rpcCaller,
   }) : _tier = initialTier;
 
+  bool get isBackendWired => rpcCaller != null;
   String get tier => _tier;
   List<ApiKeyItem> get keys => List.unmodifiable(_keys);
   List<WebhookSubscriptionItem> get webhooks => List.unmodifiable(_webhooks);
@@ -212,6 +271,295 @@ class DeveloperStateNotifier extends ChangeNotifier {
   void setTier(String newTier) {
     _tier = newTier.toLowerCase();
     notifyListeners();
+  }
+
+  /// Remote fail-closed RPC call to creativanta.platform.v1.APIKeyService/Create.
+  /// Never fabricates ca_live_ secrets locally when backend transport is absent or fails.
+  Future<DeveloperMutationOutcome<ApiKeyItem>> createKeyRemote({
+    required String name,
+    required List<String> scopes,
+    String idempotencyKey = '',
+  }) async {
+    if (activeKeyCount >= keyCap) {
+      return DeveloperMutationOutcome(
+        ok: false,
+        errorCode: 'KEY_CAP_EXCEEDED',
+        message: 'Workspace tier $_tier allows a maximum of $keyCap active keys',
+      );
+    }
+    if (_tier.toLowerCase() == 'starter' && !isReadOnlyScopes(scopes)) {
+      return const DeveloperMutationOutcome(
+        ok: false,
+        errorCode: 'STARTER_READ_ONLY',
+        message: 'Starter tier is restricted to read-only API access mode',
+      );
+    }
+    if (rpcCaller == null) {
+      return const DeveloperMutationOutcome(
+        ok: false,
+        errorCode: 'DEVELOPER_BACKEND_UNAVAILABLE',
+        message: 'Backend APIKeyService is not connected. Refusing to mint simulated API key.',
+      );
+    }
+
+    try {
+      final res = await rpcCaller!(
+        'creativanta.platform.v1.APIKeyService',
+        'Create',
+        {
+          'context': {'workspace_id': workspaceId},
+          'idempotency_key': idempotencyKey.isNotEmpty
+              ? idempotencyKey
+              : 'ak_create_${DateTime.now().millisecondsSinceEpoch}',
+          'name': name,
+          'scopes': scopes,
+        },
+      );
+
+      final rawKey = res['api_key'] as Map<String, dynamic>?;
+      final secretKey = (res['secret_key'] as String?)?.trim() ?? '';
+      final apiKeyId = (rawKey?['api_key_id'] as String?)?.trim() ?? '';
+      if (rawKey == null || apiKeyId.isEmpty || secretKey.isEmpty) {
+        return const DeveloperMutationOutcome(
+          ok: false,
+          errorCode: 'INVALID_BACKEND_RESPONSE',
+          message: 'APIKeyService/Create did not return a valid api_key and secret_key.',
+        );
+      }
+
+      final now = DateTime.now().toUtc();
+      final rawScopes = (rawKey['scopes'] as List?)?.map((e) => e.toString()).toList() ?? scopes;
+      final newKey = ApiKeyItem(
+        apiKeyId: apiKeyId,
+        workspaceId: (rawKey['workspace_id'] as String?) ?? workspaceId,
+        keyPrefix: (rawKey['key_prefix'] as String?) ??
+            (secretKey.length >= 10 ? secretKey.substring(0, 10) : secretKey),
+        name: (rawKey['name'] as String?) ?? name,
+        scopes: rawScopes,
+        status: _parseApiKeyStatus(rawKey['status'] as String?),
+        logicalKeyId: (rawKey['logical_key_id'] as String?) ?? apiKeyId,
+        requestCount: (rawKey['request_count'] as int?) ?? 0,
+        expiresAt: DateTime.tryParse((rawKey['expires_at'] as String?) ?? '') ??
+            now.add(const Duration(days: 90)),
+        createdBy: (rawKey['created_by'] as String?) ?? 'user_authenticated',
+        secretKey: secretKey,
+      );
+
+      _keys.add(newKey);
+      notifyListeners();
+      return DeveloperMutationOutcome(ok: true, data: newKey);
+    } catch (e) {
+      return DeveloperMutationOutcome(
+        ok: false,
+        errorCode: 'RPC_CREATE_KEY_FAILED',
+        message: e.toString(),
+      );
+    }
+  }
+
+  /// Remote fail-closed RPC call to creativanta.platform.v1.APIKeyService/Rotate.
+  Future<DeveloperMutationOutcome<ApiKeyItem>> rotateKeyRemote(
+    String apiKeyId, {
+    String idempotencyKey = '',
+  }) async {
+    final index = _keys.indexWhere((k) => k.apiKeyId == apiKeyId);
+    if (index == -1) {
+      return const DeveloperMutationOutcome(
+        ok: false,
+        errorCode: 'API_KEY_NOT_FOUND',
+        message: 'API key not found',
+      );
+    }
+    final existing = _keys[index];
+    if (existing.status == ApiKeyStatus.revoked) {
+      return const DeveloperMutationOutcome(
+        ok: false,
+        errorCode: 'API_KEY_REVOKED',
+        message: 'Cannot rotate a revoked key',
+      );
+    }
+    if (rpcCaller == null) {
+      return const DeveloperMutationOutcome(
+        ok: false,
+        errorCode: 'DEVELOPER_BACKEND_UNAVAILABLE',
+        message: 'Backend APIKeyService is not connected. Refusing to mint simulated rotated secret.',
+      );
+    }
+
+    try {
+      final res = await rpcCaller!(
+        'creativanta.platform.v1.APIKeyService',
+        'Rotate',
+        {
+          'context': {'workspace_id': workspaceId},
+          'idempotency_key': idempotencyKey.isNotEmpty
+              ? idempotencyKey
+              : 'ak_rotate_${DateTime.now().millisecondsSinceEpoch}',
+          'api_key_id': apiKeyId,
+          'grace_period_hours': 24,
+        },
+      );
+
+      final rawNewKey = res['new_key'] as Map<String, dynamic>?;
+      final newSecretKey = ((res['new_secret_key'] ?? res['secret_key']) as String?)?.trim() ?? '';
+      final newKeyId = (rawNewKey?['api_key_id'] as String?)?.trim() ?? '';
+      if (rawNewKey == null || newKeyId.isEmpty || newSecretKey.isEmpty) {
+        return const DeveloperMutationOutcome(
+          ok: false,
+          errorCode: 'INVALID_BACKEND_RESPONSE',
+          message: 'APIKeyService/Rotate did not return a valid new_key and new_secret_key.',
+        );
+      }
+
+      final now = DateTime.now().toUtc();
+      final graceEndsAt = DateTime.tryParse((res['grace_ends_at'] as String?) ?? '') ??
+          now.add(const Duration(hours: 24));
+      final rawScopes =
+          (rawNewKey['scopes'] as List?)?.map((e) => e.toString()).toList() ?? existing.scopes;
+
+      final rotatedNewKey = ApiKeyItem(
+        apiKeyId: newKeyId,
+        workspaceId: (rawNewKey['workspace_id'] as String?) ?? workspaceId,
+        keyPrefix: (rawNewKey['key_prefix'] as String?) ??
+            (newSecretKey.length >= 10 ? newSecretKey.substring(0, 10) : newSecretKey),
+        name: (rawNewKey['name'] as String?) ?? '${existing.name} (Rotated)',
+        scopes: rawScopes,
+        status: _parseApiKeyStatus(rawNewKey['status'] as String?),
+        logicalKeyId: (rawNewKey['logical_key_id'] as String?) ?? existing.logicalKeyId,
+        requestCount: 0,
+        expiresAt: DateTime.tryParse((rawNewKey['expires_at'] as String?) ?? '') ??
+            now.add(const Duration(days: 90)),
+        createdBy: existing.createdBy,
+        secretKey: newSecretKey,
+      );
+
+      _keys[index] = existing.copyWith(
+        status: ApiKeyStatus.rotating,
+        replacedByKeyId: newKeyId,
+        rotationGraceEndsAt: graceEndsAt,
+      );
+      _keys.add(rotatedNewKey);
+      notifyListeners();
+      return DeveloperMutationOutcome(ok: true, data: rotatedNewKey);
+    } catch (e) {
+      return DeveloperMutationOutcome(
+        ok: false,
+        errorCode: 'RPC_ROTATE_KEY_FAILED',
+        message: e.toString(),
+      );
+    }
+  }
+
+  /// Remote fail-closed RPC call to creativanta.platform.v1.APIKeyService/Revoke.
+  Future<DeveloperMutationOutcome<ApiKeyItem>> revokeKeyRemote(
+    String apiKeyId, {
+    String idempotencyKey = '',
+  }) async {
+    final index = _keys.indexWhere((k) => k.apiKeyId == apiKeyId);
+    if (index == -1) {
+      return const DeveloperMutationOutcome(
+        ok: false,
+        errorCode: 'API_KEY_NOT_FOUND',
+        message: 'API key not found',
+      );
+    }
+    if (rpcCaller == null) {
+      return const DeveloperMutationOutcome(
+        ok: false,
+        errorCode: 'DEVELOPER_BACKEND_UNAVAILABLE',
+        message: 'Backend APIKeyService is not connected. Key revocation was not persisted.',
+      );
+    }
+
+    try {
+      await rpcCaller!(
+        'creativanta.platform.v1.APIKeyService',
+        'Revoke',
+        {
+          'context': {'workspace_id': workspaceId},
+          'idempotency_key': idempotencyKey.isNotEmpty
+              ? idempotencyKey
+              : 'ak_revoke_${DateTime.now().millisecondsSinceEpoch}',
+          'api_key_id': apiKeyId,
+        },
+      );
+
+      final updated = _keys[index].copyWith(status: ApiKeyStatus.revoked);
+      _keys[index] = updated;
+      notifyListeners();
+      return DeveloperMutationOutcome(ok: true, data: updated);
+    } catch (e) {
+      return DeveloperMutationOutcome(
+        ok: false,
+        errorCode: 'RPC_REVOKE_KEY_FAILED',
+        message: e.toString(),
+      );
+    }
+  }
+
+  /// Remote fail-closed RPC call to creativanta.platform.v1.WebhookSubscriptionService/CreateWebhookSubscription.
+  Future<DeveloperMutationOutcome<WebhookSubscriptionItem>> createWebhookSubscriptionRemote({
+    required String targetUrl,
+    required List<String> eventTypes,
+    String idempotencyKey = '',
+  }) async {
+    if (rpcCaller == null) {
+      return const DeveloperMutationOutcome(
+        ok: false,
+        errorCode: 'DEVELOPER_BACKEND_UNAVAILABLE',
+        message: 'Backend WebhookSubscriptionService is not connected. Refusing to mint simulated signing secret.',
+      );
+    }
+
+    try {
+      final res = await rpcCaller!(
+        'creativanta.platform.v1.WebhookSubscriptionService',
+        'CreateWebhookSubscription',
+        {
+          'context': {'workspace_id': workspaceId},
+          'idempotency_key': idempotencyKey.isNotEmpty
+              ? idempotencyKey
+              : 'wh_create_${DateTime.now().millisecondsSinceEpoch}',
+          'target_url': targetUrl,
+          'event_types': eventTypes,
+        },
+      );
+
+      final rawSub = res['subscription'] as Map<String, dynamic>?;
+      final signingSecret = (res['signing_secret'] as String?)?.trim() ?? '';
+      final subId = ((rawSub?['webhook_subscription_id'] ?? rawSub?['subscription_id']) as String?)
+              ?.trim() ??
+          '';
+      if (rawSub == null || subId.isEmpty || signingSecret.isEmpty) {
+        return const DeveloperMutationOutcome(
+          ok: false,
+          errorCode: 'INVALID_BACKEND_RESPONSE',
+          message:
+              'WebhookSubscriptionService/CreateWebhookSubscription did not return a valid subscription and signing_secret.',
+        );
+      }
+
+      final sub = WebhookSubscriptionItem(
+        subscriptionId: subId,
+        workspaceId: (rawSub['workspace_id'] as String?) ?? workspaceId,
+        targetUrl: (rawSub['target_url'] as String?) ?? targetUrl,
+        eventTypes:
+            (rawSub['event_types'] as List?)?.map((e) => e.toString()).toList() ?? eventTypes,
+        status: _parseWebhookStatus(rawSub['status'] as String?),
+        consecutiveFailureCount: (rawSub['consecutive_failure_count'] as int?) ?? 0,
+        signingSecret: signingSecret,
+      );
+
+      _webhooks.add(sub);
+      notifyListeners();
+      return DeveloperMutationOutcome(ok: true, data: sub);
+    } catch (e) {
+      return DeveloperMutationOutcome(
+        ok: false,
+        errorCode: 'RPC_CREATE_WEBHOOK_FAILED',
+        message: e.toString(),
+      );
+    }
   }
 
   ApiKeyItem createKey({

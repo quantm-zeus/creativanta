@@ -122,7 +122,8 @@
 				selectedTransitionId: transitionType,
 				customPrompt: `${selectedPresetId} (${qualityTier}, ${durationSeconds}s, loop=${isLoop}, bgm=${attachBgm})`,
 				quoteCredits,
-				availableBalance: userBalance
+				availableBalance: userBalance,
+				requirePreflightQuote: true
 			});
 
 			if (!res.ok || !res.jobId) {

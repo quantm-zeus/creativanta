@@ -122,6 +122,84 @@ export interface AuthStore extends Readable<SessionContext> {
   reset: () => void;
 }
 
+export function parseWorkspaceDiscoveryPayload(data: unknown): WorkspaceSummary[] {
+  let rawItems: unknown[];
+  if (Array.isArray(data)) {
+    rawItems = data;
+  } else if (data && typeof data === 'object' && 'workspaces' in data) {
+    const wsField = (data as Record<string, unknown>).workspaces;
+    if (wsField === null || wsField === undefined) {
+      rawItems = [];
+    } else if (Array.isArray(wsField)) {
+      rawItems = wsField;
+    } else {
+      throw new Error(
+        'Phản hồi khám phá Workspace không đúng định dạng hợp đồng (workspaces phải là danh sách, fail-closed)'
+      );
+    }
+  } else {
+    throw new Error('Phản hồi khám phá Workspace không đúng định dạng hợp đồng (fail-closed)');
+  }
+
+  return rawItems.map((raw) => {
+    if (!raw || typeof raw !== 'object') {
+      throw new Error('Phần tử Workspace trong phản hồi khám phá không hợp lệ (fail-closed)');
+    }
+    const item = raw as Record<string, unknown>;
+    const id = String(
+      item.workspace_id || item.workspaceId || item.id || item.ID || ''
+    ).trim();
+    if (!id) {
+      throw new Error('Phản hồi khám phá Workspace thiếu workspace_id hợp lệ (fail-closed)');
+    }
+    const name =
+      String(
+        item.display_name || item.displayName || item.name || item.Name || ''
+      ).trim() || 'Workspace không tên';
+    const role = String(item.role || item.Role || 'viewer').trim() || 'viewer';
+    const plan =
+      String(item.plan_tier || item.planTier || item.plan || item.Plan || 'Starter').trim() ||
+      'Starter';
+    const statusRaw = String(item.status || item.Status || 'active')
+      .trim()
+      .toLowerCase();
+    const status: WorkspaceSummary['status'] =
+      statusRaw === 'suspended'
+        ? 'suspended'
+        : statusRaw === 'deactivated'
+          ? 'deactivated'
+          : 'active';
+
+    return {
+      id,
+      name,
+      role,
+      plan,
+      status
+    };
+  });
+}
+
+type AuthResetHook = () => void;
+const authResetHooks = new Set<AuthResetHook>();
+
+export function registerAuthResetHook(hook: AuthResetHook): () => void {
+  authResetHooks.add(hook);
+  return () => {
+    authResetHooks.delete(hook);
+  };
+}
+
+function runAuthResetHooks(): void {
+  for (const hook of authResetHooks) {
+    try {
+      hook();
+    } catch {
+      // ignore individual store reset errors
+    }
+  }
+}
+
 /**
  * Default workspace discovery fetcher.
  * Calls the backend discovery endpoint with short-lived JWT.
@@ -155,17 +233,7 @@ export const defaultDiscoveryFetcher: DiscoveryFetcher = async (token: string) =
     }
 
     const data = await res.json();
-    if (!Array.isArray(data)) {
-      return [];
-    }
-
-    return data.map((item: any) => ({
-      id: String(item.id || item.ID || ''),
-      name: String(item.name || item.Name || 'Workspace không tên'),
-      role: String(item.role || item.Role || 'viewer'),
-      plan: item.plan ? String(item.plan) : 'Starter',
-      status: item.status || 'active'
-    }));
+    return parseWorkspaceDiscoveryPayload(data);
   } catch (err: any) {
     const msg = err?.message || 'Không thể kết nối dịch vụ khám phá Workspace (P0-03)';
     throw new Error(msg);
@@ -193,6 +261,7 @@ export function createAuthStore(): AuthStore {
   let activeClerk: ClerkBrowserInstance | null = null;
   let customDiscoveryFetcher: DiscoveryFetcher = defaultDiscoveryFetcher;
   let unsubscribeClerkListener: (() => void) | null = null;
+  let authEpoch = 0;
 
   // Keep authStore.activeMode synchronized whenever modeStore changes (UF-09)
   modeStore.subscribe((mode) => {
@@ -225,10 +294,22 @@ export function createAuthStore(): AuthStore {
     }
   }
 
-  async function discoverWorkspacesInternal(token: string): Promise<WorkspaceSummary[]> {
+  async function discoverWorkspacesInternal(
+    token: string,
+    expectedEpoch?: number
+  ): Promise<WorkspaceSummary[]> {
+    const targetEpoch = expectedEpoch ?? authEpoch;
+    if (targetEpoch !== authEpoch) {
+      return [];
+    }
+
     update((s) => ({ ...s, isDiscoveryLoading: true, discoveryError: null }));
     try {
       const items = await customDiscoveryFetcher(token);
+      if (targetEpoch !== authEpoch || get(store).state !== 'authenticated') {
+        return [];
+      }
+
       let selectedWorkspace: WorkspaceSummary | null = null;
 
       const savedId = getPersistedWorkspaceId();
@@ -236,6 +317,9 @@ export function createAuthStore(): AuthStore {
         const found = items.find((w) => w.id === savedId);
         if (found) {
           selectedWorkspace = found;
+        } else {
+          // Clear stale persisted workspace ID that does not belong to discovered memberships
+          setPersistedWorkspaceId(null);
         }
       }
 
@@ -255,6 +339,9 @@ export function createAuthStore(): AuthStore {
 
       return items;
     } catch (err: any) {
+      if (targetEpoch !== authEpoch) {
+        return [];
+      }
       const errorMsg = err?.message || 'Lỗi khi tải danh sách workspace';
       update((s) => ({
         ...s,
@@ -275,6 +362,7 @@ export function createAuthStore(): AuthStore {
     },
 
     async init(options) {
+      const myEpoch = ++authEpoch;
       if (options?.discoveryFetcher) {
         customDiscoveryFetcher = options.discoveryFetcher;
       }
@@ -282,7 +370,8 @@ export function createAuthStore(): AuthStore {
       const activeMode = loadPersistedMode();
 
       // Check publishable key
-      const key = options?.publishableKey !== undefined ? options.publishableKey : getClerkPublishableKey();
+      const key =
+        options?.publishableKey !== undefined ? options.publishableKey : getClerkPublishableKey();
       if (!key) {
         set({
           ...initialState,
@@ -297,6 +386,7 @@ export function createAuthStore(): AuthStore {
         update((s) => ({ ...s, state: 'loading', errorMessage: null }));
 
         const clerk = await getOrInitClerk(key, options?.clerkInstance);
+        if (myEpoch !== authEpoch) return;
         activeClerk = clerk;
 
         if (!clerk) {
@@ -312,6 +402,7 @@ export function createAuthStore(): AuthStore {
 
         if (!clerk.loaded && typeof clerk.load === 'function') {
           await clerk.load();
+          if (myEpoch !== authEpoch) return;
         }
 
         // Setup listener for auth state updates
@@ -322,33 +413,60 @@ export function createAuthStore(): AuthStore {
 
         if (typeof clerk.addListener === 'function') {
           unsubscribeClerkListener = clerk.addListener(async (emission) => {
+            const emissionEpoch = ++authEpoch;
             if (!emission.user || !emission.session) {
+              setPersistedWorkspaceId(null);
+              runAuthResetHooks();
               update((s) => ({
                 ...s,
                 state: 'unauthenticated',
                 user: null,
                 token: null,
                 activeWorkspace: null,
-                workspaces: []
+                workspaces: [],
+                isDiscoveryLoading: false,
+                discoveryError: null
               }));
-              setPersistedWorkspaceId(null);
             } else {
+              const nextUser = mapClerkUser(emission.user);
+              const previousUserId = get(store).user?.id;
+              const isSubjectSwitch = Boolean(
+                previousUserId && nextUser?.id && previousUserId !== nextUser.id
+              );
+              if (isSubjectSwitch) {
+                setPersistedWorkspaceId(null);
+                runAuthResetHooks();
+                update((s) => ({
+                  ...s,
+                  user: nextUser,
+                  token: null,
+                  activeWorkspace: null,
+                  workspaces: [],
+                  isDiscoveryLoading: true,
+                  discoveryError: null
+                }));
+              }
               try {
                 const token = await emission.session.getToken();
-                const user = mapClerkUser(emission.user);
+                if (emissionEpoch !== authEpoch) return;
                 update((s) => ({
                   ...s,
                   state: token ? 'authenticated' : 'expired',
-                  user,
-                  token
+                  user: nextUser,
+                  token,
+                  activeWorkspace: token && !isSubjectSwitch ? s.activeWorkspace : null,
+                  workspaces: token && !isSubjectSwitch ? s.workspaces : []
                 }));
                 if (token) {
-                  await discoverWorkspacesInternal(token);
+                  await discoverWorkspacesInternal(token, emissionEpoch);
                 }
               } catch (err: any) {
+                if (emissionEpoch !== authEpoch) return;
                 update((s) => ({
                   ...s,
                   state: 'expired',
+                  token: null,
+                  activeWorkspace: null,
                   errorMessage: err?.message || 'Phiên làm việc đã hết hạn'
                 }));
               }
@@ -368,7 +486,14 @@ export function createAuthStore(): AuthStore {
         }
 
         const user = mapClerkUser(clerk.user);
+        const previousUserId = get(store).user?.id;
+        if (previousUserId && user?.id && previousUserId !== user.id) {
+          setPersistedWorkspaceId(null);
+          runAuthResetHooks();
+        }
+
         const token = await clerk.session.getToken();
+        if (myEpoch !== authEpoch) return;
 
         if (!token) {
           set({
@@ -391,8 +516,9 @@ export function createAuthStore(): AuthStore {
         });
 
         // Trigger workspace discovery
-        await discoverWorkspacesInternal(token);
+        await discoverWorkspacesInternal(token, myEpoch);
       } catch (err: any) {
+        if (myEpoch !== authEpoch) return;
         console.error('[AUTH STORE] Init error:', err);
         set({
           ...initialState,
@@ -413,10 +539,15 @@ export function createAuthStore(): AuthStore {
 
           const target = s.workspaces.find((w) => w.id === workspaceId);
           if (!target) {
-            reject(new Error(`Không tìm thấy quyền thành viên cho workspace ${workspaceId} (fail-closed)`));
+            reject(
+              new Error(`Không tìm thấy quyền thành viên cho workspace ${workspaceId} (fail-closed)`)
+            );
             return s;
           }
 
+          if (s.activeWorkspace?.id && s.activeWorkspace.id !== target.id) {
+            runAuthResetHooks();
+          }
           setPersistedWorkspaceId(target.id);
           resolve(target);
           return {
@@ -447,7 +578,7 @@ export function createAuthStore(): AuthStore {
         };
       }
 
-      const slug = (input.slug?.trim() || slugifyWorkspaceName(displayName));
+      const slug = input.slug?.trim() || slugifyWorkspaceName(displayName);
       if (!slug || slug.length < 2) {
         return {
           ok: false,
@@ -571,8 +702,9 @@ export function createAuthStore(): AuthStore {
     },
 
     async refreshSession() {
+      const refreshEpoch = authEpoch;
       const currentSession = activeClerk?.session;
-      if (!currentSession) {
+      if (!currentSession || get(store).state === 'unauthenticated') {
         update((s) => ({
           ...s,
           state: 'expired',
@@ -585,6 +717,9 @@ export function createAuthStore(): AuthStore {
 
       try {
         const freshToken = await currentSession.getToken({ skipCache: true });
+        if (refreshEpoch !== authEpoch || get(store).state === 'unauthenticated') {
+          return null;
+        }
         if (!freshToken) {
           update((s) => ({
             ...s,
@@ -604,6 +739,9 @@ export function createAuthStore(): AuthStore {
         }));
         return freshToken;
       } catch (err: any) {
+        if (refreshEpoch !== authEpoch || get(store).state === 'unauthenticated') {
+          return null;
+        }
         update((s) => ({
           ...s,
           state: 'expired',
@@ -616,17 +754,17 @@ export function createAuthStore(): AuthStore {
     },
 
     async signOut() {
-      if (activeClerk && typeof activeClerk.signOut === 'function') {
-        try {
-          await activeClerk.signOut();
-        } catch (err) {
-          console.warn('[AUTH] Error during Clerk signOut:', err);
-        }
+      ++authEpoch;
+      if (unsubscribeClerkListener) {
+        unsubscribeClerkListener();
+        unsubscribeClerkListener = null;
       }
 
+      const clerkToSignOut = activeClerk;
+      activeClerk = null;
       setPersistedWorkspaceId(null);
       resetClerkInstance();
-      activeClerk = null;
+      runAuthResetHooks();
 
       update((s) => ({
         ...initialState,
@@ -634,6 +772,14 @@ export function createAuthStore(): AuthStore {
         activeMode: s.activeMode,
         errorMessage: null
       }));
+
+      if (clerkToSignOut && typeof clerkToSignOut.signOut === 'function') {
+        try {
+          await clerkToSignOut.signOut();
+        } catch (err) {
+          console.warn('[AUTH] Error during Clerk signOut:', err);
+        }
+      }
     },
 
     async discoverWorkspaces() {
@@ -643,16 +789,18 @@ export function createAuthStore(): AuthStore {
         throw new Error('Chưa đăng nhập — không thể khám phá workspace');
       }
 
-      return discoverWorkspacesInternal(currentToken);
+      return discoverWorkspacesInternal(currentToken, authEpoch);
     },
 
     reset() {
+      ++authEpoch;
       if (unsubscribeClerkListener) {
         unsubscribeClerkListener();
         unsubscribeClerkListener = null;
       }
       setPersistedWorkspaceId(null);
       resetClerkInstance();
+      runAuthResetHooks();
       activeClerk = null;
       const persistedMode = readPersistedOperatorMode();
       set({ ...initialState, activeMode: persistedMode });

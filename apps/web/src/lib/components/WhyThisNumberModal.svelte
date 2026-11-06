@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { activateModalFocusSession, handleModalKeydown } from '$lib/a11y';
+
   export interface MetricBreakdown {
     metricKey: string;
     metricTitle: string;
@@ -18,10 +20,32 @@
   }
 
   let { breakdown, onclose }: Props = $props();
+  let dialogElement = $state<HTMLElement | null>(null);
+  let cleanupFocusSession: (() => void) | null = null;
+
+  function closeModal() {
+    if (cleanupFocusSession) {
+      cleanupFocusSession();
+      cleanupFocusSession = null;
+    }
+    onclose();
+  }
+
+  $effect(() => {
+    if (breakdown && dialogElement) {
+      cleanupFocusSession = activateModalFocusSession(dialogElement);
+      return () => {
+        if (cleanupFocusSession) {
+          cleanupFocusSession();
+          cleanupFocusSession = null;
+        }
+      };
+    }
+  });
 
   function handleKeydown(event: KeyboardEvent) {
-    if (event.key === 'Escape') {
-      onclose();
+    if (breakdown && dialogElement) {
+      handleModalKeydown(event, dialogElement, closeModal);
     }
   }
 
@@ -61,14 +85,15 @@
   <!-- Modal Backdrop & Dialog Container -->
   <div
     class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/50 backdrop-blur-xs transition-opacity"
-    onclick={(e) => { if (e.target === e.currentTarget) onclose(); }}
-    onkeydown={(e) => e.key === 'Escape' && onclose()}
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="why-number-title"
-    tabindex="-1"
+    onclick={(e) => { if (e.target === e.currentTarget) closeModal(); }}
+    role="presentation"
   >
     <div
+      bind:this={dialogElement}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="why-number-title"
+      tabindex="-1"
       class="w-full max-w-lg rounded-xl border border-[#e7e2d7] bg-[#ffffff] p-6 shadow-2xl transition-all"
     >
       <!-- Header -->
@@ -91,7 +116,7 @@
 
         <button
           type="button"
-          onclick={onclose}
+          onclick={closeModal}
           class="rounded-md p-1.5 text-[#616c63] hover:bg-[#f4f0e8] hover:text-[#242924]"
           aria-label="Đóng"
         >
@@ -163,7 +188,7 @@
       <div class="mt-6 flex justify-end border-t border-[#e7e2d7] pt-4">
         <button
           type="button"
-          onclick={onclose}
+          onclick={closeModal}
           class="rounded-md bg-[#274333] px-4 py-2 text-xs font-semibold text-[#ffffff] hover:bg-[#1f3629] transition-colors"
         >
           Đã hiểu giải trình
