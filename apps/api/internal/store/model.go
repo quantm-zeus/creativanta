@@ -148,12 +148,68 @@ type Bundle struct {
 	Title             string                `json:"title"`
 	OfferID           string                `json:"offer_id"`
 	BundlePrice       tenantdb.ExactDecimal `json:"bundle_price"`
+	Currency          string                `json:"currency"`
 	DiscountPct       float64               `json:"discount_pct"`
 	Status            string                `json:"status"`
 	Items             []BundleItem          `json:"items"`
 	IsAvailable       bool                  `json:"is_available"`
 	UnavailableReason string                `json:"unavailable_reason"`
 	CreatedAt         time.Time             `json:"created_at"`
+}
+
+// ----------------------------------------------------------------------------
+// Store Products, Offers & Verified Payment Intents
+// ----------------------------------------------------------------------------
+
+type ProductStatus string
+
+const (
+	ProductStatusDraft    ProductStatus = "draft"
+	ProductStatusActive   ProductStatus = "active"
+	ProductStatusInactive ProductStatus = "inactive"
+	ProductStatusArchived ProductStatus = "archived"
+)
+
+type StoreProduct struct {
+	ProductID   string                `json:"product_id"`
+	WorkspaceID string                `json:"workspace_id"`
+	Title       string                `json:"title"`
+	Price       tenantdb.ExactDecimal `json:"price"`
+	Currency    string                `json:"currency"`
+	Status      ProductStatus         `json:"status"`
+	CreatedAt   time.Time             `json:"created_at"`
+	UpdatedAt   time.Time             `json:"updated_at"`
+}
+
+type OfferLifecycleState string
+
+const (
+	OfferStateDraft    OfferLifecycleState = "draft"
+	OfferStateActive   OfferLifecycleState = "active"
+	OfferStateInactive OfferLifecycleState = "inactive"
+	OfferStateExpired  OfferLifecycleState = "expired"
+	OfferStateRetired  OfferLifecycleState = "retired"
+)
+
+type StoreOffer struct {
+	OfferID        string                `json:"offer_id"`
+	WorkspaceID    string                `json:"workspace_id"`
+	Title          string                `json:"title"`
+	Price          tenantdb.ExactDecimal `json:"price"`
+	Currency       string                `json:"currency"`
+	LifecycleState OfferLifecycleState   `json:"lifecycle_state"`
+	ExpiresAt      *time.Time            `json:"expires_at,omitempty"`
+	CreatedAt      time.Time             `json:"created_at"`
+	UpdatedAt      time.Time             `json:"updated_at"`
+}
+
+type VerifiedPaymentIntent struct {
+	WorkspaceID     string                `json:"workspace_id"`
+	PaymentIntentID string                `json:"payment_intent_id"`
+	Amount          tenantdb.ExactDecimal `json:"amount"`
+	Currency        string                `json:"currency"`
+	Status          PaymentStatus         `json:"status"`
+	VerifiedAt      time.Time             `json:"verified_at"`
 }
 
 type DigitalDelivery struct {

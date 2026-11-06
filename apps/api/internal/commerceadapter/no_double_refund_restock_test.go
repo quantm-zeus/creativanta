@@ -261,11 +261,13 @@ func TestStripeCumulativeRefundCallbacksAndWebhookReplayDedup(t *testing.T) {
 		t.Fatalf("ingest order failed: %v", err)
 	}
 
-	makeStripeRefundPayload := func(eventID string, amountRefunded int64) []byte {
-		return []byte(fmt.Sprintf(`{
+	const stripeSecret = "whsec_cum_refund_test"
+	nowUnix := time.Now().Unix()
+	makeStripeRefundPayload := func(eventID string, amountRefunded int64) ([]byte, string) {
+		p := []byte(fmt.Sprintf(`{
 			"id": %q,
 			"type": "charge.refunded",
-			"created": 1762000000,
+			"created": %d,
 			"data": {
 				"object": {
 					"id": "ch_cum_test_01",
@@ -275,12 +277,14 @@ func TestStripeCumulativeRefundCallbacksAndWebhookReplayDedup(t *testing.T) {
 					"metadata": {"order_id": %q}
 				}
 			}
-		}`, eventID, amountRefunded, orderID))
+		}`, eventID, nowUnix, amountRefunded, orderID))
+		sig := fmt.Sprintf("t=%d,v1=%s", nowUnix, computeHMACSHA256(stripeSecret, []byte(fmt.Sprintf("%d.%s", nowUnix, string(p)))))
+		return p, sig
 	}
 
 	// 1. First partial refund of 300,000 VND (cumulative amount_refunded = 300,000)
-	payload1 := makeStripeRefundPayload("evt_ref_1", 300000)
-	ref1, ord1, err := adapterSvc.ProcessRefundWebhook(ctx, commerceadapter.PlatformStripe, wsID, orderID, payload1, "", "")
+	payload1, sig1 := makeStripeRefundPayload("evt_ref_1", 300000)
+	ref1, ord1, err := adapterSvc.ProcessRefundWebhook(ctx, commerceadapter.PlatformStripe, wsID, orderID, payload1, sig1, stripeSecret)
 	if err != nil {
 		t.Fatalf("first Stripe refund webhook failed: %v", err)
 	}
@@ -289,7 +293,7 @@ func TestStripeCumulativeRefundCallbacksAndWebhookReplayDedup(t *testing.T) {
 	}
 
 	// 2. Exact replay of first webhook -> must NOT create a second 300,000 refund
-	ref1Replay, ord1Replay, err := adapterSvc.ProcessRefundWebhook(ctx, commerceadapter.PlatformStripe, wsID, orderID, payload1, "", "")
+	ref1Replay, ord1Replay, err := adapterSvc.ProcessRefundWebhook(ctx, commerceadapter.PlatformStripe, wsID, orderID, payload1, sig1, stripeSecret)
 	if err != nil {
 		t.Fatalf("replay of first Stripe refund webhook failed: %v", err)
 	}
@@ -298,8 +302,8 @@ func TestStripeCumulativeRefundCallbacksAndWebhookReplayDedup(t *testing.T) {
 	}
 
 	// 3. Second partial refund of +200,000 VND (Stripe sends cumulative amount_refunded = 500,000)
-	payload2 := makeStripeRefundPayload("evt_ref_2", 500000)
-	ref2, ord2, err := adapterSvc.ProcessRefundWebhook(ctx, commerceadapter.PlatformStripe, wsID, orderID, payload2, "", "")
+	payload2, sig2 := makeStripeRefundPayload("evt_ref_2", 500000)
+	ref2, ord2, err := adapterSvc.ProcessRefundWebhook(ctx, commerceadapter.PlatformStripe, wsID, orderID, payload2, sig2, stripeSecret)
 	if err != nil {
 		t.Fatalf("second Stripe cumulative refund webhook failed: %v", err)
 	}
@@ -311,7 +315,7 @@ func TestStripeCumulativeRefundCallbacksAndWebhookReplayDedup(t *testing.T) {
 	}
 
 	// 4. Out-of-order arrival of earlier snapshot (amount_refunded = 300,000 < 500,000) -> no-op
-	_, ordStale, err := adapterSvc.ProcessRefundWebhook(ctx, commerceadapter.PlatformStripe, wsID, orderID, payload1, "", "")
+	_, ordStale, err := adapterSvc.ProcessRefundWebhook(ctx, commerceadapter.PlatformStripe, wsID, orderID, payload1, sig1, stripeSecret)
 	if err != nil {
 		t.Fatalf("stale snapshot webhook failed: %v", err)
 	}
@@ -320,8 +324,8 @@ func TestStripeCumulativeRefundCallbacksAndWebhookReplayDedup(t *testing.T) {
 	}
 
 	// 5. Final partial refund of +500,000 VND (cumulative amount_refunded = 1,000,000) -> full refund
-	payload3 := makeStripeRefundPayload("evt_ref_3", 1000000)
-	ref3, ord3, err := adapterSvc.ProcessRefundWebhook(ctx, commerceadapter.PlatformStripe, wsID, orderID, payload3, "", "")
+	payload3, sig3 := makeStripeRefundPayload("evt_ref_3", 1000000)
+	ref3, ord3, err := adapterSvc.ProcessRefundWebhook(ctx, commerceadapter.PlatformStripe, wsID, orderID, payload3, sig3, stripeSecret)
 	if err != nil {
 		t.Fatalf("third Stripe cumulative refund webhook failed: %v", err)
 	}

@@ -609,14 +609,25 @@ func TestLotConsumptionPriorityRefundAndBillingSandbox(t *testing.T) {
 	}
 
 	// 2. Owner upgrades to Business tier and adds a payment method.
-	if _, err := svc.ChangePlan(ownerCtx, &adminv1.ChangePlanRequest{
+	bizUpgradeResp, err := svc.ChangePlan(ownerCtx, &adminv1.ChangePlanRequest{
 		Context:         &commonv1.CommandContext{IdempotencyKey: "up-biz-1"},
 		TargetPlan:      "business",
 		BillingInterval: "monthly",
 		Currency:        "USD",
 		Addons:          []string{"commerce_intelligence"},
-	}); err != nil {
+	})
+	if err != nil {
 		t.Fatalf("Owner ChangePlan to business failed: %v", err)
+	}
+	if _, err := svc.SettleStripeWebhook(StripeWebhookEvent{
+		EventID:           "evt_settle_up_biz_1",
+		EventType:         "checkout.session.completed",
+		WorkspaceID:       testWorkspaceA,
+		CheckoutSessionID: bizUpgradeResp.GetCheckoutSessionId(),
+		PaymentStatus:     "paid",
+		OccurredAt:        now,
+	}); err != nil {
+		t.Fatalf("SettleStripeWebhook for business upgrade failed: %v", err)
 	}
 	if _, err := svc.UpdatePaymentMethod(ownerCtx, &adminv1.UpdatePaymentMethodRequest{
 		Context:               &commonv1.CommandContext{IdempotencyKey: "pm-add-1"},
@@ -977,13 +988,24 @@ func TestP802Target1CancellationDiffersFromDunningTrialAndPause(t *testing.T) {
 	}
 
 	// 2. Upgrade to Pro, grant 300 purchased credits, and run Dunning schedule (Day 0 -> 1 -> 3 -> 5 -> 7 -> 14).
-	if _, err := svc.ChangePlan(ownerCtx, &adminv1.ChangePlanRequest{
+	proUpResp, err := svc.ChangePlan(ownerCtx, &adminv1.ChangePlanRequest{
 		Context:         &commonv1.CommandContext{IdempotencyKey: "p802-upgrade-pro"},
 		TargetPlan:      "pro",
 		BillingInterval: "monthly",
 		Currency:        "USD",
-	}); err != nil {
+	})
+	if err != nil {
 		t.Fatalf("ChangePlan to pro failed: %v", err)
+	}
+	if _, err := svc.SettleStripeWebhook(StripeWebhookEvent{
+		EventID:           "evt_settle_p802_pro",
+		EventType:         "checkout.session.completed",
+		WorkspaceID:       testWorkspaceA,
+		CheckoutSessionID: proUpResp.GetCheckoutSessionId(),
+		PaymentStatus:     "paid",
+		OccurredAt:        now,
+	}); err != nil {
+		t.Fatalf("SettleStripeWebhook for pro upgrade failed: %v", err)
 	}
 	_, _, err = engine.GrantLot(testWorkspaceA, testUserOwner, SourcePurchased, tenantdb.MustParseExactDecimal("300"), nil, "purchased:dunning_test_300", "Purchased 300 credits", now)
 	if err != nil {
@@ -1060,13 +1082,24 @@ func TestP802Target1CancellationDiffersFromDunningTrialAndPause(t *testing.T) {
 	}
 
 	// 3. Upgrade to Business tier, test 90-day Pause (Day 83 warning, Day 90 auto-resume) and 30% retention offer.
-	if _, err := svc.ChangePlan(ownerCtx, &adminv1.ChangePlanRequest{
+	bizUpResp, err := svc.ChangePlan(ownerCtx, &adminv1.ChangePlanRequest{
 		Context:         &commonv1.CommandContext{IdempotencyKey: "p802-upgrade-biz"},
 		TargetPlan:      "business",
 		BillingInterval: "monthly",
 		Currency:        "USD",
-	}); err != nil {
+	})
+	if err != nil {
 		t.Fatalf("ChangePlan to business failed: %v", err)
+	}
+	if _, err := svc.SettleStripeWebhook(StripeWebhookEvent{
+		EventID:           "evt_settle_p802_biz",
+		EventType:         "checkout.session.completed",
+		WorkspaceID:       testWorkspaceA,
+		CheckoutSessionID: bizUpResp.GetCheckoutSessionId(),
+		PaymentStatus:     "paid",
+		OccurredAt:        now,
+	}); err != nil {
+		t.Fatalf("SettleStripeWebhook for business upgrade failed: %v", err)
 	}
 
 	// Apply 30% retention discount for 3 months (1st time succeeds, 2nd time rejected).
@@ -1154,8 +1187,21 @@ func TestP802Target2PurchasedCreditsPreservedAccessGatesAddonsAndOverage(t *test
 	if err != nil {
 		t.Fatalf("ChangePlan starter failed: %v", err)
 	}
-	if starterPlan.GetSubscription().GetPlan() != "starter" {
-		t.Fatalf("expected starter plan, got %s", starterPlan.GetSubscription().GetPlan())
+	if _, err := svc.SettleStripeWebhook(StripeWebhookEvent{
+		EventID:           "evt_settle_p802_starter_base",
+		EventType:         "checkout.session.completed",
+		WorkspaceID:       testWorkspaceA,
+		CheckoutSessionID: starterPlan.GetCheckoutSessionId(),
+		PaymentStatus:     "paid",
+		OccurredAt:        now,
+	}); err != nil {
+		t.Fatalf("SettleStripeWebhook starter failed: %v", err)
+	}
+	subsStarter, _ := svc.ListSubscriptions(ownerCtx, &adminv1.ListSubscriptionsRequest{
+		WorkspaceId: &commonv1.UUID{Value: testWorkspaceA},
+	})
+	if len(subsStarter.GetSubscriptions()) != 1 || subsStarter.GetSubscriptions()[0].GetPlan() != "starter" {
+		t.Fatalf("expected starter plan after settlement, got %+v", subsStarter.GetSubscriptions())
 	}
 
 	// Advance clock 15 days into the 30-day cycle and add commerce_intelligence ($39/mo) -> prorated $19.5.
@@ -1173,6 +1219,16 @@ func TestP802Target2PurchasedCreditsPreservedAccessGatesAddonsAndOverage(t *test
 	}
 	if addonAddResp.GetProratedAddonCharge().GetAmount() != "19.5" {
 		t.Fatalf("expected mid-cycle (15/30 days) prorated charge of 19.5 USD for $39 add-on, got %s", addonAddResp.GetProratedAddonCharge().GetAmount())
+	}
+	if _, err := svc.SettleStripeWebhook(StripeWebhookEvent{
+		EventID:           "evt_settle_p802_starter_addon",
+		EventType:         "checkout.session.completed",
+		WorkspaceID:       testWorkspaceA,
+		CheckoutSessionID: addonAddResp.GetCheckoutSessionId(),
+		PaymentStatus:     "paid",
+		OccurredAt:        midCycle,
+	}); err != nil {
+		t.Fatalf("SettleStripeWebhook starter addon failed: %v", err)
 	}
 
 	// Request add-on removal mid-cycle -> remains in active Addons until RunCycleBoundary, recorded in ScheduledAddonRemovals.
@@ -1258,14 +1314,25 @@ func TestP802Target2PurchasedCreditsPreservedAccessGatesAddonsAndOverage(t *test
 	}
 
 	// 4. Upgrade to Business with AcceptOverageTerms=true -> bank_transfer now allowed, and BIZ-002 overage up to 10% of 10,000 (=1,000 credits) works.
-	if _, err := svc.ChangePlan(ownerCtx, &adminv1.ChangePlanRequest{
+	bizOverageResp, err := svc.ChangePlan(ownerCtx, &adminv1.ChangePlanRequest{
 		Context:            &commonv1.CommandContext{IdempotencyKey: "p802-biz-overage"},
 		TargetPlan:         "business",
 		BillingInterval:    "monthly",
 		Currency:           "USD",
 		AcceptOverageTerms: true,
-	}); err != nil {
+	})
+	if err != nil {
 		t.Fatalf("ChangePlan to business with overage failed: %v", err)
+	}
+	if _, err := svc.SettleStripeWebhook(StripeWebhookEvent{
+		EventID:           "evt_settle_p802_biz_overage",
+		EventType:         "checkout.session.completed",
+		WorkspaceID:       testWorkspaceA,
+		CheckoutSessionID: bizOverageResp.GetCheckoutSessionId(),
+		PaymentStatus:     "paid",
+		OccurredAt:        cycleEnd,
+	}); err != nil {
+		t.Fatalf("SettleStripeWebhook business overage failed: %v", err)
 	}
 	if _, err := svc.UpdatePaymentMethod(ownerCtx, &adminv1.UpdatePaymentMethodRequest{
 		Context:               &commonv1.CommandContext{IdempotencyKey: "p802-pm-bank-allowed"},
@@ -1428,5 +1495,309 @@ func TestP802Target3RestoreExportAndEraseEvidence(t *testing.T) {
 	evidences, err := svc.GetLifecycleEvidences(testWorkspaceA)
 	if err != nil || len(evidences) < 5 {
 		t.Fatalf("expected at least 5 lifecycle evidence records in audit trail, got %d (err=%v)", len(evidences), err)
+	}
+}
+
+func TestRemediation_F06_F21_F22_BillingLifecycleAndAccounting(t *testing.T) {
+	now := time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC)
+	reg := loadTestRBAC(t)
+	store := NewMemoryStore(now)
+	engine := NewEngine(store)
+	svc := NewService(reg, engine, "whsec_remediation_r2")
+	svc.SetClock(func() time.Time { return now })
+
+	ownerCtx := rbac.WithPolicyContext(context.Background(), rbac.PolicyContext{
+		ActorUserID: testUserOwner,
+		WorkspaceID: testWorkspaceA,
+		Role:        rbac.RoleOwner,
+	})
+
+	// =========================================================================
+	// F06: Paid tier upgrade & add-ons must NOT activate before verified payment
+	// =========================================================================
+
+	// 1. Request upgrade from Free to Business -> returns pending_payment session; workspace stays Free
+	abandonedResp, err := svc.ChangePlan(ownerCtx, &adminv1.ChangePlanRequest{
+		Context:         &commonv1.CommandContext{IdempotencyKey: "f06-abandoned-upgrade"},
+		TargetPlan:      "business",
+		BillingInterval: "monthly",
+		Currency:        "USD",
+		Addons:          []string{"commerce_intelligence"},
+	})
+	if err != nil {
+		t.Fatalf("ChangePlan returned unexpected error: %v", err)
+	}
+	if abandonedResp.GetEffectiveMode() != "pending_payment" {
+		t.Fatalf("F06: expected EffectiveMode=pending_payment, got %q", abandonedResp.GetEffectiveMode())
+	}
+	if abandonedResp.GetSubscription().GetStatus() != adminv1.SubscriptionStatus_SUBSCRIPTION_STATUS_INCOMPLETE {
+		t.Fatalf("F06: expected SUBSCRIPTION_STATUS_INCOMPLETE before payment, got %v", abandonedResp.GetSubscription().GetStatus())
+	}
+	subsList, err := svc.ListSubscriptions(ownerCtx, &adminv1.ListSubscriptionsRequest{
+		WorkspaceId: &commonv1.UUID{Value: testWorkspaceA},
+	})
+	if err != nil {
+		t.Fatalf("ListSubscriptions failed: %v", err)
+	}
+	if len(subsList.GetSubscriptions()) != 0 {
+		t.Fatalf("F06: expected 0 active subscriptions before payment settlement, got %+v", subsList.GetSubscriptions())
+	}
+
+	// 2. Unsettled / declined payment_status on checkout.session.completed must fail and keep tier Free
+	if _, err := svc.SettleStripeWebhook(StripeWebhookEvent{
+		EventID:           "evt_f06_unpaid",
+		EventType:         "checkout.session.completed",
+		WorkspaceID:       testWorkspaceA,
+		CheckoutSessionID: abandonedResp.GetCheckoutSessionId(),
+		PaymentStatus:     "unpaid",
+		OccurredAt:        now,
+	}); !errors.Is(err, ErrInvalidBillingInput) {
+		t.Fatalf("F06: expected ErrInvalidBillingInput for unpaid checkout session, got %v", err)
+	}
+
+	// 3. Expired checkout session cannot be settled later
+	if _, err := svc.SettleStripeWebhook(StripeWebhookEvent{
+		EventID:           "evt_f06_expired",
+		EventType:         "checkout.session.expired",
+		WorkspaceID:       testWorkspaceA,
+		CheckoutSessionID: abandonedResp.GetCheckoutSessionId(),
+		OccurredAt:        now,
+	}); err != nil {
+		t.Fatalf("checkout.session.expired webhook failed: %v", err)
+	}
+	if _, err := svc.SettleStripeWebhook(StripeWebhookEvent{
+		EventID:           "evt_f06_late_after_expiry",
+		EventType:         "checkout.session.completed",
+		WorkspaceID:       testWorkspaceA,
+		CheckoutSessionID: abandonedResp.GetCheckoutSessionId(),
+		PaymentStatus:     "paid",
+		OccurredAt:        now,
+	}); !errors.Is(err, ErrInvalidBillingInput) {
+		t.Fatalf("F06: expected expired checkout session to reject late settlement, got %v", err)
+	}
+
+	// 4. Fresh upgrade request settled via verified paid webhook activates Business tier idempotently
+	paidUpResp, err := svc.ChangePlan(ownerCtx, &adminv1.ChangePlanRequest{
+		Context:         &commonv1.CommandContext{IdempotencyKey: "f06-paid-upgrade"},
+		TargetPlan:      "business",
+		BillingInterval: "monthly",
+		Currency:        "USD",
+		Addons:          []string{"commerce_intelligence"},
+	})
+	if err != nil {
+		t.Fatalf("ChangePlan failed: %v", err)
+	}
+	settle1, err := svc.SettleStripeWebhook(StripeWebhookEvent{
+		EventID:           "evt_f06_settled_1",
+		EventType:         "checkout.session.completed",
+		WorkspaceID:       testWorkspaceA,
+		CheckoutSessionID: paidUpResp.GetCheckoutSessionId(),
+		PaymentStatus:     "paid",
+		OccurredAt:        now,
+	})
+	if err != nil || settle1.Duplicate || settle1.Status != "settled_subscription_plan" {
+		t.Fatalf("F06: expected first settlement to succeed, got %+v err=%v", settle1, err)
+	}
+	// Replay with a different EventID for the same CheckoutSessionID must be a no-op duplicate
+	settleReplay, err := svc.SettleStripeWebhook(StripeWebhookEvent{
+		EventID:           "evt_f06_settled_replay_2",
+		EventType:         "invoice.paid",
+		WorkspaceID:       testWorkspaceA,
+		CheckoutSessionID: paidUpResp.GetCheckoutSessionId(),
+		PaymentStatus:     "paid",
+		OccurredAt:        now,
+	})
+	if err != nil || !settleReplay.Duplicate {
+		t.Fatalf("F06: expected replay of settled plan session to return Duplicate=true, got %+v err=%v", settleReplay, err)
+	}
+	subsAfterPaid, _ := svc.ListSubscriptions(ownerCtx, &adminv1.ListSubscriptionsRequest{
+		WorkspaceId: &commonv1.UUID{Value: testWorkspaceA},
+	})
+	if len(subsAfterPaid.GetSubscriptions()) != 1 ||
+		subsAfterPaid.GetSubscriptions()[0].GetPlan() != "business" ||
+		subsAfterPaid.GetSubscriptions()[0].GetStatus() != adminv1.SubscriptionStatus_SUBSCRIPTION_STATUS_ACTIVE {
+		t.Fatalf("F06: expected active business subscription after verified settlement, got %+v", subsAfterPaid.GetSubscriptions())
+	}
+
+	// =========================================================================
+	// F21: invoice.paid vs RunCycleBoundary arrival order must preserve 20% rollover
+	// =========================================================================
+
+	const wsInvoiceFirst = "11111111-1111-4111-8111-111111111111"
+	const wsWorkerFirst = "22222222-2222-4222-8222-222222222222"
+	cycleStart := now
+	cycleEnd := now.Add(30 * 24 * time.Hour)
+	nextCycleEnd := cycleEnd.Add(30 * 24 * time.Hour)
+
+	setupProWorkspaceForRollover := func(ws string) string {
+		wsCtx := rbac.WithPolicyContext(context.Background(), rbac.PolicyContext{
+			ActorUserID: testUserOwner,
+			WorkspaceID: ws,
+			Role:        rbac.RoleOwner,
+		})
+		resp, cErr := svc.ChangePlan(wsCtx, &adminv1.ChangePlanRequest{
+			Context:         &commonv1.CommandContext{IdempotencyKey: "f21-pro-" + ws[:8]},
+			TargetPlan:      "pro",
+			BillingInterval: "monthly",
+			Currency:        "USD",
+		})
+		if cErr != nil {
+			t.Fatalf("ChangePlan failed: %v", cErr)
+		}
+		// Settle initial period 2026-11 via invoice.paid (grants 2,000 Pro subscription credits expiring at cycleEnd)
+		if _, wErr := svc.SettleStripeWebhook(StripeWebhookEvent{
+			EventID:        "evt_init_" + ws[:8],
+			EventType:      "invoice.paid",
+			WorkspaceID:    ws,
+			SubscriptionID: "sub_" + ws[:8],
+			PeriodKey:      "2026-11",
+			PaymentStatus:  "paid",
+			NextPeriodEnd:  cycleEnd,
+			OccurredAt:     cycleStart,
+		}); wErr != nil {
+			t.Fatalf("initial invoice.paid failed: %v", wErr)
+		}
+		_ = resp
+		return "sub_" + ws[:8]
+	}
+
+	sub1 := setupProWorkspaceForRollover(wsInvoiceFirst)
+	sub2 := setupProWorkspaceForRollover(wsWorkerFirst)
+
+	// Workspace 1: invoice.paid for 2026-12 arrives FIRST, then RunCycleBoundary runs SECOND.
+	if _, err := svc.SettleStripeWebhook(StripeWebhookEvent{
+		EventID:         "evt_f21_inv_first",
+		EventType:       "invoice.paid",
+		WorkspaceID:     wsInvoiceFirst,
+		SubscriptionID:  sub1,
+		StripeInvoiceID: "in_f21_ws1_2026_12",
+		PeriodKey:       "2026-12",
+		PaymentStatus:   "paid",
+		NextPeriodEnd:   nextCycleEnd,
+		OccurredAt:      cycleEnd,
+	}); err != nil {
+		t.Fatalf("F21 ws1 invoice.paid failed: %v", err)
+	}
+	cbRes1, err := engine.RunCycleBoundary(CycleBoundaryRequest{
+		WorkspaceID:    wsInvoiceFirst,
+		SubscriptionID: sub1,
+		PeriodKey:      "2026-12",
+		NextPeriodEnd:  nextCycleEnd,
+		Now:            cycleEnd,
+	})
+	if err != nil {
+		t.Fatalf("F21 ws1 RunCycleBoundary failed: %v", err)
+	}
+
+	// Workspace 2: RunCycleBoundary for 2026-12 runs FIRST, then invoice.paid arrives SECOND.
+	cbRes2, err := engine.RunCycleBoundary(CycleBoundaryRequest{
+		WorkspaceID:    wsWorkerFirst,
+		SubscriptionID: sub2,
+		PeriodKey:      "2026-12",
+		NextPeriodEnd:  nextCycleEnd,
+		Now:            cycleEnd,
+	})
+	if err != nil {
+		t.Fatalf("F21 ws2 RunCycleBoundary failed: %v", err)
+	}
+	if _, err := svc.SettleStripeWebhook(StripeWebhookEvent{
+		EventID:         "evt_f21_worker_first",
+		EventType:       "invoice.paid",
+		WorkspaceID:     wsWorkerFirst,
+		SubscriptionID:  sub2,
+		StripeInvoiceID: "in_f21_ws2_2026_12",
+		PeriodKey:       "2026-12",
+		PaymentStatus:   "paid",
+		NextPeriodEnd:   nextCycleEnd,
+		OccurredAt:      cycleEnd,
+	}); err != nil {
+		t.Fatalf("F21 ws2 invoice.paid failed: %v", err)
+	}
+
+	// Both workspaces had 2,000 unspent Pro credits from 2026-11 -> 20% rollover = 400 credits + 2,000 new allocation = 2,400 credits!
+	bal1, _ := engine.GetBalance(wsInvoiceFirst, cycleEnd)
+	bal2, _ := engine.GetBalance(wsWorkerFirst, cycleEnd)
+	if bal1.Available.String() != "2400" || bal2.Available.String() != "2400" {
+		t.Fatalf("F21: expected both arrival orders to yield Available=2400 (400 rollover + 2000 allocation), got invFirst=%s workerFirst=%s",
+			bal1.Available.String(), bal2.Available.String())
+	}
+	if cbRes1.RolloverCreditsGranted.String() != "400" || cbRes2.RolloverCreditsGranted.String() != "400" {
+		t.Fatalf("F21: expected RolloverCreditsGranted=400 in both orders, got cb1=%s cb2=%s",
+			cbRes1.RolloverCreditsGranted.String(), cbRes2.RolloverCreditsGranted.String())
+	}
+
+	// =========================================================================
+	// F22: Free credit grants on trial expiry and Day 14 dunning must record ledger transactions
+	// =========================================================================
+
+	const wsTrialFree = "33333333-3333-4333-8333-333333333333"
+	trialCtx := rbac.WithPolicyContext(context.Background(), rbac.PolicyContext{
+		ActorUserID: testUserOwner,
+		WorkspaceID: wsTrialFree,
+		Role:        rbac.RoleOwner,
+	})
+	if _, err := svc.ChangePlan(trialCtx, &adminv1.ChangePlanRequest{
+		Context:    &commonv1.CommandContext{IdempotencyKey: "f22-start-trial"},
+		TargetPlan: "pro",
+		StartTrial: true,
+	}); err != nil {
+		t.Fatalf("StartTrial failed: %v", err)
+	}
+	trialExpTime := now.Add(14 * 24 * time.Hour)
+	if _, err := svc.ExpireTrialWithoutPayment(wsTrialFree, trialExpTime); err != nil {
+		t.Fatalf("ExpireTrialWithoutPayment failed: %v", err)
+	}
+	balTrialFree, _ := engine.GetBalance(wsTrialFree, trialExpTime)
+	if balTrialFree.Available.String() != "50" {
+		t.Fatalf("F22: expected 50 available Free credits after trial expiry, got %s", balTrialFree.Available.String())
+	}
+	histTrial, err := svc.GetCreditLedger(trialCtx, &adminv1.GetCreditLedgerRequest{
+		WorkspaceId: &commonv1.UUID{Value: wsTrialFree},
+	})
+	if err != nil {
+		t.Fatalf("GetCreditLedger failed: %v", err)
+	}
+	txSumTrial := tenantdb.ZeroDecimal()
+	foundTrialFreeGrantTx := false
+	for _, tx := range histTrial.GetEntries() {
+		d, _ := tenantdb.ParseExactDecimal(tx.GetCreditsDelta())
+		txSumTrial, _ = txSumTrial.Add(d)
+		if tx.GetOperationType() == "subscription_allocation" && tx.GetCreditsDelta() == "50" {
+			foundTrialFreeGrantTx = true
+		}
+	}
+	if !foundTrialFreeGrantTx {
+		t.Fatalf("F22: missing positive 50-credit subscription_allocation ledger transaction on trial expiry! txs=%+v", histTrial.GetEntries())
+	}
+	if txSumTrial.Cmp(balTrialFree.Available) != 0 {
+		t.Fatalf("F22: ledger sum (%s) does not reconcile with available lot balance (%s) after trial expiry",
+			txSumTrial.String(), balTrialFree.Available.String())
+	}
+
+	// Day 14 dunning downgrade on wsInvoiceFirst -> must also record positive 50-credit subscription_allocation transaction
+	dunningDay14Time := nextCycleEnd.Add(14 * 24 * time.Hour)
+	if _, err := svc.AdvanceDunning(wsInvoiceFirst, 14, dunningDay14Time); err != nil {
+		t.Fatalf("AdvanceDunning Day 14 failed: %v", err)
+	}
+	ws1Ctx := rbac.WithPolicyContext(context.Background(), rbac.PolicyContext{
+		ActorUserID: testUserOwner,
+		WorkspaceID: wsInvoiceFirst,
+		Role:        rbac.RoleOwner,
+	})
+	histDunning, err := svc.GetCreditLedger(ws1Ctx, &adminv1.GetCreditLedgerRequest{
+		WorkspaceId: &commonv1.UUID{Value: wsInvoiceFirst},
+	})
+	if err != nil {
+		t.Fatalf("GetCreditLedger after Day 14 dunning failed: %v", err)
+	}
+	foundDunningFreeGrantTx := false
+	for _, tx := range histDunning.GetEntries() {
+		if tx.GetOperationType() == "subscription_allocation" && tx.GetCreditsDelta() == "50" {
+			foundDunningFreeGrantTx = true
+			break
+		}
+	}
+	if !foundDunningFreeGrantTx {
+		t.Fatalf("F22: missing positive 50-credit subscription_allocation ledger transaction after Day 14 dunning downgrade! txs=%+v", histDunning.GetEntries())
 	}
 }

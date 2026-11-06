@@ -363,3 +363,83 @@ func TestPlatformCapability_VerifiedVsManualFallback(t *testing.T) {
 		t.Fatalf("expected unsupported status for unknown platform, got %+v", unknown)
 	}
 }
+
+func TestRemediation_F05_WebhookEmptySecretAndSignatureFailClosed(t *testing.T) {
+	ctx := context.Background()
+	adapterSvc, orderSvc, invSvc, _ := setupAdapterHarness()
+	const wsID = "ws-f05-webhook-sec"
+	const locID = "loc-f05-main"
+	const skuID = "sku-f05-1"
+
+	_ = invSvc.RecordOpeningBaseline(ctx, wsID, skuID, locID, 10, baseHarnessTime.Add(-1*time.Hour))
+
+	orderPayload := []byte(`{
+		"type": 1,
+		"event": "ORDER_STATUS_CHANGE",
+		"timestamp": 1730000000,
+		"shop_id": "shop_vn_8899",
+		"data": {
+			"order_id": "tt_forged_order_1",
+			"order_status": "AWAITING_SHIPMENT",
+			"total_amount": "500000.000000",
+			"currency": "VND",
+			"line_items": [
+				{
+					"sku_id": "` + skuID + `",
+					"name": "Forged Item",
+					"quantity": 1,
+					"price": "500000.000000",
+					"unit_cogs": "100000.000000"
+				}
+			]
+		}
+	}`)
+
+	// 1. Order webhook with empty secret MUST fail closed
+	if _, _, err := adapterSvc.ProcessOrderWebhook(ctx, commerceadapter.PlatformTikTok, wsID, "acc-tt", orderPayload, "any_sig", "", locID); err == nil {
+		t.Fatalf("F05 regression: ProcessOrderWebhook succeeded with empty secret!")
+	}
+	if _, _, err := adapterSvc.ProcessOrderWebhook(ctx, commerceadapter.PlatformTikTok, wsID, "acc-tt", orderPayload, "any_sig", "   ", locID); err == nil {
+		t.Fatalf("F05 regression: ProcessOrderWebhook succeeded with whitespace secret!")
+	}
+	if _, _, err := adapterSvc.ProcessOrderWebhook(ctx, commerceadapter.PlatformTikTok, wsID, "acc-tt", orderPayload, "", "sec-123", locID); err == nil {
+		t.Fatalf("F05 regression: ProcessOrderWebhook succeeded with empty signature!")
+	}
+
+	// 2. Return webhook with empty secret MUST fail closed
+	returnPayload := []byte(`{
+		"type": 2,
+		"event": "RETURN_STATUS_CHANGE",
+		"timestamp": 1730000000,
+		"data": {
+			"return_id": "ret_forged_1",
+			"order_id": "tt_forged_order_1",
+			"return_status": "RETURN_RECEIVED",
+			"items": [{"sku_id": "` + skuID + `", "quantity": 1, "reason": "forged"}]
+		}
+	}`)
+	if _, err := adapterSvc.ProcessReturnWebhook(ctx, commerceadapter.PlatformTikTok, wsID, "ord-1", returnPayload, "", "", locID); err == nil {
+		t.Fatalf("F05 regression: ProcessReturnWebhook succeeded with empty secret!")
+	}
+
+	// 3. Refund webhook with empty secret MUST fail closed
+	refundPayload := []byte(`{
+		"type": 3,
+		"event": "REFUND_STATUS_CHANGE",
+		"timestamp": 1730000000,
+		"data": {
+			"refund_id": "ref_forged_1",
+			"order_id": "tt_forged_order_1",
+			"refund_amount": "100000.000000",
+			"currency": "VND"
+		}
+	}`)
+	if _, _, err := adapterSvc.ProcessRefundWebhook(ctx, commerceadapter.PlatformTikTok, wsID, "ord-1", refundPayload, "", ""); err == nil {
+		t.Fatalf("F05 regression: ProcessRefundWebhook succeeded with empty secret!")
+	}
+
+	orders, _, _ := orderSvc.Store().ListOrders(ctx, wsID, order.OrderFilter{}, 10, 0)
+	if len(orders) != 0 {
+		t.Fatalf("F05: expected 0 orders ingested from unauthenticated webhooks, got %d", len(orders))
+	}
+}

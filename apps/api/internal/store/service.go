@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb"
@@ -23,6 +24,7 @@ type Service struct {
 	eventSink       EventSink
 	nowFunc         func() time.Time
 	paymentVerifier PaymentVerifier
+	checkoutMu      sync.Mutex
 }
 
 func NewService(store Store, eventSink EventSink, nowFunc func() time.Time) *Service {
@@ -30,38 +32,65 @@ func NewService(store Store, eventSink EventSink, nowFunc func() time.Time) *Ser
 		nowFunc = func() time.Time { return time.Now().UTC() }
 	}
 	return &Service{
-		store:           store,
-		eventSink:       eventSink,
-		nowFunc:         nowFunc,
-		paymentVerifier: defaultPaymentVerifier,
+		store:     store,
+		eventSink: eventSink,
+		nowFunc:   nowFunc,
 	}
 }
 
 func (s *Service) SetPaymentVerifier(v PaymentVerifier) {
-	if v == nil {
-		s.paymentVerifier = defaultPaymentVerifier
-		return
-	}
 	s.paymentVerifier = v
 }
 
-func defaultPaymentVerifier(_ context.Context, _, paymentIntentID string, _ tenantdb.ExactDecimal, _ string) (PaymentStatus, error) {
+// verifyPayment fails closed unless either an explicit PaymentVerifier was configured
+// or the payment intent was verified and recorded in the tenant store with matching
+// workspace, exact amount, and currency (F02).
+func (s *Service) verifyPayment(ctx context.Context, workspaceID, paymentIntentID string, amount tenantdb.ExactDecimal, currency string) (PaymentStatus, error) {
 	pi := strings.TrimSpace(paymentIntentID)
 	if pi == "" {
 		return PaymentStatusFailed, ErrPaymentRequired
 	}
-	lower := strings.ToLower(pi)
-	if strings.HasPrefix(lower, "pi_failed") || strings.HasPrefix(lower, "pi_declined") ||
-		strings.HasPrefix(lower, "pi_canceled") || strings.HasPrefix(lower, "pi_cancelled") ||
-		strings.HasSuffix(lower, "_failed") || strings.HasSuffix(lower, "_declined") {
-		return PaymentStatusFailed, ErrPaymentFailed
+	if s.paymentVerifier != nil {
+		return s.paymentVerifier(ctx, workspaceID, pi, amount, currency)
 	}
-	if strings.HasPrefix(lower, "pi_pending") || strings.HasPrefix(lower, "pi_unconfirmed") ||
-		strings.HasPrefix(lower, "pi_unknown") || strings.HasPrefix(lower, "pi_requires_") ||
-		strings.HasSuffix(lower, "_pending") || strings.HasSuffix(lower, "_unconfirmed") {
-		return PaymentStatusPending, nil
+	intent, err := s.store.GetVerifiedPaymentIntent(ctx, workspaceID, pi)
+	if err != nil || intent == nil {
+		return PaymentStatusFailed, fmt.Errorf("%w: %s", ErrPaymentNotVerified, pi)
 	}
-	return PaymentStatusSucceeded, nil
+	if intent.WorkspaceID != workspaceID {
+		return PaymentStatusFailed, ErrScopeMismatch
+	}
+	if !strings.EqualFold(strings.TrimSpace(intent.Currency), strings.TrimSpace(currency)) {
+		return PaymentStatusFailed, fmt.Errorf("%w: verified payment currency %s does not match checkout currency %s", ErrPriceMismatch, intent.Currency, currency)
+	}
+	if intent.Amount.Cmp(amount) != 0 {
+		return PaymentStatusFailed, fmt.Errorf("%w: verified payment amount %s does not match checkout amount %s", ErrPriceMismatch, intent.Amount.Fixed6String(), amount.Fixed6String())
+	}
+	if intent.Status == "" {
+		return PaymentStatusFailed, ErrPaymentNotVerified
+	}
+	return intent.Status, nil
+}
+
+func (s *Service) UpsertProduct(ctx context.Context, product *StoreProduct) error {
+	if product == nil || strings.TrimSpace(product.WorkspaceID) == "" {
+		return ErrMissingTenant
+	}
+	return s.store.UpsertProduct(ctx, product)
+}
+
+func (s *Service) UpsertOffer(ctx context.Context, offer *StoreOffer) error {
+	if offer == nil || strings.TrimSpace(offer.WorkspaceID) == "" {
+		return ErrMissingTenant
+	}
+	return s.store.UpsertOffer(ctx, offer)
+}
+
+func (s *Service) RecordVerifiedPaymentIntent(ctx context.Context, intent *VerifiedPaymentIntent) error {
+	if intent == nil || strings.TrimSpace(intent.WorkspaceID) == "" {
+		return ErrMissingTenant
+	}
+	return s.store.RecordVerifiedPaymentIntent(ctx, intent)
 }
 
 func checkoutRequestFingerprint(req CheckoutRequest) string {
@@ -425,6 +454,9 @@ func (s *Service) CreateBundle(ctx context.Context, bundle *Bundle) (*Bundle, er
 	if len(bundle.Items) == 0 {
 		return nil, fmt.Errorf("%w: bundle must contain at least 1 item", ErrInvalidAmount)
 	}
+	if strings.TrimSpace(bundle.Currency) == "" {
+		bundle.Currency = "VND"
+	}
 	bundle.CreatedAt = s.nowFunc()
 	if err := s.store.CreateBundle(ctx, bundle); err != nil {
 		return nil, err
@@ -504,21 +536,36 @@ func (s *Service) Checkout(ctx context.Context, req CheckoutRequest) (*CheckoutR
 		return nil, fmt.Errorf("%w: checkout requires at least one product, bundle, offer, or membership plan", ErrInvalidAmount)
 	}
 
+	s.checkoutMu.Lock()
+	defer s.checkoutMu.Unlock()
+
 	fp := checkoutRequestFingerprint(req)
+	trimmedPI := strings.TrimSpace(req.PaymentIntentID)
 	var existingOrderID string
 
-	// 1. Strict Idempotency Check: verify payload fingerprint matches original request
+	// 1. Strict Idempotency & Payment-Intent Replay Check (F04)
 	if cached, err := s.store.GetCheckoutResultByIdempotency(ctx, req.WorkspaceID, req.IdempotencyKey); err == nil && cached != nil {
 		if cached.RequestFingerprint != "" && cached.RequestFingerprint != fp {
 			return nil, ErrPaymentReplay
 		}
 		if cached.Status == "confirmed" {
-			if cached.PaymentIntentID != "" && cached.PaymentIntentID != strings.TrimSpace(req.PaymentIntentID) {
+			if cached.PaymentIntentID != "" && cached.PaymentIntentID != trimmedPI {
 				return nil, ErrPaymentReplay
 			}
 			return cached, nil
 		}
 		existingOrderID = cached.OrderID
+	}
+
+	if trimmedPI != "" {
+		if boundRes, boundIdemKey, err := s.store.GetCheckoutByPaymentIntent(ctx, req.WorkspaceID, trimmedPI); err == nil && boundRes != nil {
+			if boundIdemKey != req.IdempotencyKey || (boundRes.RequestFingerprint != "" && boundRes.RequestFingerprint != fp) {
+				return nil, fmt.Errorf("%w: payment intent %s already consumed by checkout %s", ErrPaymentReplay, trimmedPI, boundIdemKey)
+			}
+			if boundRes.Status == "confirmed" {
+				return boundRes, nil
+			}
+		}
 	}
 
 	// 2. Storefront publication check: if pages exist in the workspace, at least one must be published
@@ -535,34 +582,79 @@ func (s *Service) Checkout(ctx context.Context, req CheckoutRequest) (*CheckoutR
 		}
 	}
 
-	// 3. Catalog, Offer, Bundle, and Membership Plan Validation (including server-side price/currency checks)
-	if req.OfferID != "" {
-		lowerOffer := strings.ToLower(req.OfferID)
+	// 3. Tenant-Scoped Catalog Resolution & Server-Side Total Calculation across ALL Cart Items (F03)
+	now := s.nowFunc()
+	expectedTotal := tenantdb.ZeroDecimal()
+	hasPricedCatalogItem := false
+
+	var offer *StoreOffer
+	if strings.TrimSpace(req.OfferID) != "" {
+		offerID := strings.TrimSpace(req.OfferID)
+		lowerOffer := strings.ToLower(offerID)
 		if strings.Contains(lowerOffer, "expired") {
 			return nil, ErrOfferExpired
 		}
 		if strings.Contains(lowerOffer, "inactive") || strings.Contains(lowerOffer, "draft") || strings.Contains(lowerOffer, "retired") {
 			return nil, ErrOfferNotActive
 		}
+		resolvedOffer, err := s.store.GetOffer(ctx, req.WorkspaceID, offerID)
+		if err != nil {
+			return nil, fmt.Errorf("%w: %v", ErrOfferNotActive, err)
+		}
+		if resolvedOffer.WorkspaceID != req.WorkspaceID {
+			return nil, ErrScopeMismatch
+		}
+		if resolvedOffer.LifecycleState == OfferStateExpired || (resolvedOffer.ExpiresAt != nil && !now.Before(*resolvedOffer.ExpiresAt)) {
+			return nil, ErrOfferExpired
+		}
+		if resolvedOffer.LifecycleState != OfferStateActive {
+			return nil, ErrOfferNotActive
+		}
+		if resolvedOffer.Currency != "" && !strings.EqualFold(resolvedOffer.Currency, req.Currency) {
+			return nil, fmt.Errorf("%w: offer currency %s does not match checkout currency %s", ErrPriceMismatch, resolvedOffer.Currency, req.Currency)
+		}
+		sum, err := expectedTotal.Add(resolvedOffer.Price)
+		if err != nil {
+			return nil, ErrInvalidAmount
+		}
+		expectedTotal = sum
+		hasPricedCatalogItem = true
+		offer = resolvedOffer
+		_ = offer
 	}
 
 	var bundle *Bundle
-	if req.BundleID != "" {
-		b, err := s.store.GetBundle(ctx, req.WorkspaceID, req.BundleID)
+	if strings.TrimSpace(req.BundleID) != "" {
+		b, err := s.store.GetBundle(ctx, req.WorkspaceID, strings.TrimSpace(req.BundleID))
 		if err != nil {
 			return nil, err
+		}
+		if b.WorkspaceID != req.WorkspaceID {
+			return nil, ErrScopeMismatch
 		}
 		if b.Status != "" && b.Status != "active" && b.Status != "published" {
 			return nil, ErrOfferNotActive
 		}
+		if b.Currency != "" && !strings.EqualFold(b.Currency, req.Currency) {
+			return nil, fmt.Errorf("%w: bundle currency %s does not match checkout currency %s", ErrPriceMismatch, b.Currency, req.Currency)
+		}
+		sum, err := expectedTotal.Add(b.BundlePrice)
+		if err != nil {
+			return nil, ErrInvalidAmount
+		}
+		expectedTotal = sum
+		hasPricedCatalogItem = true
 		bundle = b
 	}
 
 	var plan *MembershipPlan
-	if req.MembershipPlanID != "" {
-		p, err := s.store.GetPlan(ctx, req.WorkspaceID, req.MembershipPlanID)
+	if strings.TrimSpace(req.MembershipPlanID) != "" {
+		p, err := s.store.GetPlan(ctx, req.WorkspaceID, strings.TrimSpace(req.MembershipPlanID))
 		if err != nil {
 			return nil, err
+		}
+		if p.WorkspaceID != req.WorkspaceID {
+			return nil, ErrScopeMismatch
 		}
 		if p.Status != MembershipPlanStatusActive {
 			return nil, fmt.Errorf("%w: plan is not active", ErrInvalidStateTransition)
@@ -570,30 +662,47 @@ func (s *Service) Checkout(ctx context.Context, req CheckoutRequest) (*CheckoutR
 		if p.Currency != "" && !strings.EqualFold(p.Currency, req.Currency) {
 			return nil, fmt.Errorf("%w: expected currency %s, got %s", ErrPriceMismatch, p.Currency, req.Currency)
 		}
+		sum, err := expectedTotal.Add(p.Price)
+		if err != nil {
+			return nil, ErrInvalidAmount
+		}
+		expectedTotal = sum
+		hasPricedCatalogItem = true
 		plan = p
 	}
 
-	if bundle != nil && plan != nil && len(req.ProductIDs) == 0 && req.OfferID == "" {
-		expected, err := bundle.BundlePrice.Add(plan.Price)
-		if err == nil && !expected.IsZero() && req.OrderAmount.Cmp(expected) != 0 {
-			return nil, fmt.Errorf("%w: expected %s, got %s", ErrPriceMismatch, expected.Fixed6String(), req.OrderAmount.Fixed6String())
+	for _, rawProdID := range req.ProductIDs {
+		prodID := strings.TrimSpace(rawProdID)
+		if prodID == "" {
+			return nil, ErrProductNotFound
 		}
-	} else if bundle != nil && plan == nil && len(req.ProductIDs) == 0 && req.OfferID == "" {
-		if !bundle.BundlePrice.IsZero() && req.OrderAmount.Cmp(bundle.BundlePrice) != 0 {
-			return nil, fmt.Errorf("%w: expected bundle price %s, got %s", ErrPriceMismatch, bundle.BundlePrice.Fixed6String(), req.OrderAmount.Fixed6String())
+		prod, err := s.store.GetProduct(ctx, req.WorkspaceID, prodID)
+		if err != nil {
+			return nil, err
 		}
-	} else if plan != nil && bundle == nil && len(req.ProductIDs) == 0 && req.OfferID == "" {
-		if !plan.Price.IsZero() && req.OrderAmount.Cmp(plan.Price) != 0 {
-			return nil, fmt.Errorf("%w: expected plan price %s, got %s", ErrPriceMismatch, plan.Price.Fixed6String(), req.OrderAmount.Fixed6String())
+		if prod.WorkspaceID != req.WorkspaceID {
+			return nil, ErrScopeMismatch
 		}
+		if prod.Status != ProductStatusActive {
+			return nil, ErrProductNotActive
+		}
+		if prod.Currency != "" && !strings.EqualFold(prod.Currency, req.Currency) {
+			return nil, fmt.Errorf("%w: product currency %s does not match checkout currency %s", ErrPriceMismatch, prod.Currency, req.Currency)
+		}
+		sum, err := expectedTotal.Add(prod.Price)
+		if err != nil {
+			return nil, ErrInvalidAmount
+		}
+		expectedTotal = sum
+		hasPricedCatalogItem = true
 	}
 
-	// 4. Verify Payment Capture BEFORE deducting stock, granting digital deliveries, activating memberships, or posting revenue
-	verifier := s.paymentVerifier
-	if verifier == nil {
-		verifier = defaultPaymentVerifier
+	if !hasPricedCatalogItem || expectedTotal.IsZero() || req.OrderAmount.Cmp(expectedTotal) != 0 {
+		return nil, fmt.Errorf("%w: expected %s, got %s", ErrPriceMismatch, expectedTotal.Fixed6String(), req.OrderAmount.Fixed6String())
 	}
-	payStatus, err := verifier(ctx, req.WorkspaceID, req.PaymentIntentID, req.OrderAmount, req.Currency)
+
+	// 4. Verify Payment Capture BEFORE deducting stock, granting digital deliveries, activating memberships, or posting revenue (F02)
+	payStatus, err := s.verifyPayment(ctx, req.WorkspaceID, req.PaymentIntentID, req.OrderAmount, req.Currency)
 	if err != nil {
 		return nil, err
 	}
@@ -615,7 +724,7 @@ func (s *Service) Checkout(ctx context.Context, req CheckoutRequest) (*CheckoutR
 			Subscription:       nil,
 			IsReplayed:         existingOrderID != "",
 			RequestFingerprint: fp,
-			PaymentIntentID:    strings.TrimSpace(req.PaymentIntentID),
+			PaymentIntentID:    trimmedPI,
 		}
 		if err := s.store.SaveCheckoutResult(ctx, req.WorkspaceID, req.IdempotencyKey, pendingRes); err != nil {
 			return nil, err
@@ -623,16 +732,27 @@ func (s *Service) Checkout(ctx context.Context, req CheckoutRequest) (*CheckoutR
 		return pendingRes, nil
 	}
 
-	// 5. Atomic Bundle Stock Reservation (Acceptance Target 1)
-	if req.BundleID != "" {
-		if err := s.store.AtomicallyReserveBundleStock(ctx, req.WorkspaceID, req.BundleID, 1); err != nil {
-			return nil, err
-		}
-	}
-
-	now := s.nowFunc()
+	// 5. Atomic Bundle Stock Reservation (Acceptance Target 1) with rollback on downstream failure (F04)
+	bundleReserved := false
 	var deliveries []DigitalDelivery
 	var subscription *MembershipSubscription
+	rollback := func() {
+		for _, del := range deliveries {
+			_ = s.store.DeleteDigitalDelivery(ctx, req.WorkspaceID, del.DeliveryID)
+		}
+		if subscription != nil {
+			_ = s.store.DeleteSubscription(ctx, req.WorkspaceID, subscription.MembershipID)
+		}
+		if bundleReserved && bundle != nil {
+			_ = s.store.ReleaseBundleStock(ctx, req.WorkspaceID, bundle.BundleID, 1)
+		}
+	}
+	if bundle != nil {
+		if err := s.store.AtomicallyReserveBundleStock(ctx, req.WorkspaceID, bundle.BundleID, 1); err != nil {
+			return nil, err
+		}
+		bundleReserved = true
+	}
 
 	// 6. Membership Subscription Creation (only after confirmed payment)
 	if plan != nil {
@@ -642,7 +762,7 @@ func (s *Service) Checkout(ctx context.Context, req CheckoutRequest) (*CheckoutR
 			PlanID:                  plan.PlanID,
 			CustomerEntityID:        req.CustomerEntityID,
 			Status:                  MembershipSubscriptionStatusActive,
-			ProviderSubscriptionID:  strings.TrimSpace(req.PaymentIntentID),
+			ProviderSubscriptionID:  trimmedPI,
 			CurrentPeriodStart:      now,
 			CurrentPeriodEnd:        now.Add(30 * 24 * time.Hour),
 			EntitlementSnapshotJSON: plan.EntitlementConfigJSON,
@@ -650,16 +770,37 @@ func (s *Service) Checkout(ctx context.Context, req CheckoutRequest) (*CheckoutR
 			UpdatedAt:               now,
 		}
 		if err := s.store.CreateSubscription(ctx, subscription); err != nil {
+			rollback()
 			return nil, err
 		}
-		s.emitEvent(ctx, req.WorkspaceID, "membership.subscribed", plan.PlanID, map[string]any{
-			"plan_id":   plan.PlanID,
-			"entity_id": req.CustomerEntityID,
-		})
 	}
 
 	// 7. Digital Deliveries Creation (only after confirmed payment)
-	if len(req.ProductIDs) > 0 || req.OfferID != "" {
+	if len(req.ProductIDs) > 0 {
+		for idx, rawProdID := range req.ProductIDs {
+			prodID := strings.TrimSpace(rawProdID)
+			del := DigitalDelivery{
+				DeliveryID:             newUUID(),
+				WorkspaceID:            req.WorkspaceID,
+				OrderID:                orderID,
+				CustomerEntityID:       req.CustomerEntityID,
+				ProductID:              prodID,
+				OfferID:                req.OfferID,
+				DeliveryType:           DeliveryTypeDownloadLink,
+				EntitlementPayloadJSON: map[string]any{"download_url": fmt.Sprintf("https://cdn.creativanta.store/downloads/%s_%s.zip", orderID, prodID)},
+				Status:                 DeliveryStatusDelivered,
+				IdempotencyKey:         fmt.Sprintf("%s:deliv:%d", req.IdempotencyKey, idx+1),
+				DownloadCount:          0,
+				MaxDownloads:           5,
+				CreatedAt:              now,
+			}
+			if err := s.store.CreateDigitalDelivery(ctx, &del); err != nil {
+				rollback()
+				return nil, err
+			}
+			deliveries = append(deliveries, del)
+		}
+	} else if req.OfferID != "" {
 		del := DigitalDelivery{
 			DeliveryID:             newUUID(),
 			WorkspaceID:            req.WorkspaceID,
@@ -674,10 +815,8 @@ func (s *Service) Checkout(ctx context.Context, req CheckoutRequest) (*CheckoutR
 			MaxDownloads:           5,
 			CreatedAt:              now,
 		}
-		if len(req.ProductIDs) > 0 {
-			del.ProductID = req.ProductIDs[0]
-		}
 		if err := s.store.CreateDigitalDelivery(ctx, &del); err != nil {
+			rollback()
 			return nil, err
 		}
 		deliveries = append(deliveries, del)
@@ -694,18 +833,11 @@ func (s *Service) Checkout(ctx context.Context, req CheckoutRequest) (*CheckoutR
 		CreatedAt:      now,
 	}
 	if err := s.store.RecordFinancialPosting(ctx, posting); err != nil {
+		rollback()
 		return nil, err
 	}
 
-	s.emitEvent(ctx, req.WorkspaceID, "order.imported", orderID, map[string]any{
-		"order_id":        orderID,
-		"platform":        "own_store",
-		"amount":          req.OrderAmount.String(),
-		"currency":        req.Currency,
-		"source_platform": "own_store",
-	})
-
-	// 9. Save result for idempotent future replays
+	// 9. Save result for idempotent future replays & bind PaymentIntentID (F04)
 	result := &CheckoutResult{
 		Success:            true,
 		OrderID:            orderID,
@@ -714,11 +846,26 @@ func (s *Service) Checkout(ctx context.Context, req CheckoutRequest) (*CheckoutR
 		Subscription:       subscription,
 		IsReplayed:         false,
 		RequestFingerprint: fp,
-		PaymentIntentID:    strings.TrimSpace(req.PaymentIntentID),
+		PaymentIntentID:    trimmedPI,
 	}
 	if err := s.store.SaveCheckoutResult(ctx, req.WorkspaceID, req.IdempotencyKey, result); err != nil {
+		rollback()
 		return nil, err
 	}
+
+	if plan != nil {
+		s.emitEvent(ctx, req.WorkspaceID, "membership.subscribed", plan.PlanID, map[string]any{
+			"plan_id":   plan.PlanID,
+			"entity_id": req.CustomerEntityID,
+		})
+	}
+	s.emitEvent(ctx, req.WorkspaceID, "order.imported", orderID, map[string]any{
+		"order_id":        orderID,
+		"platform":        "own_store",
+		"amount":          req.OrderAmount.String(),
+		"currency":        req.Currency,
+		"source_platform": "own_store",
+	})
 
 	return result, nil
 }
