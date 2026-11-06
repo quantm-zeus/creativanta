@@ -2,8 +2,10 @@ package product_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -12,7 +14,18 @@ import (
 	commonv1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/common/v1"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/product"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/rbac"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
+
+func testCmdCtx(wsID, idemKey string) *commonv1.CommandContext {
+	ctx := &commonv1.CommandContext{
+		IdempotencyKey: idemKey,
+	}
+	if wsID != "" {
+		ctx.WorkspaceId = &commonv1.UUID{Value: wsID}
+	}
+	return ctx
+}
 
 func TestHandlerConnectRPCEndpoints(t *testing.T) {
 	ctx := context.Background()
@@ -22,13 +35,9 @@ func TestHandlerConnectRPCEndpoints(t *testing.T) {
 	svc := product.NewService(store, sink, func() time.Time { return fixedTime })
 	h := product.NewHandler(svc)
 
-	cmdCtx := &commonv1.CommandContext{
-		WorkspaceId: &commonv1.UUID{Value: testWorkspaceID1},
-	}
-
 	// 1. Create Product RPC
 	createReq := connect.NewRequest(&commercev1.CreateRequest{
-		Context:     cmdCtx,
+		Context:     testCmdCtx(testWorkspaceID1, "idem-hnd-create-1"),
 		ProductType: commercev1.ProductType_PRODUCT_TYPE_PHYSICAL,
 		Title:       "Tai nghe chống ồn Bluetooth",
 		Description: "Pin 40 giờ, chống ồn chủ động ANC",
@@ -68,9 +77,6 @@ func TestHandlerConnectRPCEndpoints(t *testing.T) {
 	listReq := connect.NewRequest(&commercev1.ListRequest{
 		Pagination: &commonv1.Pagination{PageSize: 10},
 	})
-	// With context in command context:
-	// For queries that don't have CommandContext on wire, transportauth interceptor injects Session in production.
-	// For testing, we can simulate by calling through service or testing handler error mapping.
 	_ = listReq
 
 	// 4. Import RPC via Connect Handler (Preview Mode)
@@ -78,7 +84,7 @@ func TestHandlerConnectRPCEndpoints(t *testing.T) {
 PROD-HND-1,Cốc giữ nhiệt cà phê,149000,VND`
 
 	importPreviewReq := connect.NewRequest(&commercev1.ImportRequest{
-		Context:        cmdCtx,
+		Context:        testCmdCtx(testWorkspaceID1, "idem-hnd-import-preview-1"),
 		SourcePlatform: "csv",
 		RawData:        csvData,
 		PreviewOnly:    true,
@@ -97,7 +103,7 @@ PROD-HND-1,Cốc giữ nhiệt cà phê,149000,VND`
 
 	// 5. Import RPC via Connect Handler (Commit Mode)
 	importCommitReq := connect.NewRequest(&commercev1.ImportRequest{
-		Context:        cmdCtx,
+		Context:        testCmdCtx(testWorkspaceID1, "idem-hnd-import-commit-1"),
 		SourcePlatform: "csv",
 		RawData:        csvData,
 		PreviewOnly:    false,
@@ -116,7 +122,7 @@ PROD-HND-1,Cốc giữ nhiệt cà phê,149000,VND`
 
 	// 6. Link Content RPC
 	linkReq := connect.NewRequest(&commercev1.LinkContentRequest{
-		Context:     cmdCtx,
+		Context:     testCmdCtx(testWorkspaceID1, "idem-hnd-link-1"),
 		ProductId:   prodID,
 		ContentId:   "content-script-77",
 		ContentType: "script",
@@ -157,6 +163,7 @@ func TestRemediation_R12_ProductPaginationCursorAndOrdering(t *testing.T) {
 			currentTime = time.Date(2026, 11, 2, 12, 10, 0, 0, time.UTC)
 		}
 		resp, err := h.Create(ctxWs1, connect.NewRequest(&commercev1.CreateRequest{
+			Context:     testCmdCtx("", fmt.Sprintf("idem-r12-ws1-%d", i)),
 			ProductType: commercev1.ProductType_PRODUCT_TYPE_PHYSICAL,
 			Title:       fmt.Sprintf("Sản phẩm Điện tử #%d", i),
 			Description: "Thiết bị công nghệ chính hãng",
@@ -173,6 +180,7 @@ func TestRemediation_R12_ProductPaginationCursorAndOrdering(t *testing.T) {
 	// Seed 2 products in Workspace 2 to ensure cursor and counts are strictly tenant-scoped
 	for i := 1; i <= 2; i++ {
 		if _, err := h.Create(ctxWs2, connect.NewRequest(&commercev1.CreateRequest{
+			Context:     testCmdCtx("", fmt.Sprintf("idem-r12-ws2-%d", i)),
 			ProductType: commercev1.ProductType_PRODUCT_TYPE_PHYSICAL,
 			Title:       fmt.Sprintf("Sản phẩm Điện tử WS2 #%d", i),
 			Description: "Thiết bị công nghệ WS2",
@@ -341,6 +349,7 @@ func TestRemediation_R02_ProductTenantIsolationAndRBAC(t *testing.T) {
 
 	// Create product in Workspace B
 	createB, err := h.Create(ctxOwnerB, connect.NewRequest(&commercev1.CreateRequest{
+		Context:     testCmdCtx("", "idem-r02-create-b"),
 		ProductType: commercev1.ProductType_PRODUCT_TYPE_PHYSICAL,
 		Title:       "Sản phẩm Nội bộ Tenant B",
 		BasePrice:   &commonv1.Money{Amount: "500000.000000", Currency: "VND"},
@@ -353,6 +362,7 @@ func TestRemediation_R02_ProductTenantIsolationAndRBAC(t *testing.T) {
 
 	// Create product in Workspace A
 	createA, err := h.Create(ctxOwnerA, connect.NewRequest(&commercev1.CreateRequest{
+		Context:     testCmdCtx("", "idem-r02-create-a"),
 		ProductType: commercev1.ProductType_PRODUCT_TYPE_PHYSICAL,
 		Title:       "Sản phẩm Tenant A",
 		BasePrice:   &commonv1.Money{Amount: "300000.000000", Currency: "VND"},
@@ -395,7 +405,7 @@ func TestRemediation_R02_ProductTenantIsolationAndRBAC(t *testing.T) {
 	}
 
 	// 3. Forged CommandContext.WorkspaceId mismatch rejected with CodePermissionDenied
-	forgedCtx := &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: testWorkspaceID2}}
+	forgedCtx := testCmdCtx(testWorkspaceID2, "idem-forged-ws")
 	if _, err := h.Create(ctxOwnerA, connect.NewRequest(&commercev1.CreateRequest{
 		Context:     forgedCtx,
 		ProductType: commercev1.ProductType_PRODUCT_TYPE_PHYSICAL,
@@ -411,22 +421,546 @@ func TestRemediation_R02_ProductTenantIsolationAndRBAC(t *testing.T) {
 	}
 	// Viewer cannot Create or Archive (requires product:manage / Editor+)
 	if _, err := h.Create(ctxViewerA, connect.NewRequest(&commercev1.CreateRequest{
+		Context:     testCmdCtx("", "idem-viewer-create"),
 		ProductType: commercev1.ProductType_PRODUCT_TYPE_PHYSICAL,
 		Title:       "Viewer Forbidden",
 	})); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("expected CodePermissionDenied when viewer calls Create, got %v", err)
 	}
-	if _, err := h.Archive(ctxViewerA, connect.NewRequest(&commercev1.ArchiveRequest{ProductId: prodAID})); connect.CodeOf(err) != connect.CodePermissionDenied {
+	if _, err := h.Archive(ctxViewerA, connect.NewRequest(&commercev1.ArchiveRequest{
+		Context:   testCmdCtx("", "idem-viewer-archive"),
+		ProductId: prodAID,
+	})); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("expected CodePermissionDenied when viewer calls Archive, got %v", err)
 	}
 	// Editor cannot BulkArchive (Manager+), Delete (Admin+), or Import (Admin+)
-	if _, err := h.BulkArchive(ctxEditorA, connect.NewRequest(&commercev1.BulkArchiveRequest{ProductIds: []string{prodAID}})); connect.CodeOf(err) != connect.CodePermissionDenied {
+	if _, err := h.BulkArchive(ctxEditorA, connect.NewRequest(&commercev1.BulkArchiveRequest{
+		Context:    testCmdCtx("", "idem-editor-bulk"),
+		ProductIds: []string{prodAID},
+	})); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("expected CodePermissionDenied when editor calls BulkArchive (Manager+), got %v", err)
 	}
-	if _, err := h.Delete(ctxEditorA, connect.NewRequest(&commercev1.DeleteRequest{ProductId: prodAID})); connect.CodeOf(err) != connect.CodePermissionDenied {
+	if _, err := h.Delete(ctxEditorA, connect.NewRequest(&commercev1.DeleteRequest{
+		Context:   testCmdCtx("", "idem-editor-del"),
+		ProductId: prodAID,
+	})); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("expected CodePermissionDenied when editor calls Delete (Admin+), got %v", err)
 	}
-	if _, err := h.Import(ctxEditorA, connect.NewRequest(&commercev1.ImportRequest{SourcePlatform: "csv", RawData: "external_id,title,price,currency\n1,A,10,VND", PreviewOnly: true})); connect.CodeOf(err) != connect.CodePermissionDenied {
+	if _, err := h.Import(ctxEditorA, connect.NewRequest(&commercev1.ImportRequest{
+		SourcePlatform: "csv",
+		RawData:        "external_id,title,price,currency\n1,A,10,VND",
+		PreviewOnly:    true,
+	})); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("expected CodePermissionDenied when editor calls Import (Admin+), got %v", err)
+	}
+}
+
+func TestRemediation_F01_UpdateStockAppendsStockMovementAndEnforcesLedgerInvariants(t *testing.T) {
+	baseCtx := context.Background()
+	store := product.NewMemoryStore()
+	sink := product.NewMemoryEventSink()
+	fixedTime := time.Date(2026, 11, 6, 10, 0, 0, 0, time.UTC)
+	svc := product.NewService(store, sink, func() time.Time { return fixedTime })
+	h := product.NewHandler(svc)
+
+	ctxOwner := product.WithCaller(baseCtx, testWorkspaceID1, "user-owner-1", rbac.RoleOwner)
+
+	created, err := h.Create(ctxOwner, connect.NewRequest(&commercev1.CreateRequest{
+		Context:     testCmdCtx("", "idem-f01-create"),
+		ProductType: commercev1.ProductType_PRODUCT_TYPE_PHYSICAL,
+		Title:       "Bàn phím cơ không dây",
+		BasePrice:   &commonv1.Money{Amount: "1500000.000000", Currency: "VND"},
+		Currency:    "VND",
+	}))
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+	skuID := created.Msg.Product.Skus[0].SkuId
+
+	// 1. Missing reason must fail with CodeInvalidArgument
+	if _, err := h.UpdateStock(ctxOwner, connect.NewRequest(&commercev1.UpdateStockRequest{
+		Context:       testCmdCtx("", "idem-f01-empty-reason"),
+		SkuId:         skuID,
+		DeltaQuantity: 10,
+		Reason:        "   ",
+	})); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("expected CodeInvalidArgument for empty reason, got %v", err)
+	}
+
+	// 2. Zero delta must fail with CodeInvalidArgument
+	if _, err := h.UpdateStock(ctxOwner, connect.NewRequest(&commercev1.UpdateStockRequest{
+		Context:       testCmdCtx("", "idem-f01-zero-delta"),
+		SkuId:         skuID,
+		DeltaQuantity: 0,
+		Reason:        "recount",
+	})); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("expected CodeInvalidArgument for zero delta, got %v", err)
+	}
+
+	// 3. Valid stock adjustment (+25) appends stock_movement and emits inventory.stock_moved
+	stockResp, err := h.UpdateStock(ctxOwner, connect.NewRequest(&commercev1.UpdateStockRequest{
+		Context:       testCmdCtx("", "idem-f01-add-25"),
+		SkuId:         skuID,
+		DeltaQuantity: 25,
+		Reason:        "initial_warehouse_receipt",
+	}))
+	if err != nil {
+		t.Fatalf("UpdateStock +25 failed: %v", err)
+	}
+	if stockResp.Msg.NewStockQuantity != 25 {
+		t.Fatalf("expected new_stock_quantity 25, got %d", stockResp.Msg.NewStockQuantity)
+	}
+
+	movements := store.ListStockMovements(testWorkspaceID1, skuID)
+	if len(movements) != 1 {
+		t.Fatalf("expected 1 stock_movements ledger row, got %d", len(movements))
+	}
+	if movements[0].MovementType != "adjustment" || movements[0].Quantity != 25 || movements[0].Reason != "initial_warehouse_receipt" {
+		t.Fatalf("unexpected stock movement record: %+v", movements[0])
+	}
+
+	var foundStockMoved bool
+	for _, ev := range sink.Events() {
+		if ev.EventType == "inventory.stock_moved" && ev.AggregateID == skuID {
+			foundStockMoved = true
+			break
+		}
+	}
+	if !foundStockMoved {
+		t.Fatal("expected inventory.stock_moved event to be emitted on UpdateStock")
+	}
+
+	// 4. Negative stock violation (-30 from 25) rejected with CodeFailedPrecondition, no movement appended
+	if _, err := h.UpdateStock(ctxOwner, connect.NewRequest(&commercev1.UpdateStockRequest{
+		Context:       testCmdCtx("", "idem-f01-sub-30"),
+		SkuId:         skuID,
+		DeltaQuantity: -30,
+		Reason:        "damaged",
+	})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("expected CodeFailedPrecondition when adjustment drops stock below 0, got %v", err)
+	}
+	if len(store.ListStockMovements(testWorkspaceID1, skuID)) != 1 {
+		t.Fatal("failed stock adjustment must not append stock_movements row")
+	}
+}
+
+func TestRemediation_DataReview6_MutatingCommandsEnforceIdempotencyKeyReplayAndConflict(t *testing.T) {
+	baseCtx := context.Background()
+	store := product.NewMemoryStore()
+	sink := product.NewMemoryEventSink()
+	fixedTime := time.Date(2026, 11, 6, 11, 0, 0, 0, time.UTC)
+	svc := product.NewService(store, sink, func() time.Time { return fixedTime })
+	h := product.NewHandler(svc)
+
+	ctxOwner := product.WithCaller(baseCtx, testWorkspaceID1, "user-owner-1", rbac.RoleOwner)
+
+	// 1. Missing idempotency_key on mutating RPCs is rejected with CodeInvalidArgument
+	if _, err := h.Create(ctxOwner, connect.NewRequest(&commercev1.CreateRequest{
+		ProductType: commercev1.ProductType_PRODUCT_TYPE_PHYSICAL,
+		Title:       "Missing Idempotency Key",
+		BasePrice:   &commonv1.Money{Amount: "100000.000000", Currency: "VND"},
+		Currency:    "VND",
+	})); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("expected CodeInvalidArgument when idempotency_key is missing, got %v", err)
+	}
+
+	// 2. Create with idempotency_key and replay identical request -> returns same ProductId without creating duplicate
+	createReq := &commercev1.CreateRequest{
+		Context:     testCmdCtx("", "idem-dr6-create-1"),
+		ProductType: commercev1.ProductType_PRODUCT_TYPE_PHYSICAL,
+		Title:       "Máy ảnh Mirrorless",
+		BasePrice:   &commonv1.Money{Amount: "15000000.000000", Currency: "VND"},
+		Currency:    "VND",
+	}
+	resp1, err := h.Create(ctxOwner, connect.NewRequest(createReq))
+	if err != nil {
+		t.Fatalf("first Create failed: %v", err)
+	}
+	resp2, err := h.Create(ctxOwner, connect.NewRequest(createReq))
+	if err != nil {
+		t.Fatalf("idempotent replay of Create failed: %v", err)
+	}
+	if resp1.Msg.Product.ProductId != resp2.Msg.Product.ProductId {
+		t.Fatalf("expected identical product_id on replay, got %s vs %s", resp1.Msg.Product.ProductId, resp2.Msg.Product.ProductId)
+	}
+
+	// 3. Reusing same idempotency_key with different payload fails with CodeAlreadyExists (SYSTEM_CONFLICT_001)
+	conflictReq := &commercev1.CreateRequest{
+		Context:     testCmdCtx("", "idem-dr6-create-1"),
+		ProductType: commercev1.ProductType_PRODUCT_TYPE_PHYSICAL,
+		Title:       "Máy ảnh Khác Payload",
+		BasePrice:   &commonv1.Money{Amount: "15000000.000000", Currency: "VND"},
+		Currency:    "VND",
+	}
+	_, err = h.Create(ctxOwner, connect.NewRequest(conflictReq))
+	if connect.CodeOf(err) != connect.CodeAlreadyExists || !strings.Contains(err.Error(), "SYSTEM_CONFLICT_001") {
+		t.Fatalf("expected CodeAlreadyExists with SYSTEM_CONFLICT_001 on conflicting idempotency replay, got %v", err)
+	}
+
+	// 4. UpdateStock replay with same idempotency_key does not double-increment stock
+	skuID := resp1.Msg.Product.Skus[0].SkuId
+	stockReq := &commercev1.UpdateStockRequest{
+		Context:       testCmdCtx("", "idem-dr6-stock-1"),
+		SkuId:         skuID,
+		DeltaQuantity: 10,
+		Reason:        "restock",
+	}
+	st1, err := h.UpdateStock(ctxOwner, connect.NewRequest(stockReq))
+	if err != nil {
+		t.Fatalf("first UpdateStock failed: %v", err)
+	}
+	st2, err := h.UpdateStock(ctxOwner, connect.NewRequest(stockReq))
+	if err != nil {
+		t.Fatalf("replay UpdateStock failed: %v", err)
+	}
+	if st1.Msg.NewStockQuantity != 10 || st2.Msg.NewStockQuantity != 10 {
+		t.Fatalf("expected stock to remain 10 on replay, got %d and %d", st1.Msg.NewStockQuantity, st2.Msg.NewStockQuantity)
+	}
+	if len(store.ListStockMovements(testWorkspaceID1, skuID)) != 1 {
+		t.Fatalf("expected exactly 1 stock movement after replay, got %d", len(store.ListStockMovements(testWorkspaceID1, skuID)))
+	}
+}
+
+func TestRemediation_DataReview8_ExpectedUpdatedAtAndConcurrentPartialUpdates(t *testing.T) {
+	baseCtx := context.Background()
+	store := product.NewMemoryStore()
+	sink := product.NewMemoryEventSink()
+	svc := product.NewService(store, sink, nil)
+	h := product.NewHandler(svc)
+
+	ctxOwner := product.WithCaller(baseCtx, testWorkspaceID1, "user-owner-1", rbac.RoleOwner)
+
+	created, err := h.Create(ctxOwner, connect.NewRequest(&commercev1.CreateRequest{
+		Context:     testCmdCtx("", "idem-dr8-create"),
+		ProductType: commercev1.ProductType_PRODUCT_TYPE_PHYSICAL,
+		Title:       "Original Title",
+		Description: "Original Description",
+		Category:    "Original Category",
+		BasePrice:   &commonv1.Money{Amount: "200000.000000", Currency: "VND"},
+		Currency:    "VND",
+	}))
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+	prod := created.Msg.Product
+	initialUpdatedAt := prod.UpdatedAt
+
+	// 1. Concurrent partial updates (one updates Title, one updates Description) must both be preserved
+	var wg sync.WaitGroup
+	wg.Add(2)
+	var errTitle, errDesc error
+	newTitle := "Concurrent Updated Title"
+	newDesc := "Concurrent Updated Description"
+
+	go func() {
+		defer wg.Done()
+		_, errTitle = h.Update(ctxOwner, connect.NewRequest(&commercev1.UpdateRequest{
+			Context:   testCmdCtx("", "idem-dr8-upd-title"),
+			ProductId: prod.ProductId,
+			Title:     &newTitle,
+		}))
+	}()
+	go func() {
+		defer wg.Done()
+		_, errDesc = h.Update(ctxOwner, connect.NewRequest(&commercev1.UpdateRequest{
+			Context:     testCmdCtx("", "idem-dr8-upd-desc"),
+			ProductId:   prod.ProductId,
+			Description: &newDesc,
+		}))
+	}()
+	wg.Wait()
+
+	if errTitle != nil || errDesc != nil {
+		t.Fatalf("concurrent updates failed: errTitle=%v, errDesc=%v", errTitle, errDesc)
+	}
+
+	got, err := h.Get(ctxOwner, connect.NewRequest(&commercev1.GetRequest{ProductId: prod.ProductId}))
+	if err != nil {
+		t.Fatalf("Get failed: %v", err)
+	}
+	if got.Msg.Product.Title != newTitle || got.Msg.Product.Description != newDesc {
+		t.Fatalf("lost update detected: title=%q (want %q), desc=%q (want %q)",
+			got.Msg.Product.Title, newTitle, got.Msg.Product.Description, newDesc)
+	}
+
+	// Verify non-status updates did NOT emit product.catalog_status_changed
+	for _, ev := range sink.Events() {
+		if ev.EventType == "product.catalog_status_changed" {
+			t.Fatalf("unexpected product.catalog_status_changed event when catalog_status did not change: %+v", ev)
+		}
+	}
+
+	// 2. Stale expected_updated_at must be rejected with CodeFailedPrecondition (SYSTEM_CONFLICT_001)
+	staleTitle := "Should Fail Stale Write"
+	staleCtx := testCmdCtx("", "idem-dr8-stale")
+	staleCtx.ExpectedUpdatedAt = initialUpdatedAt
+	_, err = h.Update(ctxOwner, connect.NewRequest(&commercev1.UpdateRequest{
+		Context:   staleCtx,
+		ProductId: prod.ProductId,
+		Title:     &staleTitle,
+	}))
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition || !strings.Contains(err.Error(), "SYSTEM_CONFLICT_001") {
+		t.Fatalf("expected CodeFailedPrecondition with SYSTEM_CONFLICT_001 on stale expected_updated_at, got %v", err)
+	}
+
+	// 3. Matching expected_updated_at succeeds
+	freshTitle := "Fresh CAS Update"
+	freshCtx := testCmdCtx("", "idem-dr8-fresh")
+	freshCtx.ExpectedUpdatedAt = timestamppb.New(got.Msg.Product.UpdatedAt.AsTime())
+	freshResp, err := h.Update(ctxOwner, connect.NewRequest(&commercev1.UpdateRequest{
+		Context:   freshCtx,
+		ProductId: prod.ProductId,
+		Title:     &freshTitle,
+	}))
+	if err != nil {
+		t.Fatalf("expected update with matching expected_updated_at to succeed, got %v", err)
+	}
+	if freshResp.Msg.Product.Title != freshTitle {
+		t.Fatalf("expected title %q, got %q", freshTitle, freshResp.Msg.Product.Title)
+	}
+}
+
+func TestRemediation_DataReview11_ImportDryRunDoesNotPersistData(t *testing.T) {
+	baseCtx := context.Background()
+	store := product.NewMemoryStore()
+	sink := product.NewMemoryEventSink()
+	svc := product.NewService(store, sink, nil)
+	h := product.NewHandler(svc)
+
+	ctxOwner := product.WithCaller(baseCtx, testWorkspaceID1, "user-owner-1", rbac.RoleOwner)
+
+	csvData := `external_id,title,price,currency
+DRY-RUN-1,Sản phẩm chạy thử DryRun,250000,VND`
+
+	resp, err := h.Import(ctxOwner, connect.NewRequest(&commercev1.ImportRequest{
+		Context:        testCmdCtx("", "idem-dr11-dryrun"),
+		SourcePlatform: "csv",
+		RawData:        csvData,
+		PreviewOnly:    false,
+		DryRun:         true,
+	}))
+	if err != nil {
+		t.Fatalf("Import with dry_run=true failed: %v", err)
+	}
+	if !resp.Msg.IsPreview {
+		t.Fatal("expected IsPreview=true when dry_run=true")
+	}
+	if resp.Msg.PreviewToken == "" {
+		t.Fatal("expected non-empty preview_token when dry_run=true")
+	}
+	if len(resp.Msg.CreatedProducts) != 0 {
+		t.Fatalf("expected 0 committed products in dry_run response, got %d", len(resp.Msg.CreatedProducts))
+	}
+
+	// Verify store remains empty and no product.created event was emitted
+	listResp, err := h.List(ctxOwner, connect.NewRequest(&commercev1.ListRequest{}))
+	if err != nil {
+		t.Fatalf("List failed: %v", err)
+	}
+	if len(listResp.Msg.Products) != 0 {
+		t.Fatalf("dry_run=true persisted %d products into store!", len(listResp.Msg.Products))
+	}
+	if len(sink.Events()) != 0 {
+		t.Fatalf("dry_run=true emitted %d domain events!", len(sink.Events()))
+	}
+}
+
+type failingUpdateStore struct {
+	product.Store
+	failUpdateErr error
+}
+
+func (f *failingUpdateStore) UpdateProduct(ctx context.Context, p *product.Product) error {
+	if f.failUpdateErr != nil {
+		return f.failUpdateErr
+	}
+	return f.Store.UpdateProduct(ctx, p)
+}
+
+func TestRemediation_DataReview12_ImportUpdateFailureReportedAsErrorRow(t *testing.T) {
+	baseCtx := context.Background()
+	memStore := product.NewMemoryStore()
+	wrapStore := &failingUpdateStore{Store: memStore}
+	sink := product.NewMemoryEventSink()
+	svc := product.NewService(wrapStore, sink, nil)
+
+	csvInitial := `external_id,title,price,currency
+EXT-UPD-1,Original Imported Title,100000,VND`
+
+	preview1, err := svc.Import(baseCtx, testWorkspaceID1, "csv", "acc-1", csvInitial, nil, "VND", true, "")
+	if err != nil {
+		t.Fatalf("preview1 failed: %v", err)
+	}
+	if _, err := svc.Import(baseCtx, testWorkspaceID1, "csv", "acc-1", csvInitial, nil, "VND", false, preview1.PreviewToken); err != nil {
+		t.Fatalf("commit1 failed: %v", err)
+	}
+
+	// Now import an updated title while UpdateProduct fails in the DB store
+	csvUpdated := `external_id,title,price,currency
+EXT-UPD-1,Updated Imported Title,120000,VND`
+
+	preview2, err := svc.Import(baseCtx, testWorkspaceID1, "csv", "acc-1", csvUpdated, nil, "VND", true, "")
+	if err != nil {
+		t.Fatalf("preview2 failed: %v", err)
+	}
+
+	wrapStore.failUpdateErr = errors.New("simulated database write failure")
+	commit2, err := svc.Import(baseCtx, testWorkspaceID1, "csv", "acc-1", csvUpdated, nil, "VND", false, preview2.PreviewToken)
+	if err != nil {
+		t.Fatalf("commit2 returned unexpected top-level error: %v", err)
+	}
+	if commit2.UpdateCount != 0 {
+		t.Fatalf("expected UpdateCount=0 when DB update fails, got %d", commit2.UpdateCount)
+	}
+	if commit2.ErrorCount != 1 {
+		t.Fatalf("expected ErrorCount=1 when DB update fails, got %d", commit2.ErrorCount)
+	}
+	if len(commit2.Rows) != 1 || commit2.Rows[0].Action != "error" {
+		t.Fatalf("expected row action='error', got %+v", commit2.Rows)
+	}
+	if !strings.Contains(commit2.DownloadableErrorCSV, "simulated database write failure") {
+		t.Fatalf("expected DownloadableErrorCSV to include DB failure, got %q", commit2.DownloadableErrorCSV)
+	}
+}
+
+func TestRemediation_DataReview13_KeysetCursorNoDuplicatesOrSkipsUnderConcurrentInsertAndDelete(t *testing.T) {
+	baseCtx := context.Background()
+	store := product.NewMemoryStore()
+	sink := product.NewMemoryEventSink()
+
+	currentTime := time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC)
+	svc := product.NewService(store, sink, func() time.Time { return currentTime })
+	h := product.NewHandler(svc)
+
+	ctxOwner := product.WithCaller(baseCtx, testWorkspaceID1, "user-owner-1", rbac.RoleOwner)
+
+	// Create 4 products P1..P4 with ascending timestamps (so descending order is P4, P3, P2, P1)
+	var ids []string
+	for i := 1; i <= 4; i++ {
+		currentTime = time.Date(2026, 11, 6, 12, i, 0, 0, time.UTC)
+		resp, err := h.Create(ctxOwner, connect.NewRequest(&commercev1.CreateRequest{
+			Context:     testCmdCtx("", fmt.Sprintf("idem-dr13-p%d", i)),
+			ProductType: commercev1.ProductType_PRODUCT_TYPE_PHYSICAL,
+			Title:       fmt.Sprintf("Keyset Product P%d", i),
+			BasePrice:   &commonv1.Money{Amount: "100000.000000", Currency: "VND"},
+			Currency:    "VND",
+		}))
+		if err != nil {
+			t.Fatalf("create P%d failed: %v", i, err)
+		}
+		ids = append(ids, resp.Msg.Product.ProductId)
+	}
+	// Descending order: ids[3] (P4), ids[2] (P3), ids[1] (P2), ids[0] (P1)
+
+	// Fetch page 1 (size 2) -> returns [P4, P3]
+	page1, err := h.List(ctxOwner, connect.NewRequest(&commercev1.ListRequest{
+		Pagination: &commonv1.Pagination{PageSize: 2},
+	}))
+	if err != nil {
+		t.Fatalf("List page 1 failed: %v", err)
+	}
+	if len(page1.Msg.Products) != 2 || page1.Msg.Products[0].ProductId != ids[3] || page1.Msg.Products[1].ProductId != ids[2] {
+		t.Fatalf("unexpected page 1 items: got [%s, %s], want [%s, %s]",
+			page1.Msg.Products[0].ProductId, page1.Msg.Products[1].ProductId, ids[3], ids[2])
+	}
+	token := page1.Msg.Pagination.GetNextPageToken()
+
+	// Before fetching page 2:
+	// 1) Insert a brand-new product P5 at the top of the list (12:10)
+	// With naive OFFSET pagination, inserting P5 would shift P3 into offset 2 and cause page 2 to duplicate P3!
+	currentTime = time.Date(2026, 11, 6, 12, 10, 0, 0, time.UTC)
+	if _, err := h.Create(ctxOwner, connect.NewRequest(&commercev1.CreateRequest{
+		Context:     testCmdCtx("", "idem-dr13-p5"),
+		ProductType: commercev1.ProductType_PRODUCT_TYPE_PHYSICAL,
+		Title:       "Keyset Product P5",
+		BasePrice:   &commonv1.Money{Amount: "100000.000000", Currency: "VND"},
+		Currency:    "VND",
+	})); err != nil {
+		t.Fatalf("create P5 failed: %v", err)
+	}
+
+	// Fetch page 2 using keyset token -> must return [P2, P1] with NO duplicate of P3!
+	page2, err := h.List(ctxOwner, connect.NewRequest(&commercev1.ListRequest{
+		Pagination: &commonv1.Pagination{PageSize: 2, PageToken: token},
+	}))
+	if err != nil {
+		t.Fatalf("List page 2 failed: %v", err)
+	}
+	if len(page2.Msg.Products) != 2 || page2.Msg.Products[0].ProductId != ids[1] || page2.Msg.Products[1].ProductId != ids[0] {
+		t.Fatalf("keyset pagination failed after concurrent insert: got [%s, %s], want [%s, %s]",
+			page2.Msg.Products[0].ProductId, page2.Msg.Products[1].ProductId, ids[1], ids[0])
+	}
+	if page2.Msg.Pagination.GetHasMore() {
+		t.Fatal("expected has_more=false on page 2 after reaching P1")
+	}
+}
+
+func TestRemediation_DataReview20_ProductStatsRankAndCurrencyReflectActualData(t *testing.T) {
+	baseCtx := context.Background()
+	store := product.NewMemoryStore()
+	sink := product.NewMemoryEventSink()
+	currentTime := time.Date(2026, 11, 6, 13, 0, 0, 0, time.UTC)
+	svc := product.NewService(store, sink, func() time.Time { return currentTime })
+	h := product.NewHandler(svc)
+
+	ctxOwner := product.WithCaller(baseCtx, testWorkspaceID1, "user-owner-1", rbac.RoleOwner)
+
+	// Create 2 USD products in the same category at different timestamps
+	p1, err := h.Create(ctxOwner, connect.NewRequest(&commercev1.CreateRequest{
+		Context:     testCmdCtx("", "idem-dr20-p1"),
+		ProductType: commercev1.ProductType_PRODUCT_TYPE_DIGITAL,
+		Title:       "Creator Preset Pack #1",
+		Category:    "Presets",
+		BasePrice:   &commonv1.Money{Amount: "29.990000", Currency: "USD"},
+		Currency:    "USD",
+	}))
+	if err != nil {
+		t.Fatalf("create p1 failed: %v", err)
+	}
+
+	currentTime = currentTime.Add(time.Minute)
+	p2, err := h.Create(ctxOwner, connect.NewRequest(&commercev1.CreateRequest{
+		Context:     testCmdCtx("", "idem-dr20-p2"),
+		ProductType: commercev1.ProductType_PRODUCT_TYPE_DIGITAL,
+		Title:       "Creator Preset Pack #2",
+		Category:    "Presets",
+		BasePrice:   &commonv1.Money{Amount: "49.990000", Currency: "USD"},
+		Currency:    "USD",
+	}))
+	if err != nil {
+		t.Fatalf("create p2 failed: %v", err)
+	}
+
+	// Verify GetStats and GetSalesStats return product's actual currency ("USD"), not hardcoded "VND"
+	stats1, err := h.GetStats(ctxOwner, connect.NewRequest(&commercev1.GetStatsRequest{ProductId: p1.Msg.Product.ProductId}))
+	if err != nil {
+		t.Fatalf("GetStats failed: %v", err)
+	}
+	if stats1.Msg.TotalRevenue.Currency != "USD" {
+		t.Fatalf("expected GetStats currency 'USD', got %q", stats1.Msg.TotalRevenue.Currency)
+	}
+
+	sales1, err := h.GetSalesStats(ctxOwner, connect.NewRequest(&commercev1.GetSalesStatsRequest{ProductId: p1.Msg.Product.ProductId}))
+	if err != nil {
+		t.Fatalf("GetSalesStats failed: %v", err)
+	}
+	if sales1.Msg.GrossSales.Currency != "USD" || sales1.Msg.NetSales.Currency != "USD" {
+		t.Fatalf("expected GetSalesStats currency 'USD', got gross=%q net=%q", sales1.Msg.GrossSales.Currency, sales1.Msg.NetSales.Currency)
+	}
+
+	// Verify GetRank returns distinct ranks for p1 (rank 1) and p2 (rank 2), not static 1 for every product
+	rank1, err := h.GetRank(ctxOwner, connect.NewRequest(&commercev1.GetRankRequest{ProductId: p1.Msg.Product.ProductId}))
+	if err != nil {
+		t.Fatalf("GetRank p1 failed: %v", err)
+	}
+	rank2, err := h.GetRank(ctxOwner, connect.NewRequest(&commercev1.GetRankRequest{ProductId: p2.Msg.Product.ProductId}))
+	if err != nil {
+		t.Fatalf("GetRank p2 failed: %v", err)
+	}
+	if rank1.Msg.RankInWorkspace != 1 || rank1.Msg.RankInCategory != 1 {
+		t.Fatalf("expected p1 rank (1, 1), got (%d, %d)", rank1.Msg.RankInWorkspace, rank1.Msg.RankInCategory)
+	}
+	if rank2.Msg.RankInWorkspace != 2 || rank2.Msg.RankInCategory != 2 {
+		t.Fatalf("expected p2 rank (2, 2), got (%d, %d)", rank2.Msg.RankInWorkspace, rank2.Msg.RankInCategory)
 	}
 }

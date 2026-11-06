@@ -1,6 +1,7 @@
 package product
 
 import (
+	"context"
 	"crypto/rand"
 	"errors"
 	"fmt"
@@ -29,6 +30,9 @@ var (
 	ErrUnauthorizedAction      = errors.New("product: unauthorized action")
 	ErrDuplicateSkuCode        = errors.New("product: duplicate sku_code under this product")
 	ErrProductArchived         = errors.New("product: cannot modify archived or deleted product")
+	ErrInsufficientStock       = errors.New("product: insufficient stock for adjustment")
+	ErrIdempotencyConflict     = errors.New("SYSTEM_CONFLICT_001: idempotency key already used with different request payload")
+	ErrConcurrencyConflict     = errors.New("SYSTEM_CONFLICT_001: product was modified concurrently; expected_updated_at mismatch")
 )
 
 const (
@@ -100,31 +104,104 @@ type ProductSku struct {
 }
 
 type Product struct {
-	ProductID        string                 `json:"product_id"`
-	WorkspaceID      string                 `json:"workspace_id"`
-	ProductType      string                 `json:"product_type"`
-	Title            string                 `json:"title"`
-	Description      string                 `json:"description,omitempty"`
-	Category         string                 `json:"category,omitempty"`
-	BasePrice        *tenantdb.ExactDecimal `json:"base_price,omitempty"`
-	Currency         string                 `json:"currency"`
-	COGS             *tenantdb.ExactDecimal `json:"cogs,omitempty"`
-	CatalogStatus    string                 `json:"catalog_status"`
-	InventoryEnabled bool                   `json:"inventory_enabled"`
-	ExternalRefs     []ExternalRef          `json:"external_refs"`
-	Images           []string               `json:"images"`
-	Metadata         map[string]any         `json:"metadata"`
-	SKUs             []ProductSku           `json:"skus,omitempty"`
-	CreatedAt        time.Time              `json:"created_at"`
-	UpdatedAt        time.Time              `json:"updated_at"`
-	DeletedAt        *time.Time             `json:"deleted_at,omitempty"`
+	ProductID             string                 `json:"product_id"`
+	WorkspaceID           string                 `json:"workspace_id"`
+	ProductType           string                 `json:"product_type"`
+	Title                 string                 `json:"title"`
+	Description           string                 `json:"description,omitempty"`
+	Category              string                 `json:"category,omitempty"`
+	BasePrice             *tenantdb.ExactDecimal `json:"base_price,omitempty"`
+	Currency              string                 `json:"currency"`
+	COGS                  *tenantdb.ExactDecimal `json:"cogs,omitempty"`
+	CatalogStatus         string                 `json:"catalog_status"`
+	InventoryEnabled      bool                   `json:"inventory_enabled"`
+	ExternalRefs          []ExternalRef          `json:"external_refs"`
+	Images                []string               `json:"images"`
+	Metadata              map[string]any         `json:"metadata"`
+	SKUs                  []ProductSku           `json:"skus,omitempty"`
+	CreatedAt             time.Time              `json:"created_at"`
+	UpdatedAt             time.Time              `json:"updated_at"`
+	DeletedAt             *time.Time             `json:"deleted_at,omitempty"`
+	ExpectedUpdatedAt     *time.Time             `json:"expected_updated_at,omitempty"`
+	PreviousCatalogStatus string                 `json:"-"`
 }
 
 type ListFilter struct {
-	Status      string
-	Type        string
-	Category    string
-	SearchQuery string
+	Status          string
+	Type            string
+	Category        string
+	SearchQuery     string
+	CursorCreatedAt *time.Time
+	CursorProductID string
+}
+
+type stockAdjContextKey struct{}
+
+type StockAdjustmentMeta struct {
+	Reason      string
+	MovementKey string
+}
+
+func WithStockAdjustmentMeta(ctx context.Context, reason, movementKey string) context.Context {
+	return context.WithValue(ctx, stockAdjContextKey{}, StockAdjustmentMeta{
+		Reason:      reason,
+		MovementKey: movementKey,
+	})
+}
+
+func StockAdjustmentMetaFromContext(ctx context.Context) (StockAdjustmentMeta, bool) {
+	if ctx == nil {
+		return StockAdjustmentMeta{}, false
+	}
+	meta, ok := ctx.Value(stockAdjContextKey{}).(StockAdjustmentMeta)
+	return meta, ok
+}
+
+type StockMovementRecord struct {
+	MovementID   string    `json:"movement_id"`
+	WorkspaceID  string    `json:"workspace_id"`
+	SkuID        string    `json:"sku_id"`
+	LocationID   string    `json:"location_id"`
+	MovementType string    `json:"movement_type"`
+	Quantity     int32     `json:"quantity"`
+	Reason       string    `json:"reason"`
+	MovementKey  string    `json:"movement_key"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
+type IdempotencyRecord struct {
+	WorkspaceID    string
+	IdempotencyKey string
+	RequestHash    string
+	ResponseStatus int
+	ResponseBody   []byte
+	CreatedAt      time.Time
+	ExpiresAt      time.Time
+}
+
+type ProductSalesSummary struct {
+	ProductID          string
+	OrderCount         int32
+	UnitsSold          int32
+	RefundCount        int32
+	GrossRevenue       tenantdb.ExactDecimal
+	NetRevenue         tenantdb.ExactDecimal
+	TotalCOGS          tenantdb.ExactDecimal
+	TotalProfit        tenantdb.ExactDecimal
+	Currency           string
+	StockMovements     int32
+	LowStockAlertCount int32
+}
+
+type SalesChartDataPoint struct {
+	Date      time.Time
+	UnitsSold int32
+	Revenue   tenantdb.ExactDecimal
+}
+
+type ProductRankSummary struct {
+	WorkspaceRank int32
+	CategoryRank  int32
 }
 
 func (p *Product) Validate() error {

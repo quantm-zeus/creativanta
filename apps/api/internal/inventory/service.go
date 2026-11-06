@@ -82,13 +82,28 @@ func (s *Service) ReserveStock(
 		return nil, fmt.Errorf("%w: empty reservation items", ErrInvalidInput)
 	}
 
+	// Coalesce duplicate (SkuID, LocationID) lines in deterministic first-seen order
+	// so duplicate lines in the same request cannot bypass sellable checks or overbook (F15).
 	var pairs []SkuLocPair
+	var coalesced []ReservationItem
+	indexByPair := make(map[string]int, len(items))
 	for _, item := range items {
 		if item.Quantity <= 0 {
 			return nil, ErrInvalidQuantity
 		}
-		pairs = append(pairs, SkuLocPair{SkuID: item.SkuID, LocationID: item.LocationID})
+		if item.SkuID == "" || item.LocationID == "" {
+			return nil, ErrInvalidInput
+		}
+		pairKey := fmt.Sprintf("%s:%s", item.SkuID, item.LocationID)
+		if idx, exists := indexByPair[pairKey]; exists {
+			coalesced[idx].Quantity += item.Quantity
+		} else {
+			indexByPair[pairKey] = len(coalesced)
+			coalesced = append(coalesced, item)
+			pairs = append(pairs, SkuLocPair{SkuID: item.SkuID, LocationID: item.LocationID})
+		}
 	}
+	items = coalesced
 
 	if ttl <= 0 {
 		ttl = DefaultHoldTTL
@@ -203,6 +218,7 @@ func (s *Service) FulfillReservation(
 	}
 
 	var movements []*Movement
+	var newlyCreatedMovements []*Movement
 
 	err = s.store.AtomicExecute(ctx, workspaceID, pairs, func(tx StoreTx) error {
 		// Re-fetch reservations in transaction
@@ -215,8 +231,8 @@ func (s *Service) FulfillReservation(
 			movKey := fmt.Sprintf("mov_sale_%s_%s_%s", orderID, r.SkuID, r.LocationID)
 
 			if r.Status == ResConsumed {
-				// Replay / already fulfilled: return existing movement
-				existing, err := s.store.FindMovementByKey(ctx, workspaceID, movKey)
+				// Replay / already fulfilled: return existing movement inside transaction
+				existing, err := tx.FindMovementByKey(ctx, workspaceID, movKey)
 				if err == nil && existing != nil {
 					movements = append(movements, existing)
 					continue
@@ -253,6 +269,7 @@ func (s *Service) FulfillReservation(
 				return err
 			}
 			movements = append(movements, mov)
+			newlyCreatedMovements = append(newlyCreatedMovements, mov)
 
 			// 3. Decrement on_hand and reserved
 			bal, err := tx.GetBalanceForUpdate(ctx, workspaceID, r.SkuID, r.LocationID)
@@ -275,8 +292,8 @@ func (s *Service) FulfillReservation(
 		return nil, err
 	}
 
-	// Emit stock moved events after transaction commits
-	for _, m := range movements {
+	// Emit stock moved events after transaction commits (only for newly created movements)
+	for _, m := range newlyCreatedMovements {
 		s.emitEvent(ctx, "inventory.stock_moved", "stock_movement", m.MovementID, workspaceID, map[string]any{
 			"movement_id":   m.MovementID,
 			"sku_id":        m.SkuID,
@@ -393,34 +410,88 @@ func (s *Service) RecordOpeningBaseline(
 	if workspaceID == "" {
 		return ErrMissingTenant
 	}
+	if skuID == "" || locationID == "" {
+		return ErrInvalidInput
+	}
+	if openingCount < 0 {
+		return ErrInvalidQuantity
+	}
 
 	pairs := []SkuLocPair{{SkuID: skuID, LocationID: locationID}}
 	return s.store.AtomicExecute(ctx, workspaceID, pairs, func(tx StoreTx) error {
 		movKey := fmt.Sprintf("mov_baseline_%s_%s_%d", skuID, locationID, openingAt.Unix())
-		mov := &Movement{
-			MovementID:      newUUID(),
-			WorkspaceID:     workspaceID,
-			SkuID:           skuID,
-			LocationID:      locationID,
-			MovementType:    MovementAdjustment,
-			MovementKey:     movKey,
-			Quantity:        openingCount,
-			ReferenceType:   "opening_count",
-			SourceCreatedAt: &openingAt,
-			Reason:          "Evidenced opening count baseline",
-			CreatedAt:       s.clock(),
-		}
-		if err := tx.AppendMovement(ctx, mov); err != nil {
+		existingMov, err := tx.FindMovementByKey(ctx, workspaceID, movKey)
+		if err != nil {
 			return err
 		}
+		if existingMov != nil {
+			if existingMov.Quantity != openingCount ||
+				existingMov.MovementType != MovementAdjustment ||
+				existingMov.SkuID != skuID ||
+				existingMov.LocationID != locationID {
+				return ErrMovementDuplicate
+			}
+			// Idempotent replay: ensure balance row exists without overwriting subsequent OnHand/Reserved changes
+			existingBal, bErr := tx.GetBalanceForUpdate(ctx, workspaceID, skuID, locationID)
+			if bErr == nil && existingBal != nil {
+				if existingBal.OpeningAt == nil {
+					existingBal.OpeningAt = &openingAt
+					return tx.UpdateBalance(ctx, existingBal)
+				}
+				return nil
+			}
+			if bErr != nil && !errors.Is(bErr, ErrSkuNotInitialized) {
+				return bErr
+			}
+			return tx.UpdateBalance(ctx, &Balance{
+				BalanceID:   newUUID(),
+				WorkspaceID: workspaceID,
+				SkuID:       skuID,
+				LocationID:  locationID,
+				OnHand:      openingCount,
+				Reserved:    0,
+				OpeningAt:   &openingAt,
+				UpdatedAt:   s.clock(),
+			})
+		}
 
+		existingBal, bErr := tx.GetBalanceForUpdate(ctx, workspaceID, skuID, locationID)
+		if bErr != nil && !errors.Is(bErr, ErrSkuNotInitialized) {
+			return bErr
+		}
+
+		if openingCount > 0 {
+			mov := &Movement{
+				MovementID:      newUUID(),
+				WorkspaceID:     workspaceID,
+				SkuID:           skuID,
+				LocationID:      locationID,
+				MovementType:    MovementAdjustment,
+				MovementKey:     movKey,
+				Quantity:        openingCount,
+				ReferenceType:   "opening_count",
+				SourceCreatedAt: &openingAt,
+				Reason:          "Evidenced opening count baseline",
+				CreatedAt:       s.clock(),
+			}
+			if err := tx.AppendMovement(ctx, mov); err != nil {
+				return err
+			}
+		}
+
+		balID := newUUID()
+		var reserved int32
+		if existingBal != nil {
+			balID = existingBal.BalanceID
+			reserved = existingBal.Reserved
+		}
 		bal := &Balance{
-			BalanceID:   newUUID(),
+			BalanceID:   balID,
 			WorkspaceID: workspaceID,
 			SkuID:       skuID,
 			LocationID:  locationID,
 			OnHand:      openingCount,
-			Reserved:    0,
+			Reserved:    reserved,
 			OpeningAt:   &openingAt,
 			UpdatedAt:   s.clock(),
 		}
@@ -481,11 +552,21 @@ func (s *Service) RecordPhysicalReturn(
 
 	pairs := []SkuLocPair{{SkuID: skuID, LocationID: locationID}}
 	var mov *Movement
+	var newlyCreated bool
 
 	err := s.store.AtomicExecute(ctx, workspaceID, pairs, func(tx StoreTx) error {
-		// Check idempotency on return replay
-		existing, err := s.store.FindMovementByKey(ctx, workspaceID, movKey)
-		if err == nil && existing != nil {
+		// Check idempotency on return replay inside transaction
+		existing, err := tx.FindMovementByKey(ctx, workspaceID, movKey)
+		if err != nil {
+			return err
+		}
+		if existing != nil {
+			if existing.Quantity != quantity ||
+				existing.MovementType != MovementReturn ||
+				existing.SkuID != skuID ||
+				existing.LocationID != locationID {
+				return ErrMovementDuplicate
+			}
 			mov = existing
 			return nil
 		}
@@ -506,6 +587,7 @@ func (s *Service) RecordPhysicalReturn(
 		if err := tx.AppendMovement(ctx, mov); err != nil {
 			return err
 		}
+		newlyCreated = true
 
 		bal, err := tx.GetBalanceForUpdate(ctx, workspaceID, skuID, locationID)
 		if err != nil {
@@ -519,13 +601,15 @@ func (s *Service) RecordPhysicalReturn(
 		return nil, err
 	}
 
-	s.emitEvent(ctx, "inventory.stock_moved", "stock_movement", mov.MovementID, workspaceID, map[string]any{
-		"movement_id":   mov.MovementID,
-		"sku_id":        mov.SkuID,
-		"location_id":   mov.LocationID,
-		"quantity":      mov.Quantity,
-		"movement_type": mov.MovementType,
-	})
+	if newlyCreated {
+		s.emitEvent(ctx, "inventory.stock_moved", "stock_movement", mov.MovementID, workspaceID, map[string]any{
+			"movement_id":   mov.MovementID,
+			"sku_id":        mov.SkuID,
+			"location_id":   mov.LocationID,
+			"quantity":      mov.Quantity,
+			"movement_type": mov.MovementType,
+		})
+	}
 
 	return mov, nil
 }
@@ -547,11 +631,45 @@ func (s *Service) PlatformSyncAbsoluteCount(
 	if workspaceID == "" {
 		return nil, ErrMissingTenant
 	}
+	if count < 0 {
+		return nil, ErrInvalidQuantity
+	}
 
 	pairs := []SkuLocPair{{SkuID: skuID, LocationID: locationID}}
 	var mov *Movement
 
 	err := s.store.AtomicExecute(ctx, workspaceID, pairs, func(tx StoreTx) error {
+		movKey := fmt.Sprintf("mov_sync_%s_%s_%s", syncKey, skuID, locationID)
+
+		// F14: Verify syncKey replay inside transaction BEFORE mutating balance projection.
+		// If this syncKey was already processed, verify target count matches and do NOT overwrite bal.OnHand.
+		if syncKey != "" {
+			alreadyProcessed, prevCount, err := tx.CheckOrRecordSyncKey(ctx, workspaceID, movKey, count)
+			if err != nil {
+				return err
+			}
+			if alreadyProcessed {
+				if prevCount != count {
+					return fmt.Errorf("%w: syncKey %s reused with count %d (previous %d)", ErrMovementDuplicate, syncKey, count, prevCount)
+				}
+				existingMov, err := tx.FindMovementByKey(ctx, workspaceID, movKey)
+				if err != nil {
+					return err
+				}
+				mov = existingMov
+				return nil
+			}
+		}
+
+		existingMov, err := tx.FindMovementByKey(ctx, workspaceID, movKey)
+		if err != nil {
+			return err
+		}
+		if existingMov != nil {
+			mov = existingMov
+			return nil
+		}
+
 		bal, err := tx.GetBalanceForUpdate(ctx, workspaceID, skuID, locationID)
 		if err != nil {
 			return err
@@ -563,7 +681,6 @@ func (s *Service) PlatformSyncAbsoluteCount(
 			return nil
 		}
 
-		movKey := fmt.Sprintf("mov_sync_%s_%s_%s", syncKey, skuID, locationID)
 		mov = &Movement{
 			MovementID:    newUUID(),
 			WorkspaceID:   workspaceID,
@@ -574,7 +691,11 @@ func (s *Service) PlatformSyncAbsoluteCount(
 			Quantity:      delta,
 			ReferenceType: "platform_sync",
 			Reason:        fmt.Sprintf("Sync absolute count %d (delta %d)", count, delta),
-			CreatedAt:     s.clock(),
+			Metadata: map[string]any{
+				"target_count": count,
+				"sync_key":     syncKey,
+			},
+			CreatedAt: s.clock(),
 		}
 		if err := tx.AppendMovement(ctx, mov); err != nil {
 			return err
