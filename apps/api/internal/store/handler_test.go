@@ -8,6 +8,7 @@ import (
 	commercev1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/commerce/v1"
 	commonv1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/common/v1"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/store"
+	"github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb"
 	"github.com/stretchr/testify/require"
 )
 
@@ -95,6 +96,13 @@ func TestHandler_BundleService_StockAndCheckoutReplay(t *testing.T) {
 	require.Len(t, stockResp.Msg.StockBreakdown, 2)
 
 	// Checkout via StoreHandler
+	require.NoError(t, svc.RecordVerifiedPaymentIntent(ctx, &store.VerifiedPaymentIntent{
+		WorkspaceID:     wsID,
+		PaymentIntentID: "pi-handler-1",
+		Amount:          tenantdb.MustParseExactDecimal("499000.000000"),
+		Currency:        "VND",
+		Status:          store.PaymentStatusSucceeded,
+	}))
 	checkoutReq := connect.NewRequest(&commercev1.StoreServiceCheckoutRequest{
 		WorkspaceId:      wsID,
 		CustomerEntityId: "buyer-handler-1",
@@ -153,6 +161,13 @@ func TestHandler_MembershipService_PlanAndMRR(t *testing.T) {
 	require.Equal(t, commercev1.MembershipPlanStatus_MEMBERSHIP_PLAN_STATUS_ACTIVE, pubResp.Msg.Plan.Status)
 
 	// Subscribe buyer via checkout
+	require.NoError(t, svc.RecordVerifiedPaymentIntent(ctx, &store.VerifiedPaymentIntent{
+		WorkspaceID:     wsID,
+		PaymentIntentID: "pi-sub-1",
+		Amount:          tenantdb.MustParseExactDecimal("99000.000000"),
+		Currency:        "VND",
+		Status:          store.PaymentStatusSucceeded,
+	}))
 	checkoutReq := connect.NewRequest(&commercev1.StoreServiceCheckoutRequest{
 		WorkspaceId:      wsID,
 		CustomerEntityId: "buyer-sub-1",

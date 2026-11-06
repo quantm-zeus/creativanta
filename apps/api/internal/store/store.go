@@ -34,6 +34,7 @@ type Store interface {
 	GetSubscriptionByProviderID(ctx context.Context, workspaceID, providerSubID string) (*MembershipSubscription, error)
 	ListSubscriptionsByCustomer(ctx context.Context, workspaceID, customerEntityID string) ([]MembershipSubscription, error)
 	UpdateSubscription(ctx context.Context, sub *MembershipSubscription) error
+	DeleteSubscription(ctx context.Context, workspaceID, subID string) error
 
 	// Bundles
 	CreateBundle(ctx context.Context, bundle *Bundle) error
@@ -45,11 +46,22 @@ type Store interface {
 	GetProductStock(ctx context.Context, workspaceID, productID string) (int32, error)
 	SetProductStock(ctx context.Context, workspaceID, productID string, stock int32) error
 	AtomicallyReserveBundleStock(ctx context.Context, workspaceID, bundleID string, quantity int32) error
+	ReleaseBundleStock(ctx context.Context, workspaceID, bundleID string, quantity int32) error
 
-	// Payment Replay & Digital Delivery Tracking (Acceptance Target 2)
+	// Products, Offers & Verified Payment Intents (F02, F03)
+	UpsertProduct(ctx context.Context, product *StoreProduct) error
+	GetProduct(ctx context.Context, workspaceID, productID string) (*StoreProduct, error)
+	UpsertOffer(ctx context.Context, offer *StoreOffer) error
+	GetOffer(ctx context.Context, workspaceID, offerID string) (*StoreOffer, error)
+	RecordVerifiedPaymentIntent(ctx context.Context, intent *VerifiedPaymentIntent) error
+	GetVerifiedPaymentIntent(ctx context.Context, workspaceID, paymentIntentID string) (*VerifiedPaymentIntent, error)
+
+	// Payment Replay & Digital Delivery Tracking (Acceptance Target 2 & F04)
 	GetCheckoutResultByIdempotency(ctx context.Context, workspaceID, idempotencyKey string) (*CheckoutResult, error)
+	GetCheckoutByPaymentIntent(ctx context.Context, workspaceID, paymentIntentID string) (*CheckoutResult, string, error)
 	SaveCheckoutResult(ctx context.Context, workspaceID, idempotencyKey string, res *CheckoutResult) error
 	CreateDigitalDelivery(ctx context.Context, delivery *DigitalDelivery) error
+	DeleteDigitalDelivery(ctx context.Context, workspaceID, deliveryID string) error
 	ListDeliveriesByCustomer(ctx context.Context, workspaceID, customerEntityID string) ([]DigitalDelivery, error)
 	RecordFinancialPosting(ctx context.Context, posting *FinancialPosting) error
 	ListFinancialPostings(ctx context.Context, workspaceID string) ([]FinancialPosting, error)
@@ -57,37 +69,45 @@ type Store interface {
 
 // MemoryStore provides a thread-safe in-memory store for unit and concurrency test suites.
 type MemoryStore struct {
-	mu            sync.RWMutex
-	pages         map[string]*StorePage              // key: pageID
-	pageSlugs     map[string]string                  // key: workspaceID + ":" + slug -> pageID
-	pageViews     map[string]int64                   // key: pageID -> count
-	pageOrders    map[string]int64                   // key: pageID -> count
-	pageRevenue   map[string]tenantdb.ExactDecimal   // key: pageID -> amount
-	plans         map[string]*MembershipPlan         // key: planID
-	subscriptions map[string]*MembershipSubscription // key: subID
-	subByProvider map[string]string                  // key: workspaceID + ":" + providerSubID -> subID
-	bundles       map[string]*Bundle                 // key: bundleID
-	productStock  map[string]int32                   // key: workspaceID + ":" + productID -> stock
-	deliveries    map[string]*DigitalDelivery        // key: deliveryID
-	checkouts     map[string]*CheckoutResult         // key: workspaceID + ":" + idempotencyKey -> result
-	postings      []FinancialPosting
+	mu               sync.RWMutex
+	pages            map[string]*StorePage              // key: pageID
+	pageSlugs        map[string]string                  // key: workspaceID + ":" + slug -> pageID
+	pageViews        map[string]int64                   // key: pageID -> count
+	pageOrders       map[string]int64                   // key: pageID -> count
+	pageRevenue      map[string]tenantdb.ExactDecimal   // key: pageID -> amount
+	plans            map[string]*MembershipPlan         // key: planID
+	subscriptions    map[string]*MembershipSubscription // key: subID
+	subByProvider    map[string]string                  // key: workspaceID + ":" + providerSubID -> subID
+	bundles          map[string]*Bundle                 // key: bundleID
+	products         map[string]*StoreProduct           // key: workspaceID + ":" + productID -> product
+	offers           map[string]*StoreOffer             // key: workspaceID + ":" + offerID -> offer
+	verifiedPayments map[string]*VerifiedPaymentIntent  // key: workspaceID + ":" + paymentIntentID -> intent
+	productStock     map[string]int32                   // key: workspaceID + ":" + productID -> stock
+	deliveries       map[string]*DigitalDelivery        // key: deliveryID
+	checkouts        map[string]*CheckoutResult         // key: workspaceID + ":" + idempotencyKey -> result
+	paymentToIdem    map[string]string                  // key: workspaceID + ":" + paymentIntentID -> idempotencyKey
+	postings         []FinancialPosting
 }
 
 func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{
-		pages:         make(map[string]*StorePage),
-		pageSlugs:     make(map[string]string),
-		pageViews:     make(map[string]int64),
-		pageOrders:    make(map[string]int64),
-		pageRevenue:   make(map[string]tenantdb.ExactDecimal),
-		plans:         make(map[string]*MembershipPlan),
-		subscriptions: make(map[string]*MembershipSubscription),
-		subByProvider: make(map[string]string),
-		bundles:       make(map[string]*Bundle),
-		productStock:  make(map[string]int32),
-		deliveries:    make(map[string]*DigitalDelivery),
-		checkouts:     make(map[string]*CheckoutResult),
-		postings:      make([]FinancialPosting, 0),
+		pages:            make(map[string]*StorePage),
+		pageSlugs:        make(map[string]string),
+		pageViews:        make(map[string]int64),
+		pageOrders:       make(map[string]int64),
+		pageRevenue:      make(map[string]tenantdb.ExactDecimal),
+		plans:            make(map[string]*MembershipPlan),
+		subscriptions:    make(map[string]*MembershipSubscription),
+		subByProvider:    make(map[string]string),
+		bundles:          make(map[string]*Bundle),
+		products:         make(map[string]*StoreProduct),
+		offers:           make(map[string]*StoreOffer),
+		verifiedPayments: make(map[string]*VerifiedPaymentIntent),
+		productStock:     make(map[string]int32),
+		deliveries:       make(map[string]*DigitalDelivery),
+		checkouts:        make(map[string]*CheckoutResult),
+		paymentToIdem:    make(map[string]string),
+		postings:         make([]FinancialPosting, 0),
 	}
 }
 
@@ -409,6 +429,24 @@ func (m *MemoryStore) UpdateSubscription(_ context.Context, sub *MembershipSubsc
 	return nil
 }
 
+func (m *MemoryStore) DeleteSubscription(_ context.Context, workspaceID, subID string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	existing, ok := m.subscriptions[subID]
+	if !ok || existing.WorkspaceID != workspaceID {
+		return ErrSubscriptionNotFound
+	}
+	if existing.ProviderSubscriptionID != "" {
+		delete(m.subByProvider, workspaceID+":"+existing.ProviderSubscriptionID)
+	}
+	if p, ok := m.plans[existing.PlanID]; ok && p.SubscriberCount > 0 {
+		p.SubscriberCount--
+	}
+	delete(m.subscriptions, subID)
+	return nil
+}
+
 // ----------------------------------------------------------------------------
 // Bundles Implementation
 // ----------------------------------------------------------------------------
@@ -565,28 +603,184 @@ func (m *MemoryStore) AtomicallyReserveBundleStock(_ context.Context, workspaceI
 	return nil
 }
 
+func (m *MemoryStore) ReleaseBundleStock(_ context.Context, workspaceID, bundleID string, quantity int32) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	bundle, ok := m.bundles[bundleID]
+	if !ok || bundle.WorkspaceID != workspaceID {
+		return ErrBundleNotFound
+	}
+	for _, item := range bundle.Items {
+		restored := item.Quantity * quantity
+		stockKey := workspaceID + ":" + item.ProductID
+		m.productStock[stockKey] += restored
+	}
+	return nil
+}
+
 // ----------------------------------------------------------------------------
-// Payment Replay & Digital Delivery Tracking (Acceptance Target 2)
+// Products, Offers & Verified Payment Intents (F02, F03)
 // ----------------------------------------------------------------------------
+
+func (m *MemoryStore) UpsertProduct(_ context.Context, product *StoreProduct) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if product == nil || product.WorkspaceID == "" {
+		return ErrMissingTenant
+	}
+	if product.ProductID == "" {
+		product.ProductID = newUUID()
+	}
+	if product.Currency == "" {
+		product.Currency = "VND"
+	}
+	if product.Status == "" {
+		product.Status = ProductStatusActive
+	}
+	if product.CreatedAt.IsZero() {
+		product.CreatedAt = time.Now().UTC()
+	}
+	product.UpdatedAt = time.Now().UTC()
+	cp := *product
+	m.products[product.WorkspaceID+":"+product.ProductID] = &cp
+	return nil
+}
+
+func (m *MemoryStore) GetProduct(_ context.Context, workspaceID, productID string) (*StoreProduct, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	p, ok := m.products[workspaceID+":"+productID]
+	if !ok || p.WorkspaceID != workspaceID {
+		return nil, ErrProductNotFound
+	}
+	cp := *p
+	return &cp, nil
+}
+
+func (m *MemoryStore) UpsertOffer(_ context.Context, offer *StoreOffer) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if offer == nil || offer.WorkspaceID == "" {
+		return ErrMissingTenant
+	}
+	if offer.OfferID == "" {
+		offer.OfferID = newUUID()
+	}
+	if offer.Currency == "" {
+		offer.Currency = "VND"
+	}
+	if offer.LifecycleState == "" {
+		offer.LifecycleState = OfferStateActive
+	}
+	if offer.CreatedAt.IsZero() {
+		offer.CreatedAt = time.Now().UTC()
+	}
+	offer.UpdatedAt = time.Now().UTC()
+	cp := *offer
+	m.offers[offer.WorkspaceID+":"+offer.OfferID] = &cp
+	return nil
+}
+
+func (m *MemoryStore) GetOffer(_ context.Context, workspaceID, offerID string) (*StoreOffer, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	o, ok := m.offers[workspaceID+":"+offerID]
+	if !ok || o.WorkspaceID != workspaceID {
+		return nil, ErrOfferNotFound
+	}
+	cp := *o
+	return &cp, nil
+}
+
+func (m *MemoryStore) RecordVerifiedPaymentIntent(_ context.Context, intent *VerifiedPaymentIntent) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if intent == nil || intent.WorkspaceID == "" {
+		return ErrMissingTenant
+	}
+	if intent.PaymentIntentID == "" {
+		return ErrPaymentRequired
+	}
+	if intent.VerifiedAt.IsZero() {
+		intent.VerifiedAt = time.Now().UTC()
+	}
+	cp := *intent
+	m.verifiedPayments[intent.WorkspaceID+":"+intent.PaymentIntentID] = &cp
+	return nil
+}
+
+func (m *MemoryStore) GetVerifiedPaymentIntent(_ context.Context, workspaceID, paymentIntentID string) (*VerifiedPaymentIntent, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	v, ok := m.verifiedPayments[workspaceID+":"+paymentIntentID]
+	if !ok || v.WorkspaceID != workspaceID {
+		return nil, ErrPaymentNotVerified
+	}
+	cp := *v
+	return &cp, nil
+}
+
+// ----------------------------------------------------------------------------
+// Payment Replay & Digital Delivery Tracking (Acceptance Target 2 & F04)
+// ----------------------------------------------------------------------------
+
+func cloneCheckoutResult(res *CheckoutResult, isReplayed bool) *CheckoutResult {
+	if res == nil {
+		return nil
+	}
+	cp := *res
+	cp.IsReplayed = isReplayed
+	if len(res.Deliveries) > 0 {
+		cp.Deliveries = append([]DigitalDelivery(nil), res.Deliveries...)
+	}
+	if res.Subscription != nil {
+		subCp := *res.Subscription
+		cp.Subscription = &subCp
+	}
+	return &cp
+}
 
 func (m *MemoryStore) GetCheckoutResultByIdempotency(_ context.Context, workspaceID, idempotencyKey string) (*CheckoutResult, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
 	if res, ok := m.checkouts[workspaceID+":"+idempotencyKey]; ok {
-		// Return copy with IsReplayed flag set to true
-		cp := *res
-		cp.IsReplayed = true
-		return &cp, nil
+		return cloneCheckoutResult(res, true), nil
 	}
 	return nil, nil
+}
+
+func (m *MemoryStore) GetCheckoutByPaymentIntent(_ context.Context, workspaceID, paymentIntentID string) (*CheckoutResult, string, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	idemKey, ok := m.paymentToIdem[workspaceID+":"+paymentIntentID]
+	if !ok || idemKey == "" {
+		return nil, "", nil
+	}
+	res, ok2 := m.checkouts[workspaceID+":"+idemKey]
+	if !ok2 || res == nil {
+		return nil, idemKey, nil
+	}
+	return cloneCheckoutResult(res, true), idemKey, nil
 }
 
 func (m *MemoryStore) SaveCheckoutResult(_ context.Context, workspaceID, idempotencyKey string, res *CheckoutResult) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	m.checkouts[workspaceID+":"+idempotencyKey] = res
+	cp := cloneCheckoutResult(res, false)
+	m.checkouts[workspaceID+":"+idempotencyKey] = cp
+	if cp != nil && cp.Status == "confirmed" && cp.PaymentIntentID != "" {
+		m.paymentToIdem[workspaceID+":"+cp.PaymentIntentID] = idempotencyKey
+	}
 	return nil
 }
 
@@ -601,6 +795,18 @@ func (m *MemoryStore) CreateDigitalDelivery(_ context.Context, delivery *Digital
 		delivery.CreatedAt = time.Now().UTC()
 	}
 	m.deliveries[delivery.DeliveryID] = delivery
+	return nil
+}
+
+func (m *MemoryStore) DeleteDigitalDelivery(_ context.Context, workspaceID, deliveryID string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	existing, ok := m.deliveries[deliveryID]
+	if !ok || existing.WorkspaceID != workspaceID {
+		return nil
+	}
+	delete(m.deliveries, deliveryID)
 	return nil
 }
 

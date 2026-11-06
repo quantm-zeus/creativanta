@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -11,6 +12,25 @@ import (
 
 	"github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb"
 )
+
+func syntheticTestPaymentVerifier(_ context.Context, _, paymentIntentID string, _ tenantdb.ExactDecimal, _ string) (PaymentStatus, error) {
+	pi := strings.TrimSpace(paymentIntentID)
+	if pi == "" {
+		return PaymentStatusFailed, ErrPaymentRequired
+	}
+	lower := strings.ToLower(pi)
+	if strings.HasPrefix(lower, "pi_failed") || strings.HasPrefix(lower, "pi_declined") ||
+		strings.HasPrefix(lower, "pi_canceled") || strings.HasPrefix(lower, "pi_cancelled") ||
+		strings.HasSuffix(lower, "_failed") || strings.HasSuffix(lower, "_declined") {
+		return PaymentStatusFailed, ErrPaymentFailed
+	}
+	if strings.HasPrefix(lower, "pi_pending") || strings.HasPrefix(lower, "pi_unconfirmed") ||
+		strings.HasPrefix(lower, "pi_unknown") || strings.HasPrefix(lower, "pi_requires_") ||
+		strings.HasSuffix(lower, "_pending") || strings.HasSuffix(lower, "_unconfirmed") {
+		return PaymentStatusPending, nil
+	}
+	return PaymentStatusSucceeded, nil
+}
 
 type mockSink struct {
 	mu     sync.Mutex
@@ -55,6 +75,7 @@ func TestAcceptanceTarget1_BundleStockAtomic(t *testing.T) {
 	sink := &mockSink{}
 	now := time.Date(2026, 11, 4, 12, 0, 0, 0, time.UTC)
 	svc := NewService(store, sink, func() time.Time { return now })
+	svc.SetPaymentVerifier(syntheticTestPaymentVerifier)
 
 	wsID := "019086a1-7c3e-7000-8000-000000000010"
 	prodA := newUUID()
@@ -181,11 +202,20 @@ func TestAcceptanceTarget2_PaymentReplayNoDuplicateDelivery(t *testing.T) {
 	sink := &mockSink{}
 	now := time.Date(2026, 11, 4, 12, 0, 0, 0, time.UTC)
 	svc := NewService(store, sink, func() time.Time { return now })
+	svc.SetPaymentVerifier(syntheticTestPaymentVerifier)
 
 	wsID := "019086a1-7c3e-7000-8000-000000000010"
 	customerID := newUUID()
 	prodID := newUUID()
 	_ = store.SetProductStock(ctx, wsID, prodID, 100)
+	_ = svc.UpsertProduct(ctx, &StoreProduct{
+		ProductID:   prodID,
+		WorkspaceID: wsID,
+		Title:       "Digital Course Pack",
+		Price:       mustDecimal(t, "199000.000000"),
+		Currency:    "VND",
+		Status:      ProductStatusActive,
+	})
 
 	idempotencyKey := "stripe_pi_3N9xReplayTest_12345"
 
@@ -278,6 +308,7 @@ func TestAcceptanceTarget3_BuyerSubscriptionCannotUnlockSaaSPrivileges(t *testin
 	sink := &mockSink{}
 	now := time.Date(2026, 11, 4, 12, 0, 0, 0, time.UTC)
 	svc := NewService(store, sink, func() time.Time { return now })
+	svc.SetPaymentVerifier(syntheticTestPaymentVerifier)
 
 	wsID := "019086a1-7c3e-7000-8000-000000000010"
 	customerID := newUUID()
@@ -435,6 +466,7 @@ func TestMembershipPlanAndMRRTracking(t *testing.T) {
 	sink := &mockSink{}
 	now := time.Date(2026, 11, 4, 12, 0, 0, 0, time.UTC)
 	svc := NewService(store, sink, func() time.Time { return now })
+	svc.SetPaymentVerifier(syntheticTestPaymentVerifier)
 
 	wsID := "019086a1-7c3e-7000-8000-000000000010"
 
@@ -510,11 +542,20 @@ func TestCheckoutRequiresConfirmedPaymentAndEnforcesStrictIdempotency(t *testing
 	sink := &mockSink{}
 	now := time.Date(2026, 11, 4, 12, 0, 0, 0, time.UTC)
 	svc := NewService(mem, sink, func() time.Time { return now })
+	svc.SetPaymentVerifier(syntheticTestPaymentVerifier)
 
 	wsID := "019086a1-7c3e-7000-8000-000000000099"
 	customerID := newUUID()
 	prodID := newUUID()
 	_ = mem.SetProductStock(ctx, wsID, prodID, 5)
+	_ = svc.UpsertProduct(ctx, &StoreProduct{
+		ProductID:   prodID,
+		WorkspaceID: wsID,
+		Title:       "Bonus Member Pack",
+		Price:       tenantdb.ZeroDecimal(),
+		Currency:    "VND",
+		Status:      ProductStatusActive,
+	})
 
 	plan, err := svc.CreatePlan(ctx, &MembershipPlan{
 		WorkspaceID: wsID,
@@ -650,4 +691,387 @@ func TestCheckoutRequiresConfirmedPaymentAndEnforcesStrictIdempotency(t *testing
 	if !errors.Is(err, ErrStorefrontNotPublished) {
 		t.Fatalf("expected ErrStorefrontNotPublished when storefront has only draft pages, got %v", err)
 	}
+}
+
+func TestRemediation_F02_F03_F04_CheckoutSecurityAndAtomicity(t *testing.T) {
+	ctx := context.Background()
+	mem := NewMemoryStore()
+	sink := &mockSink{}
+	now := time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC)
+	svc := NewService(mem, sink, func() time.Time { return now })
+
+	wsID := "019086a1-7c3e-7000-8000-000000000777"
+	otherWsID := "019086a1-7c3e-7000-8000-000000000888"
+	customerID := newUUID()
+
+	plan, err := svc.CreatePlan(ctx, &MembershipPlan{
+		WorkspaceID: wsID,
+		Title:       "Gold Plan",
+		Price:       mustDecimal(t, "150000.000000"),
+		Currency:    "VND",
+	})
+	if err != nil {
+		t.Fatalf("CreatePlan failed: %v", err)
+	}
+	if _, err := svc.PublishPlan(ctx, wsID, plan.PlanID); err != nil {
+		t.Fatalf("PublishPlan failed: %v", err)
+	}
+
+	// =========================================================================
+	// F02: Default payment verifier must fail closed on unverified/mismatched intents
+	// =========================================================================
+
+	// 1. Arbitrary unverified PaymentIntentID="anything" is rejected with ErrPaymentNotVerified
+	_, err = svc.Checkout(ctx, CheckoutRequest{
+		WorkspaceID:      wsID,
+		CustomerEntityID: customerID,
+		IdempotencyKey:   "f02_forged_pi",
+		PaymentIntentID:  "anything",
+		MembershipPlanID: plan.PlanID,
+		OrderAmount:      mustDecimal(t, "150000.000000"),
+		Currency:         "VND",
+	})
+	if !errors.Is(err, ErrPaymentNotVerified) {
+		t.Fatalf("F02: expected ErrPaymentNotVerified on arbitrary PaymentIntentID, got %v", err)
+	}
+
+	// 2. PaymentIntent verified for a different workspace is rejected (tenant isolation)
+	_ = svc.RecordVerifiedPaymentIntent(ctx, &VerifiedPaymentIntent{
+		WorkspaceID:     otherWsID,
+		PaymentIntentID: "pi_other_ws",
+		Amount:          mustDecimal(t, "150000.000000"),
+		Currency:        "VND",
+		Status:          PaymentStatusSucceeded,
+	})
+	_, err = svc.Checkout(ctx, CheckoutRequest{
+		WorkspaceID:      wsID,
+		CustomerEntityID: customerID,
+		IdempotencyKey:   "f02_cross_tenant_pi",
+		PaymentIntentID:  "pi_other_ws",
+		MembershipPlanID: plan.PlanID,
+		OrderAmount:      mustDecimal(t, "150000.000000"),
+		Currency:         "VND",
+	})
+	if !errors.Is(err, ErrPaymentNotVerified) {
+		t.Fatalf("F02: expected ErrPaymentNotVerified on cross-tenant PaymentIntentID, got %v", err)
+	}
+
+	// 3. PaymentIntent verified for smaller amount (1 VND vs 150,000 VND) or wrong currency (USD vs VND) is rejected
+	_ = svc.RecordVerifiedPaymentIntent(ctx, &VerifiedPaymentIntent{
+		WorkspaceID:     wsID,
+		PaymentIntentID: "pi_wrong_amount",
+		Amount:          mustDecimal(t, "1.000000"),
+		Currency:        "VND",
+		Status:          PaymentStatusSucceeded,
+	})
+	_, err = svc.Checkout(ctx, CheckoutRequest{
+		WorkspaceID:      wsID,
+		CustomerEntityID: customerID,
+		IdempotencyKey:   "f02_wrong_amount_pi",
+		PaymentIntentID:  "pi_wrong_amount",
+		MembershipPlanID: plan.PlanID,
+		OrderAmount:      mustDecimal(t, "150000.000000"),
+		Currency:         "VND",
+	})
+	if !errors.Is(err, ErrPriceMismatch) {
+		t.Fatalf("F02: expected ErrPriceMismatch when verified payment amount != order amount, got %v", err)
+	}
+
+	_ = svc.RecordVerifiedPaymentIntent(ctx, &VerifiedPaymentIntent{
+		WorkspaceID:     wsID,
+		PaymentIntentID: "pi_wrong_currency",
+		Amount:          mustDecimal(t, "150000.000000"),
+		Currency:        "USD",
+		Status:          PaymentStatusSucceeded,
+	})
+	_, err = svc.Checkout(ctx, CheckoutRequest{
+		WorkspaceID:      wsID,
+		CustomerEntityID: customerID,
+		IdempotencyKey:   "f02_wrong_currency_pi",
+		PaymentIntentID:  "pi_wrong_currency",
+		MembershipPlanID: plan.PlanID,
+		OrderAmount:      mustDecimal(t, "150000.000000"),
+		Currency:         "VND",
+	})
+	if !errors.Is(err, ErrPriceMismatch) {
+		t.Fatalf("F02: expected ErrPriceMismatch when verified payment currency != order currency, got %v", err)
+	}
+
+	// =========================================================================
+	// F03: Mixed-cart pricing bypass, tenant item resolution, offer & currency checks
+	// =========================================================================
+
+	// 1. Adding an unknown or cross-tenant ProductID to a MembershipPlan checkout cannot bypass plan price
+	otherTenantProdID := newUUID()
+	_ = svc.UpsertProduct(ctx, &StoreProduct{
+		ProductID:   otherTenantProdID,
+		WorkspaceID: otherWsID,
+		Title:       "Other Tenant Product",
+		Price:       mustDecimal(t, "50000.000000"),
+		Currency:    "VND",
+		Status:      ProductStatusActive,
+	})
+	_ = svc.RecordVerifiedPaymentIntent(ctx, &VerifiedPaymentIntent{
+		WorkspaceID:     wsID,
+		PaymentIntentID: "pi_1_vnd",
+		Amount:          mustDecimal(t, "1.000000"),
+		Currency:        "VND",
+		Status:          PaymentStatusSucceeded,
+	})
+	_, err = svc.Checkout(ctx, CheckoutRequest{
+		WorkspaceID:      wsID,
+		CustomerEntityID: customerID,
+		IdempotencyKey:   "f03_unknown_prod_bypass",
+		PaymentIntentID:  "pi_1_vnd",
+		MembershipPlanID: plan.PlanID,
+		ProductIDs:       []string{otherTenantProdID},
+		OrderAmount:      mustDecimal(t, "1.000000"),
+		Currency:         "VND",
+	})
+	if !errors.Is(err, ErrProductNotFound) {
+		t.Fatalf("F03: expected ErrProductNotFound for cross-tenant/unknown ProductID, got %v", err)
+	}
+
+	// 2. Valid tenant product (50,000 VND) + MembershipPlan (150,000 VND) = 200,000 VND.
+	//    Paying 1 VND or 150,000 VND must fail with ErrPriceMismatch!
+	validProdID := newUUID()
+	_ = svc.UpsertProduct(ctx, &StoreProduct{
+		ProductID:   validProdID,
+		WorkspaceID: wsID,
+		Title:       "Creator LUT Pack",
+		Price:       mustDecimal(t, "50000.000000"),
+		Currency:    "VND",
+		Status:      ProductStatusActive,
+	})
+	_, err = svc.Checkout(ctx, CheckoutRequest{
+		WorkspaceID:      wsID,
+		CustomerEntityID: customerID,
+		IdempotencyKey:   "f03_mixed_cart_1vnd",
+		PaymentIntentID:  "pi_1_vnd",
+		MembershipPlanID: plan.PlanID,
+		ProductIDs:       []string{validProdID},
+		OrderAmount:      mustDecimal(t, "1.000000"),
+		Currency:         "VND",
+	})
+	if !errors.Is(err, ErrPriceMismatch) {
+		t.Fatalf("F03: expected ErrPriceMismatch when paying 1 VND for 200,000 VND mixed cart, got %v", err)
+	}
+	_, err = svc.Checkout(ctx, CheckoutRequest{
+		WorkspaceID:      wsID,
+		CustomerEntityID: customerID,
+		IdempotencyKey:   "f03_mixed_cart_150k",
+		PaymentIntentID:  "pi_150k",
+		MembershipPlanID: plan.PlanID,
+		ProductIDs:       []string{validProdID},
+		OrderAmount:      mustDecimal(t, "150000.000000"),
+		Currency:         "VND",
+	})
+	if !errors.Is(err, ErrPriceMismatch) {
+		t.Fatalf("F03: expected ErrPriceMismatch when omitting product price in mixed cart, got %v", err)
+	}
+
+	// 3. Expired offer with normal UUID (no "expired" substring in ID) must be rejected with ErrOfferExpired
+	expiredOfferUUID := newUUID()
+	pastTime := now.Add(-1 * time.Hour)
+	_ = svc.UpsertOffer(ctx, &StoreOffer{
+		OfferID:        expiredOfferUUID,
+		WorkspaceID:    wsID,
+		Title:          "Flash Sale Offer",
+		Price:          mustDecimal(t, "25000.000000"),
+		Currency:       "VND",
+		LifecycleState: OfferStateActive,
+		ExpiresAt:      &pastTime,
+	})
+	_, err = svc.Checkout(ctx, CheckoutRequest{
+		WorkspaceID:      wsID,
+		CustomerEntityID: customerID,
+		IdempotencyKey:   "f03_expired_uuid_offer",
+		PaymentIntentID:  "pi_25k",
+		OfferID:          expiredOfferUUID,
+		OrderAmount:      mustDecimal(t, "25000.000000"),
+		Currency:         "VND",
+	})
+	if !errors.Is(err, ErrOfferExpired) {
+		t.Fatalf("F03: expected ErrOfferExpired for timestamp-expired UUID offer, got %v", err)
+	}
+
+	// 4. Bundle currency mismatch (USD bundle paid in VND) must be rejected with ErrPriceMismatch
+	compID := newUUID()
+	_ = mem.SetProductStock(ctx, wsID, compID, 10)
+	usdBundle, err := svc.CreateBundle(ctx, &Bundle{
+		WorkspaceID: wsID,
+		Title:       "Global USD Bundle",
+		BundlePrice: mustDecimal(t, "99.000000"),
+		Currency:    "USD",
+		Items:       []BundleItem{{ProductID: compID, Quantity: 1, ProductTitle: "Item 1"}},
+	})
+	if err != nil {
+		t.Fatalf("CreateBundle failed: %v", err)
+	}
+	_, err = svc.Checkout(ctx, CheckoutRequest{
+		WorkspaceID:      wsID,
+		CustomerEntityID: customerID,
+		IdempotencyKey:   "f03_bundle_currency_mismatch",
+		PaymentIntentID:  "pi_usd_bundle_vnd",
+		BundleID:         usdBundle.BundleID,
+		OrderAmount:      mustDecimal(t, "99.000000"),
+		Currency:         "VND",
+	})
+	if !errors.Is(err, ErrPriceMismatch) {
+		t.Fatalf("F03: expected ErrPriceMismatch on bundle currency mismatch, got %v", err)
+	}
+
+	// =========================================================================
+	// F04: Single PaymentIntent cannot grant duplicate entitlements across IdempotencyKeys
+	//      or concurrent requests
+	// =========================================================================
+
+	activeOfferUUID := newUUID()
+	futureTime := now.Add(24 * time.Hour)
+	_ = svc.UpsertOffer(ctx, &StoreOffer{
+		OfferID:        activeOfferUUID,
+		WorkspaceID:    wsID,
+		Title:          "Active Addon Offer",
+		Price:          mustDecimal(t, "25000.000000"),
+		Currency:       "VND",
+		LifecycleState: OfferStateActive,
+		ExpiresAt:      &futureTime,
+	})
+
+	// Total mixed cart = 150,000 (plan) + 50,000 (product) + 25,000 (offer) = 225,000 VND
+	verifiedPI := "pi_verified_mixed_225k"
+	_ = svc.RecordVerifiedPaymentIntent(ctx, &VerifiedPaymentIntent{
+		WorkspaceID:     wsID,
+		PaymentIntentID: verifiedPI,
+		Amount:          mustDecimal(t, "225000.000000"),
+		Currency:        "VND",
+		Status:          PaymentStatusSucceeded,
+	})
+
+	// Run 20 concurrent requests: 10 with IdempotencyKey="f04_idem_primary" and 10 with distinct IdempotencyKeys
+	// all attempting to consume the SAME verified PaymentIntentID!
+	var wg sync.WaitGroup
+	var firstSuccessCount int32
+	var replaySuccessCount int32
+	var rejectedReplayCount int32
+
+	for i := 0; i < 20; i++ {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			idemKey := "f04_idem_primary"
+			if idx >= 10 {
+				idemKey = fmt.Sprintf("f04_idem_attacker_%d", idx)
+			}
+			res, cErr := svc.Checkout(ctx, CheckoutRequest{
+				WorkspaceID:      wsID,
+				CustomerEntityID: customerID,
+				IdempotencyKey:   idemKey,
+				PaymentIntentID:  verifiedPI,
+				MembershipPlanID: plan.PlanID,
+				ProductIDs:       []string{validProdID},
+				OfferID:          activeOfferUUID,
+				OrderAmount:      mustDecimal(t, "225000.000000"),
+				Currency:         "VND",
+			})
+			if cErr != nil {
+				if errors.Is(cErr, ErrPaymentReplay) {
+					atomic.AddInt32(&rejectedReplayCount, 1)
+				} else {
+					t.Errorf("unexpected error in concurrent checkout %d: %v", idx, cErr)
+				}
+				return
+			}
+			if res.IsReplayed {
+				atomic.AddInt32(&replaySuccessCount, 1)
+			} else {
+				atomic.AddInt32(&firstSuccessCount, 1)
+			}
+		}(i)
+	}
+	wg.Wait()
+
+	if firstSuccessCount != 1 {
+		t.Fatalf("F04: expected exactly 1 non-replayed checkout execution for a single PaymentIntentID, got %d (replayed=%d, rejected=%d)",
+			firstSuccessCount, replaySuccessCount, rejectedReplayCount)
+	}
+
+	// Sequential attempt to reuse the already-settled PaymentIntentID with a fresh IdempotencyKey MUST fail with ErrPaymentReplay
+	_, err = svc.Checkout(ctx, CheckoutRequest{
+		WorkspaceID:      wsID,
+		CustomerEntityID: customerID,
+		IdempotencyKey:   "f04_fresh_idem_same_pi",
+		PaymentIntentID:  verifiedPI,
+		MembershipPlanID: plan.PlanID,
+		ProductIDs:       []string{validProdID},
+		OfferID:          activeOfferUUID,
+		OrderAmount:      mustDecimal(t, "225000.000000"),
+		Currency:         "VND",
+	})
+	if !errors.Is(err, ErrPaymentReplay) {
+		t.Fatalf("F04: expected ErrPaymentReplay when reusing PaymentIntentID with a different IdempotencyKey, got %v", err)
+	}
+
+	subs, _ := mem.ListSubscriptionsByCustomer(ctx, wsID, customerID)
+	deliveries, _ := mem.ListDeliveriesByCustomer(ctx, wsID, customerID)
+	postings, _ := mem.ListFinancialPostings(ctx, wsID)
+	if len(subs) != 1 || len(deliveries) != 1 || len(postings) != 1 {
+		t.Fatalf("F04: expected exactly 1 subscription, 1 delivery, 1 financial posting, got subs=%d deliv=%d post=%d",
+			len(subs), len(deliveries), len(postings))
+	}
+
+	// Partial failure rollback test: if RecordFinancialPosting fails after bundle stock reservation,
+	// subscription creation, and digital delivery creation, all mutations must roll back cleanly.
+	rollbackCustomerID := newUUID()
+	vndBundle, err := svc.CreateBundle(ctx, &Bundle{
+		WorkspaceID: wsID,
+		Title:       "VND Rollback Bundle",
+		BundlePrice: mustDecimal(t, "100000.000000"),
+		Currency:    "VND",
+		Items:       []BundleItem{{ProductID: compID, Quantity: 2, ProductTitle: "Item 1"}},
+	})
+	if err != nil {
+		t.Fatalf("CreateBundle failed: %v", err)
+	}
+	_ = svc.RecordVerifiedPaymentIntent(ctx, &VerifiedPaymentIntent{
+		WorkspaceID:     wsID,
+		PaymentIntentID: "pi_rollback_test_300k",
+		Amount:          mustDecimal(t, "300000.000000"),
+		Currency:        "VND",
+		Status:          PaymentStatusSucceeded,
+	})
+	failStore := &failingFinancialPostingStore{Store: mem}
+	failSvc := NewService(failStore, sink, func() time.Time { return now })
+	_, err = failSvc.Checkout(ctx, CheckoutRequest{
+		WorkspaceID:      wsID,
+		CustomerEntityID: rollbackCustomerID,
+		IdempotencyKey:   "f04_rollback_on_posting_error",
+		PaymentIntentID:  "pi_rollback_test_300k",
+		BundleID:         vndBundle.BundleID,
+		MembershipPlanID: plan.PlanID,
+		ProductIDs:       []string{validProdID},
+		OrderAmount:      mustDecimal(t, "300000.000000"),
+		Currency:         "VND",
+	})
+	if err == nil {
+		t.Fatalf("F04: expected checkout to fail when RecordFinancialPosting returns an error")
+	}
+	stockAfterRollback, _ := mem.GetProductStock(ctx, wsID, compID)
+	if stockAfterRollback != 10 {
+		t.Fatalf("F04: expected bundle component stock to roll back to 10 after failure, got %d", stockAfterRollback)
+	}
+	rbSubs, _ := mem.ListSubscriptionsByCustomer(ctx, wsID, rollbackCustomerID)
+	rbDelivs, _ := mem.ListDeliveriesByCustomer(ctx, wsID, rollbackCustomerID)
+	if len(rbSubs) != 0 || len(rbDelivs) != 0 {
+		t.Fatalf("F04: expected 0 subscriptions and 0 deliveries after failed checkout rollback, got subs=%d deliv=%d",
+			len(rbSubs), len(rbDelivs))
+	}
+}
+
+type failingFinancialPostingStore struct {
+	Store
+}
+
+func (f *failingFinancialPostingStore) RecordFinancialPosting(_ context.Context, _ *FinancialPosting) error {
+	return errors.New("simulated ledger posting failure")
 }
