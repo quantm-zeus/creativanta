@@ -29,13 +29,14 @@ var (
 
 // StepExecutionRequest describes the parameters passed to a StepExecutor for a single step.
 type StepExecutionRequest struct {
-	WorkspaceID  string
-	AgentRunID   string
-	AgentType    string
-	Goal         string
-	Step         AgentStep
-	InputPayload map[string]any
-	Caller       CallerContext
+	WorkspaceID            string
+	AgentRunID             string
+	AgentType              string
+	Goal                   string
+	Step                   AgentStep
+	RemainingBudgetCredits string
+	InputPayload           map[string]any
+	Caller                 CallerContext
 }
 
 // StepExecutionResult contains the verified outcome of executing a step.

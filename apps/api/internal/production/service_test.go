@@ -198,14 +198,19 @@ func TestFallbackNoDoubleCharge(t *testing.T) {
 		t.Errorf("expected lineage provider 'kling', got %s", asset.LineageRefs[0].SourceProvider)
 	}
 
-	// Verify credit debit occurred exactly ONCE (No Double Charge)
-	// Quoted credits for 15s @ $0.04/s = $0.60 -> 80 credits. Initial balance 100 -> remaining 20.
+	// Verify credit debit occurred exactly ONCE (No Double Charge) and unused quote hold was refunded (F08):
+	// Quoted ceiling for Veo (15s @ $0.04/s = $0.60) -> 80 credits reserved.
+	// Actual execution via Kling fallback (15s @ $0.03/s = $0.45) -> 60 actual credits committed, 20 unused released.
+	// Initial balance 100 - 60 actual = 40 remaining.
 	remainingBal := svc.GetWorkspaceBalance(wsID)
 	if remainingBal.IsNegative() {
 		t.Fatalf("double charge occurred! balance went negative: %s", remainingBal.String())
 	}
-	if remainingBal.Cmp(tenantdb.MustParseExactDecimal("20")) != 0 {
-		t.Errorf("expected remaining balance 20 credits, got %s", remainingBal.String())
+	if remainingBal.Cmp(tenantdb.MustParseExactDecimal("40")) != 0 {
+		t.Errorf("expected remaining balance 40 credits after 60 actual commit (80 reserved - 20 unused released), got %s", remainingBal.String())
+	}
+	if genResp.Msg.GetJob().GetActualCredits() != "60" {
+		t.Errorf("expected job actual_credits 60, got %s", genResp.Msg.GetJob().GetActualCredits())
 	}
 
 	_ = jobID
@@ -554,23 +559,41 @@ func TestAI03_ProductionService_EnforcesTransportAuthAndTenantScope(t *testing.T
 		t.Fatalf("expected cross-tenant transportauth principal to be rejected with PermissionDenied, got: %v", err)
 	}
 
-	// 2. Viewer role with verified session must be denied on Generate (requires Editor+)
-	viewerPrincipalCtx := context.WithValue(
-		contextWithVerifiedSession(t, transportauth.Session{
-			UserID:      "11111111-1111-4111-8111-111111111198",
-			WorkspaceID: wsID,
-		}),
-		"caller_role",
-		"viewer",
-	)
+	// 2. Principal with empty Role and no scope.Role must fail closed (Denied), NEVER default to Editor
+	noRolePrincipalCtx := contextWithVerifiedSession(t, transportauth.Session{
+		UserID:      "11111111-1111-4111-8111-111111111196",
+		WorkspaceID: wsID,
+		Role:        "",
+	})
+	if _, err := svc.Generate(noRolePrincipalCtx, genReq); err == nil || connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("expected principal without role to fail closed with PermissionDenied, got: %v", err)
+	}
+
+	// 3. Viewer role on transportauth.Session (where transportauth interceptor attaches tenantdb.Scope with empty ActorRole) must be denied on Generate
+	viewerPrincipalCtx := contextWithVerifiedSession(t, transportauth.Session{
+		UserID:      "11111111-1111-4111-8111-111111111198",
+		WorkspaceID: wsID,
+		Role:        "viewer",
+	})
 	if _, err := svc.Generate(viewerPrincipalCtx, genReq); err == nil || connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("expected viewer transportauth principal to be rejected with PermissionDenied, got: %v", err)
 	}
 
-	// 3. Matching Editor transportauth.Session succeeds
+	// 4. Contributor role on transportauth.Session must also be denied on Generate (requires Editor+)
+	contributorPrincipalCtx := contextWithVerifiedSession(t, transportauth.Session{
+		UserID:      "11111111-1111-4111-8111-111111111195",
+		WorkspaceID: wsID,
+		Role:        "contributor",
+	})
+	if _, err := svc.Generate(contributorPrincipalCtx, genReq); err == nil || connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("expected contributor transportauth principal to be rejected with PermissionDenied, got: %v", err)
+	}
+
+	// 5. Matching Editor transportauth.Session succeeds
 	editorPrincipalCtx := contextWithVerifiedSession(t, transportauth.Session{
 		UserID:      "11111111-1111-4111-8111-111111111197",
 		WorkspaceID: wsID,
+		Role:        "editor",
 	})
 	resp, err := svc.Generate(editorPrincipalCtx, genReq)
 	if err != nil {
@@ -1172,5 +1195,167 @@ func TestVideoEngineProvider_AsyncRenderLifecycle_And_WebhookVerification(t *tes
 	}
 	if cveProvider.VerifyWebhookSignature(payload, "sha256=deadbeef") {
 		t.Fatalf("expected invalid X-CVE-Signature to fail verification")
+	}
+}
+
+func TestR4_F07_CancelDoesNotReleaseCreditsOrAllowRetryWhileOutcomeUnknown(t *testing.T) {
+	svc, store, veo, kling := setupTestService(t)
+	ctx := contextWithRole("Editor", "user-1")
+	wsID := "ws-test-01"
+	svc.SetWorkspaceBalance(wsID, tenantdb.MustParseExactDecimal("100"))
+
+	// Primary provider times out -> job enters processing with PROVIDER_OUTCOME_UNKNOWN and reservation in "reconciling"
+	veo.TimeoutOnCall = true
+	_, err := svc.Generate(ctx, connect.NewRequest(&productionv1.GenerateRequest{
+		Context: &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: wsID}},
+		Title:   "F07 Unknown Outcome Cancel Test",
+		Prompt:  "Verify cancel does not release reconciling credits",
+		Mode:    productionv1.ProductionMode_PRODUCTION_MODE_PRODUCT_SHOWCASE,
+	}))
+	if err == nil || !errors.Is(err, ErrOutcomeUnknown) {
+		t.Fatalf("expected ErrOutcomeUnknown on timeout, got %v", err)
+	}
+
+	activeJobs, _ := store.ListActiveJobs(ctx, wsID)
+	if len(activeJobs) != 1 {
+		t.Fatalf("expected 1 active job, got %d", len(activeJobs))
+	}
+	jobID := activeJobs[0].JobID
+
+	// 1. Cancel while outcome is unknown MUST fail closed without releasing the 80 reserved credits
+	_, cancelErr := svc.Cancel(ctx, connect.NewRequest(&productionv1.CancelRequest{
+		Context: &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: wsID}},
+		JobId:   jobID,
+	}))
+	if cancelErr == nil || connect.CodeOf(cancelErr) != connect.CodeFailedPrecondition || !errors.Is(cancelErr, ErrOutcomeUnknown) {
+		t.Fatalf("expected Cancel on unknown outcome job to fail with FailedPrecondition/ErrOutcomeUnknown, got: %v", cancelErr)
+	}
+
+	if bal := svc.GetWorkspaceBalance(wsID); bal.Cmp(tenantdb.MustParseExactDecimal("20")) != 0 {
+		t.Fatalf("F07 VIOLATION: Cancel released credits while provider outcome was unknown! Balance=%s, expected 20", bal.String())
+	}
+	resRec, ok := svc.GetReservationByJob(jobID)
+	if !ok || resRec.Status != "reconciling" || !resRec.CancelRequested {
+		t.Fatalf("expected reservation to stay 'reconciling' with CancelRequested=true, got %+v", resRec)
+	}
+
+	// 2. Retry while outcome is unknown MUST also fail closed with 0 new provider calls
+	veo.TimeoutOnCall = false
+	_, retryErr := svc.Retry(ctx, connect.NewRequest(&productionv1.RetryRequest{
+		Context: &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: wsID}},
+		JobId:   jobID,
+	}))
+	if retryErr == nil || connect.CodeOf(retryErr) != connect.CodeFailedPrecondition {
+		t.Fatalf("expected Retry on reconciling job to fail with FailedPrecondition, got: %v", retryErr)
+	}
+	if veo.GetGenerateCount() != 1 || kling.GetGenerateCount() != 0 {
+		t.Fatalf("expected no duplicate provider calls during unknown outcome, got veo=%d kling=%d", veo.GetGenerateCount(), kling.GetGenerateCount())
+	}
+
+	// 3. ReconcileJobOutcome confirming provider non-execution releases the held 80 credits and marks job cancelled
+	if err := svc.ReconcileJobOutcome(ctx, wsID, jobID, "confirmed_not_executed", tenantdb.ZeroDecimal(), ""); err != nil {
+		t.Fatalf("ReconcileJobOutcome failed: %v", err)
+	}
+	if bal := svc.GetWorkspaceBalance(wsID); bal.Cmp(tenantdb.MustParseExactDecimal("100")) != 0 {
+		t.Fatalf("expected balance restored to 100 after confirmed non-execution reconciliation, got %s", bal.String())
+	}
+	reconciledJob, _ := store.GetJob(ctx, wsID, jobID)
+	if reconciledJob.Status != "cancelled" {
+		t.Fatalf("expected job status 'cancelled' after reconciliation of cancel-requested job, got %s", reconciledJob.Status)
+	}
+}
+
+func TestR4_F08_CommitReservationRefundsUnusedQuoteHold(t *testing.T) {
+	svc, _, veo, _ := setupTestService(t)
+	ctx := contextWithRole("Editor", "user-1")
+	wsID := "ws-test-01"
+	svc.SetWorkspaceBalance(wsID, tenantdb.MustParseExactDecimal("100"))
+
+	// Configure Veo to complete with lower actual cost ($0.30 -> 40 credits) against an 80-credit quote ceiling
+	veo.CustomStatus = &ProviderGenStatus{
+		Status:       "completed",
+		ProgressPct:  100,
+		ResultURL:    "https://cdn.creativanta.test/outputs/actual-40.mp4",
+		DurationSecs: tenantdb.MustParseExactDecimal("7.500000"),
+		Resolution:   "1080x1920",
+		CostUSD:      tenantdb.MustParseExactDecimal("0.300000"),
+	}
+
+	resp, err := svc.Generate(ctx, connect.NewRequest(&productionv1.GenerateRequest{
+		Context: &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: wsID}},
+		Title:   "F08 Partial Actual Cost Video",
+		Prompt:  "Verify commitReservation refunds unused reserved credits",
+		Mode:    productionv1.ProductionMode_PRODUCTION_MODE_PRODUCT_SHOWCASE,
+	}))
+	if err != nil {
+		t.Fatalf("Generate failed: %v", err)
+	}
+	if resp.Msg.GetJob().GetEstimatedCredits() != "80" {
+		t.Fatalf("expected estimated_credits 80, got %s", resp.Msg.GetJob().GetEstimatedCredits())
+	}
+	if resp.Msg.GetJob().GetActualCredits() != "40" {
+		t.Fatalf("expected actual_credits 40, got %s", resp.Msg.GetJob().GetActualCredits())
+	}
+
+	// Balance must be 100 - 40 actual = 60 (NOT 100 - 80 quote = 20!)
+	bal := svc.GetWorkspaceBalance(wsID)
+	if bal.Cmp(tenantdb.MustParseExactDecimal("60")) != 0 {
+		t.Fatalf("F08 VIOLATION: expected workspace balance 60 after reserving 80 and committing 40 actual, got %s", bal.String())
+	}
+	resRec, ok := svc.GetReservationByJob(resp.Msg.GetJob().GetJobId())
+	if !ok || resRec.Status != "committed" || resRec.ActualCredits.Cmp(tenantdb.MustParseExactDecimal("40")) != 0 {
+		t.Fatalf("expected committed reservation with ActualCredits=40, got %+v", resRec)
+	}
+}
+
+func TestR4_VideoEngineProvider_AmbiguousPostRenderJobsNeverTriggersFallback(t *testing.T) {
+	var renderCalls int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v1/compositions":
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusCreated)
+			_ = json.NewEncoder(w).Encode(map[string]any{"id": "comp-ambig-1", "status": "ready"})
+		case r.Method == http.MethodPost && r.URL.Path == "/v1/render-jobs":
+			atomic.AddInt32(&renderCalls, 1)
+			// Server accepts the render job (202 Accepted) but returns truncated/corrupted JSON
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusAccepted)
+			_, _ = w.Write([]byte(`{"id":`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	cveProvider := NewVideoEngineProvider(VideoEngineConfig{
+		BaseURL: server.URL,
+		APIKey:  "cve-test-key",
+	})
+	klingFallback := NewMockKlingProvider()
+	store := NewMemoryStore()
+	svc := NewService(ServiceConfig{
+		Store:            store,
+		PrimaryProvider:  cveProvider,
+		FallbackProvider: klingFallback,
+		InitialBalances: map[string]tenantdb.ExactDecimal{
+			"ws-ambig": tenantdb.MustParseExactDecimal("100"),
+		},
+	})
+
+	ctx := contextWithRole("Editor", "user-1")
+	_, err := svc.Generate(ctx, connect.NewRequest(&productionv1.GenerateRequest{
+		Context: &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: "ws-ambig"}},
+		Title:   "Ambiguous Render Job Response",
+		Prompt:  "Primary accepted render job then dropped/truncated response",
+	}))
+	if err == nil || !errors.Is(err, ErrOutcomeUnknown) {
+		t.Fatalf("expected ErrOutcomeUnknown when POST /v1/render-jobs returns corrupted 202 response, got: %v", err)
+	}
+	if atomic.LoadInt32(&renderCalls) != 1 {
+		t.Fatalf("expected 1 primary render-job call, got %d", renderCalls)
+	}
+	if klingFallback.GetGenerateCount() != 0 {
+		t.Fatalf("UNSAFE RETRY VIOLATION: fallback provider was called %d times after primary accepted render job!", klingFallback.GetGenerateCount())
 	}
 }

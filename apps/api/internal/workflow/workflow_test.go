@@ -3,6 +3,7 @@ package workflow_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -2548,5 +2549,170 @@ func TestAI12_PostgresStore_UsesTenantDBWithTxScope(t *testing.T) {
 	if beginner.lastTx.tenantIDSet != validWorkspaceID || beginner.lastTx.userIDSet != validUserID {
 		t.Fatalf("expected tenant=%s user=%s set in tx, got tenant=%s user=%s",
 			validWorkspaceID, validUserID, beginner.lastTx.tenantIDSet, beginner.lastTx.userIDSet)
+	}
+}
+
+func TestR4_Workflow_UncertainDispatchNeverRoutesToFallbackOrAllowsBlindRetry(t *testing.T) {
+	ctx := context.Background()
+	store := workflow.NewMemoryStore()
+	dispatcher := workflow.NewMockActionDispatcher()
+	// Configure primary action to return an ambiguous timeout error after dispatch
+	primaryRPC := "creativanta.commerce.v1.InventoryService/ReserveStock"
+	fallbackRPC := "creativanta.engagement.v1.ThreadService/Reply"
+	dispatcher.SetError(primaryRPC, context.DeadlineExceeded)
+
+	svc := workflow.NewService(store, nil)
+	svc.SetActionDispatcher(dispatcher)
+
+	wsID := "22222222-2222-4222-8222-222222222291"
+	manager := workflow.CallerContext{UserID: "usr-mgr-r4", WorkspaceID: wsID, WorkspaceRole: "manager"}
+
+	graph := workflow.WorkflowGraph{
+		SchemaVersion: 1,
+		Nodes: []workflow.WorkflowNode{
+			{NodeID: "trig", NodeType: workflow.NodeTypeTrigger, TriggerConfig: &workflow.TriggerConfig{Type: workflow.TriggerTypeManual}},
+			{NodeID: "act_primary", NodeType: workflow.NodeTypeAction, ActionConfig: &workflow.ActionConfig{RPCName: primaryRPC, InputJSON: `{"sku":"sku-99"}`}},
+			{NodeID: "act_fallback", NodeType: workflow.NodeTypeAction, ActionConfig: &workflow.ActionConfig{RPCName: fallbackRPC, InputJSON: `{"message":"fallback"}`}},
+			{NodeID: "term", NodeType: workflow.NodeTypeTerminal, TerminalConfig: &workflow.TerminalConfig{Outcome: "succeeded"}},
+		},
+		Edges: []workflow.WorkflowEdge{
+			{FromNodeID: "trig", ToNodeID: "act_primary"},
+			{FromNodeID: "act_primary", ToNodeID: "term", Branch: workflow.EdgeBranchSuccess},
+			{FromNodeID: "act_primary", ToNodeID: "act_fallback", Branch: workflow.EdgeBranchFailure},
+			{FromNodeID: "act_fallback", ToNodeID: "term"},
+		},
+	}
+
+	wf, err := svc.CreateWorkflow(ctx, manager, "Ambiguous Dispatch Flow", "Desc", "custom", *graph.Nodes[0].TriggerConfig, graph, nil)
+	if err != nil {
+		t.Fatalf("CreateWorkflow: %v", err)
+	}
+	_, _ = svc.ActivateWorkflow(ctx, manager, wf.WorkflowID)
+
+	// 1. RunWorkflow encounters context.DeadlineExceeded on act_primary:
+	// MUST return ErrUncertainStepEffect, transition run to RequiresManualIntervention, and MUST NOT execute act_fallback!
+	run, err := svc.RunWorkflow(ctx, manager, wf.WorkflowID, nil)
+	if !errors.Is(err, workflow.ErrUncertainStepEffect) {
+		t.Fatalf("expected ErrUncertainStepEffect on ambiguous dispatch timeout, got: %v", err)
+	}
+	if run == nil || run.Status != workflow.WorkflowRunStatusRequiresManualIntervention {
+		t.Fatalf("expected run status RequiresManualIntervention, got %+v", run)
+	}
+	if dispatcher.GetDispatchedCount(fallbackRPC) != 0 {
+		t.Fatalf("fallback action must NEVER execute when primary dispatch outcome is uncertain! got %d dispatches", dispatcher.GetDispatchedCount(fallbackRPC))
+	}
+
+	// 2. RetryRun while step is still in uncertain 'running' state MUST fail closed with ErrUncertainStepEffect!
+	dispatcher.SetError(primaryRPC, nil) // even if primary would succeed now, blind retry is forbidden
+	_, retryErr := svc.RetryRun(ctx, manager, run.RunID, "blind retry without reconciliation")
+	if !errors.Is(retryErr, workflow.ErrUncertainStepEffect) {
+		t.Fatalf("expected RetryRun to be blocked by ErrUncertainStepEffect, got: %v", retryErr)
+	}
+	if dispatcher.GetDispatchedCount(primaryRPC) != 0 {
+		t.Fatalf("expected 0 successful dispatches on blocked retry, got %d", dispatcher.GetDispatchedCount(primaryRPC))
+	}
+}
+
+func TestR4_Workflow_CanonicalRPCPermissionAndSensitiveActionEnforcement(t *testing.T) {
+	ctx := context.Background()
+	store := workflow.NewMemoryStore()
+	dispatcher := workflow.NewMockActionDispatcher()
+	svc := workflow.NewService(store, nil)
+	svc.SetActionDispatcher(dispatcher)
+
+	wsID := "22222222-2222-4222-8222-222222222292"
+	editor := workflow.CallerContext{UserID: "usr-ed-r4", WorkspaceID: wsID, WorkspaceRole: "editor"}
+	manager := workflow.CallerContext{UserID: "usr-mgr-r4", WorkspaceID: wsID, WorkspaceRole: "manager"}
+	owner := workflow.CallerContext{UserID: "usr-own-r4", WorkspaceID: wsID, WorkspaceRole: "owner"}
+
+	// 1. Canonical RPCs that previously bypassed substring matching (OfferService/Activate, OfferService/UpdatePrice,
+	// RefundService/Approve, ReconciliationService/Override, OrderService/Cancel, ProductService/DeleteProduct)
+	// MUST be detected as Sensitive and enforce their exact RBAC permission!
+	sensitiveRPCs := []struct {
+		rpc          string
+		expectedPerm string
+	}{
+		{"creativanta.commerce.v1.OfferService/Activate", "offer:activate"},
+		{"creativanta.commerce.v1.OfferService/UpdatePrice", "offer:price_change"},
+		{"creativanta.commerce.v1.RefundService/Approve", "refund:manage"},
+		{"creativanta.commerce.v1.ReconciliationService/Override", "reconciliation:override"},
+		{"creativanta.commerce.v1.OrderService/Cancel", "order:manage"},
+		{"creativanta.commerce.v1.ProductService/DeleteProduct", "product:delete"},
+	}
+
+	pe := workflow.NewPreflightEngine(nil)
+	for _, tc := range sensitiveRPCs {
+		if !workflow.IsSensitiveAction(tc.rpc) {
+			t.Fatalf("expected IsSensitiveAction(%q) == true", tc.rpc)
+		}
+		g := workflow.WorkflowGraph{
+			SchemaVersion: 1,
+			Nodes: []workflow.WorkflowNode{
+				{NodeID: "trig", NodeType: workflow.NodeTypeTrigger, TriggerConfig: &workflow.TriggerConfig{Type: workflow.TriggerTypeManual}},
+				{NodeID: "act", NodeType: workflow.NodeTypeAction, ActionConfig: &workflow.ActionConfig{RPCName: tc.rpc, InputJSON: `{"id":"1"}`}},
+				{NodeID: "term", NodeType: workflow.NodeTypeTerminal, TerminalConfig: &workflow.TerminalConfig{Outcome: "succeeded"}},
+			},
+			Edges: []workflow.WorkflowEdge{
+				{FromNodeID: "trig", ToNodeID: "act"},
+				{FromNodeID: "act", ToNodeID: "term"},
+			},
+		}
+		rep, err := pe.PreflightWorkflow(ctx, wsID, &g)
+		if err != nil {
+			t.Fatalf("PreflightWorkflow(%s): %v", tc.rpc, err)
+		}
+		if !rep.RequiresApproval || len(rep.Actions) != 1 || rep.Actions[0].RequiredPermission != tc.expectedPerm {
+			t.Fatalf("expected preflight for %s to require approval and permission %q, got %+v", tc.rpc, tc.expectedPerm, rep)
+		}
+
+		// Editor attempting to execute Manager+/Admin+ action must fail with PERMISSION_DENIED
+		wf, _ := svc.CreateWorkflow(ctx, editor, "Flow "+tc.rpc, "Desc", "custom", *g.Nodes[0].TriggerConfig, g, nil)
+		_, _ = svc.ActivateWorkflow(ctx, manager, wf.WorkflowID)
+		runEd, err := svc.RunWorkflow(ctx, editor, wf.WorkflowID, nil)
+		if err != nil {
+			t.Fatalf("RunWorkflow editor (%s): %v", tc.rpc, err)
+		}
+		if runEd.Status != workflow.WorkflowRunStatusFailed || runEd.ResultSummary["failure_type"] != "PERMISSION_DENIED" {
+			t.Fatalf("expected editor to be denied %s with PERMISSION_DENIED, got status=%s summary=%+v", tc.rpc, runEd.Status, runEd.ResultSummary)
+		}
+
+		// Owner attempting to execute sensitive action WITHOUT upstream Approval node must fail with APPROVAL_REQUIRED
+		runOwn, err := svc.RunWorkflow(ctx, owner, wf.WorkflowID, nil)
+		if err != nil {
+			t.Fatalf("RunWorkflow owner (%s): %v", tc.rpc, err)
+		}
+		if runOwn.Status != workflow.WorkflowRunStatusFailed || runOwn.ResultSummary["failure_type"] != "APPROVAL_REQUIRED" {
+			t.Fatalf("expected unapproved sensitive RPC %s to fail with APPROVAL_REQUIRED, got status=%s summary=%+v", tc.rpc, runOwn.Status, runOwn.ResultSummary)
+		}
+	}
+
+	// 2. Unknown / unregistered RPC must fail closed (never default to workflow:edit!)
+	unknownGraph := workflow.WorkflowGraph{
+		SchemaVersion: 1,
+		Nodes: []workflow.WorkflowNode{
+			{NodeID: "trig", NodeType: workflow.NodeTypeTrigger, TriggerConfig: &workflow.TriggerConfig{Type: workflow.TriggerTypeManual}},
+			{NodeID: "act", NodeType: workflow.NodeTypeAction, ActionConfig: &workflow.ActionConfig{RPCName: "creativanta.unknown.v1.SecretService/BypassAll", InputJSON: `{}`}},
+			{NodeID: "term", NodeType: workflow.NodeTypeTerminal, TerminalConfig: &workflow.TerminalConfig{Outcome: "succeeded"}},
+		},
+		Edges: []workflow.WorkflowEdge{
+			{FromNodeID: "trig", ToNodeID: "act"},
+			{FromNodeID: "act", ToNodeID: "term"},
+		},
+	}
+	repUnknown, err := pe.PreflightWorkflow(ctx, wsID, &unknownGraph)
+	if err != nil {
+		t.Fatalf("PreflightWorkflow unknown RPC: %v", err)
+	}
+	if repUnknown.Valid {
+		t.Fatalf("expected PreflightWorkflow to mark unregistered RPC as invalid!")
+	}
+	wfUnknown, _ := svc.CreateWorkflow(ctx, owner, "Unknown RPC Flow", "Desc", "custom", *unknownGraph.Nodes[0].TriggerConfig, unknownGraph, nil)
+	_, _ = svc.ActivateWorkflow(ctx, owner, wfUnknown.WorkflowID)
+	runUnknown, err := svc.RunWorkflow(ctx, owner, wfUnknown.WorkflowID, nil)
+	if err != nil {
+		t.Fatalf("RunWorkflow unknown RPC: %v", err)
+	}
+	if runUnknown.Status != workflow.WorkflowRunStatusFailed || runUnknown.ResultSummary["failure_type"] != "PERMISSION_DENIED" {
+		t.Fatalf("expected unregistered RPC to fail closed with PERMISSION_DENIED even for owner, got status=%s summary=%+v", runUnknown.Status, runUnknown.ResultSummary)
 	}
 }

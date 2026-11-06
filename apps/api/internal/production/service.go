@@ -317,7 +317,7 @@ func (s *Service) releaseReservation(workspaceID, jobID string) {
 	rec.UpdatedAt = time.Now().UTC()
 }
 
-func (s *Service) commitReservation(workspaceID, jobID string, _ tenantdb.ExactDecimal) {
+func (s *Service) commitReservation(workspaceID, jobID string, actualCredits tenantdb.ExactDecimal) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	resID, ok := s.reservationsByJob[jobID]
@@ -328,8 +328,74 @@ func (s *Service) commitReservation(workspaceID, jobID string, _ tenantdb.ExactD
 	if !ok || rec == nil || rec.Status == "released" || rec.Status == "committed" {
 		return
 	}
+
+	charged := actualCredits
+	if charged.IsNegative() {
+		charged = tenantdb.ZeroDecimal()
+	}
+	if charged.Cmp(rec.ReservedCredits) > 0 {
+		charged = rec.ReservedCredits
+	}
+
+	// Release unused portion of the reserved ceiling back to workspace balance (F08 / credit_accounting_contract.md §4)
+	if unused, err := rec.ReservedCredits.Sub(charged); err == nil && unused.IsPositive() {
+		curr, exists := s.balances[workspaceID]
+		if !exists {
+			curr = tenantdb.MustParseExactDecimal("100")
+		}
+		if updated, addErr := curr.Add(unused); addErr == nil {
+			s.balances[workspaceID] = updated
+		}
+	}
+
+	rec.ActualCredits = charged
 	rec.Status = "committed"
 	rec.UpdatedAt = time.Now().UTC()
+}
+
+// ReconcileJobOutcome resolves an in-flight/reconciling job after verifying external provider outcome.
+// If providerOutcome is "failed", "cancelled", or "confirmed_not_executed", the held reservation is released.
+// If providerOutcome is "completed", actualCredits is committed and unused hold is refunded.
+func (s *Service) ReconcileJobOutcome(ctx context.Context, workspaceID, jobID, providerOutcome string, actualCredits tenantdb.ExactDecimal, resultURL string) error {
+	job, err := s.store.GetJob(ctx, workspaceID, jobID)
+	if err != nil {
+		return err
+	}
+	outcome := strings.ToLower(strings.TrimSpace(providerOutcome))
+	switch outcome {
+	case "cancelled", "canceled", "failed", "confirmed_not_executed":
+		targetJobStatus := "failed"
+		targetAssetState := "failed"
+		msg := "Provider confirmed non-execution during reconciliation"
+		if resRec, ok := s.GetReservationByJob(jobID); ok && resRec.CancelRequested {
+			targetJobStatus = "cancelled"
+			targetAssetState = "cancelled"
+			msg = "Cancelled after provider non-execution confirmed"
+		} else if outcome == "cancelled" || outcome == "canceled" {
+			targetJobStatus = "cancelled"
+			targetAssetState = "cancelled"
+		}
+		if err := s.store.SyncJobAndAsset(ctx, workspaceID, jobID, targetJobStatus, targetAssetState, msg, "", "0", "0"); err != nil {
+			return err
+		}
+		s.releaseReservation(workspaceID, jobID)
+		if targetJobStatus == "cancelled" && job.EstimatedCredits.IsPositive() {
+			s.mu.Lock()
+			s.mockRefunds[jobID] = job.EstimatedCredits
+			s.mu.Unlock()
+		}
+		return nil
+
+	case "completed", "succeeded":
+		if err := s.store.SyncJobAndAsset(ctx, workspaceID, jobID, "completed", "generated", "", resultURL, actualCredits.String(), job.ActualCostUSD.String()); err != nil {
+			return err
+		}
+		s.commitReservation(workspaceID, jobID, actualCredits)
+		return nil
+
+	default:
+		return fmt.Errorf("%w: unsupported reconciliation outcome %q", ErrOutcomeUnknown, providerOutcome)
+	}
 }
 
 // ASREngine returns the configured ASREngine.
@@ -440,12 +506,22 @@ func (s *Service) refundCredits(workspaceID string, amount tenantdb.ExactDecimal
 func extractCallerContext(ctx context.Context, wsID string) CallerContext {
 	// 1. Prefer verified transportauth principal when present on context.
 	if principal, ok := transportauth.PrincipalFromContext(ctx); ok {
+		if strings.TrimSpace(principal.UserID) == "" || (!principal.InternalAdmin && strings.TrimSpace(principal.WorkspaceID) == "") {
+			return CallerContext{
+				UserID:        principal.UserID,
+				WorkspaceID:   wsID,
+				WorkspaceRole: "Denied",
+			}
+		}
 		if wsID != "" && principal.WorkspaceID != "" && principal.WorkspaceID != wsID && !principal.InternalAdmin {
 			return CallerContext{
 				UserID:        principal.UserID,
 				WorkspaceID:   wsID,
 				WorkspaceRole: "Denied",
 			}
+		}
+		if wsID == "" {
+			wsID = principal.WorkspaceID
 		}
 		if scope, hasScope := tenantdb.ScopeFromContext(ctx); hasScope {
 			if wsID != "" && scope.WorkspaceID != "" && scope.WorkspaceID != wsID && !principal.InternalAdmin {
@@ -455,19 +531,28 @@ func extractCallerContext(ctx context.Context, wsID string) CallerContext {
 					WorkspaceRole: "Denied",
 				}
 			}
-			if scope.Role != "" {
+			if strings.TrimSpace(scope.Role) != "" {
+				if strings.TrimSpace(principal.Role) != "" && !strings.EqualFold(strings.TrimSpace(principal.Role), strings.TrimSpace(scope.Role)) {
+					return CallerContext{
+						UserID:        principal.UserID,
+						WorkspaceID:   wsID,
+						WorkspaceRole: "Denied",
+					}
+				}
 				return CallerContext{
 					UserID:        principal.UserID,
 					WorkspaceID:   wsID,
-					WorkspaceRole: scope.Role,
+					WorkspaceRole: strings.TrimSpace(scope.Role),
 				}
 			}
 		}
-		role := "Editor"
+		role := "Denied"
 		if principal.InternalAdmin {
 			role = "Owner"
-		} else if r, ok := ctx.Value("caller_role").(string); ok && r != "" {
-			role = r
+		} else if strings.TrimSpace(principal.Role) != "" {
+			role = strings.TrimSpace(principal.Role)
+		} else if r, ok := ctx.Value("caller_role").(string); ok && strings.TrimSpace(r) != "" {
+			role = strings.TrimSpace(r)
 		}
 		return CallerContext{
 			UserID:        principal.UserID,
@@ -485,12 +570,12 @@ func extractCallerContext(ctx context.Context, wsID string) CallerContext {
 				WorkspaceRole: "Denied",
 			}
 		}
-		role := scope.Role
+		role := strings.TrimSpace(scope.Role)
 		if role == "" {
-			if r, ok := ctx.Value("caller_role").(string); ok && r != "" {
-				role = r
+			if r, ok := ctx.Value("caller_role").(string); ok && strings.TrimSpace(r) != "" {
+				role = strings.TrimSpace(r)
 			} else {
-				role = "Editor"
+				role = "Denied"
 			}
 		}
 		userID := scope.UserID
@@ -682,16 +767,61 @@ func (s *Service) Cancel(ctx context.Context, req *connect.Request[productionv1.
 		return nil, connect.NewError(connect.CodeFailedPrecondition, ErrCannotCancelCompletedJob)
 	}
 
+	// F07 / credit_accounting_contract.md §3:
+	// "Cancellation is a request until provider non-execution/cancellation is confirmed."
+	// Never release reserved credits or mark a job cancelled when provider outcome is unknown/reconciling!
+	resRec, hasRes := s.GetReservationByJob(jobID)
+	outcomeUnknown := (hasRes && resRec.Status == "reconciling") ||
+		job.ErrorCode == "PROVIDER_OUTCOME_UNKNOWN" ||
+		strings.Contains(job.CurrentStep, "reconciling")
+
+	if !outcomeUnknown && strings.TrimSpace(job.ProviderJobID) != "" && s.router != nil {
+		// If job was dispatched to a provider, attempt provider cancellation/check before releasing credits
+		var targetProv VideoProvider
+		if s.router.primaryProvider != nil && (job.Provider == "" || strings.EqualFold(job.Provider, s.router.primaryProvider.Name())) {
+			targetProv = s.router.primaryProvider
+		} else if s.router.fallbackProvider != nil && strings.EqualFold(job.Provider, s.router.fallbackProvider.Name()) {
+			targetProv = s.router.fallbackProvider
+		}
+		if targetProv != nil {
+			if st, stErr := targetProv.CheckStatus(ctx, job.ProviderJobID); stErr != nil || (st != nil && strings.EqualFold(st.Status, "unknown")) {
+				outcomeUnknown = true
+			} else if st != nil && (strings.EqualFold(st.Status, "completed") || strings.EqualFold(st.Status, "succeeded")) {
+				return nil, connect.NewError(connect.CodeFailedPrecondition, ErrCannotCancelCompletedJob)
+			} else if cErr := targetProv.Cancel(ctx, job.ProviderJobID); cErr != nil {
+				outcomeUnknown = true
+			}
+		}
+	}
+
+	if outcomeUnknown {
+		s.mu.Lock()
+		if resID, ok := s.reservationsByJob[jobID]; ok {
+			if r, ok := s.reservations[resID]; ok && r != nil {
+				r.Status = "reconciling"
+				r.CancelRequested = true
+				r.UpdatedAt = time.Now().UTC()
+			}
+		}
+		s.mu.Unlock()
+
+		job.CurrentStep = "cancel_requested_reconciling"
+		job.ErrorCode = "PROVIDER_OUTCOME_UNKNOWN"
+		job.UpdatedAt = time.Now().UTC()
+		_ = s.store.UpdateJob(ctx, job)
+		return nil, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("%w: cannot release credits or finalize cancellation while provider outcome is unknown; cancellation request recorded pending reconciliation", ErrOutcomeUnknown))
+	}
+
 	// Atomically transition job to cancelled and asset to cancelled (RULE-M07-007)
 	err = s.store.SyncJobAndAsset(ctx, wsID, jobID, "cancelled", "cancelled", "Cancelled by user", "", "0", "0")
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	// Refund credits (release reservation if tracked, otherwise direct refund)
+	// Refund credits (release reservation if tracked, otherwise direct refund for un-reserved test fixtures)
 	refundAmount := job.EstimatedCredits
 	if refundAmount.IsPositive() {
-		if _, hasRes := s.GetReservationByJob(jobID); hasRes {
+		if hasRes {
 			s.releaseReservation(wsID, jobID)
 		} else {
 			s.refundCredits(wsID, refundAmount)
@@ -724,6 +854,13 @@ func (s *Service) Retry(ctx context.Context, req *connect.Request[productionv1.R
 	job, err := s.store.GetJob(ctx, wsID, jobID)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeNotFound, err)
+	}
+
+	if resRec, ok := s.GetReservationByJob(jobID); ok && resRec.Status == "reconciling" {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("%w: job %s has an unresolved provider outcome and cannot be retried until reconciled", ErrOutcomeUnknown, jobID))
+	}
+	if job.ErrorCode == "PROVIDER_OUTCOME_UNKNOWN" || strings.Contains(job.CurrentStep, "reconciling") {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("%w: job %s provider outcome is unknown and cannot be retried until reconciled", ErrOutcomeUnknown, jobID))
 	}
 
 	if job.Status != "failed" && job.Status != "cancelled" {

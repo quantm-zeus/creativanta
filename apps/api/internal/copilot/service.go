@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -15,6 +14,7 @@ import (
 	copilotv1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/copilot/v1"
 	"github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/copilot/v1/copilotv1connect"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/rbac"
+	"github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb"
 )
 
 // ServiceConfig defines dependencies for the CopilotService.
@@ -150,6 +150,9 @@ func (s *Service) Query(ctx context.Context, req *connect.Request[copilotv1.Copi
 		if err != nil && !errors.Is(err, ErrSessionNotFound) {
 			return nil, connect.NewError(connect.CodeInternal, err)
 		}
+		if session != nil && session.UserID != "" && session.UserID != caller.UserID {
+			return nil, connect.NewError(connect.CodePermissionDenied, ErrPermissionDenied)
+		}
 	}
 
 	now := time.Now().UTC()
@@ -245,6 +248,9 @@ func (s *Service) Query(ctx context.Context, req *connect.Request[copilotv1.Copi
 		if err != nil {
 			return nil, connect.NewError(connect.CodeNotFound, ErrQuoteNotFound)
 		}
+		if quote.UserID != "" && quote.UserID != caller.UserID {
+			return nil, connect.NewError(connect.CodePermissionDenied, ErrPermissionDenied)
+		}
 		if quote.Status == "confirmed" {
 			return nil, connect.NewError(connect.CodeFailedPrecondition, ErrQuoteAlreadyConsumed)
 		}
@@ -265,10 +271,20 @@ func (s *Service) Query(ctx context.Context, req *connect.Request[copilotv1.Copi
 			return nil, connect.NewError(connect.CodeInternal, err)
 		}
 
-		// Debit credits to session
-		currentCredits, _ := strconv.ParseFloat(session.TotalCreditsUsed, 64)
-		currentCredits += float64(quote.QuotedCredits)
-		session.TotalCreditsUsed = fmt.Sprintf("%.6f", currentCredits)
+		// Debit credits to session using exact decimal arithmetic (no float)
+		currentCredits, err := tenantdb.ParseExactDecimal(session.TotalCreditsUsed)
+		if err != nil {
+			currentCredits, _ = tenantdb.ParseExactDecimal("0.000000")
+		}
+		quoteCredits, err := tenantdb.ParseExactDecimal(fmt.Sprintf("%d", quote.QuotedCredits))
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+		updatedCredits, err := currentCredits.Add(quoteCredits)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+		session.TotalCreditsUsed = updatedCredits.Fixed6String()
 
 		asstMsg := StoredMessage{
 			MessageID: generateID("msg", time.Now().UTC()),
@@ -500,6 +516,9 @@ func (s *Service) GetSession(ctx context.Context, req *connect.Request[copilotv1
 	if err != nil {
 		return nil, connect.NewError(connect.CodeNotFound, ErrSessionNotFound)
 	}
+	if session.UserID != "" && session.UserID != caller.UserID {
+		return nil, connect.NewError(connect.CodePermissionDenied, ErrPermissionDenied)
+	}
 
 	return connect.NewResponse(&copilotv1.CopilotServiceGetSessionResponse{
 		Session: SessionToProto(session),
@@ -522,6 +541,14 @@ func (s *Service) ClearSession(ctx context.Context, req *connect.Request[copilot
 	}
 
 	if err := checkPermission(caller, "copilot:use_creative"); err != nil {
+		return nil, connect.NewError(connect.CodePermissionDenied, ErrPermissionDenied)
+	}
+
+	session, err := s.store.GetSession(ctx, wsID, req.Msg.SessionId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeNotFound, ErrSessionNotFound)
+	}
+	if session.UserID != "" && session.UserID != caller.UserID {
 		return nil, connect.NewError(connect.CodePermissionDenied, ErrPermissionDenied)
 	}
 
@@ -649,6 +676,9 @@ func (s *Service) SetContext(ctx context.Context, req *connect.Request[copilotv1
 	session, err := s.store.GetSession(ctx, wsID, req.Msg.SessionId)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeNotFound, ErrSessionNotFound)
+	}
+	if session.UserID != "" && session.UserID != caller.UserID {
+		return nil, connect.NewError(connect.CodePermissionDenied, ErrPermissionDenied)
 	}
 
 	session.ContextScope = req.Msg.ContextScope

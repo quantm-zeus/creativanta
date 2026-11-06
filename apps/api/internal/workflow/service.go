@@ -596,7 +596,10 @@ func (s *Service) RetryRun(ctx context.Context, caller CallerContext, runID, rep
 			SignalType: "run_retried",
 			Payload:    map[string]any{"repair_context": repairContext},
 		})
-		if err == nil && executedRun != nil {
+		if err != nil {
+			return executedRun, err
+		}
+		if executedRun != nil {
 			return executedRun, nil
 		}
 	}

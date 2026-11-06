@@ -106,7 +106,7 @@ func (m *TranslationManager) Create(
 			return nil, connect.NewError(connect.CodePermissionDenied, ErrConsentRevoked)
 		}
 		if m.voiceCloneMgr != nil {
-			if valid, ok := m.voiceCloneMgr.consentStatus[vc.ConsentRecordID]; ok && !valid {
+			if err := m.voiceCloneMgr.VerifyConsent(ctx, wsID, vc.CharacterID, vc.ConsentRecordID); err != nil {
 				return nil, connect.NewError(connect.CodePermissionDenied, ErrConsentRevoked)
 			}
 		}

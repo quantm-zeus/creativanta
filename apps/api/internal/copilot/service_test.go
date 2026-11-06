@@ -330,3 +330,80 @@ func TestConcurrentQueriesNoRace(t *testing.T) {
 	}
 	wg.Wait()
 }
+
+func TestR4_Copilot_CrossUserSessionAndQuoteIsolation(t *testing.T) {
+	svc, _ := setupService()
+	ctxUserA := ctxWithUser("user-a", "ws-shared", "editor")
+	ctxUserB := ctxWithUser("user-b", "ws-shared", "editor")
+
+	// User A creates a session and generates a quote preview
+	qResp, err := svc.Query(ctxUserA, connect.NewRequest(&copilotv1.CopilotServiceQueryRequest{
+		WorkspaceId: "ws-shared",
+		Query:       "Tạo script bán hàng",
+	}))
+	if err != nil {
+		t.Fatalf("User A query failed: %v", err)
+	}
+	sessionID := qResp.Msg.Session.SessionId
+	quoteID := qResp.Msg.Quote.QuoteId
+
+	// User B in the same workspace cannot GetSession of User A
+	_, err = svc.GetSession(ctxUserB, connect.NewRequest(&copilotv1.CopilotServiceGetSessionRequest{
+		WorkspaceId: "ws-shared",
+		SessionId:   sessionID,
+	}))
+	if connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("expected PermissionDenied for cross-user GetSession, got %v", err)
+	}
+
+	// User B cannot append a message to User A's session
+	_, err = svc.Query(ctxUserB, connect.NewRequest(&copilotv1.CopilotServiceQueryRequest{
+		WorkspaceId: "ws-shared",
+		SessionId:   sessionID,
+		Query:       "Injected prompt into User A session",
+	}))
+	if connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("expected PermissionDenied for cross-user Query on session, got %v", err)
+	}
+
+	// User B cannot SetContext on User A's session
+	_, err = svc.SetContext(ctxUserB, connect.NewRequest(&copilotv1.CopilotServiceSetContextRequest{
+		WorkspaceId:  "ws-shared",
+		SessionId:    sessionID,
+		ContextScope: "hijacked-scope",
+	}))
+	if connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("expected PermissionDenied for cross-user SetContext, got %v", err)
+	}
+
+	// User B cannot ClearSession of User A
+	_, err = svc.ClearSession(ctxUserB, connect.NewRequest(&copilotv1.CopilotServiceClearSessionRequest{
+		WorkspaceId: "ws-shared",
+		SessionId:   sessionID,
+	}))
+	if connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("expected PermissionDenied for cross-user ClearSession, got %v", err)
+	}
+
+	// User B cannot confirm User A's quote even from User B's own session
+	_, err = svc.Query(ctxUserB, connect.NewRequest(&copilotv1.CopilotServiceQueryRequest{
+		WorkspaceId:      "ws-shared",
+		ConfirmedQuoteId: quoteID,
+	}))
+	if connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("expected PermissionDenied for cross-user ConfirmedQuoteId, got %v", err)
+	}
+
+	// User A can still confirm their own quote and exact decimal credit total is updated
+	confirmResp, err := svc.Query(ctxUserA, connect.NewRequest(&copilotv1.CopilotServiceQueryRequest{
+		WorkspaceId:      "ws-shared",
+		SessionId:        sessionID,
+		ConfirmedQuoteId: quoteID,
+	}))
+	if err != nil {
+		t.Fatalf("expected User A quote confirmation to succeed, got %v", err)
+	}
+	if confirmResp.Msg.Session.TotalCreditsUsed != "5.000000" {
+		t.Fatalf("expected TotalCreditsUsed 5.000000, got %s", confirmResp.Msg.Session.TotalCreditsUsed)
+	}
+}
