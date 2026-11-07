@@ -303,5 +303,116 @@ void main() {
       expect(rotateOutcome.data?.secretKey, equals('ca_live_rotated_server_secret_902'));
       expect(calls.length, equals(3));
     });
+
+    test(
+        'S8-F3 DeveloperStateNotifier decodes canonical ProtoJSON camelCase responses from Go handler (apiKey, secretKey, newKey, newSecretKey, webhookSubscriptionId, signingSecret, int64 string)',
+        () async {
+      final protoJsonNotifier = DeveloperStateNotifier(
+        workspaceId: '22222222-2222-2222-2222-222222222201',
+        initialTier: 'pro',
+        rpcCaller: (service, method, payload) async {
+          if (service == 'creativanta.platform.v1.APIKeyService' && method == 'Create') {
+            // Exact Go protojson.Marshal output for CreateResponse
+            return {
+              'apiKey': {
+                'apiKeyId': 'ak_protojson_101',
+                'workspaceId': '22222222-2222-2222-2222-222222222201',
+                'keyPrefix': 'ca_live_pj',
+                'name': 'ProtoJSON Key',
+                'scopes': ['read:content', 'write:content'],
+                'status': 'API_KEY_STATUS_ACTIVE',
+                'logicalKeyId': 'lk_protojson_101',
+                'requestCount': '42',
+                'expiresAt': '2027-02-05T18:00:00Z',
+                'createdBy': 'usr_owner_01',
+                'secretKey': 'ca_live_protojson_redacted_101',
+              },
+              'secretKey': 'ca_live_protojson_redacted_101',
+            };
+          }
+          if (service == 'creativanta.platform.v1.APIKeyService' && method == 'Rotate') {
+            // Exact Go protojson.Marshal output for RotateResponse
+            return {
+              'oldKey': {
+                'apiKeyId': 'ak_protojson_101',
+                'workspaceId': '22222222-2222-2222-2222-222222222201',
+                'status': 'API_KEY_STATUS_ROTATING',
+                'replacedByKeyId': 'ak_protojson_102',
+                'rotationGraceEndsAt': '2026-11-08T18:00:00Z',
+              },
+              'newKey': {
+                'apiKeyId': 'ak_protojson_102',
+                'workspaceId': '22222222-2222-2222-2222-222222222201',
+                'keyPrefix': 'ca_live_rt',
+                'name': 'ProtoJSON Key (Rotated)',
+                'scopes': ['read:content', 'write:content'],
+                'status': 'API_KEY_STATUS_ACTIVE',
+                'logicalKeyId': 'lk_protojson_101',
+                'requestCount': '0',
+                'expiresAt': '2027-02-05T18:00:00Z',
+                'createdBy': 'usr_owner_01',
+                'secretKey': 'ca_live_protojson_redacted_102',
+              },
+              'newSecretKey': 'ca_live_protojson_redacted_102',
+              'graceEndsAt': '2026-11-08T18:00:00Z',
+            };
+          }
+          if (service == 'creativanta.platform.v1.APIKeyService' && method == 'Revoke') {
+            return {
+              'apiKey': {
+                'apiKeyId': 'ak_protojson_102',
+                'workspaceId': '22222222-2222-2222-2222-222222222201',
+                'status': 'API_KEY_STATUS_REVOKED',
+              },
+            };
+          }
+          if (service == 'creativanta.platform.v1.WebhookSubscriptionService' &&
+              method == 'CreateWebhookSubscription') {
+            // Exact Go protojson.Marshal output for CreateWebhookSubscriptionResponse
+            return {
+              'subscription': {
+                'webhookSubscriptionId': 'wh_protojson_301',
+                'workspaceId': '22222222-2222-2222-2222-222222222201',
+                'targetUrl': 'https://hooks.creativanta.vn/protojson',
+                'eventTypes': ['order.created', 'workflow.completed'],
+                'status': 'WEBHOOK_SUBSCRIPTION_STATUS_ACTIVE',
+                'consecutiveFailureCount': 0,
+              },
+              'signingSecret': 'whsec_protojson_redacted_301',
+            };
+          }
+          throw StateError('Unexpected RPC $service/$method');
+        },
+      );
+
+      final createRes = await protoJsonNotifier.createKeyRemote(
+        name: 'ProtoJSON Key',
+        scopes: ['read:content', 'write:content'],
+      );
+      expect(createRes.ok, isTrue, reason: createRes.message);
+      expect(createRes.data?.apiKeyId, equals('ak_protojson_101'));
+      expect(createRes.data?.keyPrefix, equals('ca_live_pj'));
+      expect(createRes.data?.logicalKeyId, equals('lk_protojson_101'));
+      expect(createRes.data?.requestCount, equals(42));
+      expect(createRes.data?.secretKey, equals('ca_live_protojson_redacted_101'));
+
+      final rotateRes = await protoJsonNotifier.rotateKeyRemote('ak_protojson_101');
+      expect(rotateRes.ok, isTrue, reason: rotateRes.message);
+      expect(rotateRes.data?.apiKeyId, equals('ak_protojson_102'));
+      expect(rotateRes.data?.logicalKeyId, equals('lk_protojson_101'));
+      expect(rotateRes.data?.secretKey, equals('ca_live_protojson_redacted_102'));
+
+      final revokeRes = await protoJsonNotifier.revokeKeyRemote('ak_protojson_102');
+      expect(revokeRes.ok, isTrue, reason: revokeRes.message);
+      expect(revokeRes.data?.status, equals(ApiKeyStatus.revoked));
+
+      final whRes = await protoJsonNotifier.createWebhookSubscriptionRemote(
+        targetUrl: 'https://hooks.creativanta.vn/protojson',
+        eventTypes: ['order.created', 'workflow.completed'],
+      );
+      expect(whRes.ok, isTrue, reason: whRes.message);
+      expect(whRes.data?.subscriptionId, equals('wh_protojson_301'));
+      expect(whRes.data?.signingSecret, equals('whsec_protojson_redacted_301'));
+    });
   });
 }

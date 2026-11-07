@@ -550,10 +550,14 @@ export const supportStore = {
   },
 
   reset: () => {
+    supportResetEpoch += 1;
     supportTicketsStore.set([]);
     supportMessagesStore.set([]);
-  }
+  },
+  getResetEpoch: () => supportResetEpoch
 };
+
+let supportResetEpoch = 0;
 
 import { callCanonicalRpc, generateIdempotencyKey, type CanonicalRpcOptions } from '$lib/api/client';
 import { registerAuthResetHook } from '$lib/auth/store';
@@ -595,6 +599,8 @@ export async function submitSupportTicketRemote(
       error: 'Vui lòng nhập đầy đủ tiêu đề và nội dung chi tiết yêu cầu hỗ trợ.'
     };
   }
+
+  const startEpoch = supportStore.getResetEpoch();
 
   const rpcRes = await callCanonicalRpc<
     Record<string, unknown>,
@@ -659,6 +665,13 @@ export async function submitSupportTicketRemote(
     resolutionDueMinutes: remote.resolution_due_minutes ?? sla.resolutionHours * 60,
     isSlaBreached: false
   };
+
+  if (supportStore.getResetEpoch() !== startEpoch) {
+    return {
+      ok: false,
+      error: 'Phiên làm việc hoặc workspace đã thay đổi trong khi gửi yêu cầu hỗ trợ (fail-closed).'
+    };
+  }
 
   supportStore.upsertRemoteTicket(ticket, message);
   return { ok: true, ticket };

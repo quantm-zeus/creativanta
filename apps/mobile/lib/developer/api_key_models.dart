@@ -1,4 +1,6 @@
 import 'package:flutter/foundation.dart';
+import 'package:creativanta_mobile/generated/creativanta/platform/v1/public_api.pb.dart'
+    as pb;
 
 enum ApiKeyStatus {
   active,
@@ -225,19 +227,93 @@ ApiKeyStatus _parseApiKeyStatus(String? raw) {
   }
 }
 
-WebhookStatus _parseWebhookStatus(String? raw) {
-  switch ((raw ?? '').trim().toUpperCase()) {
-    case 'WEBHOOK_SUBSCRIPTION_STATUS_SUSPENDED':
-    case 'SUSPENDED':
+ApiKeyStatus _fromProtoApiKeyStatus(pb.APIKeyStatus status) {
+  switch (status) {
+    case pb.APIKeyStatus.API_KEY_STATUS_ROTATING:
+      return ApiKeyStatus.rotating;
+    case pb.APIKeyStatus.API_KEY_STATUS_SUSPENDED:
+      return ApiKeyStatus.suspended;
+    case pb.APIKeyStatus.API_KEY_STATUS_REVOKED:
+      return ApiKeyStatus.revoked;
+    case pb.APIKeyStatus.API_KEY_STATUS_EXPIRED:
+      return ApiKeyStatus.expired;
+    case pb.APIKeyStatus.API_KEY_STATUS_ACTIVE:
+    case pb.APIKeyStatus.API_KEY_STATUS_UNSPECIFIED:
+    default:
+      return ApiKeyStatus.active;
+  }
+}
+
+WebhookStatus _fromProtoWebhookStatus(pb.WebhookSubscriptionStatus status) {
+  switch (status) {
+    case pb.WebhookSubscriptionStatus.WEBHOOK_SUBSCRIPTION_STATUS_SUSPENDED:
       return WebhookStatus.suspended;
-    case 'WEBHOOK_SUBSCRIPTION_STATUS_REVOKED':
-    case 'REVOKED':
+    case pb.WebhookSubscriptionStatus.WEBHOOK_SUBSCRIPTION_STATUS_REVOKED:
       return WebhookStatus.revoked;
-    case 'WEBHOOK_SUBSCRIPTION_STATUS_ACTIVE':
-    case 'ACTIVE':
+    case pb.WebhookSubscriptionStatus.WEBHOOK_SUBSCRIPTION_STATUS_ACTIVE:
+    case pb.WebhookSubscriptionStatus.WEBHOOK_SUBSCRIPTION_STATUS_UNSPECIFIED:
     default:
       return WebhookStatus.active;
   }
+}
+
+String _snakeToCamel(String input) {
+  if (!input.contains('_')) return input;
+  final parts = input.split('_');
+  final buffer = StringBuffer(parts.first);
+  for (var i = 1; i < parts.length; i++) {
+    final part = parts[i];
+    if (part.isEmpty) continue;
+    buffer.write(part[0].toUpperCase());
+    if (part.length > 1) {
+      buffer.write(part.substring(1));
+    }
+  }
+  return buffer.toString();
+}
+
+Map<String, dynamic> _normalizeProto3JsonMap(
+  Map<String, dynamic> raw, {
+  String? enumHint,
+}) {
+  final out = <String, dynamic>{};
+  raw.forEach((rawKey, rawValue) {
+    final key = _snakeToCamel(rawKey);
+    if (rawValue is Map) {
+      final childMap = rawValue.map((k, v) => MapEntry(k.toString(), v));
+      final nextHint = (key == 'apiKey' || key == 'oldKey' || key == 'newKey')
+          ? 'apiKey'
+          : (key == 'subscription' ? 'webhook' : null);
+      out[key] = _normalizeProto3JsonMap(childMap, enumHint: nextHint);
+    } else if (rawValue is List) {
+      out[key] = rawValue
+          .map((item) => item is Map
+              ? _normalizeProto3JsonMap(
+                  item.map((k, v) => MapEntry(k.toString(), v)),
+                )
+              : item)
+          .toList();
+    } else if (key == 'status' && rawValue is String) {
+      final upper = rawValue.trim().toUpperCase();
+      if (enumHint == 'apiKey' && !upper.startsWith('API_KEY_STATUS_')) {
+        out[key] = 'API_KEY_STATUS_$upper';
+      } else if (enumHint == 'webhook' &&
+          !upper.startsWith('WEBHOOK_SUBSCRIPTION_STATUS_')) {
+        out[key] = 'WEBHOOK_SUBSCRIPTION_STATUS_$upper';
+      } else {
+        out[key] = rawValue;
+      }
+    } else {
+      out[key] = rawValue;
+    }
+  });
+
+  if (enumHint == 'webhook' &&
+      !out.containsKey('webhookSubscriptionId') &&
+      out['subscriptionId'] != null) {
+    out['webhookSubscriptionId'] = out['subscriptionId'];
+  }
+  return out;
 }
 
 class DeveloperStateNotifier extends ChangeNotifier {
@@ -316,10 +392,14 @@ class DeveloperStateNotifier extends ChangeNotifier {
         },
       );
 
-      final rawKey = res['api_key'] as Map<String, dynamic>?;
-      final secretKey = (res['secret_key'] as String?)?.trim() ?? '';
-      final apiKeyId = (rawKey?['api_key_id'] as String?)?.trim() ?? '';
-      if (rawKey == null || apiKeyId.isEmpty || secretKey.isEmpty) {
+      final normalized = _normalizeProto3JsonMap(res);
+      final protoRes = pb.CreateResponse()
+        ..mergeFromProto3Json(normalized, ignoreUnknownFields: true);
+
+      final protoKey = protoRes.apiKey;
+      final secretKey = protoRes.secretKey.trim();
+      final apiKeyId = protoKey.apiKeyId.trim();
+      if (!protoRes.hasApiKey() || apiKeyId.isEmpty || secretKey.isEmpty) {
         return const DeveloperMutationOutcome(
           ok: false,
           errorCode: 'INVALID_BACKEND_RESPONSE',
@@ -328,20 +408,27 @@ class DeveloperStateNotifier extends ChangeNotifier {
       }
 
       final now = DateTime.now().toUtc();
-      final rawScopes = (rawKey['scopes'] as List?)?.map((e) => e.toString()).toList() ?? scopes;
+      final rawScopes =
+          protoKey.scopes.isNotEmpty ? protoKey.scopes.toList() : scopes;
       final newKey = ApiKeyItem(
         apiKeyId: apiKeyId,
-        workspaceId: (rawKey['workspace_id'] as String?) ?? workspaceId,
-        keyPrefix: (rawKey['key_prefix'] as String?) ??
-            (secretKey.length >= 10 ? secretKey.substring(0, 10) : secretKey),
-        name: (rawKey['name'] as String?) ?? name,
+        workspaceId:
+            protoKey.workspaceId.isNotEmpty ? protoKey.workspaceId : workspaceId,
+        keyPrefix: protoKey.keyPrefix.isNotEmpty
+            ? protoKey.keyPrefix
+            : (secretKey.length >= 10 ? secretKey.substring(0, 10) : secretKey),
+        name: protoKey.name.isNotEmpty ? protoKey.name : name,
         scopes: rawScopes,
-        status: _parseApiKeyStatus(rawKey['status'] as String?),
-        logicalKeyId: (rawKey['logical_key_id'] as String?) ?? apiKeyId,
-        requestCount: (rawKey['request_count'] as int?) ?? 0,
-        expiresAt: DateTime.tryParse((rawKey['expires_at'] as String?) ?? '') ??
-            now.add(const Duration(days: 90)),
-        createdBy: (rawKey['created_by'] as String?) ?? 'user_authenticated',
+        status: _fromProtoApiKeyStatus(protoKey.status),
+        logicalKeyId:
+            protoKey.logicalKeyId.isNotEmpty ? protoKey.logicalKeyId : apiKeyId,
+        requestCount: protoKey.requestCount.toInt(),
+        expiresAt: protoKey.hasExpiresAt()
+            ? protoKey.expiresAt.toDateTime()
+            : now.add(const Duration(days: 90)),
+        createdBy: protoKey.createdBy.isNotEmpty
+            ? protoKey.createdBy
+            : 'user_authenticated',
         secretKey: secretKey,
       );
 
@@ -400,10 +487,18 @@ class DeveloperStateNotifier extends ChangeNotifier {
         },
       );
 
-      final rawNewKey = res['new_key'] as Map<String, dynamic>?;
-      final newSecretKey = ((res['new_secret_key'] ?? res['secret_key']) as String?)?.trim() ?? '';
-      final newKeyId = (rawNewKey?['api_key_id'] as String?)?.trim() ?? '';
-      if (rawNewKey == null || newKeyId.isEmpty || newSecretKey.isEmpty) {
+      final normalized = _normalizeProto3JsonMap(res);
+      if (!normalized.containsKey('newSecretKey') &&
+          normalized['secretKey'] != null) {
+        normalized['newSecretKey'] = normalized['secretKey'];
+      }
+      final protoRes = pb.RotateResponse()
+        ..mergeFromProto3Json(normalized, ignoreUnknownFields: true);
+
+      final protoNewKey = protoRes.newKey;
+      final newSecretKey = protoRes.newSecretKey.trim();
+      final newKeyId = protoNewKey.apiKeyId.trim();
+      if (!protoRes.hasNewKey() || newKeyId.isEmpty || newSecretKey.isEmpty) {
         return const DeveloperMutationOutcome(
           ok: false,
           errorCode: 'INVALID_BACKEND_RESPONSE',
@@ -412,24 +507,40 @@ class DeveloperStateNotifier extends ChangeNotifier {
       }
 
       final now = DateTime.now().toUtc();
-      final graceEndsAt = DateTime.tryParse((res['grace_ends_at'] as String?) ?? '') ??
-          now.add(const Duration(hours: 24));
-      final rawScopes =
-          (rawNewKey['scopes'] as List?)?.map((e) => e.toString()).toList() ?? existing.scopes;
+      final graceEndsAt = protoRes.oldKey.hasRotationGraceEndsAt()
+          ? protoRes.oldKey.rotationGraceEndsAt.toDateTime()
+          : (DateTime.tryParse(
+                  (normalized['graceEndsAt'] as String?) ?? '') ??
+              now.add(const Duration(hours: 24)));
+      final rawScopes = protoNewKey.scopes.isNotEmpty
+          ? protoNewKey.scopes.toList()
+          : existing.scopes;
 
       final rotatedNewKey = ApiKeyItem(
         apiKeyId: newKeyId,
-        workspaceId: (rawNewKey['workspace_id'] as String?) ?? workspaceId,
-        keyPrefix: (rawNewKey['key_prefix'] as String?) ??
-            (newSecretKey.length >= 10 ? newSecretKey.substring(0, 10) : newSecretKey),
-        name: (rawNewKey['name'] as String?) ?? '${existing.name} (Rotated)',
+        workspaceId: protoNewKey.workspaceId.isNotEmpty
+            ? protoNewKey.workspaceId
+            : workspaceId,
+        keyPrefix: protoNewKey.keyPrefix.isNotEmpty
+            ? protoNewKey.keyPrefix
+            : (newSecretKey.length >= 10
+                ? newSecretKey.substring(0, 10)
+                : newSecretKey),
+        name: protoNewKey.name.isNotEmpty
+            ? protoNewKey.name
+            : '${existing.name} (Rotated)',
         scopes: rawScopes,
-        status: _parseApiKeyStatus(rawNewKey['status'] as String?),
-        logicalKeyId: (rawNewKey['logical_key_id'] as String?) ?? existing.logicalKeyId,
-        requestCount: 0,
-        expiresAt: DateTime.tryParse((rawNewKey['expires_at'] as String?) ?? '') ??
-            now.add(const Duration(days: 90)),
-        createdBy: existing.createdBy,
+        status: _fromProtoApiKeyStatus(protoNewKey.status),
+        logicalKeyId: protoNewKey.logicalKeyId.isNotEmpty
+            ? protoNewKey.logicalKeyId
+            : existing.logicalKeyId,
+        requestCount: protoNewKey.requestCount.toInt(),
+        expiresAt: protoNewKey.hasExpiresAt()
+            ? protoNewKey.expiresAt.toDateTime()
+            : now.add(const Duration(days: 90)),
+        createdBy: protoNewKey.createdBy.isNotEmpty
+            ? protoNewKey.createdBy
+            : existing.createdBy,
         secretKey: newSecretKey,
       );
 
@@ -472,7 +583,7 @@ class DeveloperStateNotifier extends ChangeNotifier {
     }
 
     try {
-      await rpcCaller!(
+      final res = await rpcCaller!(
         'creativanta.platform.v1.APIKeyService',
         'Revoke',
         {
@@ -483,6 +594,21 @@ class DeveloperStateNotifier extends ChangeNotifier {
           'api_key_id': apiKeyId,
         },
       );
+
+      final normalized = _normalizeProto3JsonMap(res);
+      final protoRes = pb.RevokeResponse()
+        ..mergeFromProto3Json(normalized, ignoreUnknownFields: true);
+      final confirmedRevoked = (protoRes.hasApiKey() &&
+              protoRes.apiKey.status ==
+                  pb.APIKeyStatus.API_KEY_STATUS_REVOKED) ||
+          _parseApiKeyStatus(res['status']?.toString()) == ApiKeyStatus.revoked;
+      if (!confirmedRevoked) {
+        return const DeveloperMutationOutcome(
+          ok: false,
+          errorCode: 'INVALID_BACKEND_RESPONSE',
+          message: 'APIKeyService/Revoke did not confirm revoked key status.',
+        );
+      }
 
       final updated = _keys[index].copyWith(status: ApiKeyStatus.revoked);
       _keys[index] = updated;
@@ -525,12 +651,14 @@ class DeveloperStateNotifier extends ChangeNotifier {
         },
       );
 
-      final rawSub = res['subscription'] as Map<String, dynamic>?;
-      final signingSecret = (res['signing_secret'] as String?)?.trim() ?? '';
-      final subId = ((rawSub?['webhook_subscription_id'] ?? rawSub?['subscription_id']) as String?)
-              ?.trim() ??
-          '';
-      if (rawSub == null || subId.isEmpty || signingSecret.isEmpty) {
+      final normalized = _normalizeProto3JsonMap(res);
+      final protoRes = pb.CreateWebhookSubscriptionResponse()
+        ..mergeFromProto3Json(normalized, ignoreUnknownFields: true);
+
+      final protoSub = protoRes.subscription;
+      final signingSecret = protoRes.signingSecret.trim();
+      final subId = protoSub.webhookSubscriptionId.trim();
+      if (!protoRes.hasSubscription() || subId.isEmpty || signingSecret.isEmpty) {
         return const DeveloperMutationOutcome(
           ok: false,
           errorCode: 'INVALID_BACKEND_RESPONSE',
@@ -541,12 +669,15 @@ class DeveloperStateNotifier extends ChangeNotifier {
 
       final sub = WebhookSubscriptionItem(
         subscriptionId: subId,
-        workspaceId: (rawSub['workspace_id'] as String?) ?? workspaceId,
-        targetUrl: (rawSub['target_url'] as String?) ?? targetUrl,
-        eventTypes:
-            (rawSub['event_types'] as List?)?.map((e) => e.toString()).toList() ?? eventTypes,
-        status: _parseWebhookStatus(rawSub['status'] as String?),
-        consecutiveFailureCount: (rawSub['consecutive_failure_count'] as int?) ?? 0,
+        workspaceId:
+            protoSub.workspaceId.isNotEmpty ? protoSub.workspaceId : workspaceId,
+        targetUrl:
+            protoSub.targetUrl.isNotEmpty ? protoSub.targetUrl : targetUrl,
+        eventTypes: protoSub.eventTypes.isNotEmpty
+            ? protoSub.eventTypes.toList()
+            : eventTypes,
+        status: _fromProtoWebhookStatus(protoSub.status),
+        consecutiveFailureCount: protoSub.consecutiveFailureCount,
         signingSecret: signingSecret,
       );
 

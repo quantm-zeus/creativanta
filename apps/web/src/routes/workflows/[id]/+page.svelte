@@ -1,162 +1,103 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onDestroy } from 'svelte';
   import { page } from '$app/state';
   import type {
-    Workflow,
     WorkflowNode,
     WorkflowEdge,
     NodeType,
-    TriggerType,
     SimulationReport
   } from '$lib/workflow/types';
   import { validateWorkflowGraph } from '$lib/workflow/validation';
   import {
-    loadWorkflowRemote,
-    saveWorkflowRemote,
-    setWorkflowStatusRemote
+    createWorkflowEditorSession,
+    type WorkflowEditorLoadState
   } from '$lib/workflow/runtime';
   import { authStore } from '$lib/auth';
 
-  const workflowId = page.params.id || 'wf-auto-order-01';
+  const initialWorkflowId = page.params.id || 'wf-auto-order-01';
+  const editorSession = createWorkflowEditorSession(initialWorkflowId);
 
-  // Workflow State
-  let title = $state('VIP Order Auto-Fulfillment & Discount Gate');
-  let description = $state('Orchestrates VIP order validation, inventory reservation, discount approval, and diagnostics.');
+  // Workflow State (fail-closed: never seed synthetic v3 or sample 10-node graph)
+  let workflowId = $state(initialWorkflowId);
+  let loadState = $state<WorkflowEditorLoadState>('waiting_context');
+  let loadError = $state<string | null>(null);
+  let title = $state('');
+  let description = $state('');
   let status = $state<'draft' | 'active' | 'paused'>('draft');
-  let version = $state(3);
-  let selectedNodeId = $state<string>('node-trig-1');
+  let version = $state<number | null>(null);
+  let nodes = $state<WorkflowNode[]>([]);
+  let edges = $state<WorkflowEdge[]>([]);
+  let selectedNodeId = $state<string>('');
   let showSimModal = $state(false);
   let saveNotification = $state<string | null>(null);
   let errorNotification = $state<string | null>(null);
   let isPersisting = $state(false);
 
-  onMount(async () => {
-    const res = await loadWorkflowRemote({
-      workspaceId: $authStore.activeWorkspace?.id,
-      workflowId
-    });
-    if (res.ok && res.workflow) {
-      title = res.workflow.title || title;
-      description = res.workflow.description || description;
-      status = res.workflow.status;
-      version = res.workflow.version;
-      if (res.workflow.graph) {
-        nodes = res.workflow.graph.nodes;
-        edges = res.workflow.graph.edges;
-      }
+  const unsubscribeSession = editorSession.subscribe((snap) => {
+    workflowId = snap.workflowId;
+    loadState = snap.loadState;
+    loadError = snap.error;
+    title = snap.title;
+    description = snap.description;
+    status = snap.status;
+    version = snap.version;
+    nodes = snap.nodes;
+    edges = snap.edges;
+    isPersisting = snap.isPersisting;
+    if (snap.nodes.length > 0 && !snap.nodes.some((n) => n.node_id === selectedNodeId)) {
+      selectedNodeId = snap.nodes[0].node_id;
+    } else if (snap.nodes.length === 0) {
+      selectedNodeId = '';
     }
   });
 
-  // Nodes & Edges
-  let nodes = $state<WorkflowNode[]>([
-    {
-      node_id: 'node-trig-1',
-      node_type: 'trigger',
-      title: 'Order Placed Trigger',
-      trigger_config: { type: 'event', event_type: 'order.placed' }
-    },
-    {
-      node_id: 'node-cond-1',
-      node_type: 'condition',
-      title: 'Check VIP Level',
-      condition_config: { field: 'customer.is_vip', operator: 'eq', value_json: 'true' }
-    },
-    {
-      node_id: 'node-trans-1',
-      node_type: 'transform',
-      title: 'Format VIP Payload',
-      transform_config: {
-        mappings: [
-          { target_field: 'greeting', source_field: 'customer.name', template: 'Hello {{customer.name}}' },
-          { target_field: 'tier', source_field: 'customer.tier', default_value: 'standard' }
-        ]
-      }
-    },
-    {
-      node_id: 'node-act-1',
-      node_type: 'action',
-      title: 'Reserve VIP Sku',
-      action_config: {
-        rpc_name: 'creativanta.commerce.v1.InventoryService/ReserveStock',
-        input_json: '{"sku_id":"sku-vip-99","quantity":1}',
-        timeout_seconds: 10,
-        max_retries: 3
-      }
-    },
-    {
-      node_id: 'node-appr-1',
-      node_type: 'approval',
-      title: 'Manager Approval Gate',
-      approval_config: {
-        approver_ids: ['usr-mgr-1'],
-        required_approvals: 1,
-        expires_at_duration_seconds: 86400,
-        auto_action_on_timeout: 'fallback'
-      }
-    },
-    {
-      node_id: 'node-wait-1',
-      node_type: 'wait',
-      title: 'Wait 10 Minutes',
-      wait_config: { wait_type: 'duration', duration_seconds: 600 }
-    },
-    {
-      node_id: 'node-diag-1',
-      node_type: 'diagnostics',
-      title: 'Diagnostics Trace',
-      diagnostics_config: {
-        severity: 'info',
-        user_message: 'VIP workflow step executed successfully',
-        operator_message: 'Payload validated against schema',
-        recommended_next_step: 'Proceed to fulfill'
-      }
-    },
-    {
-      node_id: 'node-fall-1',
-      node_type: 'fallback',
-      title: 'Standard Route',
-      fallback_config: {
-        fallback_node_id: 'node-term-1',
-        reason_template: 'Non-VIP customer routing',
-        log_level: 'warning'
-      }
-    },
-    {
-      node_id: 'node-hand-1',
-      node_type: 'handoff',
-      title: 'VIP Support Handoff',
-      handoff_config: {
-        target_user_id: 'usr-support-1',
-        target_role: 'support',
-        context_note: 'High-value order review'
-      }
-    },
-    {
-      node_id: 'node-term-1',
-      node_type: 'terminal',
-      title: 'Workflow Succeeded',
-      terminal_config: { outcome: 'succeeded', result_template: 'Order processed successfully' }
-    }
-  ]);
+  onDestroy(() => {
+    unsubscribeSession();
+  });
 
-  let edges = $state<WorkflowEdge[]>([
-    { from_node_id: 'node-trig-1', to_node_id: 'node-cond-1' },
-    { from_node_id: 'node-cond-1', to_node_id: 'node-trans-1', branch: 'true' },
-    { from_node_id: 'node-cond-1', to_node_id: 'node-fall-1', branch: 'false' },
-    { from_node_id: 'node-trans-1', to_node_id: 'node-act-1' },
-    { from_node_id: 'node-act-1', to_node_id: 'node-appr-1' },
-    { from_node_id: 'node-appr-1', to_node_id: 'node-wait-1' },
-    { from_node_id: 'node-wait-1', to_node_id: 'node-diag-1' },
-    { from_node_id: 'node-diag-1', to_node_id: 'node-hand-1' },
-    { from_node_id: 'node-hand-1', to_node_id: 'node-term-1' },
-    { from_node_id: 'node-fall-1', to_node_id: 'node-term-1' }
-  ]);
+  $effect(() => {
+    const routeWorkflowId = page.params.id || 'wf-auto-order-01';
+    const userId = $authStore.user?.id ?? null;
+    const workspaceId = $authStore.activeWorkspace?.id ?? null;
+    const authState = $authStore.state;
+    const isDiscoveryLoading = $authStore.isDiscoveryLoading;
 
-  // Validation
-  let validation = $derived(validateWorkflowGraph({ schema_version: 1, nodes, edges }));
+    void editorSession.syncContext({
+      workflowId: routeWorkflowId,
+      userId,
+      workspaceId,
+      authState,
+      isDiscoveryLoading
+    });
+  });
+
+  async function retryLoadWorkflow() {
+    errorNotification = null;
+    await editorSession.syncContext({
+      workflowId: page.params.id || workflowId,
+      userId: $authStore.user?.id ?? null,
+      workspaceId: $authStore.activeWorkspace?.id ?? null,
+      authState: $authStore.state,
+      isDiscoveryLoading: $authStore.isDiscoveryLoading,
+      force: true
+    });
+  }
+
+  // Validation (only evaluated as valid when loaded from server)
+  let validation = $derived(
+    loadState === 'loaded' && version !== null
+      ? validateWorkflowGraph({
+          schema_version: 1,
+          nodes,
+          edges
+        })
+      : { valid: false, errors: ['Workflow chưa được tải từ máy chủ'] }
+  );
 
   // Selected Node
-  let selectedNode = $derived(nodes.find((n) => n.node_id === selectedNodeId) || nodes[0]);
+  let selectedNode = $derived<WorkflowNode | undefined>(
+    nodes.find((n) => n.node_id === selectedNodeId) || nodes[0]
+  );
 
   // Simulation Report
   let simulationReport = $state<SimulationReport | null>(null);
@@ -189,6 +130,7 @@
   }
 
   function addNode(type: NodeType) {
+    if (loadState !== 'loaded') return;
     const id = `node-${type.slice(0, 4)}-${Date.now().toString().slice(-4)}`;
     const newNode: WorkflowNode = {
       node_id: id,
@@ -216,23 +158,30 @@
       newNode.terminal_config = { outcome: 'succeeded' };
     }
 
-    nodes = [...nodes, newNode];
+    const nextNodes = [...nodes, newNode];
+    nodes = nextNodes;
+    editorSession.setGraph({ nodes: nextNodes, edges });
     selectedNodeId = id;
   }
 
   function deleteNode(nodeId: string) {
+    if (loadState !== 'loaded') return;
     if (nodes.length <= 2) {
       alert('A workflow must maintain at least one trigger and one terminal node.');
       return;
     }
-    nodes = nodes.filter((n) => n.node_id !== nodeId);
-    edges = edges.filter((e) => e.from_node_id !== nodeId && e.to_node_id !== nodeId);
-    if (selectedNodeId === nodeId) {
-      selectedNodeId = nodes[0].node_id;
+    const nextNodes = nodes.filter((n) => n.node_id !== nodeId);
+    const nextEdges = edges.filter((e) => e.from_node_id !== nodeId && e.to_node_id !== nodeId);
+    nodes = nextNodes;
+    edges = nextEdges;
+    editorSession.setGraph({ nodes: nextNodes, edges: nextEdges });
+    if (selectedNodeId === nodeId && nextNodes.length > 0) {
+      selectedNodeId = nextNodes[0].node_id;
     }
   }
 
   function runDryRunSimulation() {
+    if (loadState !== 'loaded') return;
     // Execute simulation of current workflow graph with zero side effects
     simulationReport = {
       success: validation.valid,
@@ -253,42 +202,43 @@
     errorNotification = null;
     saveNotification = null;
 
+    if (loadState !== 'loaded' || version === null) {
+      errorNotification =
+        loadError ||
+        'Không thể lưu workflow khi dữ liệu gốc chưa được tải thành công từ máy chủ (fail-closed).';
+      return;
+    }
+
     if (!validation.valid) {
       errorNotification = `Cannot save invalid workflow: ${validation.errors.join('; ')}`;
       return;
     }
 
-    isPersisting = true;
-    try {
-      const res = await saveWorkflowRemote({
-        workspaceId: $authStore.activeWorkspace?.id,
-        workflowId,
-        title,
-        description,
-        expectedVersion: version,
-        graph: { schema_version: 1, nodes, edges }
-      });
+    editorSession.setMeta({ title, description });
+    editorSession.setGraph({ nodes, edges });
+    const res = await editorSession.save();
 
-      if (!res.ok || typeof res.version !== 'number') {
-        errorNotification =
-          res.error ||
-          'Không thể lưu Workflow lên máy chủ (WorkflowService/Update). Cấu hình đồ thị bạn chỉnh sửa đã được giữ nguyên.';
-        return;
-      }
-
-      version = res.version;
-      if (res.status) {
-        status = res.status;
-      }
-      saveNotification = `Workflow saved successfully (v${version})`;
-    } finally {
-      isPersisting = false;
+    if (!res.ok || typeof res.version !== 'number') {
+      errorNotification =
+        res.error ||
+        'Không thể lưu Workflow lên máy chủ (WorkflowService/Update). Cấu hình đồ thị bạn chỉnh sửa đã được giữ nguyên.';
+      return;
     }
+
+    saveNotification = `Workflow saved successfully (v${res.version})`;
   }
 
   async function toggleStatus() {
     errorNotification = null;
     saveNotification = null;
+
+    if (loadState !== 'loaded' || version === null) {
+      errorNotification =
+        loadError ||
+        'Không thể đổi trạng thái workflow khi dữ liệu gốc chưa được tải thành công từ máy chủ (fail-closed).';
+      return;
+    }
+
     const nextStatus: 'active' | 'paused' = status === 'active' ? 'paused' : 'active';
 
     if (nextStatus === 'active' && !validation.valid) {
@@ -296,33 +246,22 @@
       return;
     }
 
-    isPersisting = true;
-    try {
-      const res = await setWorkflowStatusRemote({
-        workspaceId: $authStore.activeWorkspace?.id,
-        workflowId,
-        targetStatus: nextStatus,
-        expectedVersion: version
-      });
+    editorSession.setMeta({ title, description });
+    editorSession.setGraph({ nodes, edges });
+    const res = await editorSession.setStatus(nextStatus);
 
-      if (!res.ok || !res.status) {
-        errorNotification =
-          res.error ||
-          `Không thể chuyển trạng thái Workflow sang '${nextStatus}' trên máy chủ. Trạng thái hiện tại (${status}) được giữ nguyên.`;
-        return;
-      }
-
-      status = res.status;
-      if (typeof res.version === 'number') {
-        version = res.version;
-      }
-      saveNotification = `Workflow status updated to ${status} (v${version})`;
-    } finally {
-      isPersisting = false;
+    if (!res.ok || !res.status) {
+      errorNotification =
+        res.error ||
+        `Không thể chuyển trạng thái Workflow sang '${nextStatus}' trên máy chủ. Trạng thái hiện tại (${status}) được giữ nguyên.`;
+      return;
     }
+
+    saveNotification = `Workflow status updated to ${res.status} (v${res.version ?? version})`;
   }
 
   function exportWorkflow() {
+    if (loadState !== 'loaded' || nodes.length === 0 || version === null) return;
     const payload = {
       schema_version: 1,
       title,
@@ -354,10 +293,12 @@
       <input
         type="text"
         bind:value={title}
-        class="bg-transparent border-b border-transparent hover:border-neutral-700 focus:border-indigo-500 px-1 py-0.5 text-sm font-semibold text-white focus:outline-none transition-colors truncate max-w-xs sm:max-w-md"
+        disabled={loadState !== 'loaded' || isPersisting}
+        placeholder={loadState === 'loaded' ? 'Workflow title' : workflowId}
+        class="bg-transparent border-b border-transparent hover:border-neutral-700 focus:border-indigo-500 px-1 py-0.5 text-sm font-semibold text-white focus:outline-none transition-colors truncate max-w-xs sm:max-w-md disabled:opacity-60"
       />
       <span class="hidden lg:inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-        v{version}
+        {version !== null ? `v${version}` : 'unloaded'}
       </span>
       <span class="hidden xl:inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
         Native Engine
@@ -368,8 +309,9 @@
     <div class="flex items-center gap-2">
       <button
         type="button"
+        disabled={loadState !== 'loaded' || isPersisting || version === null}
         onclick={toggleStatus}
-        class="px-2.5 py-1 text-xs font-semibold rounded-md border capitalize transition-colors {status === 'active'
+        class="px-2.5 py-1 text-xs font-semibold rounded-md border capitalize transition-colors disabled:opacity-40 disabled:cursor-not-allowed {status === 'active'
           ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
           : status === 'draft'
             ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
@@ -380,24 +322,27 @@
 
       <button
         type="button"
+        disabled={loadState !== 'loaded' || isPersisting || nodes.length === 0}
         onclick={exportWorkflow}
-        class="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-neutral-300 hover:text-white bg-neutral-800 hover:bg-neutral-700 rounded-lg transition-colors border border-neutral-700"
+        class="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-neutral-300 hover:text-white bg-neutral-800 hover:bg-neutral-700 rounded-lg transition-colors border border-neutral-700 disabled:opacity-40 disabled:cursor-not-allowed"
       >
         <span>Export</span>
       </button>
 
       <button
         type="button"
+        disabled={loadState !== 'loaded' || isPersisting || nodes.length === 0}
         onclick={runDryRunSimulation}
-        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-indigo-300 hover:text-white bg-indigo-950/60 hover:bg-indigo-900/60 rounded-lg transition-colors border border-indigo-800/80"
+        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-indigo-300 hover:text-white bg-indigo-950/60 hover:bg-indigo-900/60 rounded-lg transition-colors border border-indigo-800/80 disabled:opacity-40 disabled:cursor-not-allowed"
       >
         <span>▶ Test</span>
       </button>
 
       <button
         type="button"
+        disabled={loadState !== 'loaded' || isPersisting || version === null}
         onclick={saveWorkflow}
-        class="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg transition-colors shadow-sm"
+        class="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
       >
         <span>Save</span>
       </button>
@@ -411,14 +356,21 @@
     </div>
   {/if}
 
-  {#if errorNotification}
+  {#if errorNotification || (loadState === 'error' && loadError)}
     <div class="bg-rose-500/15 border-b border-rose-500/30 px-4 py-2 text-xs font-medium text-rose-200 flex items-center justify-between" role="alert">
-      <span>⚠ {errorNotification}</span>
-      <button type="button" onclick={() => (errorNotification = null)} class="underline ml-3">Đóng</button>
+      <span>⚠ {errorNotification || loadError}</span>
+      <div class="flex items-center gap-3">
+        {#if loadState === 'error'}
+          <button type="button" onclick={retryLoadWorkflow} class="underline font-semibold">Thử tải lại</button>
+        {/if}
+        {#if errorNotification}
+          <button type="button" onclick={() => (errorNotification = null)} class="underline">Đóng</button>
+        {/if}
+      </div>
     </div>
   {/if}
 
-  {#if !validation.valid}
+  {#if loadState === 'loaded' && !validation.valid}
     <div class="bg-rose-500/10 border-b border-rose-500/30 px-4 py-2 text-xs text-rose-300 flex items-center justify-between">
       <div class="flex items-center gap-2">
         <span class="font-bold">Graph Validation Error:</span>
@@ -533,6 +485,28 @@
 
     <!-- Center Column: Canvas (flexible) -->
     <main class="flex-1 bg-neutral-950 p-6 overflow-y-auto relative flex flex-col items-center">
+      {#if loadState === 'waiting_context' || loadState === 'loading'}
+        <div class="max-w-md w-full my-auto p-6 rounded-2xl border border-neutral-800 bg-neutral-900/60 text-center space-y-2">
+          <h1 class="text-sm font-semibold text-white">Đang tải cấu hình Workflow...</h1>
+          <p class="text-xs text-neutral-400">
+            Trình chỉnh sửa đang đồng bộ ngữ cảnh workspace và tải định nghĩa gốc từ máy chủ. Thao tác lưu đã được khóa an toàn cho đến khi dữ liệu sẵn sàng.
+          </p>
+        </div>
+      {:else if loadState === 'error'}
+        <div class="max-w-md w-full my-auto p-6 rounded-2xl border border-rose-500/30 bg-rose-950/20 text-center space-y-3">
+          <h1 class="text-sm font-semibold text-rose-200">Không thể tải Workflow từ máy chủ</h1>
+          <p class="text-xs text-rose-300/90">
+            {loadError || 'Hệ thống đã khóa tính năng Lưu và Kích hoạt để tránh ghi đè dữ liệu hiện có bằng đồ thị mẫu (fail-closed).'}
+          </p>
+          <button
+            type="button"
+            onclick={retryLoadWorkflow}
+            class="px-4 py-1.5 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 rounded-lg transition-colors"
+          >
+            Thử tải lại
+          </button>
+        </div>
+      {:else}
       <div class="max-w-2xl w-full space-y-4">
         {#each nodes as node, idx (node.node_id)}
           <div
@@ -607,10 +581,12 @@
           {/if}
         {/each}
       </div>
+      {/if}
     </main>
 
     <!-- Right Column: Node Config Inspector (340px) -->
     <aside class="w-80 border-l border-neutral-800 bg-neutral-900/60 p-4 overflow-y-auto shrink-0 space-y-4">
+      {#if loadState === 'loaded' && selectedNode}
       <div class="flex items-center justify-between border-b border-neutral-800 pb-3">
         <h3 class="text-xs font-bold uppercase tracking-wider text-neutral-300">
           Node Configuration
@@ -770,6 +746,11 @@
           </div>
         {/if}
       </div>
+      {:else}
+      <div class="text-xs text-neutral-500">
+         Cấu hình Node sẽ hiển thị sau khi Workflow được tải thành công từ máy chủ.
+      </div>
+      {/if}
     </aside>
   </div>
 

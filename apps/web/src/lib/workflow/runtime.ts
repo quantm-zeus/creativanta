@@ -665,6 +665,19 @@ export async function loadWorkflowRemote(
     rawGraphSource,
     wf?.trigger_config ?? wf?.triggerConfig
   );
+  const parsedVersion =
+    typeof wf?.version === 'number'
+      ? wf.version
+      : typeof wf?.version === 'string' && wf.version.trim() !== ''
+        ? Number(wf.version)
+        : NaN;
+
+  if (!Number.isFinite(parsedVersion) || parsedVersion <= 0) {
+    return {
+      ok: false,
+      error: 'Phản hồi từ máy chủ thiếu số phiên bản workflow hợp lệ (version) (fail-closed).'
+    };
+  }
 
   return {
     ok: true,
@@ -673,7 +686,7 @@ export async function loadWorkflowRemote(
       title: String(wf?.title || ''),
       description: String(wf?.description || ''),
       status: normalizeWorkflowStatus(wf?.status) || 'draft',
-      version: typeof wf?.version === 'number' ? wf.version : 1,
+      version: parsedVersion,
       graph
     }
   };
@@ -814,5 +827,408 @@ export async function setWorkflowStatusRemote(
     ok: true,
     status: confirmedStatus,
     version: rpcRes.data?.workflow?.version ?? params.expectedVersion
+  };
+}
+
+export type WorkflowEditorLoadState = 'waiting_context' | 'loading' | 'loaded' | 'error';
+
+export interface WorkflowEditorSessionSnapshot {
+  workflowId: string;
+  workspaceId: string | null;
+  userId: string | null;
+  loadState: WorkflowEditorLoadState;
+  loadedContextKey: string | null;
+  title: string;
+  description: string;
+  status: 'draft' | 'active' | 'paused';
+  version: number | null;
+  nodes: WorkflowNode[];
+  edges: WorkflowEdge[];
+  error: string | null;
+  isPersisting: boolean;
+}
+
+export interface WorkflowEditorContextInput {
+  userId?: string | null;
+  workspaceId?: string | null;
+  workflowId?: string | null;
+  authState?: string;
+  isDiscoveryLoading?: boolean;
+  force?: boolean;
+}
+
+/**
+ * Fail-closed state controller for the Workflow Studio editor (`W021`).
+ *
+ * Guarantees:
+ * 1. Never seeds a hardcoded sample graph or synthetic `version = 3` before or after a failed `Get`.
+ * 2. Blocks `save()` and `setStatus()` whenever `loadState !== 'loaded'` or `version === null`.
+ * 3. Re-synchronizes when delayed auth/workspace discovery resolves or when `(userId, workspaceId, workflowId)` changes.
+ * 4. Uses a monotonic request epoch to discard stale in-flight `Get`/`Update`/`Activate` responses after a workspace or user switch.
+ */
+export function createWorkflowEditorSession(initialWorkflowId: string) {
+  let state: WorkflowEditorSessionSnapshot = {
+    workflowId: String(initialWorkflowId || '').trim(),
+    workspaceId: null,
+    userId: null,
+    loadState: 'waiting_context',
+    loadedContextKey: null,
+    title: '',
+    description: '',
+    status: 'draft',
+    version: null,
+    nodes: [],
+    edges: [],
+    error: null,
+    isPersisting: false
+  };
+
+  let loadEpoch = 0;
+  const subscribers = new Set<(snapshot: WorkflowEditorSessionSnapshot) => void>();
+
+  function emit() {
+    const snap = getSnapshot();
+    for (const sub of subscribers) {
+      sub(snap);
+    }
+  }
+
+  function getSnapshot(): WorkflowEditorSessionSnapshot {
+    return {
+      ...state,
+      nodes: [...state.nodes],
+      edges: [...state.edges]
+    };
+  }
+
+  function subscribe(run: (snapshot: WorkflowEditorSessionSnapshot) => void): () => void {
+    subscribers.add(run);
+    run(getSnapshot());
+    return () => {
+      subscribers.delete(run);
+    };
+  }
+
+  async function syncContext(
+    ctx: WorkflowEditorContextInput,
+    options: CanonicalRpcOptions = {}
+  ): Promise<{
+    ok: boolean;
+    loadState: WorkflowEditorLoadState;
+    stale?: boolean;
+    error?: string;
+  }> {
+    const targetWorkflowId = String(ctx.workflowId ?? state.workflowId ?? '').trim();
+    const targetUserId = String(ctx.userId ?? '').trim() || null;
+    const targetWorkspaceId = String(ctx.workspaceId ?? '').trim() || null;
+
+    if (
+      ctx.isDiscoveryLoading === true ||
+      (ctx.authState !== undefined && ctx.authState !== 'authenticated') ||
+      !targetUserId ||
+      !targetWorkspaceId ||
+      !targetWorkflowId
+    ) {
+      loadEpoch += 1;
+      state = {
+        workflowId: targetWorkflowId,
+        workspaceId: targetWorkspaceId,
+        userId: targetUserId,
+        loadState: 'waiting_context',
+        loadedContextKey: null,
+        title: '',
+        description: '',
+        status: 'draft',
+        version: null,
+        nodes: [],
+        edges: [],
+        error: null,
+        isPersisting: false
+      };
+      emit();
+      return {
+        ok: false,
+        loadState: 'waiting_context'
+      };
+    }
+
+    const contextKey = `${targetUserId}:${targetWorkspaceId}:${targetWorkflowId}`;
+    if (!ctx.force && state.loadState === 'loaded' && state.loadedContextKey === contextKey) {
+      return {
+        ok: true,
+        loadState: 'loaded'
+      };
+    }
+
+    const requestEpoch = ++loadEpoch;
+    state = {
+      workflowId: targetWorkflowId,
+      workspaceId: targetWorkspaceId,
+      userId: targetUserId,
+      loadState: 'loading',
+      loadedContextKey: null,
+      title: '',
+      description: '',
+      status: 'draft',
+      version: null,
+      nodes: [],
+      edges: [],
+      error: null,
+      isPersisting: false
+    };
+    emit();
+
+    const res = await loadWorkflowRemote(
+      {
+        workspaceId: targetWorkspaceId,
+        workflowId: targetWorkflowId
+      },
+      {
+        ...options,
+        workspaceId: targetWorkspaceId
+      }
+    );
+
+    if (requestEpoch !== loadEpoch) {
+      return {
+        ok: false,
+        stale: true,
+        loadState: state.loadState
+      };
+    }
+
+    if (
+      !res.ok ||
+      !res.workflow ||
+      !res.workflow.graph ||
+      res.workflow.graph.nodes.length === 0 ||
+      res.workflow.workflowId !== targetWorkflowId
+    ) {
+      const errMessage =
+        res.error ||
+        'Không thể tải cấu hình workflow từ máy chủ. Trình chỉnh sửa đã khóa lưu để bảo vệ dữ liệu hiện có (fail-closed).';
+      state = {
+        ...state,
+        loadState: 'error',
+        loadedContextKey: null,
+        version: null,
+        nodes: [],
+        edges: [],
+        error: errMessage,
+        isPersisting: false
+      };
+      emit();
+      return {
+        ok: false,
+        loadState: 'error',
+        error: errMessage
+      };
+    }
+
+    state = {
+      workflowId: res.workflow.workflowId,
+      workspaceId: targetWorkspaceId,
+      userId: targetUserId,
+      loadState: 'loaded',
+      loadedContextKey: contextKey,
+      title: res.workflow.title || res.workflow.workflowId,
+      description: res.workflow.description || '',
+      status: res.workflow.status,
+      version: res.workflow.version,
+      nodes: [...res.workflow.graph.nodes],
+      edges: [...res.workflow.graph.edges],
+      error: null,
+      isPersisting: false
+    };
+    emit();
+    return {
+      ok: true,
+      loadState: 'loaded'
+    };
+  }
+
+  function setMeta(meta: { title?: string; description?: string }) {
+    if (state.loadState !== 'loaded') return;
+    state = {
+      ...state,
+      title: meta.title !== undefined ? meta.title : state.title,
+      description: meta.description !== undefined ? meta.description : state.description
+    };
+    emit();
+  }
+
+  function setGraph(graph: { nodes: WorkflowNode[]; edges: WorkflowEdge[] }) {
+    if (state.loadState !== 'loaded') return;
+    state = {
+      ...state,
+      nodes: [...graph.nodes],
+      edges: [...graph.edges]
+    };
+    emit();
+  }
+
+  async function save(options: CanonicalRpcOptions = {}): Promise<SaveWorkflowRemoteResult> {
+    if (
+      state.loadState !== 'loaded' ||
+      state.version === null ||
+      !state.loadedContextKey ||
+      !state.workspaceId ||
+      !state.workflowId
+    ) {
+      return {
+        ok: false,
+        error:
+          'Không thể lưu workflow khi dữ liệu gốc chưa được tải thành công từ máy chủ (fail-closed).'
+      };
+    }
+
+    const saveEpoch = loadEpoch;
+    const saveContextKey = state.loadedContextKey;
+    const activeWorkspaceId = state.workspaceId;
+    const activeWorkflowId = state.workflowId;
+    const activeVersion = state.version;
+    state = { ...state, isPersisting: true };
+    emit();
+
+    try {
+      const res = await saveWorkflowRemote(
+        {
+          workspaceId: activeWorkspaceId,
+          workflowId: activeWorkflowId,
+          title: state.title,
+          description: state.description,
+          expectedVersion: activeVersion,
+          graph: {
+            schema_version: 1,
+            nodes: state.nodes,
+            edges: state.edges
+          }
+        },
+        {
+          ...options,
+          workspaceId: activeWorkspaceId
+        }
+      );
+
+      if (saveEpoch !== loadEpoch || state.loadedContextKey !== saveContextKey) {
+        return {
+          ok: false,
+          error: 'Ngữ cảnh phiên làm việc đã thay đổi trong khi lưu (fail-closed).'
+        };
+      }
+
+      if (res.ok && typeof res.version === 'number') {
+        state = {
+          ...state,
+          version: res.version,
+          status: res.status ?? state.status,
+          error: null,
+          isPersisting: false
+        };
+        emit();
+      } else {
+        state = {
+          ...state,
+          isPersisting: false
+        };
+        emit();
+      }
+      return res;
+    } catch (err) {
+      if (saveEpoch === loadEpoch && state.loadedContextKey === saveContextKey) {
+        state = { ...state, isPersisting: false };
+        emit();
+      }
+      return {
+        ok: false,
+        error: err instanceof Error ? err.message : 'Lỗi không xác định khi lưu workflow'
+      };
+    }
+  }
+
+  async function setStatus(
+    targetStatus: 'draft' | 'active' | 'paused',
+    options: CanonicalRpcOptions = {}
+  ): Promise<SaveWorkflowRemoteResult> {
+    if (
+      state.loadState !== 'loaded' ||
+      state.version === null ||
+      !state.loadedContextKey ||
+      !state.workspaceId ||
+      !state.workflowId
+    ) {
+      return {
+        ok: false,
+        error:
+          'Không thể đổi trạng thái workflow khi dữ liệu gốc chưa được tải thành công từ máy chủ (fail-closed).'
+      };
+    }
+
+    const statusEpoch = loadEpoch;
+    const statusContextKey = state.loadedContextKey;
+    const activeWorkspaceId = state.workspaceId;
+    const activeWorkflowId = state.workflowId;
+    const activeVersion = state.version;
+    state = { ...state, isPersisting: true };
+    emit();
+
+    try {
+      const res = await setWorkflowStatusRemote(
+        {
+          workspaceId: activeWorkspaceId,
+          workflowId: activeWorkflowId,
+          targetStatus,
+          expectedVersion: activeVersion
+        },
+        {
+          ...options,
+          workspaceId: activeWorkspaceId
+        }
+      );
+
+      if (statusEpoch !== loadEpoch || state.loadedContextKey !== statusContextKey) {
+        return {
+          ok: false,
+          error: 'Ngữ cảnh phiên làm việc đã thay đổi trong khi cập nhật trạng thái (fail-closed).'
+        };
+      }
+
+      if (res.ok && res.status) {
+        state = {
+          ...state,
+          status: res.status,
+          version: typeof res.version === 'number' ? res.version : state.version,
+          error: null,
+          isPersisting: false
+        };
+        emit();
+      } else {
+        state = {
+          ...state,
+          isPersisting: false
+        };
+        emit();
+      }
+      return res;
+    } catch (err) {
+      if (statusEpoch === loadEpoch && state.loadedContextKey === statusContextKey) {
+        state = { ...state, isPersisting: false };
+        emit();
+      }
+      return {
+        ok: false,
+        error: err instanceof Error ? err.message : 'Lỗi không xác định khi cập nhật trạng thái'
+      };
+    }
+  }
+
+  return {
+    subscribe,
+    getSnapshot,
+    syncContext,
+    setMeta,
+    setGraph,
+    save,
+    setStatus
   };
 }

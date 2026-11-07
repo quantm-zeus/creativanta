@@ -15,11 +15,15 @@ import {
   registerWebhookRemote,
   developerStore
 } from '../developer/public_api';
-import { submitSupportTicketRemote } from '../help/store';
+import {
+  submitSupportTicketRemote,
+  supportStore
+} from '../help/store';
 import {
   loadWorkflowRemote,
   saveWorkflowRemote,
-  setWorkflowStatusRemote
+  setWorkflowStatusRemote,
+  createWorkflowEditorSession
 } from '../workflow/runtime';
 import { CANONICAL_LEGAL_LINKS, getLegalDocumentBySlug } from '../a11y';
 import { executeVideoAgentStepRemote, planVideoAgent } from '../automation/agent';
@@ -896,5 +900,325 @@ describe('Remediation Canonical RPC Flows (UF-04..UF-08, AI-02, R04)', () => {
       expect(doc?.sections.length).toBeGreaterThanOrEqual(2);
     }
     expect(getLegalDocumentBySlug('non-existent-policy')).toBeNull();
+  });
+
+  it('S8-F1 Image-to-Video refuses to auto-approve a server credit quote higher than the user-consented quote', async () => {
+    const capturedCalls: Array<{ url: string; body: any }> = [];
+
+    const quoteHigherFetch = vi.fn(async (url: string, init?: RequestInit) => {
+      const body = init?.body ? JSON.parse(String(init.body)) : {};
+      capturedCalls.push({ url: String(url), body });
+      if (body.dry_run === true) {
+        return jsonResponse({
+          is_dry_run: true,
+          budget_preview: {
+            quote_id: 'quote_server_expensive_80',
+            quote_expires_at: '2026-11-07T22:00:00Z',
+            total_estimated_credits: '80',
+            current_available_credits: '320',
+            sufficient_credits: true
+          }
+        });
+      }
+      return jsonResponse({
+        is_dry_run: false,
+        job: {
+          job_id: 'job_i2v_after_consent_01',
+          estimated_credits: '80',
+          quote_id: body.quote_id,
+          status: 'processing'
+        }
+      });
+    });
+
+    // User saw local estimate of 10 credits; server dry_run quote returns 80 credits.
+    // Must stop after dry_run and require explicit confirmation without dispatching live Generate.
+    const initialAttempt = await requestImageToVideoGenerationRemote(
+      {
+        workspaceId: 'ws-1',
+        title: 'Standard 10cr Button Click',
+        images: [
+          {
+            id: 'img-1',
+            url: 'https://cdn.creativanta.vn/sneaker.jpg',
+            name: 'sneaker.jpg',
+            durationSeconds: 4,
+            customMotionStyle: 'parallax_3d'
+          }
+        ],
+        selectedMotionStyleId: 'parallax_3d',
+        motionIntensity: 75,
+        aspectRatio: '9:16',
+        selectedTransitionId: 'crossfade',
+        quoteCredits: 10,
+        availableBalance: 320,
+        requirePreflightQuote: true
+      },
+      {
+        token: 'jwt_valid',
+        workspaceId: 'ws-1',
+        fetchFn: quoteHigherFetch as unknown as typeof fetch
+      }
+    );
+
+    expect(initialAttempt.ok).toBe(false);
+    expect(initialAttempt.requiresConfirmation).toBe(true);
+    expect(initialAttempt.quoteId).toBe('quote_server_expensive_80');
+    expect(initialAttempt.quotedCredits).toBe('80');
+    expect(initialAttempt.jobId).toBeUndefined();
+    // Crucial: Only the dry_run request was sent; live Generate was NOT called!
+    expect(capturedCalls).toHaveLength(1);
+    expect(capturedCalls[0].body.dry_run).toBe(true);
+
+    // Step 2: Only after user explicitly confirms 80 credits with the returned quoteId does live Generate execute
+    const confirmedAttempt = await requestImageToVideoGenerationRemote(
+      {
+        workspaceId: 'ws-1',
+        title: 'Standard 10cr Button Click',
+        images: [
+          {
+            id: 'img-1',
+            url: 'https://cdn.creativanta.vn/sneaker.jpg',
+            name: 'sneaker.jpg',
+            durationSeconds: 4,
+            customMotionStyle: 'parallax_3d'
+          }
+        ],
+        selectedMotionStyleId: 'parallax_3d',
+        motionIntensity: 75,
+        aspectRatio: '9:16',
+        selectedTransitionId: 'crossfade',
+        quoteCredits: 80,
+        confirmedCredits: '80',
+        quoteId: initialAttempt.quoteId,
+        availableBalance: 320,
+        requirePreflightQuote: false
+      },
+      {
+        token: 'jwt_valid',
+        workspaceId: 'ws-1',
+        fetchFn: quoteHigherFetch as unknown as typeof fetch
+      }
+    );
+
+    expect(confirmedAttempt.ok).toBe(true);
+    expect(confirmedAttempt.jobId).toBe('job_i2v_after_consent_01');
+    expect(confirmedAttempt.reservedCredits).toBe(80);
+    expect(capturedCalls).toHaveLength(2);
+    expect(capturedCalls[1].body.dry_run).toBe(false);
+    expect(capturedCalls[1].body.quote_id).toBe('quote_server_expensive_80');
+    expect(capturedCalls[1].body.confirmed_credits).toBe('80');
+  });
+
+  it('S8-F2 Workflow editor session blocks Save/Activate before load or after load failure, reloads on delayed discovery, and discards stale tenant responses', async () => {
+    const rpcCalls: Array<{ url: string; body: any; workspaceHeader?: string | null }> = [];
+    const session = createWorkflowEditorSession('wf-prod-v3');
+
+    // 1. Initial state before auth/discovery is ready: no default fixture graph or version 3 loaded, mutations blocked
+    expect(session.getSnapshot().loadState).toBe('waiting_context');
+    expect(session.getSnapshot().nodes).toHaveLength(0);
+    expect(session.getSnapshot().version).toBeNull();
+
+    const prematureSave = await session.save({
+      token: 'jwt_valid',
+      fetchFn: vi.fn() as unknown as typeof fetch
+    });
+    expect(prematureSave.ok).toBe(false);
+
+    // 2. Load failure (e.g., 503 or 403): session enters error state, keeps nodes empty, and blocks Save/Activate
+    const failFetch = vi.fn(async (url: string, init?: RequestInit) => {
+      rpcCalls.push({ url: String(url), body: init?.body ? JSON.parse(String(init.body)) : null });
+      return jsonResponse({ code: 'permission_denied', message: 'Forbidden' }, 403);
+    });
+
+    const loadFailRes = await session.syncContext(
+      { userId: 'usr-1', workspaceId: 'ws-1', workflowId: 'wf-prod-v3' },
+      { token: 'jwt_valid', workspaceId: 'ws-1', fetchFn: failFetch as unknown as typeof fetch }
+    );
+    expect(loadFailRes.ok).toBe(false);
+    expect(session.getSnapshot().loadState).toBe('error');
+    expect(session.getSnapshot().nodes).toHaveLength(0);
+
+    const saveAfterErrorFetch = vi.fn();
+    const saveAfterError = await session.save({
+      token: 'jwt_valid',
+      workspaceId: 'ws-1',
+      fetchFn: saveAfterErrorFetch as unknown as typeof fetch
+    });
+    expect(saveAfterError.ok).toBe(false);
+    expect(saveAfterErrorFetch).not.toHaveBeenCalled();
+
+    const activateAfterError = await session.setStatus('active', {
+      token: 'jwt_valid',
+      workspaceId: 'ws-1',
+      fetchFn: saveAfterErrorFetch as unknown as typeof fetch
+    });
+    expect(activateAfterError.ok).toBe(false);
+    expect(saveAfterErrorFetch).not.toHaveBeenCalled();
+
+    // 3. Stale response from tenant A is discarded if user switches to tenant B while load is in flight
+    let resolveTenantA!: (value: Response) => void;
+    const tenantAFetch = vi.fn(
+      () =>
+        new Promise<Response>((resolve) => {
+          resolveTenantA = resolve;
+        })
+    );
+    const tenantBFetch = vi.fn(async () =>
+      jsonResponse({
+        workflow: {
+          workflow_id: 'wf-prod-v3',
+          workspace_id: 'ws-tenant-B',
+          title: 'Tenant B Authoritative Workflow',
+          description: 'Loaded from Tenant B',
+          status: 'WORKFLOW_STATUS_DRAFT',
+          version: 7,
+          trigger_config: { type: 'TRIGGER_TYPE_EVENT', event_type: 'order.created' },
+          action_chain: {
+            schema_version: 1,
+            nodes: [
+              {
+                node_id: 'trig-b',
+                node_type: 'NODE_TYPE_TRIGGER',
+                title: 'Tenant B Trigger',
+                trigger_config: { config: { type: 'TRIGGER_TYPE_EVENT', event_type: 'order.created' } }
+              },
+              {
+                node_id: 'term-b',
+                node_type: 'NODE_TYPE_TERMINAL',
+                title: 'Tenant B End',
+                terminal_config: { outcome: 'succeeded' }
+              }
+            ],
+            edges: [{ from_node_id: 'trig-b', to_node_id: 'term-b' }]
+          }
+        }
+      })
+    );
+
+    const pendingA = session.syncContext(
+      { userId: 'usr-1', workspaceId: 'ws-tenant-A', workflowId: 'wf-prod-v3', force: true },
+      { token: 'jwt_a', workspaceId: 'ws-tenant-A', fetchFn: tenantAFetch as unknown as typeof fetch }
+    );
+
+    const completedB = await session.syncContext(
+      { userId: 'usr-1', workspaceId: 'ws-tenant-B', workflowId: 'wf-prod-v3' },
+      { token: 'jwt_b', workspaceId: 'ws-tenant-B', fetchFn: tenantBFetch as unknown as typeof fetch }
+    );
+    expect(completedB.ok).toBe(true);
+    expect(session.getSnapshot().loadState).toBe('loaded');
+    expect(session.getSnapshot().title).toBe('Tenant B Authoritative Workflow');
+    expect(session.getSnapshot().version).toBe(7);
+
+    // Now resolve stale Tenant A response -> must NOT overwrite Tenant B state
+    resolveTenantA(
+      jsonResponse({
+        workflow: {
+          workflow_id: 'wf-prod-v3',
+          workspace_id: 'ws-tenant-A',
+          title: 'Stale Tenant A Workflow',
+          status: 'WORKFLOW_STATUS_ACTIVE',
+          version: 3,
+          action_chain: {
+            schema_version: 1,
+            nodes: [
+              { node_id: 'trig-a', node_type: 'NODE_TYPE_TRIGGER', title: 'A' },
+              { node_id: 'term-a', node_type: 'NODE_TYPE_TERMINAL', title: 'A End' }
+            ],
+            edges: [{ from_node_id: 'trig-a', to_node_id: 'term-a' }]
+          }
+        }
+      })
+    );
+    await pendingA;
+
+    expect(session.getSnapshot().title).toBe('Tenant B Authoritative Workflow');
+    expect(session.getSnapshot().version).toBe(7);
+    expect(session.getSnapshot().nodes[0].node_id).toBe('trig-b');
+  });
+
+  it('S8-ResetGuard In-flight Developer and Support RPC responses do not upsert into stores after auth/workspace reset', async () => {
+    developerStore.reset();
+    supportStore.reset();
+
+    let resolveKeyRpc!: (value: Response) => void;
+    let resolveTicketRpc!: (value: Response) => void;
+
+    const slowKeyFetch = vi.fn(
+      () =>
+        new Promise<Response>((resolve) => {
+          resolveKeyRpc = resolve;
+        })
+    );
+    const slowTicketFetch = vi.fn(
+      () =>
+        new Promise<Response>((resolve) => {
+          resolveTicketRpc = resolve;
+        })
+    );
+
+    const keyPromise = issueApiKeyRemote(
+      {
+        workspaceId: 'ws-old',
+        tier: 'pro',
+        activeKeysCount: 0,
+        name: 'Pre-Logout Key',
+        scopes: ['read:content']
+      },
+      {
+        token: 'jwt_old',
+        workspaceId: 'ws-old',
+        fetchFn: slowKeyFetch as unknown as typeof fetch
+      }
+    );
+
+    const ticketPromise = submitSupportTicketRemote(
+      {
+        workspaceId: 'ws-old',
+        planTier: 'pro',
+        subject: 'Pre-Logout Ticket',
+        priority: 'high',
+        initialMessage: 'Confidential workspace issue'
+      },
+      {
+        token: 'jwt_old',
+        workspaceId: 'ws-old',
+        fetchFn: slowTicketFetch as unknown as typeof fetch
+      }
+    );
+
+    // Simulate logout / workspace switch reset before responses arrive
+    developerStore.reset();
+    supportStore.reset();
+
+    resolveKeyRpc(
+      jsonResponse({
+        apiKey: {
+          apiKeyId: 'ak_stale_old_tenant',
+          workspaceId: 'ws-old',
+          keyPrefix: 'ca_live_ol',
+          name: 'Pre-Logout Key',
+          scopes: ['read:content'],
+          status: 'API_KEY_STATUS_ACTIVE'
+        },
+        secretKey: 'ca_live_old_tenant_secret'
+      })
+    );
+    resolveTicketRpc(
+      jsonResponse({
+        ticket: {
+          ticket_id: 'tk_stale_old_tenant',
+          ticket_number: '#TK-99999',
+          subject: 'Pre-Logout Ticket',
+          priority: 'high',
+          status: 'open'
+        }
+      })
+    );
+
+    await Promise.all([keyPromise, ticketPromise]);
+
+    expect(get(developerStore).keys).toHaveLength(0);
+    expect(get(supportStore.tickets)).toHaveLength(0);
   });
 });

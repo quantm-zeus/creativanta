@@ -644,6 +644,10 @@ export interface ImageToVideoGenerationResult {
 	ok: boolean;
 	jobId?: string;
 	quoteId?: string;
+	quotedCredits?: string;
+	availableCredits?: string;
+	quoteExpiresAt?: string;
+	requiresConfirmation?: boolean;
 	reservedCredits?: number;
 	remainingBalance?: number;
 	error?: string;
@@ -744,10 +748,19 @@ export async function requestImageToVideoQuoteRemote(
 
 	const preview = rpcRes.data?.budget_preview || rpcRes.data?.budgetPreview;
 	const quoteId = String(preview?.quote_id || preview?.quoteId || '').trim();
-	const quotedCredits = String(
-		preview?.total_estimated_credits ||
-			preview?.totalEstimatedCredits ||
-			input.quoteCredits
+	const rawQuotedCredits = String(
+		preview?.total_estimated_credits ??
+			preview?.totalEstimatedCredits ??
+			preview?.quoted_credits ??
+			preview?.quotedCredits ??
+			''
+	).trim();
+	const availableCredits = String(
+		preview?.current_available_credits ??
+			preview?.currentAvailableCredits ??
+			preview?.available_credits ??
+			preview?.availableCredits ??
+			''
 	).trim();
 	const sufficient = preview?.sufficient_credits ?? preview?.sufficientCredits ?? true;
 
@@ -758,11 +771,25 @@ export async function requestImageToVideoQuoteRemote(
 		};
 	}
 
-	if (sufficient === false) {
+	const quotedCreditsNum = Number(rawQuotedCredits);
+	if (!rawQuotedCredits || !Number.isFinite(quotedCreditsNum) || quotedCreditsNum <= 0) {
 		return {
 			ok: false,
 			quoteId,
-			quotedCredits,
+			error: 'Phản hồi báo giá từ máy chủ thiếu total_estimated_credits hợp lệ (fail-closed).'
+		};
+	}
+
+	const availableCreditsNum = availableCredits !== '' ? Number(availableCredits) : NaN;
+	if (
+		sufficient === false ||
+		(Number.isFinite(availableCreditsNum) && quotedCreditsNum > availableCreditsNum)
+	) {
+		return {
+			ok: false,
+			quoteId,
+			quotedCredits: rawQuotedCredits,
+			availableCredits,
 			sufficientCredits: false,
 			error: 'Số dư credits trên máy chủ không đủ để thực hiện tác vụ này (fail-closed).'
 		};
@@ -771,8 +798,8 @@ export async function requestImageToVideoQuoteRemote(
 	return {
 		ok: true,
 		quoteId,
-		quotedCredits,
-		availableCredits: String(preview?.available_credits ?? preview?.availableCredits ?? ''),
+		quotedCredits: rawQuotedCredits,
+		availableCredits,
 		sufficientCredits: true,
 		quoteExpiresAt: String(preview?.quote_expires_at ?? preview?.quoteExpiresAt ?? '')
 	};
@@ -811,22 +838,70 @@ export async function requestImageToVideoGenerationRemote(
 
 	let activeQuoteId = (input.quoteId || '').trim();
 	let activeConfirmedCredits = (input.confirmedCredits || String(input.quoteCredits)).trim();
+	const consentedCreditsNum = Number(activeConfirmedCredits);
+
+	if (!Number.isFinite(consentedCreditsNum) || consentedCreditsNum <= 0) {
+		return {
+			ok: false,
+			error: 'Mức credits xác nhận không hợp lệ (fail-closed).'
+		};
+	}
+
+	if (consentedCreditsNum > input.availableBalance) {
+		return {
+			ok: false,
+			error: 'Số dư credits không đủ'
+		};
+	}
 
 	if (!activeQuoteId && input.requirePreflightQuote) {
 		const quoteRes = await requestImageToVideoQuoteRemote(input, {
 			...options,
 			idempotencyKey: generateIdempotencyKey('i2v-quote')
 		});
-		if (!quoteRes.ok || !quoteRes.quoteId) {
+		if (!quoteRes.ok || !quoteRes.quoteId || !quoteRes.quotedCredits) {
 			return {
 				ok: false,
+				quoteId: quoteRes.quoteId,
+				quotedCredits: quoteRes.quotedCredits,
+				availableCredits: quoteRes.availableCredits,
 				error: quoteRes.error || 'Không thể lấy báo giá (quote_id) từ máy chủ (fail-closed).'
 			};
 		}
-		activeQuoteId = quoteRes.quoteId;
-		if (quoteRes.quotedCredits) {
-			activeConfirmedCredits = quoteRes.quotedCredits;
+
+		const serverQuotedNum = Number(quoteRes.quotedCredits);
+		if (!Number.isFinite(serverQuotedNum) || serverQuotedNum <= 0) {
+			return {
+				ok: false,
+				quoteId: quoteRes.quoteId,
+				error: 'Báo giá từ máy chủ không hợp lệ (fail-closed).'
+			};
 		}
+
+		if (serverQuotedNum > input.availableBalance) {
+			return {
+				ok: false,
+				quoteId: quoteRes.quoteId,
+				quotedCredits: quoteRes.quotedCredits,
+				availableCredits: quoteRes.availableCredits,
+				error: 'Số dư credits không đủ theo báo giá từ máy chủ (fail-closed).'
+			};
+		}
+
+		if (serverQuotedNum > consentedCreditsNum) {
+			return {
+				ok: false,
+				requiresConfirmation: true,
+				quoteId: quoteRes.quoteId,
+				quotedCredits: quoteRes.quotedCredits,
+				availableCredits: quoteRes.availableCredits,
+				quoteExpiresAt: quoteRes.quoteExpiresAt,
+				error: `Báo giá thực tế từ máy chủ (${quoteRes.quotedCredits} cr) cao hơn mức dự kiến (${consentedCreditsNum} cr). Vui lòng xác nhận trước khi trừ credits.`
+			};
+		}
+
+		activeQuoteId = quoteRes.quoteId;
+		activeConfirmedCredits = quoteRes.quotedCredits;
 	}
 
 	const idemKey = options.idempotencyKey || generateIdempotencyKey('i2v-gen');

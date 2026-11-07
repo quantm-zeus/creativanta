@@ -55,10 +55,28 @@
 	let isGenerating = false;
 	let successMessage = '';
 	let validationError = '';
+	let pendingServerQuote: {
+		quoteId: string;
+		quotedCredits: string;
+		quoteExpiresAt?: string;
+	} | null = null;
 
 	$: totalCalculatedDuration = images.reduce((sum, img) => sum + img.durationSeconds, 0);
 
 	$: quoteCredits = estimateImageToVideoCredits(qualityTier, isLoop);
+
+	$: {
+		images;
+		selectedMotionStyleId;
+		selectedPresetId;
+		qualityTier;
+		isLoop;
+		durationSeconds;
+		motionIntensity;
+		transitionType;
+		attachBgm;
+		pendingServerQuote = null;
+	}
 
 	function applyPreset(presetId: string) {
 		const preset = MOTION_PRESETS.find((p) => p.id === presetId);
@@ -112,6 +130,7 @@
 		isGenerating = true;
 		validationError = '';
 		successMessage = '';
+		pendingServerQuote = null;
 		try {
 			const res = await requestImageToVideoGenerationRemote({
 				workspaceId: $authStore.activeWorkspace?.id,
@@ -126,6 +145,18 @@
 				requirePreflightQuote: true
 			});
 
+			if (res.requiresConfirmation && res.quoteId && res.quotedCredits) {
+				pendingServerQuote = {
+					quoteId: res.quoteId,
+					quotedCredits: res.quotedCredits,
+					quoteExpiresAt: res.quoteExpiresAt
+				};
+				validationError =
+					res.error ||
+					`Báo giá thực tế từ máy chủ (${res.quotedCredits} cr) cao hơn mức dự toán (${quoteCredits} cr). Vui lòng xác nhận trước khi tiếp tục.`;
+				return;
+			}
+
 			if (!res.ok || !res.jobId) {
 				validationError =
 					res.error ||
@@ -135,6 +166,49 @@
 
 			userBalance = res.remainingBalance ?? userBalance;
 			successMessage = `Đã gửi tác vụ Image-to-Video thành công! Mã tác vụ: ${res.jobId}. Đã tạm giữ ${res.reservedCredits ?? quoteCredits} credits.`;
+		} finally {
+			isGenerating = false;
+		}
+	}
+
+	async function confirmServerQuoteAndGenerate() {
+		if (!pendingServerQuote) return;
+		const confirmedNum = Number(pendingServerQuote.quotedCredits);
+		if (!Number.isFinite(confirmedNum) || userBalance < confirmedNum) {
+			validationError = 'Số dư credits không đủ cho báo giá máy chủ';
+			return;
+		}
+
+		const activePending = pendingServerQuote;
+		isGenerating = true;
+		validationError = '';
+		successMessage = '';
+		try {
+			const res = await requestImageToVideoGenerationRemote({
+				workspaceId: $authStore.activeWorkspace?.id,
+				images,
+				selectedMotionStyleId,
+				motionIntensity,
+				aspectRatio: '9:16',
+				selectedTransitionId: transitionType,
+				customPrompt: `${selectedPresetId} (${qualityTier}, ${durationSeconds}s, loop=${isLoop}, bgm=${attachBgm})`,
+				quoteCredits: confirmedNum,
+				availableBalance: userBalance,
+				quoteId: activePending.quoteId,
+				confirmedCredits: activePending.quotedCredits,
+				requirePreflightQuote: false
+			});
+
+			if (!res.ok || !res.jobId) {
+				validationError =
+					res.error ||
+					'Không thể khởi tạo tác vụ Image-to-Video trên máy chủ sau khi xác nhận báo giá.';
+				return;
+			}
+
+			pendingServerQuote = null;
+			userBalance = res.remainingBalance ?? userBalance;
+			successMessage = `Đã gửi tác vụ Image-to-Video thành công! Mã tác vụ: ${res.jobId}. Đã tạm giữ ${res.reservedCredits ?? confirmedNum} credits.`;
 		} finally {
 			isGenerating = false;
 		}
@@ -459,6 +533,38 @@
 						<span class="text-base font-bold text-emerald-400">{quoteCredits} credits</span>
 					</div>
 				</div>
+
+				{#if pendingServerQuote}
+					<div class="p-3.5 rounded-xl bg-amber-950/50 border border-amber-700 space-y-2.5 text-xs">
+						<div class="font-semibold text-amber-300">
+							Yêu cầu xác nhận báo giá máy chủ ({pendingServerQuote.quotedCredits} credits)
+						</div>
+						<p class="text-amber-200/90 leading-relaxed">
+							Báo giá thực tế từ máy chủ cho cấu hình hiện tại là <strong>{pendingServerQuote.quotedCredits} credits</strong> (dự toán cục bộ: {quoteCredits} credits). Hệ thống chưa trừ credits của bạn.
+						</p>
+						<div class="flex gap-2 pt-1">
+							<button
+								type="button"
+								disabled={isGenerating || userBalance < Number(pendingServerQuote.quotedCredits)}
+								on:click={confirmServerQuoteAndGenerate}
+								class="flex-1 py-2 px-3 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold transition-colors cursor-pointer disabled:opacity-50"
+							>
+								Xác nhận & Tạo ({pendingServerQuote.quotedCredits} cr)
+							</button>
+							<button
+								type="button"
+								disabled={isGenerating}
+								on:click={() => {
+									pendingServerQuote = null;
+									validationError = '';
+								}}
+								class="py-2 px-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition-colors cursor-pointer"
+							>
+								Hủy bỏ
+							</button>
+						</div>
+					</div>
+				{/if}
 
 				<button
 					type="button"
