@@ -459,7 +459,7 @@ func TestRemediation_F01_UpdateStockAppendsStockMovementAndEnforcesLedgerInvaria
 	baseCtx := context.Background()
 	store := product.NewMemoryStore()
 	sink := product.NewMemoryEventSink()
-	fixedTime := time.Date(2026, 11, 6, 10, 0, 0, 0, time.UTC)
+	fixedTime := time.Now().UTC().Truncate(time.Microsecond)
 	svc := product.NewService(store, sink, func() time.Time { return fixedTime })
 	h := product.NewHandler(svc)
 
@@ -548,7 +548,7 @@ func TestRemediation_DataReview6_MutatingCommandsEnforceIdempotencyKeyReplayAndC
 	baseCtx := context.Background()
 	store := product.NewMemoryStore()
 	sink := product.NewMemoryEventSink()
-	fixedTime := time.Date(2026, 11, 6, 11, 0, 0, 0, time.UTC)
+	fixedTime := time.Now().UTC().Truncate(time.Microsecond)
 	svc := product.NewService(store, sink, func() time.Time { return fixedTime })
 	h := product.NewHandler(svc)
 

@@ -175,6 +175,51 @@ func enqueueTenantOutboxEvent(
 		t.Fatalf("marshal metadata: %v", err)
 	}
 
+	skipSeed, _ := payload["skip_product_seed"].(bool)
+	if aggregateType == "product" && !skipSeed && tenantdb.IsValidNonZeroUUID(aggregateID) {
+		title := "Catalog Product " + aggregateID[:8]
+		if rawTitle, ok := payload["title"].(string); ok && strings.TrimSpace(rawTitle) != "" {
+			title = strings.TrimSpace(rawTitle)
+		}
+		status := "active"
+		if rawStatus, ok := payload["catalog_status"].(string); ok && strings.TrimSpace(rawStatus) != "" {
+			status = strings.TrimSpace(rawStatus)
+		}
+		prodType := "physical"
+		if rawType, ok := payload["product_type"].(string); ok && strings.TrimSpace(rawType) != "" {
+			prodType = strings.TrimSpace(rawType)
+		}
+		category := "apparel"
+		if rawCat, ok := payload["category"].(string); ok && strings.TrimSpace(rawCat) != "" {
+			category = strings.TrimSpace(rawCat)
+		}
+		basePrice := "250000.000000"
+		if rawPrice, ok := payload["base_price"].(string); ok && strings.TrimSpace(rawPrice) != "" {
+			basePrice = strings.TrimSpace(rawPrice)
+		}
+		desc := "Durable catalog test product description"
+		if rawDesc, ok := payload["description"].(string); ok && strings.TrimSpace(rawDesc) != "" {
+			desc = strings.TrimSpace(rawDesc)
+		}
+		if _, err := pool.Exec(ctx, `
+			INSERT INTO products (
+				product_id, workspace_id, product_type, title, description,
+				category, base_price, currency, catalog_status, inventory_enabled
+			) VALUES (
+				$1::uuid, $2::uuid, $3, $4, $5,
+				$6, $7::numeric(18,6), 'VND', $8, true
+			)
+			ON CONFLICT (product_id) DO UPDATE SET
+				title = EXCLUDED.title,
+				description = EXCLUDED.description,
+				category = EXCLUDED.category,
+				base_price = EXCLUDED.base_price,
+				catalog_status = EXCLUDED.catalog_status
+		`, aggregateID, workspaceID, prodType, title, desc, category, basePrice, status); err != nil {
+			t.Fatalf("seed product row for outbox event: %v", err)
+		}
+	}
+
 	err = tenantdb.WithTx(ctx, pool, tenantdb.Scope{
 		WorkspaceID:             workspaceID,
 		UserID:                  userID,
@@ -352,6 +397,23 @@ func TestMultiProcessOutboxPollerToWorkerDurableHandoff(t *testing.T) {
 	pending := pgBroker.PendingCount(outbox.QueueSearchIndexing, "worker-main")
 	if pending != 0 {
 		t.Fatalf("expected PendingCount=0 after durable XAck, got %d", pending)
+	}
+
+	// Verify the worker process durably indexed the product into the catalog search index
+	// and that querying the index under tenant RLS returns the indexed product document.
+	indexedDoc, err := outbox.GetCatalogSearchDocument(ctx, pool, durableTestWsA, aggregateID)
+	if err != nil {
+		t.Fatalf("GetCatalogSearchDocument after worker run-once failed: %v", err)
+	}
+	if indexedDoc.Title != "Áo Khoác Dù Chống Nước" || indexedDoc.CatalogStatus != "active" || indexedDoc.LastEventID != eventID {
+		t.Fatalf("unexpected indexed search document after worker run-once: %+v", indexedDoc)
+	}
+	searchHits, err := outbox.SearchCatalogProducts(ctx, pool, durableTestWsA, outbox.CatalogSearchQuery{
+		Query:         "chống nước",
+		CatalogStatus: "active",
+	})
+	if err != nil || len(searchHits) != 1 || searchHits[0].ProductID != aggregateID {
+		t.Fatalf("expected 1 search hit for indexed product, got hits=%+v err=%v", searchHits, err)
 	}
 
 	// Process 3: running worker run-once again must process 0 messages and create no duplicate rows.
@@ -1069,7 +1131,8 @@ func TestRedisStreamBrokerTLSHandshakeAndCredentialSafeErrors(t *testing.T) {
 					}
 					switch strings.ToUpper(args[0]) {
 					case "AUTH":
-						if len(args) == 2 && args[1] == secretPassword {
+						if (len(args) == 3 && args[1] == "default" && args[2] == secretPassword) ||
+							(len(args) == 2 && args[1] == secretPassword) {
 							authed = true
 							_, _ = c.Write([]byte("+OK\r\n"))
 						} else {
@@ -1107,5 +1170,820 @@ func TestRedisStreamBrokerTLSHandshakeAndCredentialSafeErrors(t *testing.T) {
 	})
 	if err := redissTLSBroker.Ping(ctx); err != nil {
 		t.Fatalf("expected rediss:// Ping over verified TLS to succeed, got: %v", err)
+	}
+}
+
+// TestRedisStreamBrokerACLUsernamePasswordAndTLS verifies Release F5:
+//  1. Redis 6+ / Dragonfly ACL URLs with username:password (both redis:// and rediss://) send
+//     3-argument AUTH <username> <password> so named ACL users succeed when default is disabled.
+//  2. Password-only URLs (redis://:password@host) send 2-argument AUTH <password>.
+//  3. URLs with a username but missing/empty password fail closed without leaking the username.
+//  4. Authentication failures never leak either the ACL username or password in error messages.
+func TestRedisStreamBrokerACLUsernamePasswordAndTLS(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	const (
+		aclUser     = "creativanta_worker_acl_user"
+		aclPassword = "acl_secret_password_do_not_leak_445566"
+	)
+
+	// Part 1: URLs with username but missing/empty password must fail closed without leaking username.
+	for _, invalidACLURL := range []string{
+		"redis://" + aclUser + "@127.0.0.1:6379/0",
+		"redis://" + aclUser + ":@127.0.0.1:6379/0",
+		"rediss://" + aclUser + "@127.0.0.1:6379/0",
+		"rediss://" + aclUser + ":@127.0.0.1:6379/0",
+	} {
+		_, err := outbox.NewRedisStreamBroker(invalidACLURL, "")
+		if err == nil {
+			t.Fatalf("expected error for ACL username without password (%s), got nil", invalidACLURL)
+		}
+		if strings.Contains(err.Error(), aclUser) || strings.Contains(err.Error(), aclPassword) {
+			t.Fatalf("CRITICAL: NewRedisStreamBroker leaked ACL credentials in error: %v", err)
+		}
+	}
+
+	// Part 2: Mock RESP2 server where 'default' user is disabled and only (aclUser, aclPassword)
+	// via 3-arg AUTH or password-only via 2-arg AUTH (for legacy :password@ URLs) is tested.
+	handleACLConn := func(c net.Conn, allowPasswordOnly bool) {
+		defer c.Close()
+		_ = c.SetDeadline(time.Now().Add(5 * time.Second))
+		br := bufio.NewReader(c)
+		authed := false
+		for {
+			line, err := br.ReadString('\n')
+			if err != nil {
+				return
+			}
+			line = strings.TrimSpace(line)
+			if !strings.HasPrefix(line, "*") {
+				return
+			}
+			var count int
+			_, _ = fmt.Sscanf(line, "*%d", &count)
+			args := make([]string, 0, count)
+			for i := 0; i < count; i++ {
+				lenLine, err := br.ReadString('\n')
+				if err != nil {
+					return
+				}
+				var argLen int
+				_, _ = fmt.Sscanf(strings.TrimSpace(lenLine), "$%d", &argLen)
+				buf := make([]byte, argLen+2)
+				if _, err := io.ReadFull(br, buf); err != nil {
+					return
+				}
+				args = append(args, string(buf[:argLen]))
+			}
+			if len(args) == 0 {
+				return
+			}
+			switch strings.ToUpper(args[0]) {
+			case "AUTH":
+				if len(args) == 3 && args[1] == aclUser && args[2] == aclPassword {
+					authed = true
+					_, _ = c.Write([]byte("+OK\r\n"))
+				} else if allowPasswordOnly && len(args) == 2 && args[1] == aclPassword {
+					authed = true
+					_, _ = c.Write([]byte("+OK\r\n"))
+				} else {
+					_, _ = c.Write([]byte("-WRONGPASS invalid username-password pair or user is disabled.\r\n"))
+				}
+			case "PING":
+				if !authed {
+					_, _ = c.Write([]byte("-NOAUTH Authentication required.\r\n"))
+					return
+				}
+				_, _ = c.Write([]byte("+PONG\r\n"))
+				return
+			default:
+				_, _ = c.Write([]byte("+OK\r\n"))
+			}
+		}
+	}
+
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("net.Listen: %v", err)
+	}
+	defer ln.Close()
+
+	go func() {
+		for {
+			conn, acceptErr := ln.Accept()
+			if acceptErr != nil {
+				return
+			}
+			go handleACLConn(conn, true)
+		}
+	}()
+
+	// Valid ACL username:password over redis://
+	aclBroker, err := outbox.NewRedisStreamBroker("redis://"+aclUser+":"+aclPassword+"@"+ln.Addr().String()+"/0", "")
+	if err != nil {
+		t.Fatalf("NewRedisStreamBroker ACL: %v", err)
+	}
+	if err := aclBroker.Ping(ctx); err != nil {
+		t.Fatalf("Release F5 regression: expected Redis ACL AUTH <username> <password> to succeed, got: %v", err)
+	}
+
+	// Valid password-only (:password@) over redis://
+	pwOnlyBroker, err := outbox.NewRedisStreamBroker("redis://:"+aclPassword+"@"+ln.Addr().String()+"/0", "")
+	if err != nil {
+		t.Fatalf("NewRedisStreamBroker password-only: %v", err)
+	}
+	if err := pwOnlyBroker.Ping(ctx); err != nil {
+		t.Fatalf("expected password-only Redis AUTH <password> to succeed, got: %v", err)
+	}
+
+	// Wrong ACL username or wrong password must fail closed and never leak credentials.
+	for _, badCredURL := range []string{
+		"redis://wrong_user_" + aclUser + ":" + aclPassword + "@" + ln.Addr().String() + "/0",
+		"redis://" + aclUser + ":wrong_pw_" + aclPassword + "@" + ln.Addr().String() + "/0",
+	} {
+		badBroker, err := outbox.NewRedisStreamBroker(badCredURL, "")
+		if err != nil {
+			t.Fatalf("NewRedisStreamBroker badCredURL: %v", err)
+		}
+		pingErr := badBroker.Ping(ctx)
+		if pingErr == nil {
+			t.Fatalf("expected Ping with invalid ACL credentials to fail")
+		}
+		if strings.Contains(pingErr.Error(), aclUser) || strings.Contains(pingErr.Error(), aclPassword) {
+			t.Fatalf("CRITICAL: Ping error leaked ACL credentials: %v", pingErr)
+		}
+	}
+
+	// Part 3: Valid ACL username:password over rediss:// (TLS 1.2+).
+	privKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("rsa.GenerateKey: %v", err)
+	}
+	certTmpl := &x509.Certificate{
+		SerialNumber: big.NewInt(20261107),
+		Subject:      pkix.Name{CommonName: "127.0.0.1"},
+		NotBefore:    time.Now().Add(-1 * time.Hour),
+		NotAfter:     time.Now().Add(24 * time.Hour),
+		KeyUsage:     x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		IPAddresses:  []net.IP{net.ParseIP("127.0.0.1")},
+	}
+	certDER, err := x509.CreateCertificate(rand.Reader, certTmpl, certTmpl, &privKey.PublicKey, privKey)
+	if err != nil {
+		t.Fatalf("x509.CreateCertificate: %v", err)
+	}
+	leafCert, err := x509.ParseCertificate(certDER)
+	if err != nil {
+		t.Fatalf("x509.ParseCertificate: %v", err)
+	}
+	rootPool := x509.NewCertPool()
+	rootPool.AddCert(leafCert)
+
+	tlsLn, err := tls.Listen("tcp", "127.0.0.1:0", &tls.Config{
+		MinVersion: tls.VersionTLS12,
+		Certificates: []tls.Certificate{
+			{
+				Certificate: [][]byte{certDER},
+				PrivateKey:  privKey,
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("tls.Listen: %v", err)
+	}
+	defer tlsLn.Close()
+
+	go func() {
+		for {
+			conn, acceptErr := tlsLn.Accept()
+			if acceptErr != nil {
+				return
+			}
+			go handleACLConn(conn, false)
+		}
+	}()
+
+	redissACLBroker, err := outbox.NewRedisStreamBroker("rediss://"+aclUser+":"+aclPassword+"@"+tlsLn.Addr().String()+"/0", "")
+	if err != nil {
+		t.Fatalf("NewRedisStreamBroker rediss ACL: %v", err)
+	}
+	redissACLBroker.SetTLSConfig(&tls.Config{
+		MinVersion: tls.VersionTLS12,
+		RootCAs:    rootPool,
+		ServerName: "127.0.0.1",
+	})
+	if err := redissACLBroker.Ping(ctx); err != nil {
+		t.Fatalf("expected rediss:// ACL AUTH <username> <password> over TLS 1.2+ to succeed, got: %v", err)
+	}
+}
+
+type mockExternalSearchBackend struct {
+	mu          sync.Mutex
+	docs        map[string]outbox.CatalogSearchDocument
+	failUpsert  bool
+	staleGetVer string
+}
+
+func (m *mockExternalSearchBackend) ProviderName() string {
+	return "mock_meilisearch"
+}
+
+func (m *mockExternalSearchBackend) UpsertProductDocument(_ context.Context, doc outbox.CatalogSearchDocument) (string, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.failUpsert {
+		return "", errors.New("mock meilisearch index unavailable")
+	}
+	if m.docs == nil {
+		m.docs = make(map[string]outbox.CatalogSearchDocument)
+	}
+	m.docs[doc.WorkspaceID+":"+doc.ProductID] = doc
+	return "meili_task_" + doc.DocumentVersion[:12], nil
+}
+
+func (m *mockExternalSearchBackend) GetProductDocument(_ context.Context, workspaceID, productID string) (*outbox.CatalogSearchDocument, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	doc, ok := m.docs[workspaceID+":"+productID]
+	if !ok {
+		return nil, errors.New("document not found in mock meilisearch")
+	}
+	if m.staleGetVer != "" {
+		doc.DocumentVersion = m.staleGetVer
+	}
+	return &doc, nil
+}
+
+// TestUpdateStockOutboxPolicyAndAuthorizedExecutor verifies Data F3:
+//  1. inventory.stock_moved emitted with required_perm="inventory:adjust" on QueueAnalyticsEvents
+//     for an active Owner/Editor is NOT misclassified as ErrLiveActorAuthorizationRevoked and
+//     is NOT silently dropped/ACKed via consumer.aborted.
+//  2. The bound inventory.stock_moved executor verifies the SKU in product_skus and the committed
+//     ledger entry in stock_movements under tenant RLS, synchronizes the parent product's durable
+//     catalog search index projection, and records a succeeded external_effects row.
+//  3. An actor with insufficient permission (e.g. Viewer) IS rejected with ErrLiveActorAuthorizationRevoked,
+//     recorded in consumer.aborted audit, and ACKed.
+//  4. Unknown/misconfigured permission keys in event metadata return ErrInvalidEventPermissionPolicy
+//     (NOT ErrLiveActorAuthorizationRevoked) and do NOT ACK/drop the message from the PEL.
+//  5. Missing SKU or missing stock_movements ledger row fails closed without ACKing.
+func TestUpdateStockOutboxPolicyAndAuthorizedExecutor(t *testing.T) {
+	pool, _ := setupDisposableOutboxDB(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+	defer cancel()
+
+	const (
+		editorUserID  = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeee03"
+		viewerUserID  = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeee04"
+		stockProdID   = "0195f000-0000-7000-8000-000000000701"
+		stockSkuID    = "0195f000-0000-7000-8000-000000000702"
+		stockLocID    = "0195f000-0000-7000-8000-000000000703"
+		stockMoveID   = "0195f000-0000-7000-8000-000000000704"
+		stockEventID  = "0195f000-0000-7000-8000-000000000705"
+		viewerEventID = "0195f000-0000-7000-8000-000000000706"
+		bogusEventID  = "0195f000-0000-7000-8000-000000000707"
+		noSkuEventID  = "0195f000-0000-7000-8000-000000000708"
+		missingSkuID  = "0195f000-0000-7000-8000-000000000799"
+	)
+
+	// Seed editor and viewer members, plus product, SKU, inventory_location, and stock_movements ledger row.
+	seedStockSQL := fmt.Sprintf(`
+		INSERT INTO users (user_id, clerk_id, email, display_name, status)
+		VALUES
+			('%s'::uuid, 'clerk_editor_a', 'editor_a@example.com', 'Editor A', 'active'),
+			('%s'::uuid, 'clerk_viewer_a', 'viewer_a@example.com', 'Viewer A', 'active')
+		ON CONFLICT (user_id) DO NOTHING;
+
+		INSERT INTO workspace_members (workspace_id, user_id, role, status)
+		VALUES
+			('%s'::uuid, '%s'::uuid, 'editor', 'active'),
+			('%s'::uuid, '%s'::uuid, 'viewer', 'active')
+		ON CONFLICT (workspace_id, user_id) DO UPDATE SET role = EXCLUDED.role, status = EXCLUDED.status;
+
+		INSERT INTO products (
+			product_id, workspace_id, product_type, title, description,
+			category, base_price, currency, catalog_status, inventory_enabled
+		) VALUES (
+			'%s'::uuid, '%s'::uuid, 'physical', 'Micro Thu Âm Không Dây Dual-Channel', 'Micro livestream chống ồn chủ động',
+			'audio', 1590000.000000, 'VND', 'active', true
+		);
+
+		INSERT INTO product_skus (
+			sku_id, workspace_id, product_id, sku_code, stock_quantity, stock_reserved, low_stock_threshold, is_active
+		) VALUES (
+			'%s'::uuid, '%s'::uuid, '%s'::uuid, 'MIC-DUAL-PRO', 25, 3, 5, true
+		);
+
+		INSERT INTO inventory_locations (
+			location_id, workspace_id, name, location_type, is_default, status
+		) VALUES (
+			'%s'::uuid, '%s'::uuid, 'HCM Main Warehouse', 'warehouse', true, 'active'
+		);
+
+		INSERT INTO stock_movements (
+			movement_id, workspace_id, sku_id, location_id, movement_type, movement_key, quantity, reason
+		) VALUES (
+			'%s'::uuid, '%s'::uuid, '%s'::uuid, '%s'::uuid, 'adjustment', 'adj:test-stock-move-704', 10, 'restock_batch_01'
+		);
+	`,
+		editorUserID, viewerUserID,
+		durableTestWsA, editorUserID,
+		durableTestWsA, viewerUserID,
+		stockProdID, durableTestWsA,
+		stockSkuID, durableTestWsA, stockProdID,
+		stockLocID, durableTestWsA,
+		stockMoveID, durableTestWsA, stockSkuID, stockLocID,
+	)
+	if _, err := pool.Exec(ctx, seedStockSQL); err != nil {
+		t.Fatalf("seed stock movement test fixtures: %v", err)
+	}
+
+	now := time.Now().UTC().Truncate(time.Millisecond)
+	verifier := outbox.NewPgLiveAuthVerifier(pool)
+
+	// 1. Both Owner and Editor must pass VerifyActorAndApproval for required_perm="inventory:adjust".
+	for _, actorID := range []string{durableTestOwnerA, editorUserID} {
+		if err := verifier.VerifyActorAndApproval(ctx, durableTestWsA, actorID, "inventory:adjust", "", now); err != nil {
+			t.Fatalf("Data F3 regression: VerifyActorAndApproval rejected valid actor %s for inventory:adjust: %v", actorID, err)
+		}
+	}
+
+	// 2. Viewer must be denied with ErrLiveActorAuthorizationRevoked.
+	viewerErr := verifier.VerifyActorAndApproval(ctx, durableTestWsA, viewerUserID, "inventory:adjust", "", now)
+	if !errors.Is(viewerErr, outbox.ErrLiveActorAuthorizationRevoked) {
+		t.Fatalf("expected Viewer to fail with ErrLiveActorAuthorizationRevoked, got: %v", viewerErr)
+	}
+
+	// 3. Unknown permission policy key must return ErrInvalidEventPermissionPolicy (NOT ErrLiveActorAuthorizationRevoked).
+	bogusErr := verifier.VerifyActorAndApproval(ctx, durableTestWsA, durableTestOwnerA, "bogus:unknown_perm_key", "", now)
+	if !errors.Is(bogusErr, outbox.ErrInvalidEventPermissionPolicy) {
+		t.Fatalf("expected ErrInvalidEventPermissionPolicy for unknown permission key, got: %v", bogusErr)
+	}
+	if errors.Is(bogusErr, outbox.ErrLiveActorAuthorizationRevoked) {
+		t.Fatalf("CRITICAL: unknown permission key must NOT wrap ErrLiveActorAuthorizationRevoked")
+	}
+
+	// 4. End-to-end outbox poller -> QueueAnalyticsEvents worker execution for valid Editor inventory.stock_moved.
+	enqueueTenantOutboxEvent(
+		t, ctx, pool,
+		durableTestWsA, editorUserID,
+		stockEventID, "inventory.stock_moved", outbox.QueueAnalyticsEvents,
+		"product_sku", stockSkuID,
+		map[string]any{
+			"sku_id":       stockSkuID,
+			"workspace_id": durableTestWsA,
+			"delta":        10,
+			"reason":       "restock_batch_01",
+			"new_quantity": 25,
+		},
+		map[string]any{
+			"actor_id":      editorUserID,
+			"actor_type":    "user",
+			"required_perm": "inventory:adjust",
+		},
+	)
+
+	store := outbox.NewPgOutboxStore(pool, false)
+	broker := outbox.NewPgStreamBroker(pool, false)
+	poller := outbox.NewOutboxPoller("poller-f3", store, broker)
+	now = time.Now().UTC().Add(1 * time.Second)
+	if _, err := poller.PollOnce(ctx, now); err != nil {
+		t.Fatalf("PollOnce: %v", err)
+	}
+
+	inboxEngine := outbox.NewPgConsumerInboxEngine(pool)
+	domainHandler := outbox.NewPgDomainActionHandler()
+	worker := outbox.NewConsumerWorker(outbox.QueueAnalyticsEvents, "worker-main", "worker-f3", broker, inboxEngine)
+	worker.AuthVerifier = verifier
+
+	outcomes, err := worker.ProcessNext(ctx, now, 10, domainHandler.Handle)
+	if err != nil {
+		t.Fatalf("Data F3 regression: worker ProcessNext for inventory.stock_moved failed: %v", err)
+	}
+	if len(outcomes) != 1 || !outcomes[0].Executed || outcomes[0].AbortedAuth || !outcomes[0].Acked {
+		t.Fatalf("expected inventory.stock_moved to execute and ACK, got outcomes=%+v", outcomes)
+	}
+
+	var abortedCount, processedCount int
+	if err := pool.QueryRow(ctx, `SELECT COUNT(*) FROM audit_events WHERE workspace_id = $1::uuid AND action = 'consumer.aborted:inventory.stock_moved'`, durableTestWsA).Scan(&abortedCount); err != nil {
+		t.Fatalf("query aborted audit_events: %v", err)
+	}
+	if abortedCount != 0 {
+		t.Fatalf("Data F3 regression: expected 0 consumer.aborted:inventory.stock_moved rows, got %d", abortedCount)
+	}
+	if err := pool.QueryRow(ctx, `SELECT COUNT(*) FROM audit_events WHERE workspace_id = $1::uuid AND action = 'consumer.processed:inventory.stock_moved'`, durableTestWsA).Scan(&processedCount); err != nil {
+		t.Fatalf("query processed audit_events: %v", err)
+	}
+	if processedCount != 1 {
+		t.Fatalf("expected 1 consumer.processed:inventory.stock_moved row, got %d", processedCount)
+	}
+
+	// Verify parent product search index was synchronized with the SKU's stock!
+	doc, err := outbox.GetCatalogSearchDocument(ctx, pool, durableTestWsA, stockProdID)
+	if err != nil {
+		t.Fatalf("GetCatalogSearchDocument after inventory.stock_moved failed: %v", err)
+	}
+	if doc.TotalStock != 25 || doc.ReservedStock != 3 || doc.AvailableStock != 22 || !doc.InStock || doc.LastEventID != stockEventID {
+		t.Fatalf("unexpected catalog search document after stock movement: %+v", doc)
+	}
+
+	// 5. Negative test: Viewer actor on inventory.stock_moved is aborted, audited, and ACKed.
+	enqueueTenantOutboxEvent(
+		t, ctx, pool,
+		durableTestWsA, viewerUserID,
+		viewerEventID, "inventory.stock_moved", outbox.QueueAnalyticsEvents,
+		"product_sku", stockSkuID,
+		map[string]any{
+			"sku_id":       stockSkuID,
+			"workspace_id": durableTestWsA,
+			"delta":        5,
+			"reason":       "unauthorized_viewer_attempt",
+			"new_quantity": 30,
+		},
+		map[string]any{
+			"actor_id":      viewerUserID,
+			"actor_type":    "user",
+			"required_perm": "inventory:adjust",
+		},
+	)
+	now = time.Now().UTC().Add(2 * time.Second)
+	if _, err := poller.PollOnce(ctx, now); err != nil {
+		t.Fatalf("PollOnce viewer event: %v", err)
+	}
+	viewerOutcomes, err := worker.ProcessNext(ctx, now, 10, domainHandler.Handle)
+	if err != nil {
+		t.Fatalf("ProcessNext viewer event failed: %v", err)
+	}
+	if len(viewerOutcomes) != 1 || !viewerOutcomes[0].AbortedAuth || !viewerOutcomes[0].Acked || viewerOutcomes[0].Executed {
+		t.Fatalf("expected Viewer inventory.stock_moved to abort and ACK without executing, got %+v", viewerOutcomes)
+	}
+
+	// 6. Negative test: Unknown permission policy key must NOT ACK or abort-drop the message!
+	enqueueTenantOutboxEvent(
+		t, ctx, pool,
+		durableTestWsA, durableTestOwnerA,
+		bogusEventID, "inventory.stock_moved", outbox.QueueAnalyticsEvents,
+		"product_sku", stockSkuID,
+		map[string]any{
+			"sku_id":       stockSkuID,
+			"workspace_id": durableTestWsA,
+			"delta":        5,
+		},
+		map[string]any{
+			"actor_id":      durableTestOwnerA,
+			"actor_type":    "user",
+			"required_perm": "bogus:nonexistent_permission",
+		},
+	)
+	now = time.Now().UTC().Add(3 * time.Second)
+	if _, err := poller.PollOnce(ctx, now); err != nil {
+		t.Fatalf("PollOnce bogus perm event: %v", err)
+	}
+	bogusOutcomes, err := worker.ProcessNext(ctx, now, 10, domainHandler.Handle)
+	if !errors.Is(err, outbox.ErrInvalidEventPermissionPolicy) {
+		t.Fatalf("expected ErrInvalidEventPermissionPolicy from ProcessNext, got outcomes=%+v err=%v", bogusOutcomes, err)
+	}
+	if len(bogusOutcomes) != 1 || bogusOutcomes[0].AbortedAuth || bogusOutcomes[0].Acked {
+		t.Fatalf("CRITICAL: unknown permission policy error must leave message un-ACKed, got %+v", bogusOutcomes)
+	}
+	if pending := broker.PendingCount(outbox.QueueAnalyticsEvents, "worker-main"); pending != 1 {
+		t.Fatalf("expected 1 message remaining in PEL after unknown permission policy error, got %d", pending)
+	}
+
+	// 7. Negative test: inventory.stock_moved for a nonexistent SKU fails closed without ACKing.
+	// First ACK the bogus message so we isolate the missing-SKU test.
+	if err := broker.XAck(ctx, outbox.QueueAnalyticsEvents, "worker-main", bogusOutcomes[0].StreamEntryID); err != nil {
+		t.Fatalf("XAck bogus message: %v", err)
+	}
+
+	enqueueTenantOutboxEvent(
+		t, ctx, pool,
+		durableTestWsA, durableTestOwnerA,
+		noSkuEventID, "inventory.stock_moved", outbox.QueueAnalyticsEvents,
+		"product_sku", missingSkuID,
+		map[string]any{
+			"sku_id":       missingSkuID,
+			"workspace_id": durableTestWsA,
+			"delta":        5,
+			"reason":       "missing_sku",
+		},
+		map[string]any{
+			"actor_id":      durableTestOwnerA,
+			"actor_type":    "user",
+			"required_perm": "inventory:adjust",
+		},
+	)
+	now = time.Now().UTC().Add(4 * time.Second)
+	if _, err := poller.PollOnce(ctx, now); err != nil {
+		t.Fatalf("PollOnce missing SKU event: %v", err)
+	}
+	noSkuOutcomes, err := worker.ProcessNext(ctx, now, 10, domainHandler.Handle)
+	if !errors.Is(err, outbox.ErrInventoryMovementNotFound) {
+		t.Fatalf("expected ErrInventoryMovementNotFound for missing SKU, got outcomes=%+v err=%v", noSkuOutcomes, err)
+	}
+	if len(noSkuOutcomes) != 1 || noSkuOutcomes[0].Acked || noSkuOutcomes[0].Executed {
+		t.Fatalf("expected missing SKU event to remain un-ACKed and unexecuted, got %+v", noSkuOutcomes)
+	}
+}
+
+// TestCatalogSearchIndexingRequiresRealProductAndVerifiesDurableIndex verifies Data F4 / Agent F14 / Release F2:
+//  1. Enqueueing product.created for a product_id that does NOT exist in PostgreSQL `products`
+//     must FAIL CLOSED (0 succeeded external_effects, 0 consumer_inbox rows, message remains in PEL)
+//     instead of hashing the payload and marking external_effects succeeded.
+//  2. Full catalog search lifecycle (product.created -> product.updated -> product.catalog_status_changed)
+//     reads authoritative PostgreSQL product & SKU state, persists the searchable document, verifies
+//     read-after-write, enforces tenant RLS isolation, and preserves exact NUMERIC(18,6) money sorting.
+//  3. External SearchIndexBackend failure or read-after-write mismatch fails closed without ACKing,
+//     and succeeds on retry once the backend returns a verified document.
+func TestCatalogSearchIndexingRequiresRealProductAndVerifiesDurableIndex(t *testing.T) {
+	pool, _ := setupDisposableOutboxDB(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+	defer cancel()
+
+	const (
+		missingEventID   = "0195f000-0000-7000-8000-000000000711"
+		missingProductID = "0195f000-0000-7000-8000-000000000811"
+		realProductID    = "0195f000-0000-7000-8000-000000000812"
+		realSkuID        = "0195f000-0000-7000-8000-000000000813"
+		createEventID    = "0195f000-0000-7000-8000-000000000712"
+		updateEventID    = "0195f000-0000-7000-8000-000000000713"
+		archiveEventID   = "0195f000-0000-7000-8000-000000000714"
+		extEventID       = "0195f000-0000-7000-8000-000000000715"
+	)
+
+	// Part 1: Phantom product (not in `products`) must fail closed with ErrSearchIndexTargetNotFound.
+	enqueueTenantOutboxEvent(
+		t, ctx, pool,
+		durableTestWsA, durableTestOwnerA,
+		missingEventID, "product.created", outbox.QueueSearchIndexing,
+		"product", missingProductID,
+		map[string]any{
+			"product_id":        missingProductID,
+			"workspace_id":      durableTestWsA,
+			"title":             "Nonexistent Phantom Product",
+			"skip_product_seed": true,
+		},
+		map[string]any{
+			"actor_id":      durableTestOwnerA,
+			"actor_type":    "user",
+			"required_perm": "product:manage",
+		},
+	)
+
+	store := outbox.NewPgOutboxStore(pool, false)
+	broker := outbox.NewPgStreamBroker(pool, false)
+	poller := outbox.NewOutboxPoller("poller-search-f4", store, broker)
+	now := time.Now().UTC().Add(1 * time.Second)
+	if _, err := poller.PollOnce(ctx, now); err != nil {
+		t.Fatalf("PollOnce: %v", err)
+	}
+
+	inboxEngine := outbox.NewPgConsumerInboxEngine(pool)
+	handler := outbox.NewPgDomainActionHandler()
+	worker := outbox.NewConsumerWorker(outbox.QueueSearchIndexing, "worker-main", "worker-search-f4", broker, inboxEngine)
+	worker.AuthVerifier = outbox.NewPgLiveAuthVerifier(pool)
+
+	outcomes, err := worker.ProcessNext(ctx, now, 10, handler.Handle)
+	if !errors.Is(err, outbox.ErrSearchIndexTargetNotFound) {
+		t.Fatalf("Data F4 / Agent F14 / Release F2 regression: expected ErrSearchIndexTargetNotFound for nonexistent product, got outcomes=%+v err=%v", outcomes, err)
+	}
+	if len(outcomes) != 1 || outcomes[0].Acked || outcomes[0].Executed {
+		t.Fatalf("expected phantom product message to remain un-ACKed and unexecuted, got %+v", outcomes)
+	}
+
+	var succeededEffects, inboxRows int
+	if err := pool.QueryRow(ctx, `SELECT COUNT(*) FROM external_effects WHERE workspace_id = $1::uuid AND status = 'succeeded'`, durableTestWsA).Scan(&succeededEffects); err != nil {
+		t.Fatalf("count external_effects: %v", err)
+	}
+	if succeededEffects != 0 {
+		t.Fatalf("CRITICAL: phantom product marked %d external_effects rows succeeded", succeededEffects)
+	}
+	if err := pool.QueryRow(ctx, `SELECT COUNT(*) FROM consumer_inbox WHERE workspace_id = $1::uuid`, durableTestWsA).Scan(&inboxRows); err != nil {
+		t.Fatalf("count consumer_inbox: %v", err)
+	}
+	if inboxRows != 0 {
+		t.Fatalf("CRITICAL: phantom product committed %d consumer_inbox rows", inboxRows)
+	}
+	if pending := broker.PendingCount(outbox.QueueSearchIndexing, "worker-main"); pending != 1 {
+		t.Fatalf("expected phantom product message to remain in PEL (PendingCount=1), got %d", pending)
+	}
+
+	// Drain the phantom message from PEL so we can test the full Create -> Update -> Archive lifecycle.
+	if err := broker.XAck(ctx, outbox.QueueSearchIndexing, "worker-main", outcomes[0].StreamEntryID); err != nil {
+		t.Fatalf("XAck phantom message: %v", err)
+	}
+
+	// Part 2: Seed a real product + SKU in PostgreSQL. Before the worker runs, it must NOT be in the search index.
+	seedProdSQL := fmt.Sprintf(`
+		INSERT INTO products (
+			product_id, workspace_id, product_type, title, description,
+			category, base_price, currency, catalog_status, inventory_enabled
+		) VALUES (
+			'%s'::uuid, '%s'::uuid, 'physical', 'Máy Ảnh Mirrorless 4K Vlog', 'Quay video 4K 60fps chuyên nghiệp',
+			'camera', 18500000.500000, 'VND', 'active', true
+		);
+		INSERT INTO product_skus (
+			sku_id, workspace_id, product_id, sku_code, stock_quantity, stock_reserved, low_stock_threshold, is_active
+		) VALUES (
+			'%s'::uuid, '%s'::uuid, '%s'::uuid, 'CAM-4K-BLK', 12, 2, 3, true
+		);
+	`, realProductID, durableTestWsA, realSkuID, durableTestWsA, realProductID)
+	if _, err := pool.Exec(ctx, seedProdSQL); err != nil {
+		t.Fatalf("seed real product and SKU: %v", err)
+	}
+
+	if _, err := outbox.GetCatalogSearchDocument(ctx, pool, durableTestWsA, realProductID); !errors.Is(err, outbox.ErrSearchDocumentNotIndexed) {
+		t.Fatalf("expected ErrSearchDocumentNotIndexed before worker runs, got: %v", err)
+	}
+
+	// Enqueue & process product.created
+	enqueueTenantOutboxEvent(
+		t, ctx, pool,
+		durableTestWsA, durableTestOwnerA,
+		createEventID, "product.created", outbox.QueueSearchIndexing,
+		"product", realProductID,
+		map[string]any{
+			"product_id":        realProductID,
+			"workspace_id":      durableTestWsA,
+			"skip_product_seed": true,
+		},
+		map[string]any{
+			"actor_id":      durableTestOwnerA,
+			"actor_type":    "user",
+			"required_perm": "product:manage",
+		},
+	)
+	now = time.Now().UTC().Add(2 * time.Second)
+	if _, err := poller.PollOnce(ctx, now); err != nil {
+		t.Fatalf("PollOnce product.created: %v", err)
+	}
+	if _, err := worker.ProcessNext(ctx, now, 10, handler.Handle); err != nil {
+		t.Fatalf("ProcessNext product.created: %v", err)
+	}
+
+	createdDoc, err := outbox.GetCatalogSearchDocument(ctx, pool, durableTestWsA, realProductID)
+	if err != nil {
+		t.Fatalf("GetCatalogSearchDocument after product.created: %v", err)
+	}
+	if createdDoc.Title != "Máy Ảnh Mirrorless 4K Vlog" ||
+		createdDoc.CatalogStatus != "active" ||
+		createdDoc.BasePrice != "18500000.500000" ||
+		createdDoc.TotalStock != 12 ||
+		createdDoc.AvailableStock != 10 ||
+		len(createdDoc.SKUCodes) != 1 ||
+		createdDoc.SKUCodes[0] != "CAM-4K-BLK" {
+		t.Fatalf("unexpected indexed document after product.created: %+v", createdDoc)
+	}
+
+	// Cross-tenant RLS isolation: Workspace B must NOT see Workspace A's indexed document.
+	if _, err := outbox.GetCatalogSearchDocument(ctx, pool, durableTestWsB, realProductID); !errors.Is(err, outbox.ErrSearchIndexTargetNotFound) {
+		t.Fatalf("expected cross-tenant GetCatalogSearchDocument to fail with ErrSearchIndexTargetNotFound, got: %v", err)
+	}
+	wsBHits, err := outbox.SearchCatalogProducts(ctx, pool, durableTestWsB, outbox.CatalogSearchQuery{Query: "mirrorless"})
+	if err != nil || len(wsBHits) != 0 {
+		t.Fatalf("expected 0 cross-tenant search hits in Workspace B, got hits=%+v err=%v", wsBHits, err)
+	}
+
+	// Update product title & price in PostgreSQL, then enqueue & process product.updated.
+	if _, err := pool.Exec(ctx, `
+		UPDATE products
+		SET title = 'Máy Ảnh Mirrorless 8K Cinema Pro', base_price = 24900000.750000
+		WHERE workspace_id = $1::uuid AND product_id = $2::uuid
+	`, durableTestWsA, realProductID); err != nil {
+		t.Fatalf("update product in DB: %v", err)
+	}
+	enqueueTenantOutboxEvent(
+		t, ctx, pool,
+		durableTestWsA, durableTestOwnerA,
+		updateEventID, "product.updated", outbox.QueueSearchIndexing,
+		"product", realProductID,
+		map[string]any{
+			"product_id":        realProductID,
+			"workspace_id":      durableTestWsA,
+			"skip_product_seed": true,
+		},
+		map[string]any{
+			"actor_id":      durableTestOwnerA,
+			"actor_type":    "user",
+			"required_perm": "product:manage",
+		},
+	)
+	now = time.Now().UTC().Add(3 * time.Second)
+	if _, err := poller.PollOnce(ctx, now); err != nil {
+		t.Fatalf("PollOnce product.updated: %v", err)
+	}
+	if _, err := worker.ProcessNext(ctx, now, 10, handler.Handle); err != nil {
+		t.Fatalf("ProcessNext product.updated: %v", err)
+	}
+
+	oldHits, err := outbox.SearchCatalogProducts(ctx, pool, durableTestWsA, outbox.CatalogSearchQuery{Query: "vlog"})
+	if err != nil || len(oldHits) != 0 {
+		t.Fatalf("expected 0 hits for replaced title token 'vlog', got %+v (err=%v)", oldHits, err)
+	}
+	newHits, err := outbox.SearchCatalogProducts(ctx, pool, durableTestWsA, outbox.CatalogSearchQuery{
+		Query:         "8k cinema cam-4k-blk",
+		CatalogStatus: "active",
+	})
+	if err != nil || len(newHits) != 1 || newHits[0].BasePrice != "24900000.750000" {
+		t.Fatalf("expected 1 updated search hit with BasePrice=24900000.750000, got %+v (err=%v)", newHits, err)
+	}
+
+	// Archive product in PostgreSQL, then enqueue & process product.catalog_status_changed.
+	if _, err := pool.Exec(ctx, `
+		UPDATE products
+		SET catalog_status = 'archived'
+		WHERE workspace_id = $1::uuid AND product_id = $2::uuid
+	`, durableTestWsA, realProductID); err != nil {
+		t.Fatalf("archive product in DB: %v", err)
+	}
+	enqueueTenantOutboxEvent(
+		t, ctx, pool,
+		durableTestWsA, durableTestOwnerA,
+		archiveEventID, "product.catalog_status_changed", outbox.QueueSearchIndexing,
+		"product", realProductID,
+		map[string]any{
+			"product_id":        realProductID,
+			"workspace_id":      durableTestWsA,
+			"from":              "active",
+			"to":                "archived",
+			"catalog_status":    "archived",
+			"skip_product_seed": true,
+		},
+		map[string]any{
+			"actor_id":      durableTestOwnerA,
+			"actor_type":    "user",
+			"required_perm": "product:manage",
+		},
+	)
+	now = time.Now().UTC().Add(4 * time.Second)
+	if _, err := poller.PollOnce(ctx, now); err != nil {
+		t.Fatalf("PollOnce product.catalog_status_changed: %v", err)
+	}
+	if _, err := worker.ProcessNext(ctx, now, 10, handler.Handle); err != nil {
+		t.Fatalf("ProcessNext product.catalog_status_changed: %v", err)
+	}
+
+	activeHits, err := outbox.SearchCatalogProducts(ctx, pool, durableTestWsA, outbox.CatalogSearchQuery{CatalogStatus: "active"})
+	if err != nil || len(activeHits) != 0 {
+		t.Fatalf("expected 0 active search hits after archive, got %+v (err=%v)", activeHits, err)
+	}
+	archivedHits, err := outbox.SearchCatalogProducts(ctx, pool, durableTestWsA, outbox.CatalogSearchQuery{CatalogStatus: "archived"})
+	if err != nil || len(archivedHits) != 1 || archivedHits[0].CatalogStatus != "archived" {
+		t.Fatalf("expected 1 archived search hit after archive, got %+v (err=%v)", archivedHits, err)
+	}
+
+	// Part 3: External SearchIndexBackend failure / verification mismatch must fail closed without ACKing,
+	// then succeed on retry when the backend returns a verified document.
+	mockBackend := &mockExternalSearchBackend{
+		staleGetVer: "stale_version_mismatch_0000",
+	}
+	handler.SetSearchIndexBackend(mockBackend)
+
+	enqueueTenantOutboxEvent(
+		t, ctx, pool,
+		durableTestWsA, durableTestOwnerA,
+		extEventID, "product.updated", outbox.QueueSearchIndexing,
+		"product", realProductID,
+		map[string]any{
+			"product_id":        realProductID,
+			"workspace_id":      durableTestWsA,
+			"skip_product_seed": true,
+		},
+		map[string]any{
+			"actor_id":      durableTestOwnerA,
+			"actor_type":    "user",
+			"required_perm": "product:manage",
+		},
+	)
+	now = time.Now().UTC().Add(5 * time.Second)
+	if _, err := poller.PollOnce(ctx, now); err != nil {
+		t.Fatalf("PollOnce extEventID: %v", err)
+	}
+	extOutcomes, err := worker.ProcessNext(ctx, now, 10, handler.Handle)
+	if !errors.Is(err, outbox.ErrSearchIndexVerificationFailed) {
+		t.Fatalf("expected ErrSearchIndexVerificationFailed when external backend returns stale version, got outcomes=%+v err=%v", extOutcomes, err)
+	}
+	if len(extOutcomes) != 1 || extOutcomes[0].Acked || extOutcomes[0].Executed {
+		t.Fatalf("expected unverified external backend indexing to remain un-ACKed, got %+v", extOutcomes)
+	}
+	if pending := broker.PendingCount(outbox.QueueSearchIndexing, "worker-main"); pending != 1 {
+		t.Fatalf("expected PendingCount=1 after external backend verification failure, got %d", pending)
+	}
+
+	// Fix the mock backend and advance clock past idle claim timeout to verify retry succeeds and ACKs.
+	mockBackend.mu.Lock()
+	mockBackend.staleGetVer = ""
+	mockBackend.mu.Unlock()
+	now = now.Add(65 * time.Second)
+
+	retryOutcomes, err := worker.ProcessNext(ctx, now, 10, handler.Handle)
+	if err != nil {
+		t.Fatalf("expected retry with healthy external SearchIndexBackend to succeed, got: %v", err)
+	}
+	if len(retryOutcomes) != 1 || !retryOutcomes[0].Executed || !retryOutcomes[0].Acked {
+		t.Fatalf("expected retry outcome Executed+Acked, got %+v", retryOutcomes)
+	}
+	if pending := broker.PendingCount(outbox.QueueSearchIndexing, "worker-main"); pending != 0 {
+		t.Fatalf("expected PendingCount=0 after successful retry, got %d", pending)
 	}
 }
