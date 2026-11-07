@@ -313,6 +313,8 @@ type CheckoutSessionRecord struct {
 	SessionID           string
 	WorkspaceID         string
 	UserID              string
+	SubscriptionID      string
+	StripePriceID       string
 	Kind                string // "credit_pack" or "subscription_plan"
 	PackCode            string
 	TargetPlan          string

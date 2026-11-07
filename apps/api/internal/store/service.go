@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb"
@@ -24,7 +23,6 @@ type Service struct {
 	eventSink       EventSink
 	nowFunc         func() time.Time
 	paymentVerifier PaymentVerifier
-	checkoutMu      sync.Mutex
 }
 
 func NewService(store Store, eventSink EventSink, nowFunc func() time.Time) *Service {
@@ -536,14 +534,11 @@ func (s *Service) Checkout(ctx context.Context, req CheckoutRequest) (*CheckoutR
 		return nil, fmt.Errorf("%w: checkout requires at least one product, bundle, offer, or membership plan", ErrInvalidAmount)
 	}
 
-	s.checkoutMu.Lock()
-	defer s.checkoutMu.Unlock()
-
 	fp := checkoutRequestFingerprint(req)
 	trimmedPI := strings.TrimSpace(req.PaymentIntentID)
 	var existingOrderID string
 
-	// 1. Strict Idempotency & Payment-Intent Replay Check (F04)
+	// 1. Strict Idempotency & Payment-Intent Replay Precheck (F04 & R02)
 	if cached, err := s.store.GetCheckoutResultByIdempotency(ctx, req.WorkspaceID, req.IdempotencyKey); err == nil && cached != nil {
 		if cached.RequestFingerprint != "" && cached.RequestFingerprint != fp {
 			return nil, ErrPaymentReplay
@@ -710,7 +705,19 @@ func (s *Service) Checkout(ctx context.Context, req CheckoutRequest) (*CheckoutR
 		return nil, ErrPaymentFailed
 	}
 
+	// 4b. Durable store-level atomic checkout & payment-intent claim across Service instances BEFORE side effects (R02)
+	claimedReplay, claimedOrderID, err := s.store.ClaimCheckout(ctx, req.WorkspaceID, req.IdempotencyKey, trimmedPI, fp)
+	if err != nil {
+		return nil, err
+	}
+	if claimedReplay != nil {
+		return claimedReplay, nil
+	}
+
 	orderID := existingOrderID
+	if claimedOrderID != "" {
+		orderID = claimedOrderID
+	}
 	if orderID == "" {
 		orderID = newUUID()
 	}
@@ -727,16 +734,21 @@ func (s *Service) Checkout(ctx context.Context, req CheckoutRequest) (*CheckoutR
 			PaymentIntentID:    trimmedPI,
 		}
 		if err := s.store.SaveCheckoutResult(ctx, req.WorkspaceID, req.IdempotencyKey, pendingRes); err != nil {
+			_ = s.store.ReleaseCheckoutClaim(ctx, req.WorkspaceID, req.IdempotencyKey, trimmedPI)
 			return nil, err
 		}
 		return pendingRes, nil
 	}
 
-	// 5. Atomic Bundle Stock Reservation (Acceptance Target 1) with rollback on downstream failure (F04)
+	// 5. Atomic Bundle Stock Reservation (Acceptance Target 1) with full rollback on downstream failure (F04 & R02)
 	bundleReserved := false
 	var deliveries []DigitalDelivery
 	var subscription *MembershipSubscription
+	var recordedPosting *FinancialPosting
 	rollback := func() {
+		if recordedPosting != nil {
+			_ = s.store.DeleteFinancialPosting(ctx, req.WorkspaceID, recordedPosting.PostingID)
+		}
 		for _, del := range deliveries {
 			_ = s.store.DeleteDigitalDelivery(ctx, req.WorkspaceID, del.DeliveryID)
 		}
@@ -746,9 +758,11 @@ func (s *Service) Checkout(ctx context.Context, req CheckoutRequest) (*CheckoutR
 		if bundleReserved && bundle != nil {
 			_ = s.store.ReleaseBundleStock(ctx, req.WorkspaceID, bundle.BundleID, 1)
 		}
+		_ = s.store.ReleaseCheckoutClaim(ctx, req.WorkspaceID, req.IdempotencyKey, trimmedPI)
 	}
 	if bundle != nil {
 		if err := s.store.AtomicallyReserveBundleStock(ctx, req.WorkspaceID, bundle.BundleID, 1); err != nil {
+			rollback()
 			return nil, err
 		}
 		bundleReserved = true
@@ -775,7 +789,11 @@ func (s *Service) Checkout(ctx context.Context, req CheckoutRequest) (*CheckoutR
 		}
 	}
 
-	// 7. Digital Deliveries Creation (only after confirmed payment)
+	// 7. Digital Deliveries Creation keyed on economic payment identity (only after confirmed payment, R02)
+	economicDelivPrefix := req.IdempotencyKey
+	if trimmedPI != "" {
+		economicDelivPrefix = "pi:" + trimmedPI
+	}
 	if len(req.ProductIDs) > 0 {
 		for idx, rawProdID := range req.ProductIDs {
 			prodID := strings.TrimSpace(rawProdID)
@@ -789,7 +807,7 @@ func (s *Service) Checkout(ctx context.Context, req CheckoutRequest) (*CheckoutR
 				DeliveryType:           DeliveryTypeDownloadLink,
 				EntitlementPayloadJSON: map[string]any{"download_url": fmt.Sprintf("https://cdn.creativanta.store/downloads/%s_%s.zip", orderID, prodID)},
 				Status:                 DeliveryStatusDelivered,
-				IdempotencyKey:         fmt.Sprintf("%s:deliv:%d", req.IdempotencyKey, idx+1),
+				IdempotencyKey:         fmt.Sprintf("%s:deliv:%d", economicDelivPrefix, idx+1),
 				DownloadCount:          0,
 				MaxDownloads:           5,
 				CreatedAt:              now,
@@ -810,7 +828,7 @@ func (s *Service) Checkout(ctx context.Context, req CheckoutRequest) (*CheckoutR
 			DeliveryType:           DeliveryTypeDownloadLink,
 			EntitlementPayloadJSON: map[string]any{"download_url": fmt.Sprintf("https://cdn.creativanta.store/downloads/%s.zip", orderID)},
 			Status:                 DeliveryStatusDelivered,
-			IdempotencyKey:         req.IdempotencyKey + ":deliv:1",
+			IdempotencyKey:         economicDelivPrefix + ":deliv:1",
 			DownloadCount:          0,
 			MaxDownloads:           5,
 			CreatedAt:              now,
@@ -836,8 +854,9 @@ func (s *Service) Checkout(ctx context.Context, req CheckoutRequest) (*CheckoutR
 		rollback()
 		return nil, err
 	}
+	recordedPosting = posting
 
-	// 9. Save result for idempotent future replays & bind PaymentIntentID (F04)
+	// 9. Save result for idempotent future replays & bind PaymentIntentID (F04 & R02)
 	result := &CheckoutResult{
 		Success:            true,
 		OrderID:            orderID,

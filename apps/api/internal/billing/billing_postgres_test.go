@@ -49,13 +49,23 @@ func TestPostgresLiveCreditLotsQuotesAndBilling(t *testing.T) {
 	defer adminPool.Close()
 
 	dir := filepath.Join("..", "..", "..", "..", "infra", "migrations")
-	if _, err := migrate.Up(ctx, adminPool, dir); err != nil {
-		t.Fatalf("migrate.Up failed: %v", err)
-	}
-
-	_, err = adminPool.Exec(ctx, `ALTER ROLE app_user WITH LOGIN PASSWORD 'app_user_test_pw' NOBYPASSRLS`)
+	migConn, err := adminPool.Acquire(ctx)
 	if err != nil {
-		t.Fatalf("configure app_user login: %v", err)
+		t.Fatalf("acquire migConn: %v", err)
+	}
+	if _, err := migConn.Exec(ctx, `SELECT pg_advisory_lock(77331100)`); err != nil {
+		migConn.Release()
+		t.Fatalf("pg_advisory_lock: %v", err)
+	}
+	_, migErr := migrate.Up(ctx, adminPool, dir)
+	_, roleErr := adminPool.Exec(ctx, `ALTER ROLE app_user WITH LOGIN PASSWORD 'app_user_test_pw' NOBYPASSRLS`)
+	_, _ = migConn.Exec(ctx, `SELECT pg_advisory_unlock(77331100)`)
+	migConn.Release()
+	if migErr != nil {
+		t.Fatalf("migrate.Up failed: %v", migErr)
+	}
+	if roleErr != nil {
+		t.Fatalf("configure app_user login: %v", roleErr)
 	}
 
 	const (
