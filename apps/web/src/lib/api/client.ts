@@ -74,9 +74,9 @@ export async function callCanonicalRpc<TReq extends Record<string, unknown>, TRe
   }
 
   const snapshot = authStore.getSnapshot();
-  let token = options.token ?? snapshot.token ?? null;
+  let token = options.token ?? null;
   if (!token) {
-    token = await getClerkSessionToken();
+    token = (await getClerkSessionToken()) ?? snapshot.token ?? null;
   }
 
   const workspaceId =

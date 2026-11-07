@@ -235,9 +235,11 @@ function createDeveloperStore(initialTier: string = 'pro') {
   };
 
   const { subscribe, set, update } = writable<DeveloperState>(initialState);
+  let resetEpoch = 0;
 
   return {
     subscribe,
+    getResetEpoch: () => resetEpoch,
     setTier: (tier: string) => {
       update((s) => ({
         ...s,
@@ -429,7 +431,10 @@ function createDeveloperStore(initialTier: string = 'pro') {
         })
       }));
     },
-    reset: () => set(initialState),
+    reset: () => {
+      resetEpoch += 1;
+      set(initialState);
+    },
     upsertRemoteKey: (key: APIKey) => {
       update((s) => {
         const exists = s.keys.some((k) => k.apiKeyId === key.apiKeyId);
@@ -525,6 +530,8 @@ export async function issueApiKeyRemote(
     };
   }
 
+  const startEpoch = developerStore.getResetEpoch();
+
   const rpcRes = await callCanonicalRpc<
     Record<string, unknown>,
     {
@@ -591,6 +598,13 @@ export async function issueApiKeyRemote(
     createdBy: String(remoteKey?.created_by || remoteKey?.createdBy || 'authenticated_user')
   };
 
+  if (developerStore.getResetEpoch() !== startEpoch) {
+    return {
+      ok: false,
+      error: 'Phiên làm việc hoặc workspace đã thay đổi trong khi tạo API key (fail-closed).'
+    };
+  }
+
   developerStore.upsertRemoteKey(key);
   return { ok: true, key, rawSecret };
 }
@@ -605,6 +619,8 @@ export async function rotateApiKeyRemote(
   graceEndsAt?: string;
   error?: string;
 }> {
+  const startEpoch = developerStore.getResetEpoch();
+
   const rpcRes = await callCanonicalRpc<
     Record<string, unknown>,
     {
@@ -666,6 +682,13 @@ export async function rotateApiKeyRemote(
         ''
     ) || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
+  if (developerStore.getResetEpoch() !== startEpoch) {
+    return {
+      ok: false,
+      error: 'Phiên làm việc hoặc workspace đã thay đổi trong khi xoay vòng API key (fail-closed).'
+    };
+  }
+
   const existingOld = get(developerStore).keys.find((k: APIKey) => k.apiKeyId === params.apiKeyId);
   if (existingOld) {
     developerStore.upsertRemoteKey({
@@ -713,6 +736,8 @@ export async function revokeApiKeyRemote(
   params: { workspaceId?: string; apiKeyId: string },
   options: CanonicalRpcOptions = {}
 ): Promise<{ ok: boolean; error?: string }> {
+  const startEpoch = developerStore.getResetEpoch();
+
   const rpcRes = await callCanonicalRpc<
     Record<string, unknown>,
     {
@@ -741,6 +766,13 @@ export async function revokeApiKeyRemote(
     };
   }
 
+  if (developerStore.getResetEpoch() !== startEpoch) {
+    return {
+      ok: false,
+      error: 'Phiên làm việc hoặc workspace đã thay đổi trong khi thu hồi API key (fail-closed).'
+    };
+  }
+
   developerStore.revokeKey(params.apiKeyId);
   return { ok: true };
 }
@@ -764,6 +796,8 @@ export async function registerWebhookRemote(
       error: 'Webhook endpoint URL phải bắt đầu bằng https://'
     };
   }
+
+  const startEpoch = developerStore.getResetEpoch();
 
   const rpcRes = await callCanonicalRpc<
     Record<string, unknown>,
@@ -833,6 +867,13 @@ export async function registerWebhookRemote(
       remoteSub?.consecutive_failures ?? remoteSub?.consecutiveFailures ?? 0
     )
   };
+
+  if (developerStore.getResetEpoch() !== startEpoch) {
+    return {
+      ok: false,
+      error: 'Phiên làm việc hoặc workspace đã thay đổi trong khi đăng ký webhook (fail-closed).'
+    };
+  }
 
   developerStore.upsertRemoteWebhook(sub);
   return { ok: true, subscription: sub, secret };
