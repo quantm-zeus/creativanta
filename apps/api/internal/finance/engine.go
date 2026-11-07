@@ -9,29 +9,77 @@ import (
 	"github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb"
 )
 
+// ValidateExchangeRateSnapshot validates that an ExchangeRateSnapshot has complete
+// base_currency, quote_currency, and rate_to_base fields, matches the transaction currency
+// when provided, has a strictly positive rate, and enforces unit rate (1) for same-currency snapshots.
+func ValidateExchangeRateSnapshot(txCurrency string, fx ExchangeRateSnapshot) (string, tenantdb.ExactDecimal, error) {
+	baseCurr := strings.ToUpper(strings.TrimSpace(fx.BaseCurrency))
+	quoteCurr := strings.ToUpper(strings.TrimSpace(fx.QuoteCurrency))
+	rateStr := strings.TrimSpace(fx.RateToBase)
+	normTxCurr := strings.ToUpper(strings.TrimSpace(txCurrency))
+
+	if baseCurr == "" || quoteCurr == "" || rateStr == "" {
+		return "", tenantdb.ExactDecimal{}, fmt.Errorf(
+			"%w: exchange_rate_snapshot requires non-empty base_currency (%q), quote_currency (%q), and rate_to_base (%q)",
+			ErrInvalidAmount, fx.BaseCurrency, fx.QuoteCurrency, fx.RateToBase,
+		)
+	}
+	if normTxCurr != "" && normTxCurr != quoteCurr {
+		return "", tenantdb.ExactDecimal{}, fmt.Errorf(
+			"%w: transaction currency %q does not match exchange_rate_snapshot quote_currency %q",
+			ErrCurrencyMismatch, normTxCurr, quoteCurr,
+		)
+	}
+
+	rate, err := tenantdb.ParseExactDecimal(rateStr)
+	if err != nil {
+		return "", tenantdb.ExactDecimal{}, fmt.Errorf("%w: invalid rate_to_base %q: %v", ErrInvalidAmount, fx.RateToBase, err)
+	}
+	if rate.IsNegative() || rate.IsZero() {
+		return "", tenantdb.ExactDecimal{}, ErrNegativeRate
+	}
+
+	if baseCurr == quoteCurr {
+		one := tenantdb.MustParseExactDecimal("1.000000")
+		if rate.Cmp(one) != 0 {
+			return "", tenantdb.ExactDecimal{}, fmt.Errorf(
+				"%w: same-currency (%s) rate_to_base must be 1, got %q",
+				ErrInvalidAmount, baseCurr, fx.RateToBase,
+			)
+		}
+		return baseCurr, one, nil
+	}
+
+	return baseCurr, rate, nil
+}
+
+// ValidateAndComputeBaseAmount validates the transaction currency and FX snapshot,
+// returning the converted base amount and canonical base currency code.
+func ValidateAndComputeBaseAmount(txAmount tenantdb.ExactDecimal, txCurrency string, fx ExchangeRateSnapshot) (tenantdb.ExactDecimal, string, error) {
+	baseCurr, _, err := ValidateExchangeRateSnapshot(txCurrency, fx)
+	if err != nil {
+		return tenantdb.ExactDecimal{}, "", err
+	}
+	converted, err := ComputeBaseAmount(txAmount, fx)
+	if err != nil {
+		return tenantdb.ExactDecimal{}, "", err
+	}
+	return converted, baseCurr, nil
+}
+
 // ComputeBaseAmount converts transaction currency amount to workspace base currency amount:
 //
 //	base_amount = transaction_amount * rate_to_base
 //
 // Same-currency conversion rate is strictly 1.
-// Rates must be strictly positive.
+// Rates must be strictly positive, and both currencies + rate must be present.
 func ComputeBaseAmount(txAmount tenantdb.ExactDecimal, fx ExchangeRateSnapshot) (tenantdb.ExactDecimal, error) {
-	if fx.BaseCurrency == "" || fx.QuoteCurrency == "" {
-		return txAmount, nil
-	}
-	if strings.EqualFold(fx.BaseCurrency, fx.QuoteCurrency) {
-		return txAmount, nil
-	}
-	if fx.RateToBase == "" {
-		return tenantdb.ExactDecimal{}, fmt.Errorf("%w: missing rate_to_base for %s -> %s", ErrInvalidAmount, fx.QuoteCurrency, fx.BaseCurrency)
-	}
-
-	rate, err := tenantdb.ParseExactDecimal(fx.RateToBase)
+	baseCurr, rate, err := ValidateExchangeRateSnapshot("", fx)
 	if err != nil {
-		return tenantdb.ExactDecimal{}, fmt.Errorf("%w: invalid rate_to_base %q: %v", ErrInvalidAmount, fx.RateToBase, err)
+		return tenantdb.ExactDecimal{}, err
 	}
-	if rate.IsNegative() || rate.IsZero() {
-		return tenantdb.ExactDecimal{}, ErrNegativeRate
+	if strings.EqualFold(baseCurr, strings.TrimSpace(fx.QuoteCurrency)) {
+		return txAmount, nil
 	}
 
 	// Exact base-10 multiplication: (txAmount * rate) scaled by 10^6

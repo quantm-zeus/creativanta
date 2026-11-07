@@ -643,6 +643,9 @@ func (m *MemoryStore) CreateOrder(_ context.Context, o *Order) error {
 		cogsCopy := *o.COGSAmount
 		cp.COGSAmount = &cogsCopy
 	}
+	if len(o.ProductIDs) > 0 {
+		cp.ProductIDs = append([]string(nil), o.ProductIDs...)
+	}
 	if existing := m.findOrderUnlocked(o.WorkspaceID, o.OrderID); existing != nil {
 		if cp.MatchedAmount.IsZero() && !existing.MatchedAmount.IsZero() {
 			cp.MatchedAmount = existing.MatchedAmount
@@ -650,6 +653,28 @@ func (m *MemoryStore) CreateOrder(_ context.Context, o *Order) error {
 		if (cp.ReconciliationState == "" || cp.ReconciliationState == ReconciliationImportedOnly) &&
 			existing.ReconciliationState != "" && existing.ReconciliationState != ReconciliationImportedOnly {
 			cp.ReconciliationState = existing.ReconciliationState
+		}
+		if cp.COGSAmount == nil && existing.COGSAmount != nil {
+			cogsCopy := *existing.COGSAmount
+			cp.COGSAmount = &cogsCopy
+		}
+		if cp.SourcePlatform == "" {
+			cp.SourcePlatform = existing.SourcePlatform
+		}
+		if cp.ProductID == "" {
+			cp.ProductID = existing.ProductID
+		}
+		if len(cp.ProductIDs) == 0 && len(existing.ProductIDs) > 0 {
+			cp.ProductIDs = append([]string(nil), existing.ProductIDs...)
+		}
+		if cp.CampaignID == "" {
+			cp.CampaignID = existing.CampaignID
+		}
+		if cp.PostID == "" {
+			cp.PostID = existing.PostID
+		}
+		if cp.ContentID == "" {
+			cp.ContentID = existing.ContentID
 		}
 	}
 	m.orders[orderStoreKey(o.WorkspaceID, o.OrderID)] = &cp
@@ -669,6 +694,9 @@ func (m *MemoryStore) GetOrder(_ context.Context, workspaceID, orderID string) (
 		cogsCopy := *o.COGSAmount
 		cp.COGSAmount = &cogsCopy
 	}
+	if len(o.ProductIDs) > 0 {
+		cp.ProductIDs = append([]string(nil), o.ProductIDs...)
+	}
 	return &cp, nil
 }
 
@@ -684,10 +712,25 @@ func (m *MemoryStore) ListOrders(_ context.Context, workspaceID string) ([]Order
 				cogsCopy := *o.COGSAmount
 				cp.COGSAmount = &cogsCopy
 			}
+			if len(o.ProductIDs) > 0 {
+				cp.ProductIDs = append([]string(nil), o.ProductIDs...)
+			}
 			result = append(result, cp)
 		}
 	}
 	return result, nil
+}
+
+func (m *MemoryStore) ResolveRefundOrderID(_ context.Context, workspaceID, refundID string) (string, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	for _, p := range m.postings {
+		if p.WorkspaceID == workspaceID && p.OriginType == "refund" && p.OriginID == refundID && p.RelatedOrderID != "" {
+			return p.RelatedOrderID, nil
+		}
+	}
+	return "", nil
 }
 
 func (m *MemoryStore) UpdateOrderMatched(_ context.Context, workspaceID, orderID string, matchedAmount tenantdb.ExactDecimal, newState string) error {
@@ -1107,7 +1150,7 @@ func (m *MemoryStore) orderHasActiveCOGSUnlocked(workspaceID, orderID string, re
 			if ci, ok := m.costItems[p.OriginID]; ok &&
 				ci.WorkspaceID == workspaceID &&
 				ci.CostState != CostStateSuperseded &&
-				ci.RelatedScopeType == "order" &&
+				strings.EqualFold(ci.RelatedScopeType, "order") &&
 				ci.RelatedScopeID == orderID {
 				return true
 			}
@@ -1253,6 +1296,8 @@ func (m *MemoryStore) ListDataGaps(_ context.Context, workspaceID string, filter
 	})
 
 	// Filtering
+	startUTC, endUTC, _ := parseReportPeriodBounds(filter.PeriodStart, filter.PeriodEnd)
+	filterProdID := strings.TrimSpace(filter.ProductID)
 	var filtered []DataGapItem
 	for _, item := range items {
 		if filter.Severity != "" && item.Severity != filter.Severity {
@@ -1260,6 +1305,15 @@ func (m *MemoryStore) ListDataGaps(_ context.Context, workspaceID string, filter
 		}
 		if filter.GapType != "" && item.GapType != filter.GapType {
 			continue
+		}
+		if (startUTC != nil || endUTC != nil) && !timeWithinPeriodBounds(item.UnresolvedSince, startUTC, endUTC) {
+			continue
+		}
+		if filterProdID != "" && item.RelatedObjectType == "order" {
+			ord := m.findOrderUnlocked(workspaceID, item.RelatedObjectID)
+			if ord == nil || !orderMatchesProduct(*ord, filterProdID) {
+				continue
+			}
 		}
 		filtered = append(filtered, item)
 	}
@@ -1391,6 +1445,11 @@ func (p *PostgresStore) withTenantTx(ctx context.Context, workspaceID string, fn
 	return nil
 }
 
+type postingSnapshotEnvelope struct {
+	ExchangeRateSnapshot
+	RelatedOrderID string `json:"related_order_id,omitempty"`
+}
+
 func (p *PostgresStore) CreatePosting(ctx context.Context, post *FinancialPosting) error {
 	if post.PostingID == "" {
 		post.PostingID = newUUID()
@@ -1399,7 +1458,10 @@ func (p *PostgresStore) CreatePosting(ctx context.Context, post *FinancialPostin
 		post.CreatedAt = time.Now().UTC()
 	}
 
-	fxJSON, err := json.Marshal(post.ExchangeRateSnapshot)
+	fxJSON, err := json.Marshal(postingSnapshotEnvelope{
+		ExchangeRateSnapshot: post.ExchangeRateSnapshot,
+		RelatedOrderID:       post.RelatedOrderID,
+	})
 	if err != nil {
 		return fmt.Errorf("marshal fx snapshot: %w", err)
 	}
@@ -1556,7 +1618,11 @@ func scanPosting(row pgx.Row) (*FinancialPosting, error) {
 		return nil, err
 	}
 	if len(fxBytes) > 0 {
-		_ = json.Unmarshal(fxBytes, &post.ExchangeRateSnapshot)
+		var env postingSnapshotEnvelope
+		if json.Unmarshal(fxBytes, &env) == nil {
+			post.ExchangeRateSnapshot = env.ExchangeRateSnapshot
+			post.RelatedOrderID = env.RelatedOrderID
+		}
 	}
 	return &post, nil
 }
@@ -1579,9 +1645,48 @@ func scanPostingRow(rows pgx.Rows) (*FinancialPosting, error) {
 		return nil, err
 	}
 	if len(fxBytes) > 0 {
-		_ = json.Unmarshal(fxBytes, &post.ExchangeRateSnapshot)
+		var env postingSnapshotEnvelope
+		if json.Unmarshal(fxBytes, &env) == nil {
+			post.ExchangeRateSnapshot = env.ExchangeRateSnapshot
+			post.RelatedOrderID = env.RelatedOrderID
+		}
 	}
 	return &post, nil
+}
+
+func nullableString(s string) *string {
+	trimmed := strings.TrimSpace(s)
+	if trimmed == "" {
+		return nil
+	}
+	return &trimmed
+}
+
+func isUUIDFormat(s string) bool {
+	if len(s) != 36 {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if i == 8 || i == 13 || i == 18 || i == 23 {
+			if c != '-' {
+				return false
+			}
+			continue
+		}
+		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+			return false
+		}
+	}
+	return true
+}
+
+func nullableUUIDString(s string) *string {
+	trimmed := strings.TrimSpace(s)
+	if !isUUIDFormat(trimmed) {
+		return nil
+	}
+	return &trimmed
 }
 
 func (p *PostgresStore) CreateCostItem(ctx context.Context, item *CostItem) error {
@@ -1593,6 +1698,9 @@ func (p *PostgresStore) CreateCostItem(ctx context.Context, item *CostItem) erro
 		item.CreatedAt = now
 	}
 	item.UpdatedAt = now
+	if strings.TrimSpace(item.EffectiveDate) == "" {
+		item.EffectiveDate = now.Format("2006-01-02")
+	}
 
 	query := `
 		INSERT INTO cost_items (
@@ -1610,8 +1718,8 @@ func (p *PostgresStore) CreateCostItem(ctx context.Context, item *CostItem) erro
 	return p.withTenantTx(ctx, item.WorkspaceID, func(txCtx context.Context, tx pgx.Tx) error {
 		_, err := tx.Exec(txCtx, query,
 			item.CostItemID, item.WorkspaceID, item.CostType, item.Amount.ToPgNumeric(), item.Currency,
-			item.Description, item.RelatedScopeType, item.RelatedScopeID, item.SourceClass,
-			item.EvidenceID, item.ConfidenceReason, item.CostState, item.EffectiveDate,
+			nullableString(item.Description), nullableString(item.RelatedScopeType), nullableUUIDString(item.RelatedScopeID), item.SourceClass,
+			nullableUUIDString(item.EvidenceID), nullableString(item.ConfidenceReason), item.CostState, item.EffectiveDate,
 			item.CreatedAt, item.UpdatedAt,
 		)
 		return err
@@ -1620,9 +1728,11 @@ func (p *PostgresStore) CreateCostItem(ctx context.Context, item *CostItem) erro
 
 func (p *PostgresStore) GetCostItem(ctx context.Context, workspaceID, costItemID string) (*CostItem, error) {
 	query := `
-		SELECT cost_item_id, workspace_id, cost_type, amount, currency,
-		       description, related_scope_type, related_scope_id, source_class,
-		       evidence_id, confidence_reason, cost_state, effective_date,
+		SELECT cost_item_id::text, workspace_id::text, cost_type, amount, currency,
+		       COALESCE(description, ''), COALESCE(related_scope_type, ''),
+		       COALESCE(related_scope_id::text, ''), source_class::text,
+		       COALESCE(evidence_id::text, ''), COALESCE(confidence_reason, ''),
+		       cost_state, COALESCE(effective_date::text, ''),
 		       created_at, updated_at
 		FROM cost_items
 		WHERE workspace_id = $1 AND cost_item_id = $2 AND deleted_at IS NULL
@@ -1667,26 +1777,28 @@ func (p *PostgresStore) ListCostItems(ctx context.Context, workspaceID string, f
 		idx++
 	}
 	if filter.RelatedScopeID != "" {
-		baseQuery += fmt.Sprintf(" AND related_scope_id = $%d", idx)
+		baseQuery += fmt.Sprintf(" AND related_scope_id::text = $%d", idx)
 		args = append(args, filter.RelatedScopeID)
 		idx++
 	}
 	if filter.PeriodStart != "" {
-		baseQuery += fmt.Sprintf(" AND effective_date >= $%d", idx)
+		baseQuery += fmt.Sprintf(" AND effective_date >= $%d::date", idx)
 		args = append(args, filter.PeriodStart)
 		idx++
 	}
 	if filter.PeriodEnd != "" {
-		baseQuery += fmt.Sprintf(" AND effective_date <= $%d", idx)
+		baseQuery += fmt.Sprintf(" AND effective_date <= $%d::date", idx)
 		args = append(args, filter.PeriodEnd)
 		idx++
 	}
 
 	countQuery := "SELECT count(*) " + baseQuery
 	dataQuery := `
-		SELECT cost_item_id, workspace_id, cost_type, amount, currency,
-		       description, related_scope_type, related_scope_id, source_class,
-		       evidence_id, confidence_reason, cost_state, effective_date,
+		SELECT cost_item_id::text, workspace_id::text, cost_type, amount, currency,
+		       COALESCE(description, ''), COALESCE(related_scope_type, ''),
+		       COALESCE(related_scope_id::text, ''), source_class::text,
+		       COALESCE(evidence_id::text, ''), COALESCE(confidence_reason, ''),
+		       cost_state, COALESCE(effective_date::text, ''),
 		       created_at, updated_at ` + baseQuery + fmt.Sprintf(" ORDER BY effective_date DESC, created_at DESC LIMIT $%d OFFSET $%d", idx, idx+1)
 	dataArgs := append(append([]any{}, args...), limit, offset)
 
@@ -1781,6 +1893,12 @@ func (p *PostgresStore) CreateSettlement(ctx context.Context, s *Settlement) err
 	fxJSON, _ := json.Marshal(s.ExchangeRateSnapshot)
 	feesJSON, _ := json.Marshal(s.Fees)
 	dedJSON, _ := json.Marshal(s.Deductions)
+	relatedOrders := []string{}
+	for _, id := range s.RelatedOrderIDs {
+		if isUUIDFormat(strings.TrimSpace(id)) {
+			relatedOrders = append(relatedOrders, strings.TrimSpace(id))
+		}
+	}
 
 	query := `
 		INSERT INTO settlements (
@@ -1799,11 +1917,11 @@ func (p *PostgresStore) CreateSettlement(ctx context.Context, s *Settlement) err
 	`
 	return p.withTenantTx(ctx, s.WorkspaceID, func(txCtx context.Context, tx pgx.Tx) error {
 		_, err := tx.Exec(txCtx, query,
-			s.SettlementID, s.WorkspaceID, s.SourceClass, s.SourcePlatform,
-			s.ExternalSettlementID, s.ConnectedAccountID, fxJSON,
-			s.ImportFingerprint, s.GrossAmount.ToPgNumeric(), s.NetAmount.ToPgNumeric(), feesJSON, dedJSON,
-			s.Currency, s.SettlementState, s.ReconciliationState, s.RelatedOrderIDs,
-			s.EffectiveDate, s.CreatedAt, s.UpdatedAt,
+			s.SettlementID, s.WorkspaceID, s.SourceClass, nullableString(s.SourcePlatform),
+			nullableString(s.ExternalSettlementID), nullableUUIDString(s.ConnectedAccountID), fxJSON,
+			nullableString(s.ImportFingerprint), s.GrossAmount.ToPgNumeric(), s.NetAmount.ToPgNumeric(), feesJSON, dedJSON,
+			s.Currency, s.SettlementState, toPgReconciliationState(s.ReconciliationState), relatedOrders,
+			nullableString(s.EffectiveDate), s.CreatedAt, s.UpdatedAt,
 		)
 		if err != nil {
 			if strings.Contains(err.Error(), "duplicate key") || strings.Contains(err.Error(), "unique constraint") {
@@ -1817,11 +1935,11 @@ func (p *PostgresStore) CreateSettlement(ctx context.Context, s *Settlement) err
 
 func (p *PostgresStore) GetSettlement(ctx context.Context, workspaceID, settlementID string) (*Settlement, error) {
 	query := `
-		SELECT settlement_id, workspace_id, source_class, source_platform,
-		       external_settlement_id, connected_account_id, exchange_rate_snapshot,
-		       import_fingerprint, gross_amount, net_amount, fees, deductions,
-		       currency, settlement_state, reconciliation_state, related_order_ids,
-		       effective_date, created_at, updated_at
+		SELECT settlement_id::text, workspace_id::text, source_class::text, COALESCE(source_platform, ''),
+		       COALESCE(external_settlement_id, ''), COALESCE(connected_account_id::text, ''), exchange_rate_snapshot,
+		       COALESCE(import_fingerprint, ''), gross_amount, net_amount, COALESCE(fees, '{}'::jsonb), COALESCE(deductions, '{}'::jsonb),
+		       currency, settlement_state, reconciliation_state::text, COALESCE(related_order_ids::text[], '{}'::text[]),
+		       COALESCE(effective_date::text, ''), created_at, updated_at
 		FROM settlements
 		WHERE workspace_id = $1 AND settlement_id = $2 AND deleted_at IS NULL
 	`
@@ -1843,6 +1961,7 @@ func (p *PostgresStore) GetSettlement(ctx context.Context, workspaceID, settleme
 			}
 			return err
 		}
+		s.ReconciliationState = fromPgReconciliationState(s.ReconciliationState)
 		s.GrossAmount, _ = tenantdb.FromPgNumeric(grossNum)
 		s.NetAmount, _ = tenantdb.FromPgNumeric(netNum)
 		_ = json.Unmarshal(fxBytes, &s.ExchangeRateSnapshot)
@@ -1877,18 +1996,18 @@ func (p *PostgresStore) ListSettlements(ctx context.Context, workspaceID string,
 		idx++
 	}
 	if filter.ReconciliationState != "" {
-		baseQuery += fmt.Sprintf(" AND reconciliation_state = $%d", idx)
-		args = append(args, filter.ReconciliationState)
+		baseQuery += fmt.Sprintf(" AND reconciliation_state::text = $%d", idx)
+		args = append(args, toPgReconciliationState(filter.ReconciliationState))
 		idx++
 	}
 
 	countQuery := "SELECT count(*) " + baseQuery
 	dataQuery := `
-		SELECT settlement_id, workspace_id, source_class, source_platform,
-		       external_settlement_id, connected_account_id, exchange_rate_snapshot,
-		       import_fingerprint, gross_amount, net_amount, fees, deductions,
-		       currency, settlement_state, reconciliation_state, related_order_ids,
-		       effective_date, created_at, updated_at ` + baseQuery + fmt.Sprintf(" ORDER BY effective_date DESC, created_at DESC LIMIT $%d OFFSET $%d", idx, idx+1)
+		SELECT settlement_id::text, workspace_id::text, source_class::text, COALESCE(source_platform, ''),
+		       COALESCE(external_settlement_id, ''), COALESCE(connected_account_id::text, ''), exchange_rate_snapshot,
+		       COALESCE(import_fingerprint, ''), gross_amount, net_amount, COALESCE(fees, '{}'::jsonb), COALESCE(deductions, '{}'::jsonb),
+		       currency, settlement_state, reconciliation_state::text, COALESCE(related_order_ids::text[], '{}'::text[]),
+		       COALESCE(effective_date::text, ''), created_at, updated_at ` + baseQuery + fmt.Sprintf(" ORDER BY effective_date DESC, created_at DESC LIMIT $%d OFFSET $%d", idx, idx+1)
 	dataArgs := append(append([]any{}, args...), limit, offset)
 
 	var total int64
@@ -1916,6 +2035,7 @@ func (p *PostgresStore) ListSettlements(ctx context.Context, workspaceID string,
 			); err != nil {
 				return err
 			}
+			s.ReconciliationState = fromPgReconciliationState(s.ReconciliationState)
 			s.GrossAmount, _ = tenantdb.FromPgNumeric(grossNum)
 			s.NetAmount, _ = tenantdb.FromPgNumeric(netNum)
 			_ = json.Unmarshal(fxBytes, &s.ExchangeRateSnapshot)
@@ -1933,13 +2053,13 @@ func (p *PostgresStore) ListSettlements(ctx context.Context, workspaceID string,
 
 func (p *PostgresStore) FindSettlementByExternalID(ctx context.Context, workspaceID, accountID, externalID string) (*Settlement, error) {
 	query := `
-		SELECT settlement_id, workspace_id, source_class, source_platform,
-		       external_settlement_id, connected_account_id, exchange_rate_snapshot,
-		       import_fingerprint, gross_amount, net_amount, fees, deductions,
-		       currency, settlement_state, reconciliation_state, related_order_ids,
-		       effective_date, created_at, updated_at
+		SELECT settlement_id::text, workspace_id::text, source_class::text, COALESCE(source_platform, ''),
+		       COALESCE(external_settlement_id, ''), COALESCE(connected_account_id::text, ''), exchange_rate_snapshot,
+		       COALESCE(import_fingerprint, ''), gross_amount, net_amount, COALESCE(fees, '{}'::jsonb), COALESCE(deductions, '{}'::jsonb),
+		       currency, settlement_state, reconciliation_state::text, COALESCE(related_order_ids::text[], '{}'::text[]),
+		       COALESCE(effective_date::text, ''), created_at, updated_at
 		FROM settlements
-		WHERE workspace_id = $1 AND connected_account_id = $2 AND external_settlement_id = $3 AND deleted_at IS NULL
+		WHERE workspace_id = $1 AND COALESCE(connected_account_id::text, '') = $2 AND external_settlement_id = $3 AND deleted_at IS NULL
 	`
 	var s Settlement
 	var grossNum, netNum pgtype.Numeric
@@ -1964,6 +2084,7 @@ func (p *PostgresStore) FindSettlementByExternalID(ctx context.Context, workspac
 	if err != nil {
 		return nil, err
 	}
+	s.ReconciliationState = fromPgReconciliationState(s.ReconciliationState)
 	s.GrossAmount, _ = tenantdb.FromPgNumeric(grossNum)
 	s.NetAmount, _ = tenantdb.FromPgNumeric(netNum)
 	_ = json.Unmarshal(fxBytes, &s.ExchangeRateSnapshot)
@@ -1974,11 +2095,11 @@ func (p *PostgresStore) FindSettlementByExternalID(ctx context.Context, workspac
 
 func (p *PostgresStore) FindSettlementByFingerprint(ctx context.Context, workspaceID, fingerprint string) (*Settlement, error) {
 	query := `
-		SELECT settlement_id, workspace_id, source_class, source_platform,
-		       external_settlement_id, connected_account_id, exchange_rate_snapshot,
-		       import_fingerprint, gross_amount, net_amount, fees, deductions,
-		       currency, settlement_state, reconciliation_state, related_order_ids,
-		       effective_date, created_at, updated_at
+		SELECT settlement_id::text, workspace_id::text, source_class::text, COALESCE(source_platform, ''),
+		       COALESCE(external_settlement_id, ''), COALESCE(connected_account_id::text, ''), exchange_rate_snapshot,
+		       COALESCE(import_fingerprint, ''), gross_amount, net_amount, COALESCE(fees, '{}'::jsonb), COALESCE(deductions, '{}'::jsonb),
+		       currency, settlement_state, reconciliation_state::text, COALESCE(related_order_ids::text[], '{}'::text[]),
+		       COALESCE(effective_date::text, ''), created_at, updated_at
 		FROM settlements
 		WHERE workspace_id = $1 AND import_fingerprint = $2 AND deleted_at IS NULL
 	`
@@ -2005,6 +2126,7 @@ func (p *PostgresStore) FindSettlementByFingerprint(ctx context.Context, workspa
 	if err != nil {
 		return nil, err
 	}
+	s.ReconciliationState = fromPgReconciliationState(s.ReconciliationState)
 	s.GrossAmount, _ = tenantdb.FromPgNumeric(grossNum)
 	s.NetAmount, _ = tenantdb.FromPgNumeric(netNum)
 	_ = json.Unmarshal(fxBytes, &s.ExchangeRateSnapshot)
@@ -2037,9 +2159,9 @@ func (p *PostgresStore) CreateSettlementLine(ctx context.Context, line *Settleme
 	return p.withTenantTx(ctx, line.WorkspaceID, func(txCtx context.Context, tx pgx.Tx) error {
 		_, err := tx.Exec(txCtx, query,
 			line.LineID, line.WorkspaceID, line.SettlementID, line.ExternalLineID,
-			line.ExternalOrderID, line.OrderID, line.GrossAmount.ToPgNumeric(), line.FeeAmount.ToPgNumeric(),
+			nullableString(line.ExternalOrderID), nullableUUIDString(line.OrderID), line.GrossAmount.ToPgNumeric(), line.FeeAmount.ToPgNumeric(),
 			line.RefundAmount.ToPgNumeric(), line.NetAmount.ToPgNumeric(), line.MatchedAmount.ToPgNumeric(), line.Currency,
-			line.ReconciliationState, line.CreatedAt,
+			toPgReconciliationState(line.ReconciliationState), line.CreatedAt,
 		)
 		return err
 	})
@@ -2047,10 +2169,10 @@ func (p *PostgresStore) CreateSettlementLine(ctx context.Context, line *Settleme
 
 func (p *PostgresStore) ListSettlementLines(ctx context.Context, workspaceID, settlementID string) ([]SettlementLine, error) {
 	query := `
-		SELECT line_id, workspace_id, settlement_id, external_line_id,
-		       external_order_id, order_id, gross_amount, fee_amount,
+		SELECT line_id::text, workspace_id::text, settlement_id::text, external_line_id,
+		       external_order_id, order_id::text, gross_amount, fee_amount,
 		       refund_amount, net_amount, matched_amount, currency,
-		       reconciliation_state, created_at
+		       reconciliation_state::text, created_at
 		FROM settlement_lines
 		WHERE workspace_id = $1 AND settlement_id = $2
 		ORDER BY created_at ASC
@@ -2076,6 +2198,7 @@ func (p *PostgresStore) ListSettlementLines(ctx context.Context, workspaceID, se
 			); err != nil {
 				return err
 			}
+			l.ReconciliationState = fromPgReconciliationState(l.ReconciliationState)
 			if extOrder != nil {
 				l.ExternalOrderID = *extOrder
 			}
@@ -2099,10 +2222,10 @@ func (p *PostgresStore) ListSettlementLines(ctx context.Context, workspaceID, se
 
 func (p *PostgresStore) GetSettlementLine(ctx context.Context, workspaceID, settlementID, lineID string) (*SettlementLine, error) {
 	query := `
-		SELECT line_id, workspace_id, settlement_id, external_line_id,
-		       external_order_id, order_id, gross_amount, fee_amount,
+		SELECT line_id::text, workspace_id::text, settlement_id::text, external_line_id,
+		       external_order_id, order_id::text, gross_amount, fee_amount,
 		       refund_amount, net_amount, matched_amount, currency,
-		       reconciliation_state, created_at
+		       reconciliation_state::text, created_at
 		FROM settlement_lines
 		WHERE workspace_id = $1 AND settlement_id = $2 AND line_id = $3
 	`
@@ -2121,6 +2244,7 @@ func (p *PostgresStore) GetSettlementLine(ctx context.Context, workspaceID, sett
 	if err != nil {
 		return nil, err
 	}
+	l.ReconciliationState = fromPgReconciliationState(l.ReconciliationState)
 	if extOrder != nil {
 		l.ExternalOrderID = *extOrder
 	}
@@ -2142,7 +2266,7 @@ func (p *PostgresStore) UpdateSettlementLineMatched(ctx context.Context, workspa
 		WHERE workspace_id = $3 AND line_id = $4
 	`
 	return p.withTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx) error {
-		_, err := tx.Exec(txCtx, query, matchedAmount.ToPgNumeric(), newState, workspaceID, lineID)
+		_, err := tx.Exec(txCtx, query, matchedAmount.ToPgNumeric(), toPgReconciliationState(newState), workspaceID, lineID)
 		return err
 	})
 }
@@ -2157,6 +2281,14 @@ func (p *PostgresStore) CreateSnapshot(ctx context.Context, s *ProfitSnapshot) e
 	}
 	if s.FreshnessAt.IsZero() {
 		s.FreshnessAt = now
+	}
+	periodStart := strings.TrimSpace(s.PeriodStart)
+	if periodStart == "" {
+		periodStart = "1970-01-01"
+	}
+	periodEnd := strings.TrimSpace(s.PeriodEnd)
+	if periodEnd == "" {
+		periodEnd = "2099-12-31"
 	}
 
 	mixJSON, _ := json.Marshal(s.SourceClassMix)
@@ -2173,7 +2305,7 @@ func (p *PostgresStore) CreateSnapshot(ctx context.Context, s *ProfitSnapshot) e
 			net_profit, margin_pct, source_class_mix, confidence, freshness_at,
 			currency, created_at
 		) VALUES (
-			$1, $2, $3, $4, $5, $6,
+			$1, $2, $3, $4, $5::date, $6::date,
 			$7, $8, $9, $10, $11,
 			$12, $13, $14, $15, $16,
 			$17, $18, $19, $20, $21,
@@ -2182,7 +2314,7 @@ func (p *PostgresStore) CreateSnapshot(ctx context.Context, s *ProfitSnapshot) e
 	`
 	return p.withTenantTx(ctx, s.WorkspaceID, func(txCtx context.Context, tx pgx.Tx) error {
 		_, err := tx.Exec(txCtx, query,
-			s.SnapshotID, s.WorkspaceID, s.ScopeType, s.ScopeID, s.PeriodStart, s.PeriodEnd,
+			s.SnapshotID, s.WorkspaceID, s.ScopeType, nullableUUIDString(s.ScopeID), periodStart, periodEnd,
 			s.GrossRevenue.ToPgNumeric(), s.PlatformFees.ToPgNumeric(), s.ShippingCosts.ToPgNumeric(),
 			s.AffiliateCommissions.ToPgNumeric(), s.RefundDeductions.ToPgNumeric(),
 			s.COGS.ToPgNumeric(), s.AdsSpend.ToPgNumeric(), s.AICreditCosts.ToPgNumeric(),
@@ -2196,10 +2328,10 @@ func (p *PostgresStore) CreateSnapshot(ctx context.Context, s *ProfitSnapshot) e
 
 func (p *PostgresStore) GetSnapshot(ctx context.Context, workspaceID, snapshotID string) (*ProfitSnapshot, error) {
 	query := `
-		SELECT snapshot_id, workspace_id, scope_type, scope_id, period_start, period_end,
+		SELECT snapshot_id::text, workspace_id::text, scope_type, scope_id::text, period_start::text, period_end::text,
 		       gross_revenue, platform_fees, shipping_costs, affiliate_commissions, refund_deductions,
 		       cogs, ads_spend, ai_credit_costs, seeding_costs, other_costs,
-		       net_profit, margin_pct, source_class_mix, confidence, freshness_at,
+		       net_profit, margin_pct, source_class_mix, confidence::text, freshness_at,
 		       currency, created_at
 		FROM profit_snapshots
 		WHERE workspace_id = $1 AND snapshot_id = $2
@@ -2215,10 +2347,10 @@ func (p *PostgresStore) GetSnapshot(ctx context.Context, workspaceID, snapshotID
 
 func (p *PostgresStore) GetLatestSnapshot(ctx context.Context, workspaceID, scopeType, scopeID, periodStart, periodEnd string) (*ProfitSnapshot, error) {
 	query := `
-		SELECT snapshot_id, workspace_id, scope_type, scope_id, period_start, period_end,
+		SELECT snapshot_id::text, workspace_id::text, scope_type, scope_id::text, period_start::text, period_end::text,
 		       gross_revenue, platform_fees, shipping_costs, affiliate_commissions, refund_deductions,
 		       cogs, ads_spend, ai_credit_costs, seeding_costs, other_costs,
-		       net_profit, margin_pct, source_class_mix, confidence, freshness_at,
+		       net_profit, margin_pct, source_class_mix, confidence::text, freshness_at,
 		       currency, created_at
 		FROM profit_snapshots
 		WHERE workspace_id = $1
@@ -2232,17 +2364,17 @@ func (p *PostgresStore) GetLatestSnapshot(ctx context.Context, workspaceID, scop
 		idx++
 	}
 	if scopeID != "" {
-		query += fmt.Sprintf(" AND scope_id = $%d", idx)
+		query += fmt.Sprintf(" AND scope_id::text = $%d", idx)
 		args = append(args, scopeID)
 		idx++
 	}
 	if periodStart != "" {
-		query += fmt.Sprintf(" AND period_start = $%d", idx)
+		query += fmt.Sprintf(" AND period_start = $%d::date", idx)
 		args = append(args, periodStart)
 		idx++
 	}
 	if periodEnd != "" {
-		query += fmt.Sprintf(" AND period_end = $%d", idx)
+		query += fmt.Sprintf(" AND period_end = $%d::date", idx)
 		args = append(args, periodEnd)
 		idx++
 	}
@@ -2259,10 +2391,10 @@ func (p *PostgresStore) GetLatestSnapshot(ctx context.Context, workspaceID, scop
 
 func (p *PostgresStore) ListSnapshots(ctx context.Context, workspaceID, scopeType string, limit int) ([]ProfitSnapshot, error) {
 	query := `
-		SELECT snapshot_id, workspace_id, scope_type, scope_id, period_start, period_end,
+		SELECT snapshot_id::text, workspace_id::text, scope_type, scope_id::text, period_start::text, period_end::text,
 		       gross_revenue, platform_fees, shipping_costs, affiliate_commissions, refund_deductions,
 		       cogs, ads_spend, ai_credit_costs, seeding_costs, other_costs,
-		       net_profit, margin_pct, source_class_mix, confidence, freshness_at,
+		       net_profit, margin_pct, source_class_mix, confidence::text, freshness_at,
 		       currency, created_at
 		FROM profit_snapshots
 		WHERE workspace_id = $1
@@ -2387,6 +2519,193 @@ func scanSnapshotRow(rows pgx.Rows) (*ProfitSnapshot, error) {
 	return &s, nil
 }
 
+func toPgReconciliationState(state string) string {
+	switch strings.ToLower(strings.TrimSpace(state)) {
+	case "", ReconciliationImportedOnly:
+		return "imported_only"
+	case ReconciliationAwaitingEvidence:
+		return "awaiting_evidence"
+	case ReconciliationInferredPendingConfirmation:
+		return "estimated"
+	case ReconciliationPartiallyReconciled, "partially_matched":
+		return "partially_matched"
+	case ReconciliationFullyReconciled, "reconciled":
+		return "reconciled"
+	case ReconciliationConflictDetected, "disputed":
+		return "disputed"
+	case ReconciliationManuallyOverridden, "adjusted":
+		return "adjusted"
+	default:
+		return "imported_only"
+	}
+}
+
+func fromPgReconciliationState(state string) string {
+	switch strings.ToLower(strings.TrimSpace(state)) {
+	case "partially_matched", ReconciliationPartiallyReconciled:
+		return ReconciliationPartiallyReconciled
+	case "reconciled", ReconciliationFullyReconciled:
+		return ReconciliationFullyReconciled
+	case "disputed", ReconciliationConflictDetected:
+		return ReconciliationConflictDetected
+	case "adjusted", ReconciliationManuallyOverridden:
+		return ReconciliationManuallyOverridden
+	case "estimated":
+		return ReconciliationInferredPendingConfirmation
+	case "awaiting_evidence":
+		return ReconciliationAwaitingEvidence
+	default:
+		return ReconciliationImportedOnly
+	}
+}
+
+func appendUniqueString(list []string, val string) []string {
+	val = strings.TrimSpace(val)
+	if val == "" {
+		return list
+	}
+	for _, existing := range list {
+		if strings.EqualFold(existing, val) {
+			return list
+		}
+	}
+	return append(list, val)
+}
+
+func orderMatchesProduct(o Order, productID string) bool {
+	pid := strings.TrimSpace(productID)
+	if pid == "" {
+		return false
+	}
+	if strings.EqualFold(strings.TrimSpace(o.ProductID), pid) {
+		return true
+	}
+	for _, id := range o.ProductIDs {
+		if strings.EqualFold(strings.TrimSpace(id), pid) {
+			return true
+		}
+	}
+	return false
+}
+
+func hydrateOrderDetails(o *Order, itemsBytes, feeBytes, metaBytes []byte) {
+	if o == nil {
+		return
+	}
+	if o.ProductID != "" {
+		o.ProductIDs = appendUniqueString(o.ProductIDs, o.ProductID)
+	}
+	if len(metaBytes) > 0 {
+		var meta map[string]any
+		if json.Unmarshal(metaBytes, &meta) == nil {
+			if o.SourcePlatform == "" {
+				if v, ok := meta["source_platform"].(string); ok {
+					o.SourcePlatform = strings.TrimSpace(v)
+				}
+			}
+			if v, ok := meta["product_id"].(string); ok && strings.TrimSpace(v) != "" {
+				if o.ProductID == "" {
+					o.ProductID = strings.TrimSpace(v)
+				}
+				o.ProductIDs = appendUniqueString(o.ProductIDs, v)
+			}
+			if rawIDs, ok := meta["product_ids"].([]any); ok {
+				for _, elem := range rawIDs {
+					if s, ok := elem.(string); ok {
+						o.ProductIDs = appendUniqueString(o.ProductIDs, s)
+					}
+				}
+			}
+			if o.CampaignID == "" {
+				if v, ok := meta["campaign_id"].(string); ok {
+					o.CampaignID = strings.TrimSpace(v)
+				}
+			}
+			if o.PostID == "" {
+				if v, ok := meta["post_id"].(string); ok {
+					o.PostID = strings.TrimSpace(v)
+				}
+			}
+			if o.ContentID == "" {
+				if v, ok := meta["content_id"].(string); ok && strings.TrimSpace(v) != "" {
+					o.ContentID = strings.TrimSpace(v)
+				} else if v, ok := meta["publish_item_id"].(string); ok && strings.TrimSpace(v) != "" {
+					o.ContentID = strings.TrimSpace(v)
+				}
+			}
+		}
+	}
+	if len(feeBytes) > 0 {
+		var fees map[string]any
+		if json.Unmarshal(feeBytes, &fees) == nil {
+			if rawCOGS, ok := fees["cogs"]; ok {
+				switch v := rawCOGS.(type) {
+				case string:
+					if d, err := tenantdb.ParseExactDecimal(strings.TrimSpace(v)); err == nil && !d.IsZero() {
+						o.COGSAmount = &d
+					}
+				case float64:
+					if d, err := tenantdb.ParseExactDecimal(fmt.Sprintf("%.6f", v)); err == nil && !d.IsZero() {
+						o.COGSAmount = &d
+					}
+				}
+			}
+		}
+	}
+	if len(itemsBytes) > 0 {
+		var rawItems []map[string]any
+		if json.Unmarshal(itemsBytes, &rawItems) == nil {
+			itemCOGSSum := tenantdb.ZeroDecimal()
+			hasItemCOGS := false
+			for _, item := range rawItems {
+				for _, key := range []string{"product_id", "sku_id", "sku"} {
+					if s, ok := item[key].(string); ok && strings.TrimSpace(s) != "" {
+						if o.ProductID == "" && key == "product_id" {
+							o.ProductID = strings.TrimSpace(s)
+						}
+						o.ProductIDs = appendUniqueString(o.ProductIDs, s)
+					}
+				}
+				var unitCOGS tenantdb.ExactDecimal
+				var parsedCOGS bool
+				if rawUC, ok := item["unit_cogs"]; ok {
+					switch v := rawUC.(type) {
+					case string:
+						if d, err := tenantdb.ParseExactDecimal(strings.TrimSpace(v)); err == nil && !d.IsZero() {
+							unitCOGS = d
+							parsedCOGS = true
+						}
+					case float64:
+						if d, err := tenantdb.ParseExactDecimal(fmt.Sprintf("%.6f", v)); err == nil && !d.IsZero() {
+							unitCOGS = d
+							parsedCOGS = true
+						}
+					}
+				}
+				if parsedCOGS {
+					qty := int64(1)
+					if rawQty, ok := item["quantity"].(float64); ok && int64(rawQty) > 0 {
+						qty = int64(rawQty)
+					}
+					qtyDec := tenantdb.MustParseExactDecimal(fmt.Sprintf("%d.000000", qty))
+					lineCOGS, err := ComputeBaseAmount(unitCOGS, ExchangeRateSnapshot{
+						BaseCurrency:  "VND",
+						QuoteCurrency: "USD",
+						RateToBase:    qtyDec.Fixed6String(),
+					})
+					if err == nil && !lineCOGS.IsZero() {
+						itemCOGSSum, _ = itemCOGSSum.Add(lineCOGS)
+						hasItemCOGS = true
+					}
+				}
+			}
+			if o.COGSAmount == nil && hasItemCOGS && !itemCOGSSum.IsZero() {
+				o.COGSAmount = &itemCOGSSum
+			}
+		}
+	}
+}
+
 func (p *PostgresStore) CreateOrder(ctx context.Context, o *Order) error {
 	if o.OrderID == "" {
 		o.OrderID = newUUID()
@@ -2394,19 +2713,59 @@ func (p *PostgresStore) CreateOrder(ctx context.Context, o *Order) error {
 	if o.OrderedAt.IsZero() {
 		o.OrderedAt = time.Now().UTC()
 	}
+	feeMap := map[string]any{}
+	if o.COGSAmount != nil {
+		feeMap["cogs"] = o.COGSAmount.Fixed6String()
+	}
+	feeJSON, _ := json.Marshal(feeMap)
+
+	metaMap := map[string]any{}
+	if o.SourcePlatform != "" {
+		metaMap["source_platform"] = o.SourcePlatform
+	}
+	if o.ProductID != "" {
+		metaMap["product_id"] = o.ProductID
+	}
+	if len(o.ProductIDs) > 0 {
+		metaMap["product_ids"] = o.ProductIDs
+	}
+	if o.CampaignID != "" {
+		metaMap["campaign_id"] = o.CampaignID
+	}
+	if o.PostID != "" {
+		metaMap["post_id"] = o.PostID
+	}
+	if o.ContentID != "" {
+		metaMap["content_id"] = o.ContentID
+	}
+	metaJSON, _ := json.Marshal(metaMap)
+
+	pgRecState := toPgReconciliationState(o.ReconciliationState)
 	query := `
 		INSERT INTO orders (
 			order_id, workspace_id, amount, matched_amount, currency,
-			lifecycle_state, reconciliation_state, ordered_at, created_at, updated_at
+			lifecycle_state, reconciliation_state, source_platform,
+			fee_breakdown, metadata, ordered_at, created_at, updated_at
 		) VALUES (
 			$1, $2, $3, $4, $5,
-			$6, $7, $8, NOW(), NOW()
+			$6, $7, NULLIF($8, ''),
+			$9::jsonb, $10::jsonb, $11, NOW(), NOW()
 		)
+		ON CONFLICT (workspace_id, order_id) DO UPDATE SET
+			amount = EXCLUDED.amount,
+			currency = EXCLUDED.currency,
+			lifecycle_state = EXCLUDED.lifecycle_state,
+			ordered_at = EXCLUDED.ordered_at,
+			source_platform = COALESCE(NULLIF(EXCLUDED.source_platform, ''), orders.source_platform),
+			fee_breakdown = COALESCE(orders.fee_breakdown, '{}'::jsonb) || EXCLUDED.fee_breakdown,
+			metadata = COALESCE(orders.metadata, '{}'::jsonb) || EXCLUDED.metadata,
+			updated_at = NOW()
 	`
 	return p.withTenantTx(ctx, o.WorkspaceID, func(txCtx context.Context, tx pgx.Tx) error {
 		_, err := tx.Exec(txCtx, query,
 			o.OrderID, o.WorkspaceID, o.Amount.ToPgNumeric(), o.MatchedAmount.ToPgNumeric(),
-			o.Currency, o.LifecycleState, o.ReconciliationState, o.OrderedAt,
+			o.Currency, o.LifecycleState, pgRecState, o.SourcePlatform,
+			feeJSON, metaJSON, o.OrderedAt,
 		)
 		return err
 	})
@@ -2414,17 +2773,28 @@ func (p *PostgresStore) CreateOrder(ctx context.Context, o *Order) error {
 
 func (p *PostgresStore) GetOrder(ctx context.Context, workspaceID, orderID string) (*Order, error) {
 	query := `
-		SELECT order_id, workspace_id, amount, matched_amount, currency,
-		       lifecycle_state, reconciliation_state, ordered_at
+		SELECT order_id::text, workspace_id::text, amount, matched_amount, currency,
+		       lifecycle_state, COALESCE(reconciliation_state::text, 'imported_only'), ordered_at,
+		       COALESCE(source_platform, ''),
+		       COALESCE(product_id::text, ''),
+		       COALESCE(campaign_id::text, ''),
+		       COALESCE(post_id::text, ''),
+		       COALESCE(items, '[]'::jsonb),
+		       COALESCE(fee_breakdown, '{}'::jsonb),
+		       COALESCE(metadata, '{}'::jsonb)
 		FROM orders
-		WHERE workspace_id = $1 AND order_id = $2
+		WHERE workspace_id = $1 AND order_id = $2 AND deleted_at IS NULL
 	`
 	var o Order
 	var amtNum, matchNum pgtype.Numeric
+	var rawRecState string
+	var itemsBytes, feeBytes, metaBytes []byte
 	err := p.withTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx) error {
 		err := tx.QueryRow(txCtx, query, workspaceID, orderID).Scan(
 			&o.OrderID, &o.WorkspaceID, &amtNum, &matchNum, &o.Currency,
-			&o.LifecycleState, &o.ReconciliationState, &o.OrderedAt,
+			&o.LifecycleState, &rawRecState, &o.OrderedAt,
+			&o.SourcePlatform, &o.ProductID, &o.CampaignID, &o.PostID,
+			&itemsBytes, &feeBytes, &metaBytes,
 		)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
@@ -2439,7 +2809,113 @@ func (p *PostgresStore) GetOrder(ctx context.Context, workspaceID, orderID strin
 	}
 	o.Amount, _ = tenantdb.FromPgNumeric(amtNum)
 	o.MatchedAmount, _ = tenantdb.FromPgNumeric(matchNum)
+	o.ReconciliationState = fromPgReconciliationState(rawRecState)
+	hydrateOrderDetails(&o, itemsBytes, feeBytes, metaBytes)
 	return &o, nil
+}
+
+func (p *PostgresStore) ListOrders(ctx context.Context, workspaceID string) ([]Order, error) {
+	query := `
+		SELECT order_id::text, workspace_id::text, amount, matched_amount, currency,
+		       lifecycle_state, COALESCE(reconciliation_state::text, 'imported_only'), ordered_at,
+		       COALESCE(source_platform, ''),
+		       COALESCE(product_id::text, ''),
+		       COALESCE(campaign_id::text, ''),
+		       COALESCE(post_id::text, ''),
+		       COALESCE(items, '[]'::jsonb),
+		       COALESCE(fee_breakdown, '{}'::jsonb),
+		       COALESCE(metadata, '{}'::jsonb)
+		FROM orders
+		WHERE workspace_id = $1 AND deleted_at IS NULL
+		ORDER BY ordered_at ASC
+	`
+	var result []Order
+	err := p.withTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		rows, err := tx.Query(txCtx, query, workspaceID)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var o Order
+			var amtNum, matchNum pgtype.Numeric
+			var rawRecState string
+			var itemsBytes, feeBytes, metaBytes []byte
+			if err := rows.Scan(
+				&o.OrderID, &o.WorkspaceID, &amtNum, &matchNum, &o.Currency,
+				&o.LifecycleState, &rawRecState, &o.OrderedAt,
+				&o.SourcePlatform, &o.ProductID, &o.CampaignID, &o.PostID,
+				&itemsBytes, &feeBytes, &metaBytes,
+			); err != nil {
+				return err
+			}
+			o.Amount, _ = tenantdb.FromPgNumeric(amtNum)
+			o.MatchedAmount, _ = tenantdb.FromPgNumeric(matchNum)
+			o.ReconciliationState = fromPgReconciliationState(rawRecState)
+			hydrateOrderDetails(&o, itemsBytes, feeBytes, metaBytes)
+			result = append(result, o)
+		}
+		if err := rows.Err(); err != nil {
+			return err
+		}
+
+		// Also enrich orders with any content_attribution_records links in the workspace
+		attrRows, attrErr := tx.Query(txCtx, `
+			SELECT order_id::text,
+			       COALESCE(publish_item_id::text, ''),
+			       COALESCE(channel_post_id::text, ''),
+			       COALESCE(utm_campaign, ''),
+			       COALESCE(utm_content, '')
+			FROM content_attribution_records
+			WHERE workspace_id = $1 AND order_id IS NOT NULL AND deleted_at IS NULL
+		`, workspaceID)
+		if attrErr == nil {
+			orderIdx := make(map[string]int, len(result))
+			for i := range result {
+				orderIdx[result[i].OrderID] = i
+			}
+			for attrRows.Next() {
+				var ordID, pubID, postID, utmCamp, utmContent string
+				if attrRows.Scan(&ordID, &pubID, &postID, &utmCamp, &utmContent) == nil {
+					if idx, ok := orderIdx[ordID]; ok {
+						if result[idx].ContentID == "" && pubID != "" {
+							result[idx].ContentID = pubID
+						} else if result[idx].ContentID == "" && utmContent != "" {
+							result[idx].ContentID = utmContent
+						}
+						if result[idx].PostID == "" && postID != "" {
+							result[idx].PostID = postID
+						}
+						if result[idx].CampaignID == "" && utmCamp != "" {
+							result[idx].CampaignID = utmCamp
+						}
+					}
+				}
+			}
+			attrRows.Close()
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (p *PostgresStore) ResolveRefundOrderID(ctx context.Context, workspaceID, refundID string) (string, error) {
+	var orderID string
+	err := p.withTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		err := tx.QueryRow(txCtx, `
+			SELECT order_id::text
+			FROM refunds
+			WHERE workspace_id = $1 AND refund_id = $2
+		`, workspaceID, refundID).Scan(&orderID)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		}
+		return err
+	})
+	return orderID, err
 }
 
 func (p *PostgresStore) UpdateOrderMatched(ctx context.Context, workspaceID, orderID string, matchedAmount tenantdb.ExactDecimal, newState string) error {
@@ -2448,8 +2924,9 @@ func (p *PostgresStore) UpdateOrderMatched(ctx context.Context, workspaceID, ord
 		SET matched_amount = $1, reconciliation_state = $2, updated_at = NOW()
 		WHERE workspace_id = $3 AND order_id = $4
 	`
+	pgState := toPgReconciliationState(newState)
 	return p.withTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx) error {
-		_, err := tx.Exec(txCtx, query, matchedAmount.ToPgNumeric(), newState, workspaceID, orderID)
+		_, err := tx.Exec(txCtx, query, matchedAmount.ToPgNumeric(), pgState, workspaceID, orderID)
 		return err
 	})
 }
@@ -3119,105 +3596,242 @@ func (p *PostgresStore) ListProofBundles(ctx context.Context, workspaceID string
 
 func (p *PostgresStore) ListDataGaps(ctx context.Context, workspaceID string, filter DataGapFilter, limit, offset int) ([]DataGapItem, int64, error) {
 	var items []DataGapItem
+	ordersByID := make(map[string]Order)
 
 	err := p.withTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx) error {
-		// 1. Missing COGS on completed orders
-		orderRows, err := tx.Query(txCtx, `
-			SELECT order_id, amount, ordered_at
-			FROM orders
-			WHERE workspace_id = $1 AND lifecycle_state = 'completed'
-			  AND (NOT (fee_breakdown ? 'cogs') OR (fee_breakdown->>'cogs')::numeric = 0)
+		type rawPosting struct {
+			postingID   string
+			originType  string
+			originID    string
+			component   string
+			amount      tenantdb.ExactDecimal
+			reversalOf  *string
+			effectiveAt time.Time
+		}
+		var postings []rawPosting
+		reversedIDs := make(map[string]bool)
+
+		pRows, err := tx.Query(txCtx, `
+			SELECT posting_id::text, origin_type, origin_id::text, component, amount, reversal_of::text, effective_at
+			FROM financial_postings
+			WHERE workspace_id = $1
 		`, workspaceID)
-		if err == nil {
-			for orderRows.Next() {
-				var oID string
-				var amtNum pgtype.Numeric
-				var ordAt time.Time
-				if err := orderRows.Scan(&oID, &amtNum, &ordAt); err == nil {
-					amt, _ := tenantdb.FromPgNumeric(amtNum)
-					items = append(items, DataGapItem{
-						GapID:              "gap-cogs-" + oID,
-						GapType:            "missing_cogs",
-						Severity:           "critical",
-						Title:              "Đơn hàng thiếu giá vốn (COGS)",
-						Description:        "Đơn hàng hoàn tất nhưng chưa có bản ghi giá vốn thực tế.",
-						RelatedObjectType:  "order",
-						RelatedObjectID:    oID,
-						MonetaryAmount:     amt,
-						UnresolvedSince:    ordAt,
-						RepairCTALabel:     "Nhập giá vốn",
-						RepairCTARoute:     "/finance/costs?order_id=" + oID,
-						RequiredPermission: "cost:manage",
-					})
+		if err != nil {
+			return fmt.Errorf("list postings for data gaps: %w", err)
+		}
+		for pRows.Next() {
+			var rp rawPosting
+			var amtNum pgtype.Numeric
+			if err := pRows.Scan(&rp.postingID, &rp.originType, &rp.originID, &rp.component, &amtNum, &rp.reversalOf, &rp.effectiveAt); err != nil {
+				pRows.Close()
+				return err
+			}
+			rp.amount, _ = tenantdb.FromPgNumeric(amtNum)
+			if rp.reversalOf != nil && *rp.reversalOf != "" {
+				reversedIDs[*rp.reversalOf] = true
+			}
+			postings = append(postings, rp)
+		}
+		if err := pRows.Err(); err != nil {
+			pRows.Close()
+			return err
+		}
+		pRows.Close()
+
+		type rawCostItem struct {
+			costItemID       string
+			costType         string
+			amount           tenantdb.ExactDecimal
+			costState        string
+			relatedScopeType string
+			relatedScopeID   string
+			createdAt        time.Time
+		}
+		costItemsByID := make(map[string]rawCostItem)
+		cRows, err := tx.Query(txCtx, `
+			SELECT cost_item_id::text, cost_type, amount, cost_state,
+			       COALESCE(related_scope_type, ''), COALESCE(related_scope_id::text, ''), created_at
+			FROM cost_items
+			WHERE workspace_id = $1 AND deleted_at IS NULL
+		`, workspaceID)
+		if err != nil {
+			return fmt.Errorf("list cost items for data gaps: %w", err)
+		}
+		for cRows.Next() {
+			var ci rawCostItem
+			var amtNum pgtype.Numeric
+			if err := cRows.Scan(&ci.costItemID, &ci.costType, &amtNum, &ci.costState, &ci.relatedScopeType, &ci.relatedScopeID, &ci.createdAt); err != nil {
+				cRows.Close()
+				return err
+			}
+			ci.amount, _ = tenantdb.FromPgNumeric(amtNum)
+			costItemsByID[ci.costItemID] = ci
+		}
+		if err := cRows.Err(); err != nil {
+			cRows.Close()
+			return err
+		}
+		cRows.Close()
+
+		// Identify orders that have active COGS in financial_postings or order-scoped cost_items
+		ordersWithCOGS := make(map[string]bool)
+		for _, rp := range postings {
+			if rp.reversalOf != nil || reversedIDs[rp.postingID] || rp.component != ComponentCOGS || rp.amount.IsZero() {
+				continue
+			}
+			if rp.originType == "order" {
+				ordersWithCOGS[rp.originID] = true
+			} else if rp.originType == "cost_item" {
+				if ci, ok := costItemsByID[rp.originID]; ok &&
+					ci.costState != CostStateSuperseded &&
+					strings.EqualFold(ci.relatedScopeType, "order") &&
+					ci.relatedScopeID != "" {
+					ordersWithCOGS[ci.relatedScopeID] = true
 				}
 			}
+		}
+
+		// 1. Missing COGS on completed orders (both stored orders and recognized order revenue postings)
+		seenMissingCOGSOrders := make(map[string]bool)
+		orderRows, err := tx.Query(txCtx, `
+			SELECT order_id::text, amount, ordered_at,
+			       COALESCE(product_id::text, ''),
+			       COALESCE(items, '[]'::jsonb),
+			       COALESCE(fee_breakdown, '{}'::jsonb),
+			       COALESCE(metadata, '{}'::jsonb)
+			FROM orders
+			WHERE workspace_id = $1 AND deleted_at IS NULL AND lifecycle_state = 'completed'
+		`, workspaceID)
+		if err != nil {
+			return fmt.Errorf("list orders for data gaps: %w", err)
+		}
+		var completedOrders []Order
+		for orderRows.Next() {
+			var o Order
+			var amtNum pgtype.Numeric
+			var itemsBytes, feeBytes, metaBytes []byte
+			if err := orderRows.Scan(&o.OrderID, &amtNum, &o.OrderedAt, &o.ProductID, &itemsBytes, &feeBytes, &metaBytes); err != nil {
+				orderRows.Close()
+				return err
+			}
+			o.WorkspaceID = workspaceID
+			o.LifecycleState = "completed"
+			o.Amount, _ = tenantdb.FromPgNumeric(amtNum)
+			hydrateOrderDetails(&o, itemsBytes, feeBytes, metaBytes)
+			ordersByID[o.OrderID] = o
+			if o.COGSAmount != nil && !o.COGSAmount.IsZero() {
+				ordersWithCOGS[o.OrderID] = true
+			}
+			completedOrders = append(completedOrders, o)
+		}
+		if err := orderRows.Err(); err != nil {
 			orderRows.Close()
+			return err
+		}
+		orderRows.Close()
+
+		for _, o := range completedOrders {
+			if !ordersWithCOGS[o.OrderID] {
+				seenMissingCOGSOrders[o.OrderID] = true
+				items = append(items, DataGapItem{
+					GapID:              "gap-cogs-" + o.OrderID,
+					GapType:            "missing_cogs",
+					Severity:           "critical",
+					Title:              "Đơn hàng thiếu giá vốn (COGS)",
+					Description:        "Đơn hàng hoàn tất nhưng chưa có bản ghi giá vốn thực tế.",
+					RelatedObjectType:  "order",
+					RelatedObjectID:    o.OrderID,
+					MonetaryAmount:     o.Amount,
+					UnresolvedSince:    o.OrderedAt,
+					RepairCTALabel:     "Nhập giá vốn",
+					RepairCTARoute:     "/finance/costs?order_id=" + o.OrderID,
+					RequiredPermission: "cost:manage",
+				})
+			}
+		}
+
+		for _, rp := range postings {
+			if rp.reversalOf != nil || reversedIDs[rp.postingID] {
+				continue
+			}
+			if rp.originType == "order" && rp.component == ComponentRevenue && !seenMissingCOGSOrders[rp.originID] && !ordersWithCOGS[rp.originID] {
+				seenMissingCOGSOrders[rp.originID] = true
+				items = append(items, DataGapItem{
+					GapID:              "gap-cogs-" + rp.originID,
+					GapType:            "missing_cogs",
+					Severity:           "critical",
+					Title:              "Đơn hàng thiếu giá vốn (COGS)",
+					Description:        "Đơn hàng hoàn tất nhưng chưa có bản ghi giá vốn thực tế.",
+					RelatedObjectType:  "order",
+					RelatedObjectID:    rp.originID,
+					MonetaryAmount:     rp.amount,
+					UnresolvedSince:    rp.effectiveAt,
+					RepairCTALabel:     "Nhập giá vốn",
+					RepairCTARoute:     "/finance/costs?order_id=" + rp.originID,
+					RequiredPermission: "cost:manage",
+				})
+			}
 		}
 
 		// 2. Unreconciled settlement lines
 		lineRows, err := tx.Query(txCtx, `
-			SELECT line_id, (net_amount - matched_amount) AS rem_amount, created_at
+			SELECT line_id::text, (net_amount - matched_amount) AS rem_amount, created_at
 			FROM settlement_lines
 			WHERE workspace_id = $1
-			  AND reconciliation_state IN ('imported_only', 'partially_reconciled')
+			  AND reconciliation_state::text IN ('imported_only', 'partially_reconciled', 'partially_matched', 'awaiting_evidence')
 			  AND net_amount > matched_amount
 		`, workspaceID)
-		if err == nil {
-			for lineRows.Next() {
-				var lID string
-				var remNum pgtype.Numeric
-				var cAt time.Time
-				if err := lineRows.Scan(&lID, &remNum, &cAt); err == nil {
-					rem, _ := tenantdb.FromPgNumeric(remNum)
-					items = append(items, DataGapItem{
-						GapID:              "gap-sment-" + lID,
-						GapType:            "unreconciled_settlement",
-						Severity:           "warning",
-						Title:              "Khoản thanh toán chưa đối soát",
-						Description:        "Khoản tiền sàn đã giải ngân nhưng chưa khớp với đơn hàng tương ứng.",
-						RelatedObjectType:  "settlement_line",
-						RelatedObjectID:    lID,
-						MonetaryAmount:     rem,
-						UnresolvedSince:    cAt,
-						RepairCTALabel:     "Khớp đối soát",
-						RepairCTARoute:     "/finance/reconciliation?line_id=" + lID,
-						RequiredPermission: "reconciliation:manage",
-					})
-				}
-			}
-			lineRows.Close()
+		if err != nil {
+			return fmt.Errorf("list settlement lines for data gaps: %w", err)
 		}
+		for lineRows.Next() {
+			var lID string
+			var remNum pgtype.Numeric
+			var cAt time.Time
+			if err := lineRows.Scan(&lID, &remNum, &cAt); err != nil {
+				lineRows.Close()
+				return err
+			}
+			rem, _ := tenantdb.FromPgNumeric(remNum)
+			items = append(items, DataGapItem{
+				GapID:              "gap-sment-" + lID,
+				GapType:            "unreconciled_settlement",
+				Severity:           "warning",
+				Title:              "Khoản thanh toán chưa đối soát",
+				Description:        "Khoản tiền sàn đã giải ngân nhưng chưa khớp với đơn hàng tương ứng.",
+				RelatedObjectType:  "settlement_line",
+				RelatedObjectID:    lID,
+				MonetaryAmount:     rem,
+				UnresolvedSince:    cAt,
+				RepairCTALabel:     "Khớp đối soát",
+				RepairCTARoute:     "/finance/reconciliation?line_id=" + lID,
+				RequiredPermission: "reconciliation:manage",
+			})
+		}
+		if err := lineRows.Err(); err != nil {
+			lineRows.Close()
+			return err
+		}
+		lineRows.Close()
 
 		// 3. Cost items pending evidence
-		costRows, err := tx.Query(txCtx, `
-			SELECT cost_item_id, amount, created_at
-			FROM cost_items
-			WHERE workspace_id = $1 AND cost_state = 'pending_evidence'
-		`, workspaceID)
-		if err == nil {
-			for costRows.Next() {
-				var cID string
-				var amtNum pgtype.Numeric
-				var cAt time.Time
-				if err := costRows.Scan(&cID, &amtNum, &cAt); err == nil {
-					amt, _ := tenantdb.FromPgNumeric(amtNum)
-					items = append(items, DataGapItem{
-						GapID:              "gap-cost-" + cID,
-						GapType:            "missing_evidence",
-						Severity:           "warning",
-						Title:              "Chi phí chưa có chứng từ hợp lệ",
-						Description:        "Chi phí được ghi nhận ước tính nhưng chưa đính kèm chứng từ.",
-						RelatedObjectType:  "cost_item",
-						RelatedObjectID:    cID,
-						MonetaryAmount:     amt,
-						UnresolvedSince:    cAt,
-						RepairCTALabel:     "Tải lên chứng từ",
-						RepairCTARoute:     "/finance/evidence?cost_id=" + cID,
-						RequiredPermission: "evidence:submit",
-					})
-				}
+		for _, ci := range costItemsByID {
+			if ci.costState == CostStatePendingEvidence {
+				items = append(items, DataGapItem{
+					GapID:              "gap-cost-" + ci.costItemID,
+					GapType:            "missing_evidence",
+					Severity:           "warning",
+					Title:              "Chi phí chưa có chứng từ hợp lệ",
+					Description:        "Chi phí được ghi nhận ước tính nhưng chưa đính kèm chứng từ.",
+					RelatedObjectType:  "cost_item",
+					RelatedObjectID:    ci.costItemID,
+					MonetaryAmount:     ci.amount,
+					UnresolvedSince:    ci.createdAt,
+					RepairCTALabel:     "Tải lên chứng từ",
+					RepairCTARoute:     "/finance/evidence?cost_id=" + ci.costItemID,
+					RequiredPermission: "evidence:submit",
+				})
 			}
-			costRows.Close()
 		}
 		return nil
 	})
@@ -3248,6 +3862,8 @@ func (p *PostgresStore) ListDataGaps(ctx context.Context, workspaceID string, fi
 		return items[i].GapID < items[j].GapID
 	})
 
+	startUTC, endUTC, _ := parseReportPeriodBounds(filter.PeriodStart, filter.PeriodEnd)
+	filterProdID := strings.TrimSpace(filter.ProductID)
 	var filtered []DataGapItem
 	for _, item := range items {
 		if filter.Severity != "" && item.Severity != filter.Severity {
@@ -3255,6 +3871,15 @@ func (p *PostgresStore) ListDataGaps(ctx context.Context, workspaceID string, fi
 		}
 		if filter.GapType != "" && item.GapType != filter.GapType {
 			continue
+		}
+		if (startUTC != nil || endUTC != nil) && !timeWithinPeriodBounds(item.UnresolvedSince, startUTC, endUTC) {
+			continue
+		}
+		if filterProdID != "" && item.RelatedObjectType == "order" {
+			ord, ok := ordersByID[item.RelatedObjectID]
+			if !ok || !orderMatchesProduct(ord, filterProdID) {
+				continue
+			}
 		}
 		filtered = append(filtered, item)
 	}

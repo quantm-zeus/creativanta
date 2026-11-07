@@ -477,6 +477,19 @@ func (e *AttributionEngine) RecordRefundDeduction(orderID string, refund tenantd
 	}
 }
 
+// ListAttributionsForWorkspace returns all recorded content attributions for a workspace.
+func (e *AttributionEngine) ListAttributionsForWorkspace(workspaceID string) []ContentAttributionEntity {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	var result []ContentAttributionEntity
+	for _, attr := range e.attributions {
+		if attr != nil && attr.WorkspaceID == workspaceID {
+			result = append(result, *attr)
+		}
+	}
+	return result
+}
+
 // RecordAttribution records a new content attribution record with full Target 1 and Target 3 checks.
 func (e *AttributionEngine) RecordAttribution(
 	ctx context.Context,

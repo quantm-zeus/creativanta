@@ -322,7 +322,7 @@ func TestF04_FX(t *testing.T) {
 		FeeAmount:            tenantdb.MustParseExactDecimal("10.000000"),  // 10 USD
 		ShippingAmount:       tenantdb.ZeroDecimal(),
 		COGSAmount:           &cogsUSD, // 30 USD -> Total costs = 40 USD
-		Currency:             "VND",    // Workspace base
+		Currency:             "USD",    // Transaction currency (converted to VND via histFX)
 		SourceClass:          finance.SourceClassOfficial,
 		Confidence:           finance.ConfidenceHigh,
 		ExchangeRateSnapshot: histFX,

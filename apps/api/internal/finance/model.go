@@ -85,6 +85,7 @@ var (
 	ErrOrderNotFound             = errors.New("finance: order not found")
 	ErrOrderCapacityExceeded     = errors.New("finance: order capacity exceeded for matched amount")
 	ErrInvalidReportPeriod       = errors.New("finance: report period_end must be on or after period_start")
+	ErrInvalidScopeType          = errors.New("finance: invalid or unsupported profit snapshot scope")
 	ErrReportExportTierForbidden = errors.New("finance: BILLING_FORBIDDEN_002: report export not available on Free tier (0/month)")
 	ErrReportExportQuotaExceeded = errors.New("finance: BILLING_LIMIT_003: monthly report export quota exceeded for Starter tier (5/month)")
 )
@@ -182,6 +183,12 @@ type Order struct {
 	ReconciliationState string
 	COGSAmount          *tenantdb.ExactDecimal
 	OrderedAt           time.Time
+	SourcePlatform      string
+	ProductID           string
+	ProductIDs          []string
+	CampaignID          string
+	PostID              string
+	ContentID           string
 }
 
 // DataGapItem models a permission-filtered repair item in the repair queue (RULE-M19-001, M01).
@@ -248,6 +255,7 @@ type FinancialPosting struct {
 	SourceClass          string
 	Confidence           string
 	ExchangeRateSnapshot ExchangeRateSnapshot
+	RelatedOrderID       string
 	ReversalOf           *string
 	EffectiveAt          time.Time
 	CreatedAt            time.Time
