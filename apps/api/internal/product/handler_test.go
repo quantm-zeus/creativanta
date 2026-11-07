@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	commonv1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/common/v1"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/product"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/rbac"
+	"github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -962,5 +964,756 @@ func TestRemediation_DataReview20_ProductStatsRankAndCurrencyReflectActualData(t
 	}
 	if rank2.Msg.RankInWorkspace != 2 || rank2.Msg.RankInCategory != 2 {
 		t.Fatalf("expected p2 rank (2, 2), got (%d, %d)", rank2.Msg.RankInWorkspace, rank2.Msg.RankInCategory)
+	}
+}
+
+type failingIdempotencyStore struct {
+	product.Store
+	failSaveCount int32
+}
+
+func (f *failingIdempotencyStore) SaveIdempotencyRecord(ctx context.Context, rec product.IdempotencyRecord) error {
+	if atomic.AddInt32(&f.failSaveCount, -1) >= 0 {
+		return errors.New("simulated idempotency persistence failure")
+	}
+	return f.Store.SaveIdempotencyRecord(ctx, rec)
+}
+
+func TestSecondPass_DataF1_AtomicIdempotencyRollbackAndValidation(t *testing.T) {
+	baseCtx := context.Background()
+	memStore := product.NewMemoryStore()
+	wrapStore := &failingIdempotencyStore{Store: memStore, failSaveCount: 1}
+	sink := product.NewMemoryEventSink()
+	fixedNow := time.Date(2026, 11, 7, 10, 0, 0, 0, time.UTC)
+	svc := product.NewService(wrapStore, sink, func() time.Time { return fixedNow })
+	h := product.NewHandler(svc)
+
+	ctxOwner := product.WithCaller(baseCtx, testWorkspaceID1, "user-owner-1", rbac.RoleOwner)
+
+	// 1. Validate idempotency_key > 255 chars and reason > 2000 chars fail closed with CodeInvalidArgument
+	longKey := strings.Repeat("k", 256)
+	_, err := h.Create(ctxOwner, connect.NewRequest(&commercev1.CreateRequest{
+		Context:     testCmdCtx("", longKey),
+		ProductType: commercev1.ProductType_PRODUCT_TYPE_PHYSICAL,
+		Title:       "Invalid Key Length",
+		BasePrice:   &commonv1.Money{Amount: "10.000000", Currency: "USD"},
+	}))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("expected CodeInvalidArgument for >255 char idempotency_key, got %v", err)
+	}
+
+	longReasonCtx := testCmdCtx("", "idem-f1-reason-too-long")
+	longReasonCtx.Reason = strings.Repeat("r", 2001)
+	_, err = h.Create(ctxOwner, connect.NewRequest(&commercev1.CreateRequest{
+		Context:     longReasonCtx,
+		ProductType: commercev1.ProductType_PRODUCT_TYPE_PHYSICAL,
+		Title:       "Invalid Reason Length",
+		BasePrice:   &commonv1.Money{Amount: "10.000000", Currency: "USD"},
+	}))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("expected CodeInvalidArgument for >2000 char reason, got %v", err)
+	}
+
+	// 2. First attempt: SaveIdempotencyRecord fails -> mutation and events MUST roll back atomically
+	createReq := &commercev1.CreateRequest{
+		Context:          testCmdCtx("", "idem-f1-atomic-create"),
+		ProductType:      commercev1.ProductType_PRODUCT_TYPE_PHYSICAL,
+		Title:            "Atomic Idempotent Product",
+		BasePrice:        &commonv1.Money{Amount: "100.000000", Currency: "USD"},
+		Currency:         "USD",
+		InventoryEnabled: true,
+		InitialSkus: []*commercev1.ProductSku{
+			{
+				SkuCode:       "SKU-F1-ATOMIC",
+				Currency:      "USD",
+				StockQuantity: 10,
+				IsActive:      true,
+			},
+		},
+	}
+	if _, err := h.Create(ctxOwner, connect.NewRequest(createReq)); err == nil {
+		t.Fatal("expected first Create to fail when SaveIdempotencyRecord fails")
+	}
+
+	// Verify store has 0 products and 0 emitted events after rollback
+	listAfterFail, err := h.List(ctxOwner, connect.NewRequest(&commercev1.ListRequest{}))
+	if err != nil {
+		t.Fatalf("List failed: %v", err)
+	}
+	if len(listAfterFail.Msg.Products) != 0 {
+		t.Fatalf("expected 0 products after SaveIdempotencyRecord failure rollback, got %d", len(listAfterFail.Msg.Products))
+	}
+	if len(sink.Events()) != 0 {
+		t.Fatalf("expected 0 events after SaveIdempotencyRecord failure rollback, got %d", len(sink.Events()))
+	}
+
+	// 3. Retry with same idempotency_key -> succeeds once, emits 1 event, and sets 7-day TTL
+	createResp, err := h.Create(ctxOwner, connect.NewRequest(createReq))
+	if err != nil {
+		t.Fatalf("retry Create after transient idempotency failure failed: %v", err)
+	}
+	skuID := createResp.Msg.Product.Skus[0].SkuId
+	if len(sink.Events()) != 1 {
+		t.Fatalf("expected 1 event after successful retry, got %d", len(sink.Events()))
+	}
+	rec, err := memStore.GetIdempotencyRecord(baseCtx, testWorkspaceID1, "idem-f1-atomic-create")
+	if err != nil || rec == nil {
+		t.Fatalf("expected saved idempotency record, got rec=%v err=%v", rec, err)
+	}
+	expectedExpiry := fixedNow.Add(7 * 24 * time.Hour)
+	if !rec.ExpiresAt.Equal(expectedExpiry) {
+		t.Fatalf("expected 7-day idempotency TTL (%v), got %v", expectedExpiry, rec.ExpiresAt)
+	}
+
+	// 4. Now test UpdateStock rollback when SaveIdempotencyRecord fails: stock must NOT double-increment on retry!
+	if _, err := h.UpdateStock(ctxOwner, connect.NewRequest(&commercev1.UpdateStockRequest{
+		Context:       testCmdCtx("", "idem-f1-stock-init"),
+		SkuId:         skuID,
+		DeltaQuantity: 10,
+		Reason:        "initial_receipt",
+	})); err != nil {
+		t.Fatalf("initial UpdateStock failed: %v", err)
+	}
+
+	atomic.StoreInt32(&wrapStore.failSaveCount, 1)
+	stockReq := &commercev1.UpdateStockRequest{
+		Context:       testCmdCtx("", "idem-f1-stock-retry"),
+		SkuId:         skuID,
+		DeltaQuantity: 5,
+		Reason:        "restock_after_transient_error",
+	}
+	if _, err := h.UpdateStock(ctxOwner, connect.NewRequest(stockReq)); err == nil {
+		t.Fatal("expected UpdateStock to fail when SaveIdempotencyRecord fails")
+	}
+
+	// Retry the same UpdateStock(+5) command: stock must be 10 + 5 = 15, NOT 10 + 5 + 5 = 20!
+	stockResp, err := h.UpdateStock(ctxOwner, connect.NewRequest(stockReq))
+	if err != nil {
+		t.Fatalf("retry UpdateStock failed: %v", err)
+	}
+	if stockResp.Msg.NewStockQuantity != 15 {
+		t.Fatalf("expected stock=15 after rolled-back attempt + retry, got %d (double-increment bug!)", stockResp.Msg.NewStockQuantity)
+	}
+
+	// 5. Concurrent replay across two distinct Service/Handler instances sharing the same store
+	svc2 := product.NewService(wrapStore, sink, func() time.Time { return fixedNow })
+	h2 := product.NewHandler(svc2)
+	const workers = 8
+	var wg sync.WaitGroup
+	errs := make(chan error, workers)
+	qtys := make(chan int32, workers)
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			targetH := h
+			if idx%2 == 1 {
+				targetH = h2
+			}
+			resp, callErr := targetH.UpdateStock(ctxOwner, connect.NewRequest(&commercev1.UpdateStockRequest{
+				Context:       testCmdCtx("", "idem-f1-multi-instance-concurrent"),
+				SkuId:         skuID,
+				DeltaQuantity: 7,
+				Reason:        "concurrent_replay",
+			}))
+			if callErr != nil {
+				errs <- callErr
+				return
+			}
+			qtys <- resp.Msg.NewStockQuantity
+		}(i)
+	}
+	wg.Wait()
+	close(errs)
+	close(qtys)
+	for callErr := range errs {
+		t.Fatalf("concurrent multi-instance UpdateStock error: %v", callErr)
+	}
+	for q := range qtys {
+		if q != 22 {
+			t.Fatalf("expected NewStockQuantity=22 (15+7) across all concurrent callers, got %d", q)
+		}
+	}
+}
+
+func TestSecondPass_DataF2_MultiLocationStockUpdateNoDoubleCountAndOpeningBalance(t *testing.T) {
+	baseCtx := context.Background()
+	store := product.NewMemoryStore()
+	sink := product.NewMemoryEventSink()
+	svc := product.NewService(store, sink, nil)
+	h := product.NewHandler(svc)
+
+	ctxOwner := product.WithCaller(baseCtx, testWorkspaceID1, "user-owner-1", rbac.RoleOwner)
+
+	// 1. Verify CreateSku with StockQuantity > 0 seeds opening_balance at default location
+	defaultLoc := "00000000-0000-4000-8000-000000000001"
+	locA := "00000000-0000-4000-8000-00000000000a"
+	store.SetDefaultLocation(testWorkspaceID1, defaultLoc)
+
+	pWithOpening := &product.Product{
+		WorkspaceID:      testWorkspaceID1,
+		ProductType:      product.TypePhysical,
+		Title:            "Opening Stock Product",
+		Currency:         "VND",
+		CatalogStatus:    product.StatusActive,
+		InventoryEnabled: true,
+		SKUs: []product.ProductSku{
+			{
+				SkuCode:       "SKU-OPENING-10",
+				Currency:      "VND",
+				StockQuantity: 10,
+				IsActive:      true,
+			},
+		},
+	}
+	createdOpening, err := svc.CreateProduct(baseCtx, pWithOpening)
+	if err != nil {
+		t.Fatalf("CreateProduct with opening stock failed: %v", err)
+	}
+	openingSkuID := createdOpening.SKUs[0].SkuID
+	if got, _ := store.GetLocationBalance(testWorkspaceID1, openingSkuID, defaultLoc); got != 10 {
+		t.Fatalf("expected default location balance=10 from opening stock, got %d", got)
+	}
+
+	// 2. Now simulate multi-location: Location A holds 10 units, while default location has NO row yet (0 units)
+	pMulti := &product.Product{
+		WorkspaceID:      testWorkspaceID1,
+		ProductType:      product.TypePhysical,
+		Title:            "Multi-Location Product",
+		Currency:         "VND",
+		CatalogStatus:    product.StatusActive,
+		InventoryEnabled: true,
+		SKUs: []product.ProductSku{
+			{
+				SkuCode:       "SKU-MULTILOC-1",
+				Currency:      "VND",
+				StockQuantity: 0,
+				IsActive:      true,
+			},
+		},
+	}
+	createdMulti, err := svc.CreateProduct(baseCtx, pMulti)
+	if err != nil {
+		t.Fatalf("CreateProduct multi-loc failed: %v", err)
+	}
+	multiSkuID := createdMulti.SKUs[0].SkuID
+
+	// Seed 10 units in Location A; defaultLoc remains uninitialized (0 units)
+	store.SetLocationBalance(testWorkspaceID1, multiSkuID, locA, 10, 0)
+
+	// Adjust stock by +5 via UpdateStock (which applies to defaultLoc)
+	// Previously (Data F2 bug): defaultLoc was initialized from aggregate SKU stock (10 + 5 = 15) and summed with locA (10 + 15 = 25)!
+	updResp, err := h.UpdateStock(ctxOwner, connect.NewRequest(&commercev1.UpdateStockRequest{
+		Context:       testCmdCtx("", "idem-f2-multiloc-plus5"),
+		SkuId:         multiSkuID,
+		DeltaQuantity: 5,
+		Reason:        "receive_at_default_loc",
+	}))
+	if err != nil {
+		t.Fatalf("UpdateStock(+5) failed: %v", err)
+	}
+	if updResp.Msg.NewStockQuantity != 15 {
+		t.Fatalf("Data F2 regression: expected total stock 15 (10 at locA + 5 at defaultLoc), got %d", updResp.Msg.NewStockQuantity)
+	}
+	if gotLocA, _ := store.GetLocationBalance(testWorkspaceID1, multiSkuID, locA); gotLocA != 10 {
+		t.Fatalf("expected locA balance to remain 10, got %d", gotLocA)
+	}
+	if gotDef, _ := store.GetLocationBalance(testWorkspaceID1, multiSkuID, defaultLoc); gotDef != 5 {
+		t.Fatalf("expected defaultLoc balance to be 5, got %d", gotDef)
+	}
+
+	// Subtracting 6 from defaultLoc (which only has 5) must fail with ErrInsufficientStock (CodeFailedPrecondition)
+	_, err = h.UpdateStock(ctxOwner, connect.NewRequest(&commercev1.UpdateStockRequest{
+		Context:       testCmdCtx("", "idem-f2-multiloc-minus6"),
+		SkuId:         multiSkuID,
+		DeltaQuantity: -6,
+		Reason:        "overdraw_default_loc",
+	}))
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("expected CodeFailedPrecondition when deducting 6 from defaultLoc (balance=5), got %v", err)
+	}
+}
+
+func TestSecondPass_DataF6_ProportionalPartialRefundAllocation(t *testing.T) {
+	baseCtx := context.Background()
+	store := product.NewMemoryStore()
+	sink := product.NewMemoryEventSink()
+	fixedNow := time.Date(2026, 11, 7, 12, 0, 0, 0, time.UTC)
+	svc := product.NewService(store, sink, func() time.Time { return fixedNow })
+	h := product.NewHandler(svc)
+
+	ctxOwner := product.WithCaller(baseCtx, testWorkspaceID1, "user-owner-1", rbac.RoleOwner)
+
+	pA, err := h.Create(ctxOwner, connect.NewRequest(&commercev1.CreateRequest{
+		Context:     testCmdCtx("", "idem-f6-pa"),
+		ProductType: commercev1.ProductType_PRODUCT_TYPE_PHYSICAL,
+		Title:       "Product A (100 USD)",
+		BasePrice:   &commonv1.Money{Amount: "100.000000", Currency: "USD"},
+		Cogs:        &commonv1.Money{Amount: "40.000000", Currency: "USD"},
+		Currency:    "USD",
+	}))
+	if err != nil {
+		t.Fatalf("create Product A failed: %v", err)
+	}
+	pB, err := h.Create(ctxOwner, connect.NewRequest(&commercev1.CreateRequest{
+		Context:     testCmdCtx("", "idem-f6-pb"),
+		ProductType: commercev1.ProductType_PRODUCT_TYPE_PHYSICAL,
+		Title:       "Product B (300 USD)",
+		BasePrice:   &commonv1.Money{Amount: "300.000000", Currency: "USD"},
+		Cogs:        &commonv1.Money{Amount: "100.000000", Currency: "USD"},
+		Currency:    "USD",
+	}))
+	if err != nil {
+		t.Fatalf("create Product B failed: %v", err)
+	}
+
+	dec100, _ := tenantdb.ParseExactDecimal("100.000000")
+	dec300, _ := tenantdb.ParseExactDecimal("300.000000")
+	dec400, _ := tenantdb.ParseExactDecimal("400.000000")
+	dec40, _ := tenantdb.ParseExactDecimal("40.000000")
+	dec20, _ := tenantdb.ParseExactDecimal("20.000000")
+	dec60, _ := tenantdb.ParseExactDecimal("60.000000")
+
+	orderID := "00000000-0000-4000-8000-000000f60001"
+	store.SeedOrder(product.AnalyticsOrder{
+		OrderID:        orderID,
+		WorkspaceID:    testWorkspaceID1,
+		Amount:         dec400,
+		Currency:       "USD",
+		LifecycleState: "partially_refunded",
+		OrderedAt:      fixedNow.Add(-2 * time.Hour),
+		Items: []product.AnalyticsOrderLine{
+			{
+				ProductID: pA.Msg.Product.ProductId,
+				Quantity:  1,
+				UnitPrice: &dec100,
+				Total:     &dec100,
+				UnitCOGS:  &dec40,
+			},
+			{
+				ProductID: pB.Msg.Product.ProductId,
+				Quantity:  1,
+				UnitPrice: &dec300,
+				Total:     &dec300,
+				UnitCOGS:  &dec100,
+			},
+		},
+	})
+	// Two partial refunds totaling 80 USD (20% of the 400 USD order)
+	store.SeedRefund(product.AnalyticsRefund{
+		RefundID:       "ref-f6-1",
+		WorkspaceID:    testWorkspaceID1,
+		OrderID:        orderID,
+		Amount:         dec20,
+		Currency:       "USD",
+		LifecycleState: "succeeded",
+		CreatedAt:      fixedNow.Add(-time.Hour),
+	})
+	store.SeedRefund(product.AnalyticsRefund{
+		RefundID:       "ref-f6-2",
+		WorkspaceID:    testWorkspaceID1,
+		OrderID:        orderID,
+		Amount:         dec60,
+		Currency:       "USD",
+		LifecycleState: "completed",
+		CreatedAt:      fixedNow.Add(-30 * time.Minute),
+	})
+
+	statsA, err := h.GetSalesStats(ctxOwner, connect.NewRequest(&commercev1.GetSalesStatsRequest{
+		ProductId: pA.Msg.Product.ProductId,
+	}))
+	if err != nil {
+		t.Fatalf("GetSalesStats Product A failed: %v", err)
+	}
+	statsB, err := h.GetSalesStats(ctxOwner, connect.NewRequest(&commercev1.GetSalesStatsRequest{
+		ProductId: pB.Msg.Product.ProductId,
+	}))
+	if err != nil {
+		t.Fatalf("GetSalesStats Product B failed: %v", err)
+	}
+
+	// Product A (25% of order) gets 20 USD of the 80 USD refund -> NetSales = 80 USD
+	if statsA.Msg.GrossSales.Amount != "100" || statsA.Msg.NetSales.Amount != "80" || statsA.Msg.RefundCount != 2 {
+		t.Fatalf("unexpected Product A sales stats: gross=%s net=%s refunds=%d",
+			statsA.Msg.GrossSales.Amount, statsA.Msg.NetSales.Amount, statsA.Msg.RefundCount)
+	}
+	// Product B (75% of order) gets 60 USD of the 80 USD refund -> NetSales = 240 USD
+	if statsB.Msg.GrossSales.Amount != "300" || statsB.Msg.NetSales.Amount != "240" || statsB.Msg.RefundCount != 2 {
+		t.Fatalf("unexpected Product B sales stats: gross=%s net=%s refunds=%d",
+			statsB.Msg.GrossSales.Amount, statsB.Msg.NetSales.Amount, statsB.Msg.RefundCount)
+	}
+}
+
+func TestSecondPass_DataF7_MultiCurrencyAnalyticsConversionAndFailClosed(t *testing.T) {
+	baseCtx := context.Background()
+	store := product.NewMemoryStore()
+	sink := product.NewMemoryEventSink()
+	fixedNow := time.Date(2026, 11, 7, 12, 0, 0, 0, time.UTC)
+	svc := product.NewService(store, sink, func() time.Time { return fixedNow })
+	h := product.NewHandler(svc)
+
+	ctxOwner := product.WithCaller(baseCtx, testWorkspaceID1, "user-owner-1", rbac.RoleOwner)
+
+	pVND, err := h.Create(ctxOwner, connect.NewRequest(&commercev1.CreateRequest{
+		Context:     testCmdCtx("", "idem-f7-pvnd"),
+		ProductType: commercev1.ProductType_PRODUCT_TYPE_PHYSICAL,
+		Title:       "VND Catalog Product",
+		BasePrice:   &commonv1.Money{Amount: "250000.000000", Currency: "VND"},
+		Cogs:        &commonv1.Money{Amount: "100000.000000", Currency: "VND"},
+		Currency:    "VND",
+	}))
+	if err != nil {
+		t.Fatalf("create pVND failed: %v", err)
+	}
+
+	dec250k, _ := tenantdb.ParseExactDecimal("250000.000000")
+	dec100k, _ := tenantdb.ParseExactDecimal("100000.000000")
+	dec10, _ := tenantdb.ParseExactDecimal("10.000000")
+	dec4, _ := tenantdb.ParseExactDecimal("4.000000")
+
+	// Seed 1 VND order and 1 USD order WITHOUT exchange_rate_snapshot
+	store.SeedOrder(product.AnalyticsOrder{
+		OrderID:        "ord-f7-vnd",
+		WorkspaceID:    testWorkspaceID1,
+		Amount:         dec250k,
+		Currency:       "VND",
+		LifecycleState: "completed",
+		OrderedAt:      fixedNow.Add(-2 * time.Hour),
+		Items: []product.AnalyticsOrderLine{
+			{
+				ProductID: pVND.Msg.Product.ProductId,
+				Quantity:  1,
+				UnitPrice: &dec250k,
+				Total:     &dec250k,
+				UnitCOGS:  &dec100k,
+			},
+		},
+	})
+	store.SeedOrder(product.AnalyticsOrder{
+		OrderID:        "ord-f7-usd",
+		WorkspaceID:    testWorkspaceID1,
+		Amount:         dec10,
+		Currency:       "USD",
+		LifecycleState: "completed",
+		OrderedAt:      fixedNow.Add(-time.Hour),
+		Items: []product.AnalyticsOrderLine{
+			{
+				ProductID: pVND.Msg.Product.ProductId,
+				Quantity:  1,
+				UnitPrice: &dec10,
+				Total:     &dec10,
+				UnitCOGS:  &dec4,
+			},
+		},
+	})
+
+	// 1. Without exchange_rate_snapshot, GetSalesStats, GetSalesChart, and GetRank MUST fail closed with CodeFailedPrecondition
+	if _, err := h.GetSalesStats(ctxOwner, connect.NewRequest(&commercev1.GetSalesStatsRequest{ProductId: pVND.Msg.Product.ProductId})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("expected CodeFailedPrecondition on unconvertible multi-currency GetSalesStats, got %v", err)
+	}
+	if _, err := h.GetSalesChart(ctxOwner, connect.NewRequest(&commercev1.GetSalesChartRequest{ProductId: pVND.Msg.Product.ProductId})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("expected CodeFailedPrecondition on unconvertible multi-currency GetSalesChart, got %v", err)
+	}
+	if _, err := h.GetRank(ctxOwner, connect.NewRequest(&commercev1.GetRankRequest{ProductId: pVND.Msg.Product.ProductId})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("expected CodeFailedPrecondition on unconvertible multi-currency GetRank, got %v", err)
+	}
+
+	// 2. Now attach valid exchange_rate_snapshot (1 USD = 25000 VND) to the USD order
+	store.SeedOrder(product.AnalyticsOrder{
+		OrderID:        "ord-f7-usd",
+		WorkspaceID:    testWorkspaceID1,
+		Amount:         dec10,
+		Currency:       "USD",
+		LifecycleState: "completed",
+		OrderedAt:      fixedNow.Add(-time.Hour),
+		ExchangeRateSnapshot: &product.ExchangeRateSnapshot{
+			BaseCurrency:  "VND",
+			QuoteCurrency: "USD",
+			RateToBase:    "25000.000000",
+		},
+		Items: []product.AnalyticsOrderLine{
+			{
+				ProductID: pVND.Msg.Product.ProductId,
+				Quantity:  1,
+				UnitPrice: &dec10,
+				Total:     &dec10,
+				UnitCOGS:  &dec4,
+			},
+		},
+	})
+
+	statsResp, err := h.GetSalesStats(ctxOwner, connect.NewRequest(&commercev1.GetSalesStatsRequest{ProductId: pVND.Msg.Product.ProductId}))
+	if err != nil {
+		t.Fatalf("GetSalesStats with exchange_rate_snapshot failed: %v", err)
+	}
+	// 250,000 VND + (10 USD * 25,000) = 500,000 VND
+	if statsResp.Msg.GrossSales.Amount != "500000" || statsResp.Msg.GrossSales.Currency != "VND" {
+		t.Fatalf("expected converted GrossSales=500000 VND, got %s %s", statsResp.Msg.GrossSales.Amount, statsResp.Msg.GrossSales.Currency)
+	}
+	chartResp, err := h.GetSalesChart(ctxOwner, connect.NewRequest(&commercev1.GetSalesChartRequest{ProductId: pVND.Msg.Product.ProductId}))
+	if err != nil || len(chartResp.Msg.DataPoints) != 1 || chartResp.Msg.DataPoints[0].Amount.Amount != "500000" {
+		t.Fatalf("unexpected converted chart response: %+v (err=%v)", chartResp, err)
+	}
+}
+
+func TestSecondPass_DataF8_GetSalesStatsHonorsPeriodFilter(t *testing.T) {
+	baseCtx := context.Background()
+	store := product.NewMemoryStore()
+	sink := product.NewMemoryEventSink()
+	fixedNow := time.Date(2026, 11, 7, 12, 0, 0, 0, time.UTC)
+	svc := product.NewService(store, sink, func() time.Time { return fixedNow })
+	h := product.NewHandler(svc)
+
+	ctxOwner := product.WithCaller(baseCtx, testWorkspaceID1, "user-owner-1", rbac.RoleOwner)
+
+	p, err := h.Create(ctxOwner, connect.NewRequest(&commercev1.CreateRequest{
+		Context:     testCmdCtx("", "idem-f8-prod"),
+		ProductType: commercev1.ProductType_PRODUCT_TYPE_PHYSICAL,
+		Title:       "Period Filtered Product",
+		BasePrice:   &commonv1.Money{Amount: "100.000000", Currency: "USD"},
+		Currency:    "USD",
+	}))
+	if err != nil {
+		t.Fatalf("create product failed: %v", err)
+	}
+	pid := p.Msg.Product.ProductId
+
+	dec100, _ := tenantdb.ParseExactDecimal("100.000000")
+	dec200, _ := tenantdb.ParseExactDecimal("200.000000")
+	dec400, _ := tenantdb.ParseExactDecimal("400.000000")
+	dec10, _ := tenantdb.ParseExactDecimal("10.000000")
+
+	// Order 1: 3 days ago (100 USD, 1 unit) + 10 USD partial refund 2 days ago
+	store.SeedOrder(product.AnalyticsOrder{
+		OrderID:        "ord-f8-3d",
+		WorkspaceID:    testWorkspaceID1,
+		Amount:         dec100,
+		Currency:       "USD",
+		LifecycleState: "partially_refunded",
+		OrderedAt:      fixedNow.Add(-3 * 24 * time.Hour),
+		Items: []product.AnalyticsOrderLine{
+			{ProductID: pid, Quantity: 1, UnitPrice: &dec100, Total: &dec100},
+		},
+	})
+	store.SeedRefund(product.AnalyticsRefund{
+		RefundID:       "ref-f8-2d",
+		WorkspaceID:    testWorkspaceID1,
+		OrderID:        "ord-f8-3d",
+		Amount:         dec10,
+		Currency:       "USD",
+		LifecycleState: "succeeded",
+		CreatedAt:      fixedNow.Add(-2 * 24 * time.Hour),
+	})
+
+	// Order 2: 20 days ago (200 USD, 2 units)
+	store.SeedOrder(product.AnalyticsOrder{
+		OrderID:        "ord-f8-20d",
+		WorkspaceID:    testWorkspaceID1,
+		Amount:         dec200,
+		Currency:       "USD",
+		LifecycleState: "completed",
+		OrderedAt:      fixedNow.Add(-20 * 24 * time.Hour),
+		Items: []product.AnalyticsOrderLine{
+			{ProductID: pid, Quantity: 2, UnitPrice: &dec100, Total: &dec200},
+		},
+	})
+
+	// Order 3: 45 days ago (400 USD, 4 units)
+	store.SeedOrder(product.AnalyticsOrder{
+		OrderID:        "ord-f8-45d",
+		WorkspaceID:    testWorkspaceID1,
+		Amount:         dec400,
+		Currency:       "USD",
+		LifecycleState: "completed",
+		OrderedAt:      fixedNow.Add(-45 * 24 * time.Hour),
+		Items: []product.AnalyticsOrderLine{
+			{ProductID: pid, Quantity: 4, UnitPrice: &dec100, Total: &dec400},
+		},
+	})
+
+	// 7d period -> only Order 1
+	s7d, err := h.GetSalesStats(ctxOwner, connect.NewRequest(&commercev1.GetSalesStatsRequest{
+		ProductId: pid,
+		Period:    "7d",
+	}))
+	if err != nil {
+		t.Fatalf("GetSalesStats 7d failed: %v", err)
+	}
+	if s7d.Msg.UnitsSold != 1 || s7d.Msg.GrossSales.Amount != "100" || s7d.Msg.NetSales.Amount != "90" || s7d.Msg.RefundCount != 1 {
+		t.Fatalf("unexpected 7d stats: units=%d gross=%s net=%s refunds=%d",
+			s7d.Msg.UnitsSold, s7d.Msg.GrossSales.Amount, s7d.Msg.NetSales.Amount, s7d.Msg.RefundCount)
+	}
+
+	// 30d period -> Order 1 + Order 2
+	s30d, err := h.GetSalesStats(ctxOwner, connect.NewRequest(&commercev1.GetSalesStatsRequest{
+		ProductId: pid,
+		Period:    "30d",
+	}))
+	if err != nil {
+		t.Fatalf("GetSalesStats 30d failed: %v", err)
+	}
+	if s30d.Msg.UnitsSold != 3 || s30d.Msg.GrossSales.Amount != "300" || s30d.Msg.NetSales.Amount != "290" || s30d.Msg.RefundCount != 1 {
+		t.Fatalf("unexpected 30d stats: units=%d gross=%s net=%s refunds=%d",
+			s30d.Msg.UnitsSold, s30d.Msg.GrossSales.Amount, s30d.Msg.NetSales.Amount, s30d.Msg.RefundCount)
+	}
+
+	// 90d period -> Order 1 + Order 2 + Order 3
+	s90d, err := h.GetSalesStats(ctxOwner, connect.NewRequest(&commercev1.GetSalesStatsRequest{
+		ProductId: pid,
+		Period:    "90d",
+	}))
+	if err != nil {
+		t.Fatalf("GetSalesStats 90d failed: %v", err)
+	}
+	if s90d.Msg.UnitsSold != 7 || s90d.Msg.GrossSales.Amount != "700" || s90d.Msg.NetSales.Amount != "690" || s90d.Msg.RefundCount != 1 {
+		t.Fatalf("unexpected 90d stats: units=%d gross=%s net=%s refunds=%d",
+			s90d.Msg.UnitsSold, s90d.Msg.GrossSales.Amount, s90d.Msg.NetSales.Amount, s90d.Msg.RefundCount)
+	}
+
+	// Invalid period -> CodeInvalidArgument
+	if _, err := h.GetSalesStats(ctxOwner, connect.NewRequest(&commercev1.GetSalesStatsRequest{
+		ProductId: pid,
+		Period:    "invalid_window",
+	})); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("expected CodeInvalidArgument for invalid period, got %v", err)
+	}
+}
+
+func TestSecondPass_DataF10_ArchiveAndDeleteAtomicCASInsideTransaction(t *testing.T) {
+	baseCtx := context.Background()
+	store := product.NewMemoryStore()
+	sink := product.NewMemoryEventSink()
+	currentTime := time.Date(2026, 11, 7, 14, 0, 0, 0, time.UTC)
+	svc := product.NewService(store, sink, func() time.Time { return currentTime })
+	h := product.NewHandler(svc)
+
+	ctxOwner := product.WithCaller(baseCtx, testWorkspaceID1, "user-owner-1", rbac.RoleOwner)
+
+	created, err := h.Create(ctxOwner, connect.NewRequest(&commercev1.CreateRequest{
+		Context:     testCmdCtx("", "idem-f10-create"),
+		ProductType: commercev1.ProductType_PRODUCT_TYPE_PHYSICAL,
+		Title:       "CAS Protected Product",
+		BasePrice:   &commonv1.Money{Amount: "50.000000", Currency: "USD"},
+		Currency:    "USD",
+	}))
+	if err != nil {
+		t.Fatalf("Create failed: %v", err)
+	}
+	pid := created.Msg.Product.ProductId
+	t0 := created.Msg.Product.UpdatedAt.AsTime()
+
+	// Concurrent update advances UpdatedAt to t1
+	currentTime = currentTime.Add(time.Minute)
+	newTitle := "CAS Updated Title"
+	if _, err := h.Update(ctxOwner, connect.NewRequest(&commercev1.UpdateRequest{
+		Context:   testCmdCtx("", "idem-f10-update"),
+		ProductId: pid,
+		Title:     &newTitle,
+	})); err != nil {
+		t.Fatalf("Update failed: %v", err)
+	}
+	eventsBeforeStale := len(sink.Events())
+
+	// 1. Stale Archive via Handler -> fails with CodeFailedPrecondition and emits NO event
+	staleArchiveCtx := testCmdCtx("", "idem-f10-stale-archive")
+	staleArchiveCtx.ExpectedUpdatedAt = timestamppb.New(t0)
+	if _, err := h.Archive(ctxOwner, connect.NewRequest(&commercev1.ArchiveRequest{
+		Context:   staleArchiveCtx,
+		ProductId: pid,
+	})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("expected CodeFailedPrecondition on stale Archive, got %v", err)
+	}
+	if len(sink.Events()) != eventsBeforeStale {
+		t.Fatalf("stale Archive emitted domain event! before=%d after=%d", eventsBeforeStale, len(sink.Events()))
+	}
+
+	// 2. Stale Delete via Handler -> fails with CodeFailedPrecondition
+	staleDeleteCtx := testCmdCtx("", "idem-f10-stale-delete")
+	staleDeleteCtx.ExpectedUpdatedAt = timestamppb.New(t0)
+	if _, err := h.Delete(ctxOwner, connect.NewRequest(&commercev1.DeleteRequest{
+		Context:   staleDeleteCtx,
+		ProductId: pid,
+	})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("expected CodeFailedPrecondition on stale Delete, got %v", err)
+	}
+
+	// 3. Direct store-level CAS check (proving CAS is enforced inside Store.ArchiveProduct and Store.DeleteProduct)
+	storeStaleCtx := product.WithExpectedUpdatedAt(baseCtx, &t0)
+	if err := store.ArchiveProduct(storeStaleCtx, testWorkspaceID1, pid); !errors.Is(err, product.ErrConcurrencyConflict) {
+		t.Fatalf("expected ErrConcurrencyConflict from Store.ArchiveProduct with stale ExpectedUpdatedAt, got %v", err)
+	}
+	if err := store.DeleteProduct(storeStaleCtx, testWorkspaceID1, pid); !errors.Is(err, product.ErrConcurrencyConflict) {
+		t.Fatalf("expected ErrConcurrencyConflict from Store.DeleteProduct with stale ExpectedUpdatedAt, got %v", err)
+	}
+}
+
+func TestSecondPass_DataF11_UpdateHonorsInventoryEnabledAndClearFields(t *testing.T) {
+	baseCtx := context.Background()
+	store := product.NewMemoryStore()
+	sink := product.NewMemoryEventSink()
+	svc := product.NewService(store, sink, nil)
+	h := product.NewHandler(svc)
+
+	ctxOwner := product.WithCaller(baseCtx, testWorkspaceID1, "user-owner-1", rbac.RoleOwner)
+
+	created, err := h.Create(ctxOwner, connect.NewRequest(&commercev1.CreateRequest{
+		Context:          testCmdCtx("", "idem-f11-create"),
+		ProductType:      commercev1.ProductType_PRODUCT_TYPE_PHYSICAL,
+		Title:            "Full Featured Product",
+		Description:      "Non-empty description",
+		Category:         "Electronics",
+		BasePrice:        &commonv1.Money{Amount: "199.000000", Currency: "USD"},
+		Currency:         "USD",
+		InventoryEnabled: true,
+		MetadataJson:     `{"badge":"featured"}`,
+	}))
+	if err != nil {
+		t.Fatalf("Create failed: %v", err)
+	}
+	pid := created.Msg.Product.ProductId
+	if !created.Msg.Product.InventoryEnabled {
+		t.Fatal("expected initial InventoryEnabled=true")
+	}
+
+	// Update: disable inventory_enabled=false and clear description="", category="", metadata_json="{}"
+	emptyStr := ""
+	emptyMeta := "{}"
+	invFalse := false
+	updResp, err := h.Update(ctxOwner, connect.NewRequest(&commercev1.UpdateRequest{
+		Context:          testCmdCtx("", "idem-f11-update-clear"),
+		ProductId:        pid,
+		Description:      &emptyStr,
+		Category:         &emptyStr,
+		InventoryEnabled: &invFalse,
+		MetadataJson:     &emptyMeta,
+	}))
+	if err != nil {
+		t.Fatalf("Update failed: %v", err)
+	}
+	if updResp.Msg.Product.InventoryEnabled {
+		t.Fatal("Data F11 regression: expected InventoryEnabled=false after Update, got true")
+	}
+	if updResp.Msg.Product.Description != "" {
+		t.Fatalf("Data F11 regression: expected cleared Description=\"\", got %q", updResp.Msg.Product.Description)
+	}
+	if updResp.Msg.Product.Category != "" {
+		t.Fatalf("Data F11 regression: expected cleared Category=\"\", got %q", updResp.Msg.Product.Category)
+	}
+	if updResp.Msg.Product.MetadataJson != "{}" {
+		t.Fatalf("Data F11 regression: expected cleared MetadataJson=\"{}\", got %q", updResp.Msg.Product.MetadataJson)
+	}
+
+	// Verify idempotency hash includes inventory_enabled: replaying same key with inventory_enabled=true must conflict!
+	invTrue := true
+	_, err = h.Update(ctxOwner, connect.NewRequest(&commercev1.UpdateRequest{
+		Context:          testCmdCtx("", "idem-f11-update-clear"),
+		ProductId:        pid,
+		Description:      &emptyStr,
+		Category:         &emptyStr,
+		InventoryEnabled: &invTrue,
+		MetadataJson:     &emptyMeta,
+	}))
+	if connect.CodeOf(err) != connect.CodeAlreadyExists {
+		t.Fatalf("expected CodeAlreadyExists when replaying Update idempotency_key with different inventory_enabled, got %v", err)
 	}
 }

@@ -5,13 +5,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
+	"reflect"
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb"
 )
@@ -43,19 +47,172 @@ type Store interface {
 	GetProductRank(ctx context.Context, workspaceID, productID string) (*ProductRankSummary, error)
 }
 
+type locationBalance struct {
+	OnHand   int32
+	Reserved int32
+}
+
 type MemoryStore struct {
-	mu          sync.RWMutex
-	products    map[string]*Product          // key: productID
-	skus        map[string]*ProductSku       // key: skuID
-	movements   []StockMovementRecord        // append-only ledger
-	idempotency map[string]IdempotencyRecord // key: workspaceID + ":" + idempotencyKey
+	mu               sync.RWMutex
+	products         map[string]*Product                   // key: productID
+	skus             map[string]*ProductSku                // key: skuID
+	balances         map[string]map[string]locationBalance // key: workspaceID+":"+skuID -> locationID -> balance
+	defaultLocations map[string]string                     // key: workspaceID -> locationID
+	movements        []StockMovementRecord                 // append-only ledger
+	idempotency      map[string]IdempotencyRecord          // key: workspaceID + ":" + idempotencyKey
+	orders           []AnalyticsOrder
+	refunds          []AnalyticsRefund
 }
 
 func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{
-		products:    make(map[string]*Product),
-		skus:        make(map[string]*ProductSku),
-		idempotency: make(map[string]IdempotencyRecord),
+		products:         make(map[string]*Product),
+		skus:             make(map[string]*ProductSku),
+		balances:         make(map[string]map[string]locationBalance),
+		defaultLocations: make(map[string]string),
+		idempotency:      make(map[string]IdempotencyRecord),
+	}
+}
+
+func (m *MemoryStore) defaultLocationLocked(workspaceID string) string {
+	if loc, ok := m.defaultLocations[workspaceID]; ok && loc != "" {
+		return loc
+	}
+	return "default-loc-" + workspaceID
+}
+
+func (m *MemoryStore) SetDefaultLocation(workspaceID, locationID string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.defaultLocations == nil {
+		m.defaultLocations = make(map[string]string)
+	}
+	m.defaultLocations[workspaceID] = strings.TrimSpace(locationID)
+}
+
+func (m *MemoryStore) SetLocationBalance(workspaceID, skuID, locationID string, onHand, reserved int32) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.balances == nil {
+		m.balances = make(map[string]map[string]locationBalance)
+	}
+	skuKey := workspaceID + ":" + skuID
+	if m.balances[skuKey] == nil {
+		m.balances[skuKey] = make(map[string]locationBalance)
+	}
+	prev := m.balances[skuKey][locationID]
+	m.balances[skuKey][locationID] = locationBalance{OnHand: onHand, Reserved: reserved}
+	delta := onHand - prev.OnHand
+	if delta != 0 {
+		m.movements = append(m.movements, StockMovementRecord{
+			MovementID:   newUUID(),
+			WorkspaceID:  workspaceID,
+			SkuID:        skuID,
+			LocationID:   locationID,
+			MovementType: "opening_balance",
+			Quantity:     delta,
+			Reason:       "opening_balance",
+			MovementKey:  fmt.Sprintf("opening:%s:%s:%d", skuID, locationID, len(m.movements)+1),
+			CreatedAt:    time.Now().UTC(),
+		})
+	}
+	if s, ok := m.skus[skuID]; ok && s.WorkspaceID == workspaceID {
+		var sumOnHand, sumReserved int32
+		for _, bal := range m.balances[skuKey] {
+			sumOnHand += bal.OnHand
+			sumReserved += bal.Reserved
+		}
+		s.StockQuantity = sumOnHand
+		s.StockReserved = sumReserved
+	}
+}
+
+func (m *MemoryStore) GetLocationBalance(workspaceID, skuID, locationID string) (int32, int32) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	skuKey := workspaceID + ":" + skuID
+	if locMap, ok := m.balances[skuKey]; ok {
+		if bal, exists := locMap[locationID]; exists {
+			return bal.OnHand, bal.Reserved
+		}
+	}
+	return 0, 0
+}
+
+func (m *MemoryStore) SeedOrder(ord AnalyticsOrder) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if ord.OrderID == "" {
+		ord.OrderID = newUUID()
+	}
+	if ord.OrderedAt.IsZero() {
+		ord.OrderedAt = time.Now().UTC()
+	}
+	if ord.LifecycleState == "" {
+		ord.LifecycleState = "completed"
+	}
+	for i := range m.orders {
+		if m.orders[i].WorkspaceID == ord.WorkspaceID && m.orders[i].OrderID == ord.OrderID {
+			m.orders[i] = ord
+			return
+		}
+	}
+	m.orders = append(m.orders, ord)
+}
+
+func (m *MemoryStore) SeedRefund(ref AnalyticsRefund) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if ref.RefundID == "" {
+		ref.RefundID = newUUID()
+	}
+	if ref.CreatedAt.IsZero() {
+		ref.CreatedAt = time.Now().UTC()
+	}
+	if ref.LifecycleState == "" {
+		ref.LifecycleState = "completed"
+	}
+	for i := range m.refunds {
+		if m.refunds[i].WorkspaceID == ref.WorkspaceID && m.refunds[i].RefundID == ref.RefundID {
+			m.refunds[i] = ref
+			return
+		}
+	}
+	m.refunds = append(m.refunds, ref)
+}
+
+func (m *MemoryStore) seedOpeningSkuLocked(sku *ProductSku) {
+	if sku == nil || (sku.StockQuantity == 0 && sku.StockReserved == 0) {
+		return
+	}
+	if m.balances == nil {
+		m.balances = make(map[string]map[string]locationBalance)
+	}
+	skuKey := sku.WorkspaceID + ":" + sku.SkuID
+	if m.balances[skuKey] == nil {
+		m.balances[skuKey] = make(map[string]locationBalance)
+	}
+	locID := m.defaultLocationLocked(sku.WorkspaceID)
+	m.balances[skuKey][locID] = locationBalance{
+		OnHand:   sku.StockQuantity,
+		Reserved: sku.StockReserved,
+	}
+	if sku.StockQuantity > 0 {
+		createdAt := sku.CreatedAt
+		if createdAt.IsZero() {
+			createdAt = time.Now().UTC()
+		}
+		m.movements = append(m.movements, StockMovementRecord{
+			MovementID:   newUUID(),
+			WorkspaceID:  sku.WorkspaceID,
+			SkuID:        sku.SkuID,
+			LocationID:   locID,
+			MovementType: "opening_balance",
+			Quantity:     sku.StockQuantity,
+			Reason:       "opening_balance",
+			MovementKey:  "opening:" + sku.SkuID,
+			CreatedAt:    createdAt,
+		})
 	}
 }
 
@@ -86,6 +243,7 @@ func (m *MemoryStore) CreateProduct(_ context.Context, p *Product) error {
 		skuCp.ProductID = p.ProductID
 		skuCp.WorkspaceID = p.WorkspaceID
 		m.skus[sku.SkuID] = &skuCp
+		m.seedOpeningSkuLocked(&skuCp)
 	}
 	return nil
 }
@@ -207,13 +365,18 @@ func (m *MemoryStore) UpdateProduct(_ context.Context, p *Product) error {
 	return nil
 }
 
-func (m *MemoryStore) DeleteProduct(_ context.Context, workspaceID, productID string) error {
+func (m *MemoryStore) DeleteProduct(ctx context.Context, workspaceID, productID string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	p, exists := m.products[productID]
 	if !exists || p.WorkspaceID != workspaceID || p.DeletedAt != nil {
 		return ErrProductNotFound
+	}
+	if expectedTS, ok := ExpectedUpdatedAtFromContext(ctx); ok {
+		if !p.UpdatedAt.UTC().Truncate(time.Microsecond).Equal(expectedTS.UTC().Truncate(time.Microsecond)) {
+			return ErrConcurrencyConflict
+		}
 	}
 	now := time.Now().UTC()
 	p.DeletedAt = &now
@@ -225,13 +388,18 @@ func (m *MemoryStore) DeleteProduct(_ context.Context, workspaceID, productID st
 	return nil
 }
 
-func (m *MemoryStore) ArchiveProduct(_ context.Context, workspaceID, productID string) error {
+func (m *MemoryStore) ArchiveProduct(ctx context.Context, workspaceID, productID string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	p, exists := m.products[productID]
 	if !exists || p.WorkspaceID != workspaceID || p.DeletedAt != nil {
 		return ErrProductNotFound
+	}
+	if expectedTS, ok := ExpectedUpdatedAtFromContext(ctx); ok {
+		if !p.UpdatedAt.UTC().Truncate(time.Microsecond).Equal(expectedTS.UTC().Truncate(time.Microsecond)) {
+			return ErrConcurrencyConflict
+		}
 	}
 	p.CatalogStatus = StatusArchived
 	now := time.Now().UTC()
@@ -301,6 +469,7 @@ func (m *MemoryStore) CreateSku(_ context.Context, sku *ProductSku) error {
 	}
 	cp := cloneSku(sku)
 	m.skus[sku.SkuID] = cp
+	m.seedOpeningSkuLocked(cp)
 	return nil
 }
 
@@ -353,31 +522,98 @@ func (m *MemoryStore) UpdateSkuStock(ctx context.Context, workspaceID, skuID str
 		}
 	}
 
-	newQty := s.StockQuantity + delta
-	if newQty < 0 {
+	if expectedTS, ok := ExpectedUpdatedAtFromContext(ctx); ok {
+		if !s.UpdatedAt.UTC().Truncate(time.Microsecond).Equal(expectedTS.UTC().Truncate(time.Microsecond)) {
+			return 0, ErrConcurrencyConflict
+		}
+	}
+
+	locID := strings.TrimSpace(meta.LocationID)
+	if locID == "" {
+		locID = m.defaultLocationLocked(workspaceID)
+	}
+	if m.balances == nil {
+		m.balances = make(map[string]map[string]locationBalance)
+	}
+	skuKey := workspaceID + ":" + skuID
+	if m.balances[skuKey] == nil {
+		m.balances[skuKey] = make(map[string]locationBalance)
+	}
+
+	now := time.Now().UTC()
+	if !now.After(s.UpdatedAt) {
+		now = s.UpdatedAt.Add(time.Microsecond)
+	}
+
+	// Only seed unallocated SKU stock if zero location balances and zero movements exist for this SKU.
+	if len(m.balances[skuKey]) == 0 && (s.StockQuantity > 0 || s.StockReserved > 0) {
+		var hasMovements bool
+		for _, mv := range m.movements {
+			if mv.WorkspaceID == workspaceID && mv.SkuID == skuID {
+				hasMovements = true
+				break
+			}
+		}
+		if !hasMovements {
+			m.balances[skuKey][locID] = locationBalance{
+				OnHand:   s.StockQuantity,
+				Reserved: s.StockReserved,
+			}
+			if s.StockQuantity > 0 {
+				m.movements = append(m.movements, StockMovementRecord{
+					MovementID:   newUUID(),
+					WorkspaceID:  workspaceID,
+					SkuID:        skuID,
+					LocationID:   locID,
+					MovementType: "opening_balance",
+					Quantity:     s.StockQuantity,
+					Reason:       "opening_balance",
+					MovementKey:  "opening:" + skuID,
+					CreatedAt:    now,
+				})
+			}
+		}
+	}
+
+	locBal := m.balances[skuKey][locID]
+	newLocOnHand := locBal.OnHand + delta
+	if newLocOnHand < 0 {
 		return s.StockQuantity, fmt.Errorf("%w: stock quantity cannot be negative", ErrInsufficientStock)
 	}
-	if newQty < s.StockReserved {
-		return s.StockQuantity, fmt.Errorf("%w: stock quantity (%d) cannot be less than reserved stock (%d)", ErrInsufficientStock, newQty, s.StockReserved)
+	if newLocOnHand < locBal.Reserved {
+		return s.StockQuantity, fmt.Errorf("%w: stock quantity (%d) cannot be less than reserved stock (%d)", ErrInsufficientStock, newLocOnHand, locBal.Reserved)
 	}
-	now := time.Now().UTC()
-	s.StockQuantity = newQty
+	locBal.OnHand = newLocOnHand
+	m.balances[skuKey][locID] = locBal
+
+	var totalOnHand, totalReserved int32
+	for _, bal := range m.balances[skuKey] {
+		totalOnHand += bal.OnHand
+		totalReserved += bal.Reserved
+	}
+	if totalOnHand < s.StockReserved {
+		return s.StockQuantity, fmt.Errorf("%w: stock quantity (%d) cannot be less than reserved stock (%d)", ErrInsufficientStock, totalOnHand, s.StockReserved)
+	}
+	if totalReserved > s.StockReserved {
+		s.StockReserved = totalReserved
+	}
+	s.StockQuantity = totalOnHand
 	s.UpdatedAt = now
 	m.movements = append(m.movements, StockMovementRecord{
 		MovementID:   newUUID(),
 		WorkspaceID:  workspaceID,
 		SkuID:        skuID,
-		LocationID:   "default-loc-" + workspaceID,
+		LocationID:   locID,
 		MovementType: "adjustment",
 		Quantity:     delta,
 		Reason:       reason,
 		MovementKey:  movementKey,
 		CreatedAt:    now,
 	})
-	return newQty, nil
+	return totalOnHand, nil
 }
 
-func (m *MemoryStore) SetSkuAlertThreshold(_ context.Context, workspaceID, skuID string, threshold int32) error {
+func (m *MemoryStore) SetSkuAlertThreshold(ctx context.Context, workspaceID, skuID string, threshold int32) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -385,21 +621,35 @@ func (m *MemoryStore) SetSkuAlertThreshold(_ context.Context, workspaceID, skuID
 	if !exists || s.WorkspaceID != workspaceID || s.DeletedAt != nil {
 		return ErrSkuNotFound
 	}
+	if expectedTS, ok := ExpectedUpdatedAtFromContext(ctx); ok {
+		if !s.UpdatedAt.UTC().Truncate(time.Microsecond).Equal(expectedTS.UTC().Truncate(time.Microsecond)) {
+			return ErrConcurrencyConflict
+		}
+	}
 	if threshold < 0 {
 		return fmt.Errorf("%w: threshold cannot be negative", ErrInvalidInput)
 	}
+	now := time.Now().UTC()
+	if !now.After(s.UpdatedAt) {
+		now = s.UpdatedAt.Add(time.Microsecond)
+	}
 	s.LowStockThreshold = threshold
-	s.UpdatedAt = time.Now().UTC()
+	s.UpdatedAt = now
 	return nil
 }
 
-func (m *MemoryStore) LinkContent(_ context.Context, workspaceID, productID string, ref ContentRef) error {
+func (m *MemoryStore) LinkContent(ctx context.Context, workspaceID, productID string, ref ContentRef) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	p, exists := m.products[productID]
 	if !exists || p.WorkspaceID != workspaceID || p.DeletedAt != nil {
 		return ErrProductNotFound
+	}
+	if expectedTS, ok := ExpectedUpdatedAtFromContext(ctx); ok {
+		if !p.UpdatedAt.UTC().Truncate(time.Microsecond).Equal(expectedTS.UTC().Truncate(time.Microsecond)) {
+			return ErrConcurrencyConflict
+		}
 	}
 	if p.Metadata == nil {
 		p.Metadata = make(map[string]any)
@@ -545,7 +795,7 @@ func (m *MemoryStore) SaveIdempotencyRecord(_ context.Context, rec IdempotencyRe
 		cp.CreatedAt = now
 	}
 	if cp.ExpiresAt.IsZero() {
-		cp.ExpiresAt = cp.CreatedAt.Add(24 * time.Hour)
+		cp.ExpiresAt = cp.CreatedAt.Add(7 * 24 * time.Hour)
 	}
 	if rec.ResponseBody != nil {
 		cp.ResponseBody = append([]byte(nil), rec.ResponseBody...)
@@ -554,7 +804,7 @@ func (m *MemoryStore) SaveIdempotencyRecord(_ context.Context, rec IdempotencyRe
 	return nil
 }
 
-func (m *MemoryStore) GetProductSalesSummary(_ context.Context, workspaceID, productID string) (*ProductSalesSummary, error) {
+func (m *MemoryStore) GetProductSalesSummary(ctx context.Context, workspaceID, productID string) (*ProductSalesSummary, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -563,10 +813,13 @@ func (m *MemoryStore) GetProductSalesSummary(_ context.Context, workspaceID, pro
 		return nil, ErrProductNotFound
 	}
 	skus := m.getSkusForProductLocked(workspaceID, productID)
-	skuSet := make(map[string]bool, len(skus))
+	skuSet := make(map[string]bool, len(skus)*2)
 	var lowStockCount int32
 	for _, s := range skus {
 		skuSet[s.SkuID] = true
+		if s.SkuCode != "" {
+			skuSet[s.SkuCode] = true
+		}
 		if s.IsActive && s.StockQuantity <= s.LowStockThreshold {
 			lowStockCount++
 		}
@@ -577,25 +830,26 @@ func (m *MemoryStore) GetProductSalesSummary(_ context.Context, workspaceID, pro
 			mvCount++
 		}
 	}
-	zero, _ := tenantdb.ParseExactDecimal("0")
-	curr := p.Currency
-	if curr == "" {
-		curr = "VND"
+	prodCopy := cloneProduct(p)
+	prodCopy.SKUs = skus
+
+	var wsOrders []AnalyticsOrder
+	for _, o := range m.orders {
+		if o.WorkspaceID == workspaceID {
+			wsOrders = append(wsOrders, o)
+		}
 	}
-	return &ProductSalesSummary{
-		ProductID:          productID,
-		UnitsSold:          0,
-		GrossRevenue:       zero,
-		NetRevenue:         zero,
-		TotalCOGS:          zero,
-		TotalProfit:        zero,
-		Currency:           curr,
-		StockMovements:     mvCount,
-		LowStockAlertCount: lowStockCount,
-	}, nil
+	var wsRefunds []AnalyticsRefund
+	for _, r := range m.refunds {
+		if r.WorkspaceID == workspaceID {
+			wsRefunds = append(wsRefunds, r)
+		}
+	}
+	filter, _ := SalesStatsFilterFromContext(ctx)
+	return computeProductSalesSummary(prodCopy, mvCount, lowStockCount, wsOrders, wsRefunds, filter)
 }
 
-func (m *MemoryStore) GetProductSalesChart(_ context.Context, workspaceID, productID string, _ int) ([]SalesChartDataPoint, error) {
+func (m *MemoryStore) GetProductSalesChart(ctx context.Context, workspaceID, productID string, days int) ([]SalesChartDataPoint, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -603,7 +857,17 @@ func (m *MemoryStore) GetProductSalesChart(_ context.Context, workspaceID, produ
 	if !exists || p.WorkspaceID != workspaceID || p.DeletedAt != nil {
 		return nil, ErrProductNotFound
 	}
-	return []SalesChartDataPoint{}, nil
+	prodCopy := cloneProduct(p)
+	prodCopy.SKUs = m.getSkusForProductLocked(workspaceID, productID)
+
+	var wsOrders []AnalyticsOrder
+	for _, o := range m.orders {
+		if o.WorkspaceID == workspaceID {
+			wsOrders = append(wsOrders, o)
+		}
+	}
+	filter, _ := SalesStatsFilterFromContext(ctx)
+	return computeProductSalesChart(prodCopy, days, wsOrders, filter)
 }
 
 func (m *MemoryStore) GetProductRank(_ context.Context, workspaceID, productID string) (*ProductRankSummary, error) {
@@ -617,37 +881,72 @@ func (m *MemoryStore) GetProductRank(_ context.Context, workspaceID, productID s
 	var allWs []*Product
 	for _, p := range m.products {
 		if p.WorkspaceID == workspaceID && p.DeletedAt == nil {
-			allWs = append(allWs, p)
+			cp := cloneProduct(p)
+			cp.SKUs = m.getSkusForProductLocked(workspaceID, p.ProductID)
+			allWs = append(allWs, cp)
 		}
 	}
-	sort.Slice(allWs, func(i, j int) bool {
-		if !allWs[i].CreatedAt.Equal(allWs[j].CreatedAt) {
-			return allWs[i].CreatedAt.Before(allWs[j].CreatedAt)
-		}
-		return allWs[i].ProductID < allWs[j].ProductID
-	})
-	var wsRank, catRank int32
-	var catIdx int32
-	for idx, p := range allWs {
-		if strings.EqualFold(p.Category, target.Category) {
-			catIdx++
-		}
-		if p.ProductID == productID {
-			wsRank = int32(idx + 1)
-			catRank = catIdx
-			break
+	var wsOrders []AnalyticsOrder
+	for _, o := range m.orders {
+		if o.WorkspaceID == workspaceID {
+			wsOrders = append(wsOrders, o)
 		}
 	}
-	if wsRank == 0 {
-		wsRank = 1
+	return computeProductRank(allWs, productID, wsOrders)
+}
+
+type memoryStoreSnapshot struct {
+	products    map[string]*Product
+	skus        map[string]*ProductSku
+	balances    map[string]map[string]locationBalance
+	movements   []StockMovementRecord
+	idempotency map[string]IdempotencyRecord
+}
+
+func (m *MemoryStore) takeSnapshot() memoryStoreSnapshot {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	snap := memoryStoreSnapshot{
+		products:    make(map[string]*Product, len(m.products)),
+		skus:        make(map[string]*ProductSku, len(m.skus)),
+		balances:    make(map[string]map[string]locationBalance, len(m.balances)),
+		movements:   make([]StockMovementRecord, len(m.movements)),
+		idempotency: make(map[string]IdempotencyRecord, len(m.idempotency)),
 	}
-	if catRank == 0 {
-		catRank = 1
+	for k, v := range m.products {
+		snap.products[k] = cloneProduct(v)
 	}
-	return &ProductRankSummary{
-		WorkspaceRank: wsRank,
-		CategoryRank:  catRank,
-	}, nil
+	for k, v := range m.skus {
+		snap.skus[k] = cloneSku(v)
+	}
+	for k, locMap := range m.balances {
+		cpMap := make(map[string]locationBalance, len(locMap))
+		for locID, bal := range locMap {
+			cpMap[locID] = bal
+		}
+		snap.balances[k] = cpMap
+	}
+	copy(snap.movements, m.movements)
+	for k, rec := range m.idempotency {
+		cp := rec
+		if rec.ResponseBody != nil {
+			cp.ResponseBody = append([]byte(nil), rec.ResponseBody...)
+		}
+		snap.idempotency[k] = cp
+	}
+	return snap
+}
+
+func (m *MemoryStore) restoreSnapshot(snap memoryStoreSnapshot) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.products = snap.products
+	m.skus = snap.skus
+	m.balances = snap.balances
+	m.movements = snap.movements
+	m.idempotency = snap.idempotency
 }
 
 // Helpers for deep copying memory store entries
@@ -717,6 +1016,15 @@ type DBTX interface {
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 }
 
+type pgTxContextKey struct{}
+
+var savepointSeq uint64
+
+func nextSavepointName() string {
+	n := atomic.AddUint64(&savepointSeq, 1)
+	return fmt.Sprintf("sp_product_%d", n)
+}
+
 type PostgresStore struct {
 	pool *pgxpool.Pool
 	db   DBTX
@@ -730,7 +1038,43 @@ func NewPostgresStoreTx(db DBTX) *PostgresStore {
 	return &PostgresStore{pool: nil, db: db}
 }
 
+func (s *PostgresStore) dbFromContext(ctx context.Context) DBTX {
+	if ctx != nil {
+		if tx, ok := ctx.Value(pgTxContextKey{}).(DBTX); ok && tx != nil {
+			return tx
+		}
+	}
+	return s.db
+}
+
+func (s *PostgresStore) resolveDefaultLocationTx(ctx context.Context, db DBTX, workspaceID string) (string, error) {
+	var locationID string
+	err := db.QueryRow(ctx, `
+		SELECT location_id::text
+		FROM inventory_locations
+		WHERE workspace_id = $1::uuid AND status = 'active'
+		ORDER BY is_default DESC, created_at ASC, location_id ASC
+		LIMIT 1
+	`, workspaceID).Scan(&locationID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			err = db.QueryRow(ctx, `
+				INSERT INTO inventory_locations (workspace_id, name, location_type, is_default, status)
+				VALUES ($1::uuid, 'Default Warehouse', 'warehouse', true, 'active')
+				RETURNING location_id::text
+			`, workspaceID).Scan(&locationID)
+			if err != nil {
+				return "", fmt.Errorf("create default inventory location: %w", err)
+			}
+			return locationID, nil
+		}
+		return "", fmt.Errorf("resolve inventory location: %w", err)
+	}
+	return locationID, nil
+}
+
 func (s *PostgresStore) CreateProduct(ctx context.Context, p *Product) error {
+	db := s.dbFromContext(ctx)
 	extJSON, err := json.Marshal(p.ExternalRefs)
 	if err != nil {
 		return fmt.Errorf("marshal external_refs: %w", err)
@@ -766,7 +1110,7 @@ func (s *PostgresStore) CreateProduct(ctx context.Context, p *Product) error {
 			$11, $12::jsonb, $13::jsonb, $14::jsonb, $15, $16
 		)
 	`
-	_, err = s.db.Exec(ctx, query,
+	_, err = db.Exec(ctx, query,
 		p.ProductID, p.WorkspaceID, p.ProductType, p.Title, p.Description,
 		p.Category, basePriceStr, p.Currency, cogsStr, p.CatalogStatus,
 		p.InventoryEnabled, extJSON, imgJSON, metaJSON, p.CreatedAt, p.UpdatedAt,
@@ -786,6 +1130,7 @@ func (s *PostgresStore) CreateProduct(ctx context.Context, p *Product) error {
 }
 
 func (s *PostgresStore) GetProduct(ctx context.Context, workspaceID, productID string) (*Product, error) {
+	db := s.dbFromContext(ctx)
 	query := `
 		SELECT product_id, workspace_id, product_type, title, description,
 		       category, base_price, currency, cogs, catalog_status,
@@ -793,7 +1138,7 @@ func (s *PostgresStore) GetProduct(ctx context.Context, workspaceID, productID s
 		FROM products
 		WHERE workspace_id = $1::uuid AND product_id = $2::uuid AND deleted_at IS NULL
 	`
-	row := s.db.QueryRow(ctx, query, workspaceID, productID)
+	row := db.QueryRow(ctx, query, workspaceID, productID)
 	p, err := scanProduct(row)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -813,6 +1158,7 @@ func (s *PostgresStore) ListProducts(ctx context.Context, workspaceID string, fi
 	if offset < 0 {
 		return nil, 0, fmt.Errorf("%w: offset cannot be negative", ErrInvalidInput)
 	}
+	db := s.dbFromContext(ctx)
 	baseQuery := `
 		FROM products
 		WHERE workspace_id = $1::uuid AND deleted_at IS NULL
@@ -843,7 +1189,7 @@ func (s *PostgresStore) ListProducts(ctx context.Context, workspaceID string, fi
 
 	var total int64
 	countQuery := "SELECT COUNT(*) " + baseQuery
-	if err := s.db.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
+	if err := db.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
 		return nil, 0, fmt.Errorf("count products: %w", err)
 	}
 
@@ -864,7 +1210,7 @@ func (s *PostgresStore) ListProducts(ctx context.Context, workspaceID string, fi
 	`, baseQuery, argIdx, argIdx+1)
 	args = append(args, limit, offset)
 
-	rows, err := s.db.Query(ctx, selectQuery, args...)
+	rows, err := db.Query(ctx, selectQuery, args...)
 	if err != nil {
 		return nil, 0, fmt.Errorf("query products: %w", err)
 	}
@@ -892,6 +1238,7 @@ func (s *PostgresStore) ListProducts(ctx context.Context, workspaceID string, fi
 }
 
 func (s *PostgresStore) UpdateProduct(ctx context.Context, p *Product) error {
+	db := s.dbFromContext(ctx)
 	extJSON, err := json.Marshal(p.ExternalRefs)
 	if err != nil {
 		return fmt.Errorf("marshal external_refs: %w", err)
@@ -929,7 +1276,7 @@ func (s *PostgresStore) UpdateProduct(ctx context.Context, p *Product) error {
 			RETURNING updated_at
 		`
 		var newUpdatedAt time.Time
-		err = s.db.QueryRow(ctx, query,
+		err = db.QueryRow(ctx, query,
 			p.Title, p.Description, p.Category,
 			basePriceStr, p.Currency, cogsStr,
 			p.CatalogStatus, p.InventoryEnabled, extJSON,
@@ -939,7 +1286,7 @@ func (s *PostgresStore) UpdateProduct(ctx context.Context, p *Product) error {
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				var exists bool
-				checkErr := s.db.QueryRow(ctx,
+				checkErr := db.QueryRow(ctx,
 					`SELECT EXISTS(SELECT 1 FROM products WHERE workspace_id = $1::uuid AND product_id = $2::uuid AND deleted_at IS NULL)`,
 					p.WorkspaceID, p.ProductID,
 				).Scan(&exists)
@@ -965,7 +1312,7 @@ func (s *PostgresStore) UpdateProduct(ctx context.Context, p *Product) error {
 		RETURNING updated_at
 	`
 	var newUpdatedAt time.Time
-	err = s.db.QueryRow(ctx, query,
+	err = db.QueryRow(ctx, query,
 		p.Title, p.Description, p.Category,
 		basePriceStr, p.Currency, cogsStr,
 		p.CatalogStatus, p.InventoryEnabled, extJSON,
@@ -983,13 +1330,40 @@ func (s *PostgresStore) UpdateProduct(ctx context.Context, p *Product) error {
 }
 
 func (s *PostgresStore) DeleteProduct(ctx context.Context, workspaceID, productID string) error {
+	db := s.dbFromContext(ctx)
 	now := time.Now().UTC()
+	if expectedTS, ok := ExpectedUpdatedAtFromContext(ctx); ok {
+		tag, err := db.Exec(ctx, `
+			UPDATE products
+			SET deleted_at = $1,
+			    updated_at = CASE WHEN $1::timestamptz > updated_at THEN $1::timestamptz ELSE updated_at + interval '1 microsecond' END
+			WHERE workspace_id = $2::uuid AND product_id = $3::uuid AND deleted_at IS NULL
+			  AND date_trunc('microseconds', updated_at) = date_trunc('microseconds', $4::timestamptz)
+		`, now, workspaceID, productID, expectedTS.UTC())
+		if err != nil {
+			return fmt.Errorf("delete product: %w", err)
+		}
+		if tag.RowsAffected() == 0 {
+			var exists bool
+			checkErr := db.QueryRow(ctx,
+				`SELECT EXISTS(SELECT 1 FROM products WHERE workspace_id = $1::uuid AND product_id = $2::uuid AND deleted_at IS NULL)`,
+				workspaceID, productID,
+			).Scan(&exists)
+			if checkErr == nil && exists {
+				return ErrConcurrencyConflict
+			}
+			return ErrProductNotFound
+		}
+		_, _ = db.Exec(ctx, `UPDATE product_skus SET deleted_at = $1 WHERE workspace_id = $2::uuid AND product_id = $3::uuid AND deleted_at IS NULL`, now, workspaceID, productID)
+		return nil
+	}
+
 	query := `
 		UPDATE products
 		SET deleted_at = $1
 		WHERE workspace_id = $2::uuid AND product_id = $3::uuid AND deleted_at IS NULL
 	`
-	tag, err := s.db.Exec(ctx, query, now, workspaceID, productID)
+	tag, err := db.Exec(ctx, query, now, workspaceID, productID)
 	if err != nil {
 		return fmt.Errorf("delete product: %w", err)
 	}
@@ -997,18 +1371,45 @@ func (s *PostgresStore) DeleteProduct(ctx context.Context, workspaceID, productI
 		return ErrProductNotFound
 	}
 	// Also soft-delete associated SKUs
-	_, _ = s.db.Exec(ctx, `UPDATE product_skus SET deleted_at = $1 WHERE workspace_id = $2::uuid AND product_id = $3::uuid AND deleted_at IS NULL`, now, workspaceID, productID)
+	_, _ = db.Exec(ctx, `UPDATE product_skus SET deleted_at = $1 WHERE workspace_id = $2::uuid AND product_id = $3::uuid AND deleted_at IS NULL`, now, workspaceID, productID)
 	return nil
 }
 
 func (s *PostgresStore) ArchiveProduct(ctx context.Context, workspaceID, productID string) error {
+	db := s.dbFromContext(ctx)
 	now := time.Now().UTC()
+	if expectedTS, ok := ExpectedUpdatedAtFromContext(ctx); ok {
+		tag, err := db.Exec(ctx, `
+			UPDATE products
+			SET catalog_status = 'archived',
+			    updated_at = CASE WHEN $1::timestamptz > updated_at THEN $1::timestamptz ELSE updated_at + interval '1 microsecond' END
+			WHERE workspace_id = $2::uuid AND product_id = $3::uuid AND deleted_at IS NULL
+			  AND date_trunc('microseconds', updated_at) = date_trunc('microseconds', $4::timestamptz)
+		`, now, workspaceID, productID, expectedTS.UTC())
+		if err != nil {
+			return fmt.Errorf("archive product: %w", err)
+		}
+		if tag.RowsAffected() == 0 {
+			var exists bool
+			checkErr := db.QueryRow(ctx,
+				`SELECT EXISTS(SELECT 1 FROM products WHERE workspace_id = $1::uuid AND product_id = $2::uuid AND deleted_at IS NULL)`,
+				workspaceID, productID,
+			).Scan(&exists)
+			if checkErr == nil && exists {
+				return ErrConcurrencyConflict
+			}
+			return ErrProductNotFound
+		}
+		return nil
+	}
+
 	query := `
 		UPDATE products
-		SET catalog_status = 'archived', updated_at = $1
+		SET catalog_status = 'archived',
+		    updated_at = CASE WHEN $1::timestamptz > updated_at THEN $1::timestamptz ELSE updated_at + interval '1 microsecond' END
 		WHERE workspace_id = $2::uuid AND product_id = $3::uuid AND deleted_at IS NULL
 	`
-	tag, err := s.db.Exec(ctx, query, now, workspaceID, productID)
+	tag, err := db.Exec(ctx, query, now, workspaceID, productID)
 	if err != nil {
 		return fmt.Errorf("archive product: %w", err)
 	}
@@ -1019,13 +1420,14 @@ func (s *PostgresStore) ArchiveProduct(ctx context.Context, workspaceID, product
 }
 
 func (s *PostgresStore) BulkArchiveProducts(ctx context.Context, workspaceID string, productIDs []string) (int, error) {
+	db := s.dbFromContext(ctx)
 	now := time.Now().UTC()
 	query := `
 		UPDATE products
 		SET catalog_status = 'archived', updated_at = $1
 		WHERE workspace_id = $2::uuid AND product_id = ANY($3::uuid[]) AND deleted_at IS NULL
 	`
-	tag, err := s.db.Exec(ctx, query, now, workspaceID, productIDs)
+	tag, err := db.Exec(ctx, query, now, workspaceID, productIDs)
 	if err != nil {
 		return 0, fmt.Errorf("bulk archive products: %w", err)
 	}
@@ -1033,6 +1435,7 @@ func (s *PostgresStore) BulkArchiveProducts(ctx context.Context, workspaceID str
 }
 
 func (s *PostgresStore) FindProductByExternalID(ctx context.Context, workspaceID, platform, externalID, connectedAccountID string) (*Product, error) {
+	db := s.dbFromContext(ctx)
 	query := `
 		SELECT product_id, workspace_id, product_type, title, description,
 		       category, base_price, currency, cogs, catalog_status,
@@ -1051,7 +1454,7 @@ func (s *PostgresStore) FindProductByExternalID(ctx context.Context, workspaceID
 	}
 	matchJSON, _ := json.Marshal([]map[string]string{matchObj})
 
-	row := s.db.QueryRow(ctx, query, workspaceID, matchJSON)
+	row := db.QueryRow(ctx, query, workspaceID, matchJSON)
 	p, err := scanProduct(row)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -1068,6 +1471,7 @@ func (s *PostgresStore) FindProductByExternalID(ctx context.Context, workspaceID
 }
 
 func (s *PostgresStore) CreateSku(ctx context.Context, sku *ProductSku) error {
+	db := s.dbFromContext(ctx)
 	varAttrJSON, err := json.Marshal(sku.VariantAttributes)
 	if err != nil {
 		return fmt.Errorf("marshal variant_attributes: %w", err)
@@ -1100,7 +1504,7 @@ func (s *PostgresStore) CreateSku(ctx context.Context, sku *ProductSku) error {
 			$16, $17
 		)
 	`
-	_, err = s.db.Exec(ctx, query,
+	_, err = db.Exec(ctx, query,
 		sku.SkuID, sku.WorkspaceID, sku.ProductID, sku.SkuCode, varAttrJSON,
 		priceStr, cogsStr, sku.Currency, sku.StockQuantity, sku.StockReserved,
 		sku.LowStockThreshold, sku.Barcode, sku.WeightGrams, sku.IsActive, extJSON,
@@ -1109,10 +1513,50 @@ func (s *PostgresStore) CreateSku(ctx context.Context, sku *ProductSku) error {
 	if err != nil {
 		return fmt.Errorf("insert sku: %w", err)
 	}
+
+	// If opening stock is provided at SKU creation, record the opening balance & movement on the default location.
+	if sku.StockQuantity > 0 || sku.StockReserved > 0 {
+		locationID, locErr := s.resolveDefaultLocationTx(ctx, db, sku.WorkspaceID)
+		if locErr != nil {
+			return locErr
+		}
+		createdAt := sku.CreatedAt
+		if createdAt.IsZero() {
+			createdAt = time.Now().UTC()
+		}
+		_, err = db.Exec(ctx, `
+			INSERT INTO inventory_balances (workspace_id, sku_id, location_id, on_hand, reserved, opening_at, updated_at)
+			VALUES ($1::uuid, $2::uuid, $3::uuid, $4, $5, $6, $6)
+			ON CONFLICT (workspace_id, sku_id, location_id) DO UPDATE
+			SET on_hand = EXCLUDED.on_hand,
+			    reserved = EXCLUDED.reserved,
+			    opening_at = COALESCE(inventory_balances.opening_at, EXCLUDED.opening_at),
+			    updated_at = EXCLUDED.updated_at
+		`, sku.WorkspaceID, sku.SkuID, locationID, sku.StockQuantity, sku.StockReserved, createdAt)
+		if err != nil {
+			return fmt.Errorf("insert opening inventory balance: %w", err)
+		}
+		if sku.StockQuantity > 0 {
+			_, err = db.Exec(ctx, `
+				INSERT INTO stock_movements (
+					movement_id, workspace_id, sku_id, location_id,
+					movement_type, quantity, reason, movement_key, created_at
+				) VALUES (
+					$1::uuid, $2::uuid, $3::uuid, $4::uuid,
+					'opening_balance', $5, 'opening_balance', $6, $7
+				)
+				ON CONFLICT (workspace_id, movement_key) DO NOTHING
+			`, newUUID(), sku.WorkspaceID, sku.SkuID, locationID, sku.StockQuantity, "opening:"+sku.SkuID, createdAt)
+			if err != nil {
+				return fmt.Errorf("insert opening stock movement: %w", err)
+			}
+		}
+	}
 	return nil
 }
 
 func (s *PostgresStore) GetSku(ctx context.Context, workspaceID, skuID string) (*ProductSku, error) {
+	db := s.dbFromContext(ctx)
 	query := `
 		SELECT sku_id, workspace_id, product_id, sku_code, variant_attributes,
 		       price_override, cogs_override, currency, stock_quantity, stock_reserved,
@@ -1121,11 +1565,19 @@ func (s *PostgresStore) GetSku(ctx context.Context, workspaceID, skuID string) (
 		FROM product_skus
 		WHERE workspace_id = $1::uuid AND sku_id = $2::uuid AND deleted_at IS NULL
 	`
-	row := s.db.QueryRow(ctx, query, workspaceID, skuID)
-	return scanSku(row)
+	row := db.QueryRow(ctx, query, workspaceID, skuID)
+	sku, err := scanSku(row)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrSkuNotFound
+		}
+		return nil, err
+	}
+	return sku, nil
 }
 
 func (s *PostgresStore) ListSkusByProduct(ctx context.Context, workspaceID, productID string) ([]ProductSku, error) {
+	db := s.dbFromContext(ctx)
 	query := `
 		SELECT sku_id, workspace_id, product_id, sku_code, variant_attributes,
 		       price_override, cogs_override, currency, stock_quantity, stock_reserved,
@@ -1135,7 +1587,7 @@ func (s *PostgresStore) ListSkusByProduct(ctx context.Context, workspaceID, prod
 		WHERE workspace_id = $1::uuid AND product_id = $2::uuid AND deleted_at IS NULL
 		ORDER BY created_at ASC
 	`
-	rows, err := s.db.Query(ctx, query, workspaceID, productID)
+	rows, err := db.Query(ctx, query, workspaceID, productID)
 	if err != nil {
 		return nil, fmt.Errorf("query skus: %w", err)
 	}
@@ -1153,8 +1605,33 @@ func (s *PostgresStore) ListSkusByProduct(ctx context.Context, workspaceID, prod
 }
 
 func (s *PostgresStore) withTx(ctx context.Context, workspaceID string, fn func(db DBTX) error) error {
+	if ctx != nil {
+		if activeTx, ok := ctx.Value(pgTxContextKey{}).(DBTX); ok && activeTx != nil {
+			sp := nextSavepointName()
+			if _, err := activeTx.Exec(ctx, "SAVEPOINT "+sp); err != nil {
+				return fn(activeTx)
+			}
+			if err := fn(activeTx); err != nil {
+				_, _ = activeTx.Exec(ctx, "ROLLBACK TO SAVEPOINT "+sp)
+				_, _ = activeTx.Exec(ctx, "RELEASE SAVEPOINT "+sp)
+				return err
+			}
+			_, _ = activeTx.Exec(ctx, "RELEASE SAVEPOINT "+sp)
+			return nil
+		}
+	}
 	if s.pool == nil {
-		return fn(s.db)
+		sp := nextSavepointName()
+		if _, err := s.db.Exec(ctx, "SAVEPOINT "+sp); err != nil {
+			return fn(s.db)
+		}
+		if err := fn(s.db); err != nil {
+			_, _ = s.db.Exec(ctx, "ROLLBACK TO SAVEPOINT "+sp)
+			_, _ = s.db.Exec(ctx, "RELEASE SAVEPOINT "+sp)
+			return err
+		}
+		_, _ = s.db.Exec(ctx, "RELEASE SAVEPOINT "+sp)
+		return nil
 	}
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -1208,12 +1685,13 @@ func (s *PostgresStore) UpdateSkuStock(ctx context.Context, workspaceID, skuID s
 		}
 
 		var currentQty, currentReserved int32
+		var currentUpdatedAt time.Time
 		err = db.QueryRow(ctx, `
-			SELECT stock_quantity, stock_reserved
+			SELECT stock_quantity, stock_reserved, updated_at
 			FROM product_skus
 			WHERE workspace_id = $1::uuid AND sku_id = $2::uuid AND deleted_at IS NULL
 			FOR UPDATE
-		`, workspaceID, skuID).Scan(&currentQty, &currentReserved)
+		`, workspaceID, skuID).Scan(&currentQty, &currentReserved, &currentUpdatedAt)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				return ErrSkuNotFound
@@ -1221,34 +1699,29 @@ func (s *PostgresStore) UpdateSkuStock(ctx context.Context, workspaceID, skuID s
 			return fmt.Errorf("lock sku: %w", err)
 		}
 
-		newQty := currentQty + delta
-		if newQty < 0 {
-			return fmt.Errorf("%w: stock quantity cannot be negative", ErrInsufficientStock)
-		}
-		if newQty < currentReserved {
-			return fmt.Errorf("%w: stock quantity (%d) cannot be less than reserved stock (%d)", ErrInsufficientStock, newQty, currentReserved)
+		if expectedTS, ok := ExpectedUpdatedAtFromContext(ctx); ok {
+			if !currentUpdatedAt.UTC().Truncate(time.Microsecond).Equal(expectedTS.UTC().Truncate(time.Microsecond)) {
+				return ErrConcurrencyConflict
+			}
 		}
 
 		var locationID string
-		err = db.QueryRow(ctx, `
-			SELECT location_id::text
-			FROM inventory_locations
-			WHERE workspace_id = $1::uuid AND status = 'active'
-			ORDER BY is_default DESC, created_at ASC, location_id ASC
-			LIMIT 1
-		`, workspaceID).Scan(&locationID)
-		if err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				err = db.QueryRow(ctx, `
-					INSERT INTO inventory_locations (workspace_id, name, location_type, is_default, status)
-					VALUES ($1::uuid, 'Default Warehouse', 'warehouse', true, 'active')
-					RETURNING location_id::text
-				`, workspaceID).Scan(&locationID)
-				if err != nil {
-					return fmt.Errorf("create default inventory location: %w", err)
+		if strings.TrimSpace(meta.LocationID) != "" {
+			err = db.QueryRow(ctx, `
+				SELECT location_id::text
+				FROM inventory_locations
+				WHERE workspace_id = $1::uuid AND location_id = $2::uuid AND status = 'active'
+			`, workspaceID, strings.TrimSpace(meta.LocationID)).Scan(&locationID)
+			if err != nil {
+				if errors.Is(err, pgx.ErrNoRows) {
+					return fmt.Errorf("%w: inventory location not found or inactive", ErrInvalidInput)
 				}
-			} else {
-				return fmt.Errorf("resolve inventory location: %w", err)
+				return fmt.Errorf("resolve specified inventory location: %w", err)
+			}
+		} else {
+			locationID, err = s.resolveDefaultLocationTx(ctx, db, workspaceID)
+			if err != nil {
+				return err
 			}
 		}
 
@@ -1261,10 +1734,45 @@ func (s *PostgresStore) UpdateSkuStock(ctx context.Context, workspaceID, skuID s
 		`, workspaceID, skuID, locationID).Scan(&balOnHand, &balReserved)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
+				// Data F2 fix: never initialize a new location's balance from aggregate SKU stock
+				// when other locations already hold balances for this SKU.
+				var existingBalanceCount, existingMovementCount int
+				_ = db.QueryRow(ctx, `
+					SELECT
+						(SELECT COUNT(*)::int FROM inventory_balances WHERE workspace_id = $1::uuid AND sku_id = $2::uuid),
+						(SELECT COUNT(*)::int FROM stock_movements WHERE workspace_id = $1::uuid AND sku_id = $2::uuid)
+				`, workspaceID, skuID).Scan(&existingBalanceCount, &existingMovementCount)
+
+				balOnHand = 0
+				balReserved = 0
+				if existingBalanceCount == 0 && existingMovementCount == 0 && (currentQty > 0 || currentReserved > 0) {
+					balOnHand = currentQty
+					balReserved = currentReserved
+					if currentQty > 0 {
+						_, err = db.Exec(ctx, `
+							INSERT INTO stock_movements (
+								movement_id, workspace_id, sku_id, location_id,
+								movement_type, quantity, reason, movement_key, created_at
+							) VALUES (
+								$1::uuid, $2::uuid, $3::uuid, $4::uuid,
+								'opening_balance', $5, 'opening_balance', $6, NOW()
+							)
+							ON CONFLICT (workspace_id, movement_key) DO NOTHING
+						`, newUUID(), workspaceID, skuID, locationID, currentQty, "opening:"+skuID)
+						if err != nil {
+							return fmt.Errorf("insert opening stock movement: %w", err)
+						}
+					}
+				}
+
+				newBalOnHand := balOnHand + delta
+				if newBalOnHand < 0 || newBalOnHand < balReserved {
+					return fmt.Errorf("%w: location stock balance (%d) cannot be less than reserved (%d)", ErrInsufficientStock, newBalOnHand, balReserved)
+				}
 				_, err = db.Exec(ctx, `
-					INSERT INTO inventory_balances (workspace_id, sku_id, location_id, on_hand, reserved, updated_at)
-					VALUES ($1::uuid, $2::uuid, $3::uuid, $4, $5, NOW())
-				`, workspaceID, skuID, locationID, newQty, currentReserved)
+					INSERT INTO inventory_balances (workspace_id, sku_id, location_id, on_hand, reserved, opening_at, updated_at)
+					VALUES ($1::uuid, $2::uuid, $3::uuid, $4, $5, NOW(), NOW())
+				`, workspaceID, skuID, locationID, newBalOnHand, balReserved)
 				if err != nil {
 					return fmt.Errorf("insert inventory balance: %w", err)
 				}
@@ -1299,14 +1807,30 @@ func (s *PostgresStore) UpdateSkuStock(ctx context.Context, workspaceID, skuID s
 			return fmt.Errorf("insert stock movement: %w", err)
 		}
 
+		var totalOnHand, totalReserved int32
+		err = db.QueryRow(ctx, `
+			SELECT COALESCE(SUM(on_hand)::int4, 0), COALESCE(SUM(reserved)::int4, 0)
+			FROM inventory_balances
+			WHERE workspace_id = $1::uuid AND sku_id = $2::uuid
+		`, workspaceID, skuID).Scan(&totalOnHand, &totalReserved)
+		if err != nil {
+			return fmt.Errorf("sum inventory balances: %w", err)
+		}
+		if totalReserved < currentReserved {
+			totalReserved = currentReserved
+		}
+		if totalOnHand < 0 || totalOnHand < totalReserved {
+			return fmt.Errorf("%w: stock quantity (%d) cannot be less than reserved stock (%d)", ErrInsufficientStock, totalOnHand, totalReserved)
+		}
+
 		err = db.QueryRow(ctx, `
 			UPDATE product_skus
-			SET stock_quantity = COALESCE((
-				SELECT SUM(on_hand) FROM inventory_balances WHERE workspace_id = $1::uuid AND sku_id = $2::uuid
-			), $3), updated_at = NOW()
+			SET stock_quantity = $3,
+			    stock_reserved = $4,
+			    updated_at = CASE WHEN NOW() > updated_at THEN NOW() ELSE updated_at + interval '1 microsecond' END
 			WHERE workspace_id = $1::uuid AND sku_id = $2::uuid AND deleted_at IS NULL
 			RETURNING stock_quantity
-		`, workspaceID, skuID, newQty).Scan(&resultQty)
+		`, workspaceID, skuID, totalOnHand, totalReserved).Scan(&resultQty)
 		if err != nil {
 			return fmt.Errorf("update sku stock_quantity: %w", err)
 		}
@@ -1319,12 +1843,42 @@ func (s *PostgresStore) UpdateSkuStock(ctx context.Context, workspaceID, skuID s
 }
 
 func (s *PostgresStore) SetSkuAlertThreshold(ctx context.Context, workspaceID, skuID string, threshold int32) error {
+	if threshold < 0 {
+		return fmt.Errorf("%w: threshold cannot be negative", ErrInvalidInput)
+	}
+	db := s.dbFromContext(ctx)
+	if expectedTS, ok := ExpectedUpdatedAtFromContext(ctx); ok {
+		tag, err := db.Exec(ctx, `
+			UPDATE product_skus
+			SET low_stock_threshold = $1,
+			    updated_at = CASE WHEN NOW() > updated_at THEN NOW() ELSE updated_at + interval '1 microsecond' END
+			WHERE workspace_id = $2::uuid AND sku_id = $3::uuid AND deleted_at IS NULL
+			  AND date_trunc('microseconds', updated_at) = date_trunc('microseconds', $4::timestamptz)
+		`, threshold, workspaceID, skuID, expectedTS.UTC())
+		if err != nil {
+			return fmt.Errorf("set alert threshold: %w", err)
+		}
+		if tag.RowsAffected() == 0 {
+			var exists bool
+			checkErr := db.QueryRow(ctx,
+				`SELECT EXISTS(SELECT 1 FROM product_skus WHERE workspace_id = $1::uuid AND sku_id = $2::uuid AND deleted_at IS NULL)`,
+				workspaceID, skuID,
+			).Scan(&exists)
+			if checkErr == nil && exists {
+				return ErrConcurrencyConflict
+			}
+			return ErrSkuNotFound
+		}
+		return nil
+	}
+
 	query := `
 		UPDATE product_skus
-		SET low_stock_threshold = $1, updated_at = NOW()
+		SET low_stock_threshold = $1,
+		    updated_at = CASE WHEN NOW() > updated_at THEN NOW() ELSE updated_at + interval '1 microsecond' END
 		WHERE workspace_id = $2::uuid AND sku_id = $3::uuid AND deleted_at IS NULL
 	`
-	tag, err := s.db.Exec(ctx, query, threshold, workspaceID, skuID)
+	tag, err := db.Exec(ctx, query, threshold, workspaceID, skuID)
 	if err != nil {
 		return fmt.Errorf("set alert threshold: %w", err)
 	}
@@ -1335,13 +1889,20 @@ func (s *PostgresStore) SetSkuAlertThreshold(ctx context.Context, workspaceID, s
 }
 
 func (s *PostgresStore) LinkContent(ctx context.Context, workspaceID, productID string, ref ContentRef) error {
-	// Fetch product, update metadata["linked_content"] atomically
+	// Fetch product, update metadata["linked_content"] atomically with CAS
 	p, err := s.GetProduct(ctx, workspaceID, productID)
 	if err != nil {
 		return err
 	}
-	prevUpdated := p.UpdatedAt
-	p.ExpectedUpdatedAt = &prevUpdated
+	if expectedTS, ok := ExpectedUpdatedAtFromContext(ctx); ok {
+		if !p.UpdatedAt.UTC().Truncate(time.Microsecond).Equal(expectedTS.UTC().Truncate(time.Microsecond)) {
+			return ErrConcurrencyConflict
+		}
+		p.ExpectedUpdatedAt = expectedTS
+	} else {
+		prevUpdated := p.UpdatedAt
+		p.ExpectedUpdatedAt = &prevUpdated
+	}
 	p.PreviousCatalogStatus = p.CatalogStatus
 	if p.Metadata == nil {
 		p.Metadata = make(map[string]any)
@@ -1437,8 +1998,9 @@ func (s *PostgresStore) BatchTag(ctx context.Context, workspaceID string, produc
 }
 
 func (s *PostgresStore) GetIdempotencyRecord(ctx context.Context, workspaceID, idempotencyKey string) (*IdempotencyRecord, error) {
+	db := s.dbFromContext(ctx)
 	var rec IdempotencyRecord
-	err := s.db.QueryRow(ctx, `
+	err := db.QueryRow(ctx, `
 		SELECT workspace_id::text, idempotency_key, request_hash, COALESCE(response_code, 200), COALESCE(response_body, response_payload, '{}'::jsonb), created_at, expires_at
 		FROM api_idempotency_records
 		WHERE workspace_id = $1::uuid AND actor_id = $1::uuid AND rpc = 'product.mutation' AND idempotency_key = $2 AND expires_at > NOW()
@@ -1456,6 +2018,7 @@ func (s *PostgresStore) GetIdempotencyRecord(ctx context.Context, workspaceID, i
 }
 
 func (s *PostgresStore) SaveIdempotencyRecord(ctx context.Context, rec IdempotencyRecord) error {
+	db := s.dbFromContext(ctx)
 	now := time.Now().UTC()
 	createdAt := rec.CreatedAt
 	if createdAt.IsZero() {
@@ -1463,7 +2026,7 @@ func (s *PostgresStore) SaveIdempotencyRecord(ctx context.Context, rec Idempoten
 	}
 	expiresAt := rec.ExpiresAt
 	if expiresAt.IsZero() {
-		expiresAt = createdAt.Add(24 * time.Hour)
+		expiresAt = createdAt.Add(7 * 24 * time.Hour)
 	}
 	bodyJSON := rec.ResponseBody
 	if len(bodyJSON) == 0 {
@@ -1473,7 +2036,7 @@ func (s *PostgresStore) SaveIdempotencyRecord(ctx context.Context, rec Idempoten
 	if statusCode == 0 {
 		statusCode = 200
 	}
-	tag, err := s.db.Exec(ctx, `
+	tag, err := db.Exec(ctx, `
 		INSERT INTO api_idempotency_records (
 			workspace_id, actor_id, rpc, idempotency_key,
 			request_hash, status, response_code, response_body, response_payload, created_at, expires_at
@@ -1495,7 +2058,7 @@ func (s *PostgresStore) SaveIdempotencyRecord(ctx context.Context, rec Idempoten
 	}
 	if tag.RowsAffected() == 0 {
 		var existingHash string
-		err := s.db.QueryRow(ctx, `
+		err := db.QueryRow(ctx, `
 			SELECT request_hash
 			FROM api_idempotency_records
 			WHERE workspace_id = $1::uuid AND actor_id = $1::uuid AND rpc = 'product.mutation' AND idempotency_key = $2
@@ -1508,6 +2071,150 @@ func (s *PostgresStore) SaveIdempotencyRecord(ctx context.Context, rec Idempoten
 		}
 	}
 	return nil
+}
+
+func (s *PostgresStore) loadWorkspaceAnalyticsData(ctx context.Context, workspaceID string) ([]AnalyticsOrder, []AnalyticsRefund, error) {
+	db := s.dbFromContext(ctx)
+	orderRows, err := db.Query(ctx, `
+		SELECT
+			order_id::text,
+			workspace_id::text,
+			COALESCE(product_id::text, ''),
+			amount::numeric(18,6)::text,
+			COALESCE(currency, ''),
+			COALESCE(exchange_rate_snapshot, '{}'::jsonb),
+			COALESCE(items, '[]'::jsonb),
+			COALESCE(lifecycle_state, ''),
+			COALESCE(ordered_at, created_at)
+		FROM orders
+		WHERE workspace_id = $1::uuid
+		  AND deleted_at IS NULL
+		  AND lifecycle_state != 'cancelled'
+		ORDER BY COALESCE(ordered_at, created_at) ASC, order_id ASC
+	`, workspaceID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("query workspace orders: %w", err)
+	}
+	defer orderRows.Close()
+
+	var orders []AnalyticsOrder
+	for orderRows.Next() {
+		var (
+			ord       AnalyticsOrder
+			amountStr string
+			fxBytes   []byte
+			itemsJSON []byte
+		)
+		if err := orderRows.Scan(
+			&ord.OrderID,
+			&ord.WorkspaceID,
+			&ord.ProductID,
+			&amountStr,
+			&ord.Currency,
+			&fxBytes,
+			&itemsJSON,
+			&ord.LifecycleState,
+			&ord.OrderedAt,
+		); err != nil {
+			return nil, nil, fmt.Errorf("scan workspace order: %w", err)
+		}
+		ord.Amount, _ = tenantdb.ParseExactDecimal(amountStr)
+		if len(fxBytes) > 0 {
+			var fx ExchangeRateSnapshot
+			if err := json.Unmarshal(fxBytes, &fx); err == nil {
+				if fx.BaseCurrency != "" || fx.QuoteCurrency != "" || fx.RateToBase != "" {
+					ord.ExchangeRateSnapshot = &fx
+				}
+			}
+		}
+		if len(itemsJSON) > 0 {
+			var rawItems []map[string]any
+			if err := json.Unmarshal(itemsJSON, &rawItems); err == nil {
+				for _, ri := range rawItems {
+					var line AnalyticsOrderLine
+					if v, ok := ri["product_id"].(string); ok {
+						line.ProductID = v
+					}
+					if v, ok := ri["sku_id"].(string); ok {
+						line.SkuID = v
+					}
+					if v, ok := ri["sku"].(string); ok {
+						line.Sku = v
+					}
+					switch qv := ri["quantity"].(type) {
+					case float64:
+						line.Quantity = int64(qv)
+					case string:
+						if d, err := tenantdb.ParseExactDecimal(qv); err == nil {
+							line.Quantity = d.ToPgNumeric().Int.Int64() / 1_000_000
+						}
+					}
+					if v := parseAnyExactDecimalPtr(ri["unit_price"]); v != nil {
+						line.UnitPrice = v
+					}
+					if v := parseAnyExactDecimalPtr(ri["discount"]); v != nil {
+						line.Discount = v
+					}
+					if v := parseAnyExactDecimalPtr(ri["total"]); v != nil {
+						line.Total = v
+					}
+					if v := parseAnyExactDecimalPtr(ri["unit_cogs"]); v != nil {
+						line.UnitCOGS = v
+					}
+					ord.Items = append(ord.Items, line)
+				}
+			}
+		}
+		orders = append(orders, ord)
+	}
+	if err := orderRows.Err(); err != nil {
+		return nil, nil, err
+	}
+
+	refundRows, err := db.Query(ctx, `
+		SELECT
+			refund_id::text,
+			workspace_id::text,
+			order_id::text,
+			amount::numeric(18,6)::text,
+			COALESCE(currency, ''),
+			COALESCE(lifecycle_state, ''),
+			created_at
+		FROM refunds
+		WHERE workspace_id = $1::uuid
+		  AND deleted_at IS NULL
+		  AND lifecycle_state = 'completed'
+		ORDER BY created_at ASC, refund_id ASC
+	`, workspaceID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("query workspace refunds: %w", err)
+	}
+	defer refundRows.Close()
+
+	var refunds []AnalyticsRefund
+	for refundRows.Next() {
+		var (
+			ref       AnalyticsRefund
+			amountStr string
+		)
+		if err := refundRows.Scan(
+			&ref.RefundID,
+			&ref.WorkspaceID,
+			&ref.OrderID,
+			&amountStr,
+			&ref.Currency,
+			&ref.LifecycleState,
+			&ref.CreatedAt,
+		); err != nil {
+			return nil, nil, fmt.Errorf("scan workspace refund: %w", err)
+		}
+		ref.Amount, _ = tenantdb.ParseExactDecimal(amountStr)
+		refunds = append(refunds, ref)
+	}
+	if err := refundRows.Err(); err != nil {
+		return nil, nil, err
+	}
+	return orders, refunds, nil
 }
 
 func (s *PostgresStore) GetProductSalesSummary(ctx context.Context, workspaceID, productID string) (*ProductSalesSummary, error) {
@@ -1523,276 +2230,777 @@ func (s *PostgresStore) GetProductSalesSummary(ctx context.Context, workspaceID,
 		}
 	}
 
+	db := s.dbFromContext(ctx)
 	var mvCount int32
-	_ = s.db.QueryRow(ctx, `
+	_ = db.QueryRow(ctx, `
 		SELECT COUNT(*)::int4
 		FROM stock_movements sm
 		JOIN product_skus ps ON ps.workspace_id = sm.workspace_id AND ps.sku_id = sm.sku_id
 		WHERE sm.workspace_id = $1::uuid AND ps.product_id = $2::uuid AND ps.deleted_at IS NULL
 	`, workspaceID, productID).Scan(&mvCount)
 
-	baseCogsStr := "0"
-	if p.COGS != nil {
-		baseCogsStr = p.COGS.String()
-	}
-
-	var orderCount, unitsSold, refundCount int32
-	var grossStr, netStr, cogsStr string
-	err = s.db.QueryRow(ctx, `
-		WITH product_sku_keys AS (
-			SELECT sku_id::text AS k
-			FROM product_skus
-			WHERE workspace_id = $1::uuid AND product_id = $2::uuid AND deleted_at IS NULL
-			UNION
-			SELECT sku_code AS k
-			FROM product_skus
-			WHERE workspace_id = $1::uuid AND product_id = $2::uuid AND deleted_at IS NULL
-		),
-		item_matches AS (
-			SELECT
-				o.order_id,
-				COALESCE((li.val->>'quantity')::bigint, 0) AS qty,
-				COALESCE(
-					NULLIF(li.val->>'total', '')::numeric(18,6),
-					COALESCE(NULLIF(li.val->>'unit_price', '')::numeric(18,6), 0) * COALESCE((li.val->>'quantity')::numeric(18,6), 0) - COALESCE(NULLIF(li.val->>'discount', '')::numeric(18,6), 0)
-				) AS gross_rev,
-				COALESCE(
-					NULLIF(li.val->>'unit_cogs', '')::numeric(18,6),
-					$3::numeric(18,6),
-					0::numeric(18,6)
-				) * COALESCE((li.val->>'quantity')::numeric(18,6), 0) AS item_cogs
-			FROM orders o
-			CROSS JOIN LATERAL jsonb_array_elements(COALESCE(o.items, '[]'::jsonb)) AS li(val)
-			WHERE o.workspace_id = $1::uuid
-			  AND o.deleted_at IS NULL
-			  AND o.lifecycle_state NOT IN ('cancelled', 'refunded')
-			  AND (
-			      li.val->>'product_id' = $2::text
-			      OR COALESCE(li.val->>'sku_id', li.val->>'sku') IN (SELECT k FROM product_sku_keys)
-			  )
-		),
-		direct_order_matches AS (
-			SELECT
-				o.order_id,
-				1::bigint AS qty,
-				o.amount AS gross_rev,
-				COALESCE($3::numeric(18,6), 0::numeric(18,6)) AS item_cogs
-			FROM orders o
-			WHERE o.workspace_id = $1::uuid
-			  AND o.deleted_at IS NULL
-			  AND o.lifecycle_state NOT IN ('cancelled', 'refunded')
-			  AND o.product_id = $2::uuid
-			  AND jsonb_array_length(COALESCE(o.items, '[]'::jsonb)) = 0
-		),
-		matched_items AS (
-			SELECT * FROM item_matches
-			UNION ALL
-			SELECT * FROM direct_order_matches
-		),
-		order_refunds AS (
-			SELECT
-				COUNT(*)::int4 AS refund_cnt,
-				COALESCE(SUM(r.amount), 0::numeric(18,6)) AS total_refunded
-			FROM refunds r
-			WHERE r.workspace_id = $1::uuid
-			  AND r.deleted_at IS NULL
-			  AND r.lifecycle_state = 'completed'
-			  AND r.order_id IN (SELECT DISTINCT order_id FROM matched_items)
-		)
-		SELECT
-			COUNT(DISTINCT m.order_id)::int4,
-			COALESCE(SUM(m.qty), 0)::int4,
-			COALESCE((SELECT refund_cnt FROM order_refunds), 0)::int4,
-			COALESCE(SUM(m.gross_rev), 0::numeric(18,6))::numeric(18,6)::text,
-			GREATEST(COALESCE(SUM(m.gross_rev), 0::numeric(18,6)) - COALESCE((SELECT total_refunded FROM order_refunds), 0::numeric(18,6)), 0::numeric(18,6))::numeric(18,6)::text,
-			COALESCE(SUM(m.item_cogs), 0::numeric(18,6))::numeric(18,6)::text
-		FROM matched_items m
-	`, workspaceID, productID, baseCogsStr).Scan(&orderCount, &unitsSold, &refundCount, &grossStr, &netStr, &cogsStr)
+	orders, refunds, err := s.loadWorkspaceAnalyticsData(ctx, workspaceID)
 	if err != nil {
-		return nil, fmt.Errorf("query product sales summary: %w", err)
+		return nil, err
 	}
-
-	grossDec, _ := tenantdb.ParseExactDecimal(grossStr)
-	netDec, _ := tenantdb.ParseExactDecimal(netStr)
-	cogsDec, _ := tenantdb.ParseExactDecimal(cogsStr)
-	profitDec, _ := netDec.Sub(cogsDec)
-
-	curr := p.Currency
-	if curr == "" {
-		curr = "VND"
-	}
-
-	return &ProductSalesSummary{
-		ProductID:          productID,
-		OrderCount:         orderCount,
-		UnitsSold:          unitsSold,
-		RefundCount:        refundCount,
-		GrossRevenue:       grossDec,
-		NetRevenue:         netDec,
-		TotalCOGS:          cogsDec,
-		TotalProfit:        profitDec,
-		Currency:           curr,
-		StockMovements:     mvCount,
-		LowStockAlertCount: lowStockCount,
-	}, nil
+	filter, _ := SalesStatsFilterFromContext(ctx)
+	return computeProductSalesSummary(p, mvCount, lowStockCount, orders, refunds, filter)
 }
 
 func (s *PostgresStore) GetProductSalesChart(ctx context.Context, workspaceID, productID string, days int) ([]SalesChartDataPoint, error) {
-	if _, err := s.GetProduct(ctx, workspaceID, productID); err != nil {
+	p, err := s.GetProduct(ctx, workspaceID, productID)
+	if err != nil {
 		return nil, err
 	}
-	if days <= 0 {
-		days = 30
-	}
-
-	rows, err := s.db.Query(ctx, `
-		WITH product_sku_keys AS (
-			SELECT sku_id::text AS k
-			FROM product_skus
-			WHERE workspace_id = $1::uuid AND product_id = $2::uuid AND deleted_at IS NULL
-			UNION
-			SELECT sku_code AS k
-			FROM product_skus
-			WHERE workspace_id = $1::uuid AND product_id = $2::uuid AND deleted_at IS NULL
-		),
-		matched_rows AS (
-			SELECT
-				DATE_TRUNC('day', COALESCE(o.ordered_at, o.created_at)) AS bucket_day,
-				COALESCE((li.val->>'quantity')::bigint, 0) AS qty,
-				COALESCE(
-					NULLIF(li.val->>'total', '')::numeric(18,6),
-					COALESCE(NULLIF(li.val->>'unit_price', '')::numeric(18,6), 0) * COALESCE((li.val->>'quantity')::numeric(18,6), 0) - COALESCE(NULLIF(li.val->>'discount', '')::numeric(18,6), 0)
-				) AS rev
-			FROM orders o
-			CROSS JOIN LATERAL jsonb_array_elements(COALESCE(o.items, '[]'::jsonb)) AS li(val)
-			WHERE o.workspace_id = $1::uuid
-			  AND o.deleted_at IS NULL
-			  AND o.lifecycle_state NOT IN ('cancelled', 'refunded')
-			  AND COALESCE(o.ordered_at, o.created_at) >= NOW() - ($3::int * interval '1 day')
-			  AND (
-			      li.val->>'product_id' = $2::text
-			      OR COALESCE(li.val->>'sku_id', li.val->>'sku') IN (SELECT k FROM product_sku_keys)
-			  )
-			UNION ALL
-			SELECT
-				DATE_TRUNC('day', COALESCE(o.ordered_at, o.created_at)) AS bucket_day,
-				1::bigint AS qty,
-				o.amount AS rev
-			FROM orders o
-			WHERE o.workspace_id = $1::uuid
-			  AND o.deleted_at IS NULL
-			  AND o.lifecycle_state NOT IN ('cancelled', 'refunded')
-			  AND COALESCE(o.ordered_at, o.created_at) >= NOW() - ($3::int * interval '1 day')
-			  AND o.product_id = $2::uuid
-			  AND jsonb_array_length(COALESCE(o.items, '[]'::jsonb)) = 0
-		)
-		SELECT
-			bucket_day,
-			COALESCE(SUM(qty), 0)::int4 AS units_sold,
-			COALESCE(SUM(rev), 0::numeric(18,6))::numeric(18,6)::text AS revenue
-		FROM matched_rows
-		GROUP BY bucket_day
-		ORDER BY bucket_day ASC
-	`, workspaceID, productID, days)
+	orders, _, err := s.loadWorkspaceAnalyticsData(ctx, workspaceID)
 	if err != nil {
-		return nil, fmt.Errorf("query product sales chart: %w", err)
+		return nil, err
 	}
-	defer rows.Close()
-
-	var points []SalesChartDataPoint
-	for rows.Next() {
-		var pt SalesChartDataPoint
-		var revStr string
-		if err := rows.Scan(&pt.Date, &pt.UnitsSold, &revStr); err != nil {
-			return nil, err
-		}
-		pt.Revenue, _ = tenantdb.ParseExactDecimal(revStr)
-		points = append(points, pt)
-	}
-	return points, rows.Err()
+	filter, _ := SalesStatsFilterFromContext(ctx)
+	return computeProductSalesChart(p, days, orders, filter)
 }
 
 func (s *PostgresStore) GetProductRank(ctx context.Context, workspaceID, productID string) (*ProductRankSummary, error) {
 	if _, err := s.GetProduct(ctx, workspaceID, productID); err != nil {
 		return nil, err
 	}
+	allProducts, _, err := s.ListProducts(ctx, workspaceID, ListFilter{}, 10000, 0)
+	if err != nil {
+		return nil, err
+	}
+	orders, _, err := s.loadWorkspaceAnalyticsData(ctx, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	return computeProductRank(allProducts, productID, orders)
+}
+
+// ============================================================================
+// Shared ExactDecimal Analytics Engine (Data F6, F7, F8)
+// ============================================================================
+
+var (
+	microScaleInt = big.NewInt(1_000_000)
+	halfMicroInt  = big.NewInt(500_000)
+)
+
+func parseAnyExactDecimalPtr(v any) *tenantdb.ExactDecimal {
+	if v == nil {
+		return nil
+	}
+	switch val := v.(type) {
+	case string:
+		if strings.TrimSpace(val) == "" {
+			return nil
+		}
+		if d, err := tenantdb.ParseExactDecimal(val); err == nil {
+			return &d
+		}
+	case float64:
+		if d, err := tenantdb.ParseExactDecimal(fmt.Sprintf("%.6f", val)); err == nil {
+			return &d
+		}
+	}
+	return nil
+}
+
+func decToMicro(d tenantdb.ExactDecimal) *big.Int {
+	n := d.ToPgNumeric()
+	if !n.Valid || n.Int == nil {
+		return big.NewInt(0)
+	}
+	return new(big.Int).Set(n.Int)
+}
+
+func microToDec(m *big.Int) tenantdb.ExactDecimal {
+	if m == nil {
+		return tenantdb.ZeroDecimal()
+	}
+	d, err := tenantdb.FromPgNumeric(pgtype.Numeric{
+		Int:   new(big.Int).Set(m),
+		Exp:   -tenantdb.MaxDecimalScale,
+		Valid: true,
+	})
+	if err != nil {
+		return tenantdb.ZeroDecimal()
+	}
+	return d
+}
+
+// resolveOrderRateMicro returns the FX multiplier in micro-units (10^6 = 1.000000)
+// to convert amounts in orderCurrency into targetCurrency.
+// Fails closed with ErrCurrencyMismatch when orderCurrency != targetCurrency and a valid
+// positive ExchangeRateSnapshot for (quote=orderCurrency, base=targetCurrency) is absent.
+func resolveOrderRateMicro(orderID, orderCurrency, targetCurrency string, fx *ExchangeRateSnapshot) (*big.Int, error) {
+	targetCurr := strings.ToUpper(strings.TrimSpace(targetCurrency))
+	if targetCurr == "" {
+		targetCurr = "VND"
+	}
+	ordCurr := strings.ToUpper(strings.TrimSpace(orderCurrency))
+	if ordCurr == "" {
+		ordCurr = targetCurr
+	}
+	if ordCurr == targetCurr {
+		return new(big.Int).Set(microScaleInt), nil
+	}
+	if fx == nil {
+		return nil, fmt.Errorf("%w: order %s currency %s != target currency %s and exchange_rate_snapshot is missing", ErrCurrencyMismatch, orderID, ordCurr, targetCurr)
+	}
+	baseCurr := strings.ToUpper(strings.TrimSpace(fx.BaseCurrency))
+	quoteCurr := strings.ToUpper(strings.TrimSpace(fx.QuoteCurrency))
+	if baseCurr != targetCurr || quoteCurr != ordCurr || strings.TrimSpace(fx.RateToBase) == "" {
+		return nil, fmt.Errorf("%w: order %s exchange_rate_snapshot (%s->%s) does not match (%s->%s)", ErrCurrencyMismatch, orderID, quoteCurr, baseCurr, ordCurr, targetCurr)
+	}
+	rateDec, err := tenantdb.ParseExactDecimal(fx.RateToBase)
+	if err != nil || rateDec.IsZero() || rateDec.IsNegative() {
+		return nil, fmt.Errorf("%w: order %s has invalid rate_to_base %q", ErrCurrencyMismatch, orderID, fx.RateToBase)
+	}
+	return decToMicro(rateDec), nil
+}
+
+func mulMicro(amountMicro, rateMicro *big.Int) *big.Int {
+	if amountMicro == nil || rateMicro == nil || amountMicro.Sign() == 0 {
+		return big.NewInt(0)
+	}
+	if rateMicro.Cmp(microScaleInt) == 0 {
+		return new(big.Int).Set(amountMicro)
+	}
+	prod := new(big.Int).Mul(amountMicro, rateMicro)
+	if prod.Sign() >= 0 {
+		prod.Add(prod, halfMicroInt)
+	} else {
+		prod.Sub(prod, halfMicroInt)
+	}
+	return prod.Quo(prod, microScaleInt)
+}
+
+func lineGrossMicro(li AnalyticsOrderLine) *big.Int {
+	if li.Total != nil {
+		return decToMicro(*li.Total)
+	}
+	unitMicro := big.NewInt(0)
+	if li.UnitPrice != nil {
+		unitMicro = decToMicro(*li.UnitPrice)
+	}
+	discMicro := big.NewInt(0)
+	if li.Discount != nil {
+		discMicro = decToMicro(*li.Discount)
+	}
+	qty := li.Quantity
+	if qty < 0 {
+		qty = 0
+	}
+	gross := new(big.Int).Mul(unitMicro, big.NewInt(qty))
+	gross.Sub(gross, discMicro)
+	return gross
+}
+
+func buildSkuKeySet(skus []ProductSku) map[string]bool {
+	set := make(map[string]bool, len(skus)*2)
+	for _, s := range skus {
+		if s.SkuID != "" {
+			set[s.SkuID] = true
+		}
+		if s.SkuCode != "" {
+			set[s.SkuCode] = true
+		}
+	}
+	return set
+}
+
+func lineMatchesProduct(li AnalyticsOrderLine, productID string, skuKeys map[string]bool) bool {
+	if li.ProductID != "" && li.ProductID == productID {
+		return true
+	}
+	if li.SkuID != "" && skuKeys[li.SkuID] {
+		return true
+	}
+	if li.Sku != "" && skuKeys[li.Sku] {
+		return true
+	}
+	return false
+}
+
+func computeProductSalesSummary(
+	p *Product,
+	mvCount int32,
+	lowStockCount int32,
+	orders []AnalyticsOrder,
+	refunds []AnalyticsRefund,
+	filter SalesStatsFilter,
+) (*ProductSalesSummary, error) {
+	targetCurr := strings.ToUpper(strings.TrimSpace(p.Currency))
+	if targetCurr == "" {
+		targetCurr = "VND"
+	}
+	skuKeys := buildSkuKeySet(p.SKUs)
+	baseCogsMicro := big.NewInt(0)
+	if p.COGS != nil {
+		baseCogsMicro = decToMicro(*p.COGS)
+	}
+
+	refundsByOrder := make(map[string][]AnalyticsRefund)
+	for _, r := range refunds {
+		if strings.EqualFold(r.LifecycleState, "completed") || strings.EqualFold(r.LifecycleState, "succeeded") {
+			refundsByOrder[r.OrderID] = append(refundsByOrder[r.OrderID], r)
+		}
+	}
+
+	var (
+		orderCount  int32
+		unitsSold   int32
+		refundCount int32
+	)
+	totalGrossMicro := big.NewInt(0)
+	totalRefundAllocatedMicro := big.NewInt(0)
+	totalCogsMicro := big.NewInt(0)
+
+	for _, o := range orders {
+		state := strings.ToLower(strings.TrimSpace(o.LifecycleState))
+		if state == "cancelled" {
+			continue
+		}
+		if filter.Since != nil && !o.OrderedAt.IsZero() && o.OrderedAt.Before(*filter.Since) {
+			continue
+		}
+		if filter.Until != nil && !o.OrderedAt.IsZero() && o.OrderedAt.After(*filter.Until) {
+			continue
+		}
+
+		var lines []AnalyticsOrderLine
+		if len(o.Items) > 0 {
+			lines = o.Items
+		} else if o.ProductID != "" {
+			amt := o.Amount
+			lines = []AnalyticsOrderLine{{
+				ProductID: o.ProductID,
+				Quantity:  1,
+				Total:     &amt,
+			}}
+		}
+		if len(lines) == 0 {
+			continue
+		}
+
+		ordTotalGrossMicro := big.NewInt(0)
+		prodOrderGrossOrdMicro := big.NewInt(0)
+		prodOrderCogsTargetMicro := big.NewInt(0)
+		var prodOrderUnits int64
+		matched := false
+
+		// Check if any line in this order matches the product first
+		for _, li := range lines {
+			lg := lineGrossMicro(li)
+			ordTotalGrossMicro.Add(ordTotalGrossMicro, lg)
+			if lineMatchesProduct(li, p.ProductID, skuKeys) {
+				matched = true
+				prodOrderUnits += li.Quantity
+				prodOrderGrossOrdMicro.Add(prodOrderGrossOrdMicro, lg)
+			}
+		}
+		if !matched {
+			continue
+		}
+		ordAmtMicro := decToMicro(o.Amount)
+		if ordTotalGrossMicro.Cmp(ordAmtMicro) < 0 {
+			ordTotalGrossMicro.Set(ordAmtMicro)
+		}
+
+		rateMicro, err := resolveOrderRateMicro(o.OrderID, o.Currency, targetCurr, o.ExchangeRateSnapshot)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, li := range lines {
+			if !lineMatchesProduct(li, p.ProductID, skuKeys) {
+				continue
+			}
+			var lineCogsTarget *big.Int
+			if li.UnitCOGS != nil {
+				unitCogsTarget := mulMicro(decToMicro(*li.UnitCOGS), rateMicro)
+				lineCogsTarget = new(big.Int).Mul(unitCogsTarget, big.NewInt(li.Quantity))
+			} else {
+				lineCogsTarget = new(big.Int).Mul(baseCogsMicro, big.NewInt(li.Quantity))
+			}
+			prodOrderCogsTargetMicro.Add(prodOrderCogsTargetMicro, lineCogsTarget)
+		}
+
+		prodGrossTargetMicro := mulMicro(prodOrderGrossOrdMicro, rateMicro)
+		ordTotalGrossTargetMicro := mulMicro(ordTotalGrossMicro, rateMicro)
+
+		// Compute allocated refund for this product in this order (Data F6)
+		ordRefunds := refundsByOrder[o.OrderID]
+		orderLevelRefundTargetMicro := big.NewInt(0)
+		directProductRefundTargetMicro := big.NewInt(0)
+		var ordRefundCnt int32
+
+		for _, r := range ordRefunds {
+			rCurr := strings.ToUpper(strings.TrimSpace(r.Currency))
+			var rTargetMicro *big.Int
+			if rCurr == "" || strings.EqualFold(rCurr, o.Currency) {
+				rTargetMicro = mulMicro(decToMicro(r.Amount), rateMicro)
+			} else if rCurr == targetCurr {
+				rTargetMicro = decToMicro(r.Amount)
+			} else {
+				return nil, fmt.Errorf("%w: refund %s currency %s mismatches order currency %s", ErrCurrencyMismatch, r.RefundID, r.Currency, o.Currency)
+			}
+
+			if r.ProductID != "" {
+				if r.ProductID == p.ProductID {
+					directProductRefundTargetMicro.Add(directProductRefundTargetMicro, rTargetMicro)
+					ordRefundCnt++
+				}
+			} else {
+				orderLevelRefundTargetMicro.Add(orderLevelRefundTargetMicro, rTargetMicro)
+				ordRefundCnt++
+			}
+		}
+
+		// If the order is in 'refunded' state without explicit refund rows, treat as 100% refunded
+		if state == "refunded" && len(ordRefunds) == 0 {
+			orderLevelRefundTargetMicro.Set(ordTotalGrossTargetMicro)
+			ordRefundCnt = 1
+		}
+
+		allocatedRefundMicro := new(big.Int).Set(directProductRefundTargetMicro)
+		if orderLevelRefundTargetMicro.Sign() > 0 && ordTotalGrossTargetMicro.Sign() > 0 && prodGrossTargetMicro.Sign() > 0 {
+			// Proportional allocation: ROUND(order_refund * prod_gross / order_gross)
+			num := new(big.Int).Mul(orderLevelRefundTargetMicro, prodGrossTargetMicro)
+			halfDenom := new(big.Int).Quo(ordTotalGrossTargetMicro, big.NewInt(2))
+			num.Add(num, halfDenom)
+			propShare := new(big.Int).Quo(num, ordTotalGrossTargetMicro)
+			allocatedRefundMicro.Add(allocatedRefundMicro, propShare)
+		}
+		if allocatedRefundMicro.Cmp(prodGrossTargetMicro) > 0 {
+			allocatedRefundMicro.Set(prodGrossTargetMicro)
+		}
+
+		orderCount++
+		unitsSold += int32(prodOrderUnits)
+		refundCount += ordRefundCnt
+		totalGrossMicro.Add(totalGrossMicro, prodGrossTargetMicro)
+		totalRefundAllocatedMicro.Add(totalRefundAllocatedMicro, allocatedRefundMicro)
+		totalCogsMicro.Add(totalCogsMicro, prodOrderCogsTargetMicro)
+	}
+
+	netMicro := new(big.Int).Sub(totalGrossMicro, totalRefundAllocatedMicro)
+	if netMicro.Sign() < 0 {
+		netMicro = big.NewInt(0)
+	}
+	profitMicro := new(big.Int).Sub(netMicro, totalCogsMicro)
+
+	return &ProductSalesSummary{
+		ProductID:          p.ProductID,
+		OrderCount:         orderCount,
+		UnitsSold:          unitsSold,
+		RefundCount:        refundCount,
+		GrossRevenue:       microToDec(totalGrossMicro),
+		NetRevenue:         microToDec(netMicro),
+		TotalCOGS:          microToDec(totalCogsMicro),
+		TotalProfit:        microToDec(profitMicro),
+		Currency:           targetCurr,
+		StockMovements:     mvCount,
+		LowStockAlertCount: lowStockCount,
+	}, nil
+}
+
+func computeProductSalesChart(
+	p *Product,
+	days int,
+	orders []AnalyticsOrder,
+	filter SalesStatsFilter,
+) ([]SalesChartDataPoint, error) {
+	if days <= 0 {
+		days = 30
+	}
+	targetCurr := strings.ToUpper(strings.TrimSpace(p.Currency))
+	if targetCurr == "" {
+		targetCurr = "VND"
+	}
+	skuKeys := buildSkuKeySet(p.SKUs)
+
+	refNow := time.Now().UTC()
+	if filter.Until != nil && !filter.Until.IsZero() {
+		refNow = filter.Until.UTC()
+	}
+	cutoff := refNow.Add(-time.Duration(days) * 24 * time.Hour)
+
+	type dayAgg struct {
+		day       time.Time
+		unitsSold int32
+		revMicro  *big.Int
+	}
+	buckets := make(map[string]*dayAgg)
+
+	for _, o := range orders {
+		state := strings.ToLower(strings.TrimSpace(o.LifecycleState))
+		if state == "cancelled" || state == "refunded" {
+			continue
+		}
+		if !o.OrderedAt.IsZero() && o.OrderedAt.Before(cutoff) {
+			continue
+		}
+		var lines []AnalyticsOrderLine
+		if len(o.Items) > 0 {
+			lines = o.Items
+		} else if o.ProductID != "" {
+			amt := o.Amount
+			lines = []AnalyticsOrderLine{{
+				ProductID: o.ProductID,
+				Quantity:  1,
+				Total:     &amt,
+			}}
+		}
+		var matchedLines []AnalyticsOrderLine
+		for _, li := range lines {
+			if lineMatchesProduct(li, p.ProductID, skuKeys) {
+				matchedLines = append(matchedLines, li)
+			}
+		}
+		if len(matchedLines) == 0 {
+			continue
+		}
+
+		rateMicro, err := resolveOrderRateMicro(o.OrderID, o.Currency, targetCurr, o.ExchangeRateSnapshot)
+		if err != nil {
+			return nil, err
+		}
+
+		bucketDay := o.OrderedAt.UTC().Truncate(24 * time.Hour)
+		key := bucketDay.Format("2006-01-02")
+		agg, ok := buckets[key]
+		if !ok {
+			agg = &dayAgg{day: bucketDay, revMicro: big.NewInt(0)}
+			buckets[key] = agg
+		}
+		for _, li := range matchedLines {
+			agg.unitsSold += int32(li.Quantity)
+			agg.revMicro.Add(agg.revMicro, mulMicro(lineGrossMicro(li), rateMicro))
+		}
+	}
+
+	var keys []string
+	for k := range buckets {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	points := make([]SalesChartDataPoint, 0, len(keys))
+	for _, k := range keys {
+		agg := buckets[k]
+		points = append(points, SalesChartDataPoint{
+			Date:      agg.day,
+			UnitsSold: agg.unitsSold,
+			Revenue:   microToDec(agg.revMicro),
+		})
+	}
+	return points, nil
+}
+
+func computeProductRank(
+	allProducts []*Product,
+	targetProductID string,
+	orders []AnalyticsOrder,
+) (*ProductRankSummary, error) {
+	var target *Product
+	for _, p := range allProducts {
+		if p.ProductID == targetProductID {
+			target = p
+			break
+		}
+	}
+	if target == nil {
+		return nil, ErrProductNotFound
+	}
+
+	normCurrency := strings.ToUpper(strings.TrimSpace(target.Currency))
+	if normCurrency == "" {
+		normCurrency = "VND"
+	}
+	for _, o := range orders {
+		if o.ExchangeRateSnapshot != nil && strings.TrimSpace(o.ExchangeRateSnapshot.BaseCurrency) != "" {
+			normCurrency = strings.ToUpper(strings.TrimSpace(o.ExchangeRateSnapshot.BaseCurrency))
+			break
+		}
+	}
+
+	type perfEntry struct {
+		product    *Product
+		skuKeys    map[string]bool
+		unitsSold  int64
+		grossMicro *big.Int
+	}
+	entries := make([]*perfEntry, 0, len(allProducts))
+	for _, p := range allProducts {
+		entries = append(entries, &perfEntry{
+			product:    p,
+			skuKeys:    buildSkuKeySet(p.SKUs),
+			grossMicro: big.NewInt(0),
+		})
+	}
+
+	for _, o := range orders {
+		state := strings.ToLower(strings.TrimSpace(o.LifecycleState))
+		if state == "cancelled" || state == "refunded" {
+			continue
+		}
+		var lines []AnalyticsOrderLine
+		if len(o.Items) > 0 {
+			lines = o.Items
+		} else if o.ProductID != "" {
+			amt := o.Amount
+			lines = []AnalyticsOrderLine{{
+				ProductID: o.ProductID,
+				Quantity:  1,
+				Total:     &amt,
+			}}
+		}
+		if len(lines) == 0 {
+			continue
+		}
+
+		// Check if any product in workspace matches this order
+		var orderMatched bool
+		for _, li := range lines {
+			for _, ent := range entries {
+				if lineMatchesProduct(li, ent.product.ProductID, ent.skuKeys) {
+					orderMatched = true
+					break
+				}
+			}
+			if orderMatched {
+				break
+			}
+		}
+		if !orderMatched {
+			continue
+		}
+
+		rateMicro, err := resolveOrderRateMicro(o.OrderID, o.Currency, normCurrency, o.ExchangeRateSnapshot)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, li := range lines {
+			lgTarget := mulMicro(lineGrossMicro(li), rateMicro)
+			for _, ent := range entries {
+				if lineMatchesProduct(li, ent.product.ProductID, ent.skuKeys) {
+					ent.unitsSold += li.Quantity
+					ent.grossMicro.Add(ent.grossMicro, lgTarget)
+				}
+			}
+		}
+	}
+
+	sort.Slice(entries, func(i, j int) bool {
+		if entries[i].unitsSold != entries[j].unitsSold {
+			return entries[i].unitsSold > entries[j].unitsSold
+		}
+		if cmp := entries[i].grossMicro.Cmp(entries[j].grossMicro); cmp != 0 {
+			return cmp > 0
+		}
+		if !entries[i].product.CreatedAt.Equal(entries[j].product.CreatedAt) {
+			return entries[i].product.CreatedAt.Before(entries[j].product.CreatedAt)
+		}
+		return entries[i].product.ProductID < entries[j].product.ProductID
+	})
 
 	var wsRank, catRank int32
-	err := s.db.QueryRow(ctx, `
-		WITH sku_map AS (
-			SELECT product_id, sku_id::text AS k
-			FROM product_skus
-			WHERE workspace_id = $1::uuid AND deleted_at IS NULL
-			UNION
-			SELECT product_id, sku_code AS k
-			FROM product_skus
-			WHERE workspace_id = $1::uuid AND deleted_at IS NULL
-		),
-		order_lines AS (
-			SELECT
-				li.val->>'product_id' AS line_product_id,
-				COALESCE(li.val->>'sku_id', li.val->>'sku') AS line_sku,
-				COALESCE((li.val->>'quantity')::bigint, 0) AS qty,
-				COALESCE(
-					NULLIF(li.val->>'total', '')::numeric(18,6),
-					COALESCE(NULLIF(li.val->>'unit_price', '')::numeric(18,6), 0) * COALESCE((li.val->>'quantity')::numeric(18,6), 0) - COALESCE(NULLIF(li.val->>'discount', '')::numeric(18,6), 0)
-				) AS rev
-			FROM orders o
-			CROSS JOIN LATERAL jsonb_array_elements(COALESCE(o.items, '[]'::jsonb)) AS li(val)
-			WHERE o.workspace_id = $1::uuid
-			  AND o.deleted_at IS NULL
-			  AND o.lifecycle_state NOT IN ('cancelled', 'refunded')
-			UNION ALL
-			SELECT
-				o.product_id::text AS line_product_id,
-				'' AS line_sku,
-				1::bigint AS qty,
-				o.amount AS rev
-			FROM orders o
-			WHERE o.workspace_id = $1::uuid
-			  AND o.deleted_at IS NULL
-			  AND o.lifecycle_state NOT IN ('cancelled', 'refunded')
-			  AND o.product_id IS NOT NULL
-			  AND jsonb_array_length(COALESCE(o.items, '[]'::jsonb)) = 0
-		),
-		product_perf AS (
-			SELECT
-				p.product_id,
-				COALESCE(p.category, '') AS category,
-				p.created_at,
-				COALESCE(SUM(ol.qty), 0) AS units_sold,
-				COALESCE(SUM(ol.rev), 0::numeric(18,6)) AS gross_rev
-			FROM products p
-			LEFT JOIN order_lines ol
-			  ON ol.line_product_id = p.product_id::text
-			  OR EXISTS (
-			      SELECT 1 FROM sku_map sm
-			      WHERE sm.product_id = p.product_id AND sm.k = ol.line_sku
-			  )
-			WHERE p.workspace_id = $1::uuid AND p.deleted_at IS NULL
-			GROUP BY p.product_id, p.category, p.created_at
-		),
-		ranked AS (
-			SELECT
-				product_id,
-				RANK() OVER (ORDER BY units_sold DESC, gross_rev DESC, created_at ASC, product_id ASC)::int4 AS ws_rank,
-				RANK() OVER (PARTITION BY LOWER(category) ORDER BY units_sold DESC, gross_rev DESC, created_at ASC, product_id ASC)::int4 AS cat_rank
-			FROM product_perf
-		)
-		SELECT ws_rank, cat_rank
-		FROM ranked
-		WHERE product_id = $2::uuid
-	`, workspaceID, productID).Scan(&wsRank, &catRank)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, ErrProductNotFound
+	var catIdx int32
+	for idx, ent := range entries {
+		if strings.EqualFold(ent.product.Category, target.Category) {
+			catIdx++
 		}
-		return nil, fmt.Errorf("query product rank: %w", err)
+		if ent.product.ProductID == targetProductID {
+			wsRank = int32(idx + 1)
+			catRank = catIdx
+			break
+		}
+	}
+	if wsRank == 0 {
+		wsRank = 1
+	}
+	if catRank == 0 {
+		catRank = 1
 	}
 	return &ProductRankSummary{
 		WorkspaceRank: wsRank,
 		CategoryRank:  catRank,
 	}, nil
+}
+
+// ============================================================================
+// Atomic Idempotent Mutation Transaction Support (Data F1)
+// ============================================================================
+
+type txEventBufferKey struct{}
+
+type txEventBuffer struct {
+	mu     sync.Mutex
+	events []OutboxEvent
+}
+
+func withTxEventBuffer(ctx context.Context) (context.Context, *txEventBuffer) {
+	buf := &txEventBuffer{}
+	return context.WithValue(ctx, txEventBufferKey{}, buf), buf
+}
+
+func txEventBufferFromContext(ctx context.Context) (*txEventBuffer, bool) {
+	if ctx == nil {
+		return nil, false
+	}
+	buf, ok := ctx.Value(txEventBufferKey{}).(*txEventBuffer)
+	return buf, ok && buf != nil
+}
+
+func unwrapConcreteStore(store Store) any {
+	if store == nil {
+		return nil
+	}
+	switch st := store.(type) {
+	case *PostgresStore:
+		return st
+	case *MemoryStore:
+		return st
+	}
+	v := reflect.ValueOf(store)
+	for v.IsValid() && (v.Kind() == reflect.Ptr || v.Kind() == reflect.Interface) {
+		if v.IsNil() {
+			return nil
+		}
+		if v.CanInterface() {
+			switch st := v.Interface().(type) {
+			case *PostgresStore:
+				return st
+			case *MemoryStore:
+				return st
+			}
+		}
+		v = v.Elem()
+	}
+	if v.IsValid() && v.Kind() == reflect.Struct {
+		for i := 0; i < v.NumField(); i++ {
+			f := v.Field(i)
+			if f.CanInterface() {
+				if inner, ok := f.Interface().(Store); ok && inner != nil {
+					if res := unwrapConcreteStore(inner); res != nil {
+						return res
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func beginStoreMutationTx(
+	ctx context.Context,
+	store Store,
+	workspaceID string,
+	idempotencyKey string,
+) (context.Context, func() error, func(), error) {
+	txCtx, evtBuf := withTxEventBuffer(ctx)
+	concrete := unwrapConcreteStore(store)
+
+	switch st := concrete.(type) {
+	case *PostgresStore:
+		lockKey := workspaceID + ":" + idempotencyKey
+		if st.pool != nil {
+			tx, err := st.pool.Begin(txCtx)
+			if err != nil {
+				return ctx, nil, nil, fmt.Errorf("begin idempotency tx: %w", err)
+			}
+			if _, err := tx.Exec(txCtx, "SELECT set_config('app.current_tenant_id', $1, true), set_config('app.current_workspace_id', $1, true)", workspaceID); err != nil {
+				_ = tx.Rollback(txCtx)
+				return ctx, nil, nil, fmt.Errorf("set workspace rls context: %w", err)
+			}
+			if _, err := tx.Exec(txCtx, "SELECT pg_advisory_xact_lock(hashtext($1))", lockKey); err != nil {
+				_ = tx.Rollback(txCtx)
+				return ctx, nil, nil, fmt.Errorf("acquire idempotency advisory lock: %w", err)
+			}
+			txCtx = context.WithValue(txCtx, pgTxContextKey{}, DBTX(tx))
+			committed := false
+			commitFn := func() error {
+				if err := tx.Commit(txCtx); err != nil {
+					return err
+				}
+				committed = true
+				return nil
+			}
+			rollbackFn := func() {
+				if !committed {
+					evtBuf.mu.Lock()
+					evtBuf.events = nil
+					evtBuf.mu.Unlock()
+					_ = tx.Rollback(txCtx)
+				}
+			}
+			return txCtx, commitFn, rollbackFn, nil
+		}
+		// st.pool == nil (running inside an existing DBTX connection/transaction)
+		db := st.dbFromContext(txCtx)
+		sp := nextSavepointName()
+		hasSavepoint := false
+		if _, err := db.Exec(txCtx, "SAVEPOINT "+sp); err == nil {
+			hasSavepoint = true
+			_, _ = db.Exec(txCtx, "SELECT pg_advisory_xact_lock(hashtext($1))", lockKey)
+		}
+		txCtx = context.WithValue(txCtx, pgTxContextKey{}, db)
+		committed := false
+		commitFn := func() error {
+			if hasSavepoint {
+				if _, err := db.Exec(txCtx, "RELEASE SAVEPOINT "+sp); err != nil {
+					return err
+				}
+			}
+			committed = true
+			return nil
+		}
+		rollbackFn := func() {
+			if !committed {
+				evtBuf.mu.Lock()
+				evtBuf.events = nil
+				evtBuf.mu.Unlock()
+				if hasSavepoint {
+					_, _ = db.Exec(txCtx, "ROLLBACK TO SAVEPOINT "+sp)
+					_, _ = db.Exec(txCtx, "RELEASE SAVEPOINT "+sp)
+				}
+			}
+		}
+		return txCtx, commitFn, rollbackFn, nil
+
+	case *MemoryStore:
+		snap := st.takeSnapshot()
+		committed := false
+		commitFn := func() error {
+			committed = true
+			return nil
+		}
+		rollbackFn := func() {
+			if !committed {
+				evtBuf.mu.Lock()
+				evtBuf.events = nil
+				evtBuf.mu.Unlock()
+				st.restoreSnapshot(snap)
+			}
+		}
+		return txCtx, commitFn, rollbackFn, nil
+
+	default:
+		committed := false
+		commitFn := func() error {
+			committed = true
+			return nil
+		}
+		rollbackFn := func() {
+			if !committed {
+				evtBuf.mu.Lock()
+				evtBuf.events = nil
+				evtBuf.mu.Unlock()
+			}
+		}
+		return txCtx, commitFn, rollbackFn, nil
+	}
 }
 
 type rowScanner interface {

@@ -260,21 +260,33 @@ func executeIdempotentMutation[T any](
 	cmdCtx *commonv1.CommandContext,
 	reqPayload any,
 	newResp func() *T,
-	execFn func(idemKey string) (*T, error),
+	execFn func(txCtx context.Context, idemKey string) (*T, error),
 ) (*connect.Response[T], error) {
 	var idemKey string
 	if cmdCtx != nil {
 		idemKey = strings.TrimSpace(cmdCtx.IdempotencyKey)
+		if len(cmdCtx.Reason) > 2000 {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%w: reason exceeds 2000 characters", ErrInvalidInput))
+		}
 	}
 	if idemKey == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%w: idempotency_key is required for mutating command %s", ErrInvalidInput, rpcName))
+	}
+	if len(idemKey) > 255 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%w: idempotency_key exceeds 255 characters", ErrInvalidInput))
 	}
 
 	unlock := h.service.lockIdempotency(wsID, idemKey)
 	defer unlock()
 
+	txCtx, commitTx, rollbackTx, err := beginStoreMutationTx(ctx, h.service.store, wsID, idemKey)
+	if err != nil {
+		return nil, mapError(err)
+	}
+	defer rollbackTx()
+
 	reqHash := hashCommandPayload(rpcName, reqPayload)
-	existing, err := h.service.store.GetIdempotencyRecord(ctx, wsID, idemKey)
+	existing, err := h.service.store.GetIdempotencyRecord(txCtx, wsID, idemKey)
 	if err != nil {
 		return nil, mapError(err)
 	}
@@ -290,10 +302,18 @@ func executeIdempotentMutation[T any](
 				}
 			}
 		}
+		if err := commitTx(); err != nil {
+			return nil, mapError(err)
+		}
 		return connect.NewResponse(respMsg), nil
 	}
 
-	respMsg, err := execFn(idemKey)
+	if cmdCtx != nil && cmdCtx.ExpectedUpdatedAt != nil {
+		exp := cmdCtx.ExpectedUpdatedAt.AsTime().UTC()
+		txCtx = WithExpectedUpdatedAt(txCtx, &exp)
+	}
+
+	respMsg, err := execFn(txCtx, idemKey)
 	if err != nil {
 		return nil, err
 	}
@@ -306,51 +326,24 @@ func executeIdempotentMutation[T any](
 		}
 	}
 	now := h.service.clock()
-	if err := h.service.store.SaveIdempotencyRecord(ctx, IdempotencyRecord{
+	if err := h.service.store.SaveIdempotencyRecord(txCtx, IdempotencyRecord{
 		WorkspaceID:    wsID,
 		IdempotencyKey: idemKey,
 		RequestHash:    reqHash,
 		ResponseStatus: 200,
 		ResponseBody:   respBytes,
 		CreatedAt:      now,
-		ExpiresAt:      now.Add(24 * time.Hour),
+		ExpiresAt:      now.Add(7 * 24 * time.Hour),
 	}); err != nil {
 		return nil, mapError(err)
 	}
 
+	if err := commitTx(); err != nil {
+		return nil, mapError(err)
+	}
+	h.service.flushBufferedEvents(txCtx)
+
 	return connect.NewResponse(respMsg), nil
-}
-
-func checkProductExpectedUpdatedAt(ctx context.Context, h *Handler, wsID, productID string, cmdCtx *commonv1.CommandContext) error {
-	if cmdCtx == nil || cmdCtx.ExpectedUpdatedAt == nil {
-		return nil
-	}
-	existing, err := h.service.GetProduct(ctx, wsID, productID)
-	if err != nil {
-		return err
-	}
-	expected := cmdCtx.ExpectedUpdatedAt.AsTime().UTC().Truncate(time.Microsecond)
-	actual := existing.UpdatedAt.UTC().Truncate(time.Microsecond)
-	if !actual.Equal(expected) {
-		return ErrConcurrencyConflict
-	}
-	return nil
-}
-
-func checkSkuExpectedUpdatedAt(ctx context.Context, h *Handler, wsID, skuID string, cmdCtx *commonv1.CommandContext) error {
-	if cmdCtx == nil || cmdCtx.ExpectedUpdatedAt == nil {
-		return nil
-	}
-	existing, err := h.service.store.GetSku(ctx, wsID, skuID)
-	if err != nil {
-		return err
-	}
-	expected := cmdCtx.ExpectedUpdatedAt.AsTime().UTC().Truncate(time.Microsecond)
-	actual := existing.UpdatedAt.UTC().Truncate(time.Microsecond)
-	if !actual.Equal(expected) {
-		return ErrConcurrencyConflict
-	}
-	return nil
 }
 
 func (h *Handler) Create(
@@ -390,7 +383,7 @@ func (h *Handler) Create(
 		msg.Context,
 		reqPayload,
 		func() *commercev1.CreateResponse { return &commercev1.CreateResponse{} },
-		func(_ string) (*commercev1.CreateResponse, error) {
+		func(txCtx context.Context, _ string) (*commercev1.CreateResponse, error) {
 			p := &Product{
 				WorkspaceID:      wsID,
 				ProductType:      fromProtoProductType(msg.ProductType),
@@ -456,7 +449,7 @@ func (h *Handler) Create(
 				p.SKUs = append(p.SKUs, pSku)
 			}
 
-			created, err := h.service.CreateProduct(ctx, p)
+			created, err := h.service.CreateProduct(txCtx, p)
 			if err != nil {
 				return nil, mapError(err)
 			}
@@ -596,16 +589,17 @@ func (h *Handler) Update(
 	}
 
 	reqPayload := map[string]any{
-		"product_id":     msg.ProductId,
-		"title":          msg.Title,
-		"description":    msg.Description,
-		"category":       msg.Category,
-		"base_price":     msg.BasePrice,
-		"cogs":           msg.Cogs,
-		"catalog_status": msg.CatalogStatus,
-		"external_refs":  msg.ExternalRefs,
-		"images":         msg.Images,
-		"metadata_json":  msg.MetadataJson,
+		"product_id":        msg.ProductId,
+		"title":             msg.Title,
+		"description":       msg.Description,
+		"category":          msg.Category,
+		"base_price":        msg.BasePrice,
+		"cogs":              msg.Cogs,
+		"catalog_status":    msg.CatalogStatus,
+		"inventory_enabled": msg.InventoryEnabled,
+		"external_refs":     msg.ExternalRefs,
+		"images":            msg.Images,
+		"metadata_json":     msg.MetadataJson,
 	}
 
 	return executeIdempotentMutation(
@@ -616,10 +610,14 @@ func (h *Handler) Update(
 		msg.Context,
 		reqPayload,
 		func() *commercev1.UpdateResponse { return &commercev1.UpdateResponse{} },
-		func(_ string) (*commercev1.UpdateResponse, error) {
+		func(txCtx context.Context, _ string) (*commercev1.UpdateResponse, error) {
 			p := &Product{
-				ProductID:   msg.ProductId,
-				WorkspaceID: wsID,
+				ProductID:             msg.ProductId,
+				WorkspaceID:           wsID,
+				PatchTitle:            msg.Title,
+				PatchDescription:      msg.Description,
+				PatchCategory:         msg.Category,
+				PatchInventoryEnabled: msg.InventoryEnabled,
 			}
 			if msg.Context != nil && msg.Context.ExpectedUpdatedAt != nil {
 				exp := msg.Context.ExpectedUpdatedAt.AsTime().UTC()
@@ -633,6 +631,9 @@ func (h *Handler) Update(
 			}
 			if msg.Category != nil {
 				p.Category = *msg.Category
+			}
+			if msg.InventoryEnabled != nil {
+				p.InventoryEnabled = *msg.InventoryEnabled
 			}
 			if msg.BasePrice != nil {
 				dec, err := tenantdb.ParseExactDecimal(msg.BasePrice.Amount)
@@ -665,12 +666,16 @@ func (h *Handler) Update(
 			if len(msg.Images) > 0 {
 				p.Images = msg.Images
 			}
-			if msg.MetadataJson != nil && *msg.MetadataJson != "" {
-				p.Metadata = make(map[string]any)
-				_ = json.Unmarshal([]byte(*msg.MetadataJson), &p.Metadata)
+			if msg.MetadataJson != nil {
+				p.HasPatchMetadata = true
+				p.PatchMetadata = make(map[string]any)
+				if *msg.MetadataJson != "" {
+					_ = json.Unmarshal([]byte(*msg.MetadataJson), &p.PatchMetadata)
+					p.Metadata = p.PatchMetadata
+				}
 			}
 
-			updated, err := h.service.UpdateProduct(ctx, p)
+			updated, err := h.service.UpdateProduct(txCtx, p)
 			if err != nil {
 				return nil, mapError(err)
 			}
@@ -706,11 +711,8 @@ func (h *Handler) Delete(
 		msg.Context,
 		reqPayload,
 		func() *commercev1.DeleteResponse { return &commercev1.DeleteResponse{} },
-		func(_ string) (*commercev1.DeleteResponse, error) {
-			if err := checkProductExpectedUpdatedAt(ctx, h, wsID, msg.ProductId, msg.Context); err != nil {
-				return nil, mapError(err)
-			}
-			if err := h.service.DeleteProduct(ctx, wsID, msg.ProductId); err != nil {
+		func(txCtx context.Context, _ string) (*commercev1.DeleteResponse, error) {
+			if err := h.service.DeleteProduct(txCtx, wsID, msg.ProductId); err != nil {
 				return nil, mapError(err)
 			}
 			return &commercev1.DeleteResponse{Success: true}, nil
@@ -743,11 +745,8 @@ func (h *Handler) Archive(
 		msg.Context,
 		reqPayload,
 		func() *commercev1.ArchiveResponse { return &commercev1.ArchiveResponse{} },
-		func(_ string) (*commercev1.ArchiveResponse, error) {
-			if err := checkProductExpectedUpdatedAt(ctx, h, wsID, msg.ProductId, msg.Context); err != nil {
-				return nil, mapError(err)
-			}
-			archived, err := h.service.ArchiveProduct(ctx, wsID, msg.ProductId)
+		func(txCtx context.Context, _ string) (*commercev1.ArchiveResponse, error) {
+			archived, err := h.service.ArchiveProduct(txCtx, wsID, msg.ProductId)
 			if err != nil {
 				return nil, mapError(err)
 			}
@@ -785,8 +784,8 @@ func (h *Handler) BatchTag(
 		msg.Context,
 		reqPayload,
 		func() *commercev1.BatchTagResponse { return &commercev1.BatchTagResponse{} },
-		func(_ string) (*commercev1.BatchTagResponse, error) {
-			count, err := h.service.BatchTagProducts(ctx, wsID, msg.ProductIds, msg.TagsToAdd, msg.TagsToRemove)
+		func(txCtx context.Context, _ string) (*commercev1.BatchTagResponse, error) {
+			count, err := h.service.BatchTagProducts(txCtx, wsID, msg.ProductIds, msg.TagsToAdd, msg.TagsToRemove)
 			if err != nil {
 				return nil, mapError(err)
 			}
@@ -889,9 +888,9 @@ func (h *Handler) Import(
 		msg.Context,
 		reqPayload,
 		func() *commercev1.ImportResponse { return &commercev1.ImportResponse{} },
-		func(_ string) (*commercev1.ImportResponse, error) {
+		func(txCtx context.Context, _ string) (*commercev1.ImportResponse, error) {
 			result, err := h.service.Import(
-				ctx,
+				txCtx,
 				wsID,
 				msg.SourcePlatform,
 				msg.ConnectedAccountId,
@@ -1045,7 +1044,7 @@ func (h *Handler) GetSalesStats(
 	if err != nil {
 		return nil, err
 	}
-	summary, err := h.service.GetSalesSummary(ctx, wsID, msg.ProductId)
+	summary, err := h.service.GetSalesSummaryWithPeriod(ctx, wsID, msg.ProductId, msg.Period)
 	if err != nil {
 		return nil, mapError(err)
 	}
@@ -1218,10 +1217,7 @@ func (h *Handler) LinkContent(
 		msg.Context,
 		reqPayload,
 		func() *commercev1.LinkContentResponse { return &commercev1.LinkContentResponse{} },
-		func(_ string) (*commercev1.LinkContentResponse, error) {
-			if err := checkProductExpectedUpdatedAt(ctx, h, wsID, msg.ProductId, msg.Context); err != nil {
-				return nil, mapError(err)
-			}
+		func(txCtx context.Context, _ string) (*commercev1.LinkContentResponse, error) {
 			ref := ContentRef{
 				ContentID:   msg.ContentId,
 				ContentType: msg.ContentType,
@@ -1231,7 +1227,7 @@ func (h *Handler) LinkContent(
 			if msg.MetadataJson != "" {
 				_ = json.Unmarshal([]byte(msg.MetadataJson), &ref.Metadata)
 			}
-			saved, err := h.service.LinkContent(ctx, wsID, msg.ProductId, ref)
+			saved, err := h.service.LinkContent(txCtx, wsID, msg.ProductId, ref)
 			if err != nil {
 				return nil, mapError(err)
 			}
@@ -1259,6 +1255,9 @@ func (h *Handler) UpdateStock(
 	if msg == nil || msg.SkuId == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, ErrInvalidInput)
 	}
+	if len(msg.Reason) > 2000 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%w: reason exceeds 2000 characters", ErrInvalidInput))
+	}
 	wsID, err := authorizeProductRPC(ctx, "ProductService/UpdateStock", msg.Context)
 	if err != nil {
 		return nil, err
@@ -1278,11 +1277,8 @@ func (h *Handler) UpdateStock(
 		msg.Context,
 		reqPayload,
 		func() *commercev1.UpdateStockResponse { return &commercev1.UpdateStockResponse{} },
-		func(idemKey string) (*commercev1.UpdateStockResponse, error) {
-			if err := checkSkuExpectedUpdatedAt(ctx, h, wsID, msg.SkuId, msg.Context); err != nil {
-				return nil, mapError(err)
-			}
-			adjCtx := WithStockAdjustmentMeta(ctx, msg.Reason, "rpc:"+idemKey)
+		func(txCtx context.Context, idemKey string) (*commercev1.UpdateStockResponse, error) {
+			adjCtx := WithStockAdjustmentMeta(txCtx, msg.Reason, "rpc:"+idemKey)
 			newQty, err := h.service.UpdateStock(adjCtx, wsID, msg.SkuId, msg.DeltaQuantity, msg.Reason)
 			if err != nil {
 				return nil, mapError(err)
@@ -1321,11 +1317,8 @@ func (h *Handler) SetAlertThreshold(
 		msg.Context,
 		reqPayload,
 		func() *commercev1.SetAlertThresholdResponse { return &commercev1.SetAlertThresholdResponse{} },
-		func(_ string) (*commercev1.SetAlertThresholdResponse, error) {
-			if err := checkSkuExpectedUpdatedAt(ctx, h, wsID, msg.SkuId, msg.Context); err != nil {
-				return nil, mapError(err)
-			}
-			if err := h.service.SetAlertThreshold(ctx, wsID, msg.SkuId, msg.LowStockThreshold); err != nil {
+		func(txCtx context.Context, _ string) (*commercev1.SetAlertThresholdResponse, error) {
+			if err := h.service.SetAlertThreshold(txCtx, wsID, msg.SkuId, msg.LowStockThreshold); err != nil {
 				return nil, mapError(err)
 			}
 			return &commercev1.SetAlertThresholdResponse{
@@ -1361,8 +1354,8 @@ func (h *Handler) BulkArchive(
 		msg.Context,
 		reqPayload,
 		func() *commercev1.BulkArchiveResponse { return &commercev1.BulkArchiveResponse{} },
-		func(_ string) (*commercev1.BulkArchiveResponse, error) {
-			count, err := h.service.BulkArchiveProducts(ctx, wsID, msg.ProductIds)
+		func(txCtx context.Context, _ string) (*commercev1.BulkArchiveResponse, error) {
+			count, err := h.service.BulkArchiveProducts(txCtx, wsID, msg.ProductIds)
 			if err != nil {
 				return nil, mapError(err)
 			}
@@ -1381,7 +1374,7 @@ func mapError(err error) error {
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	case errors.Is(err, ErrIdempotencyConflict), errors.Is(err, ErrDuplicateSkuCode):
 		return connect.NewError(connect.CodeAlreadyExists, err)
-	case errors.Is(err, ErrConcurrencyConflict), errors.Is(err, ErrInsufficientStock), errors.Is(err, ErrDuplicateImportToken), errors.Is(err, ErrProductArchived):
+	case errors.Is(err, ErrConcurrencyConflict), errors.Is(err, ErrInsufficientStock), errors.Is(err, ErrDuplicateImportToken), errors.Is(err, ErrProductArchived), errors.Is(err, ErrCurrencyMismatch):
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	case errors.Is(err, ErrMissingTenant):
 		return connect.NewError(connect.CodeUnauthenticated, err)

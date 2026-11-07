@@ -33,6 +33,7 @@ var (
 	ErrInsufficientStock       = errors.New("product: insufficient stock for adjustment")
 	ErrIdempotencyConflict     = errors.New("SYSTEM_CONFLICT_001: idempotency key already used with different request payload")
 	ErrConcurrencyConflict     = errors.New("SYSTEM_CONFLICT_001: product was modified concurrently; expected_updated_at mismatch")
+	ErrCurrencyMismatch        = errors.New("product: cross-currency order missing valid exchange_rate_snapshot")
 )
 
 const (
@@ -124,6 +125,12 @@ type Product struct {
 	DeletedAt             *time.Time             `json:"deleted_at,omitempty"`
 	ExpectedUpdatedAt     *time.Time             `json:"expected_updated_at,omitempty"`
 	PreviousCatalogStatus string                 `json:"-"`
+	PatchTitle            *string                `json:"-"`
+	PatchDescription      *string                `json:"-"`
+	PatchCategory         *string                `json:"-"`
+	PatchInventoryEnabled *bool                  `json:"-"`
+	PatchMetadata         map[string]any         `json:"-"`
+	HasPatchMetadata      bool                   `json:"-"`
 }
 
 type ListFilter struct {
@@ -140,13 +147,22 @@ type stockAdjContextKey struct{}
 type StockAdjustmentMeta struct {
 	Reason      string
 	MovementKey string
+	LocationID  string
 }
 
 func WithStockAdjustmentMeta(ctx context.Context, reason, movementKey string) context.Context {
+	existing, _ := StockAdjustmentMetaFromContext(ctx)
 	return context.WithValue(ctx, stockAdjContextKey{}, StockAdjustmentMeta{
 		Reason:      reason,
 		MovementKey: movementKey,
+		LocationID:  existing.LocationID,
 	})
+}
+
+func WithStockAdjustmentLocation(ctx context.Context, locationID string) context.Context {
+	existing, _ := StockAdjustmentMetaFromContext(ctx)
+	existing.LocationID = strings.TrimSpace(locationID)
+	return context.WithValue(ctx, stockAdjContextKey{}, existing)
 }
 
 func StockAdjustmentMetaFromContext(ctx context.Context) (StockAdjustmentMeta, bool) {
@@ -155,6 +171,86 @@ func StockAdjustmentMetaFromContext(ctx context.Context) (StockAdjustmentMeta, b
 	}
 	meta, ok := ctx.Value(stockAdjContextKey{}).(StockAdjustmentMeta)
 	return meta, ok
+}
+
+type expectedUpdatedAtContextKey struct{}
+
+func WithExpectedUpdatedAt(ctx context.Context, ts *time.Time) context.Context {
+	if ts == nil {
+		return ctx
+	}
+	t := ts.UTC()
+	return context.WithValue(ctx, expectedUpdatedAtContextKey{}, &t)
+}
+
+func ExpectedUpdatedAtFromContext(ctx context.Context) (*time.Time, bool) {
+	if ctx == nil {
+		return nil, false
+	}
+	ts, ok := ctx.Value(expectedUpdatedAtContextKey{}).(*time.Time)
+	return ts, ok && ts != nil
+}
+
+type salesStatsFilterContextKey struct{}
+
+type SalesStatsFilter struct {
+	Period string
+	Since  *time.Time
+	Until  *time.Time
+}
+
+func WithSalesStatsFilter(ctx context.Context, filter SalesStatsFilter) context.Context {
+	return context.WithValue(ctx, salesStatsFilterContextKey{}, filter)
+}
+
+func SalesStatsFilterFromContext(ctx context.Context) (SalesStatsFilter, bool) {
+	if ctx == nil {
+		return SalesStatsFilter{}, false
+	}
+	f, ok := ctx.Value(salesStatsFilterContextKey{}).(SalesStatsFilter)
+	return f, ok
+}
+
+type ExchangeRateSnapshot struct {
+	BaseCurrency  string `json:"base_currency"`
+	QuoteCurrency string `json:"quote_currency"`
+	RateToBase    string `json:"rate_to_base"`
+	Provider      string `json:"provider,omitempty"`
+	SourceClass   string `json:"source_class,omitempty"`
+}
+
+type AnalyticsOrderLine struct {
+	ProductID string                 `json:"product_id"`
+	SkuID     string                 `json:"sku_id,omitempty"`
+	Sku       string                 `json:"sku,omitempty"`
+	Quantity  int64                  `json:"quantity"`
+	UnitPrice *tenantdb.ExactDecimal `json:"unit_price,omitempty"`
+	Discount  *tenantdb.ExactDecimal `json:"discount,omitempty"`
+	Total     *tenantdb.ExactDecimal `json:"total,omitempty"`
+	UnitCOGS  *tenantdb.ExactDecimal `json:"unit_cogs,omitempty"`
+}
+
+type AnalyticsOrder struct {
+	OrderID              string
+	WorkspaceID          string
+	ProductID            string
+	Amount               tenantdb.ExactDecimal
+	Currency             string
+	ExchangeRateSnapshot *ExchangeRateSnapshot
+	Items                []AnalyticsOrderLine
+	LifecycleState       string
+	OrderedAt            time.Time
+}
+
+type AnalyticsRefund struct {
+	RefundID       string
+	WorkspaceID    string
+	OrderID        string
+	ProductID      string
+	Amount         tenantdb.ExactDecimal
+	Currency       string
+	LifecycleState string
+	CreatedAt      time.Time
 }
 
 type StockMovementRecord struct {
