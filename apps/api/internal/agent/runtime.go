@@ -4,24 +4,119 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb"
 )
 
+type agentMemberState struct {
+	role   string
+	active bool
+}
+
 // Runtime orchestrates multi-step agent planning, execution, delegated permission
 // checks, budget ceiling pauses, bounded memory, and audited partial-failure handoff.
 type Runtime struct {
-	store    Store
-	executor StepExecutor
+	store        Store
+	executor     StepExecutor
+	membersMu    sync.RWMutex
+	roleResolver MembershipRoleResolver
+	memberStates map[string]agentMemberState
 }
 
 func NewRuntime(store Store) *Runtime {
-	return &Runtime{store: store}
+	return &Runtime{
+		store:        store,
+		memberStates: make(map[string]agentMemberState),
+	}
 }
 
 func NewRuntimeWithExecutor(store Store, executor StepExecutor) *Runtime {
-	return &Runtime{store: store, executor: executor}
+	return &Runtime{
+		store:        store,
+		executor:     executor,
+		memberStates: make(map[string]agentMemberState),
+	}
+}
+
+func (r *Runtime) SetMembershipRoleResolver(resolver MembershipRoleResolver) {
+	r.membersMu.Lock()
+	defer r.membersMu.Unlock()
+	r.roleResolver = resolver
+}
+
+func (r *Runtime) SetMemberRole(workspaceID, userID, role string, active bool) {
+	ws := strings.TrimSpace(workspaceID)
+	uid := strings.TrimSpace(userID)
+	if ws == "" || uid == "" {
+		return
+	}
+	r.membersMu.Lock()
+	defer r.membersMu.Unlock()
+	if r.memberStates == nil {
+		r.memberStates = make(map[string]agentMemberState)
+	}
+	r.memberStates[ws+":"+uid] = agentMemberState{
+		role:   strings.TrimSpace(role),
+		active: active,
+	}
+}
+
+func (r *Runtime) RecordObservedMemberRole(workspaceID, userID, role string) {
+	ws := strings.TrimSpace(workspaceID)
+	uid := strings.TrimSpace(userID)
+	rl := strings.TrimSpace(role)
+	if ws == "" || uid == "" || rl == "" {
+		return
+	}
+	r.membersMu.Lock()
+	defer r.membersMu.Unlock()
+	if r.memberStates == nil {
+		r.memberStates = make(map[string]agentMemberState)
+	}
+	key := ws + ":" + uid
+	if existing, ok := r.memberStates[key]; ok && !existing.active {
+		return
+	}
+	active := !strings.EqualFold(rl, "revoked") && !strings.EqualFold(rl, "none") && !strings.EqualFold(rl, "denied")
+	r.memberStates[key] = agentMemberState{
+		role:   rl,
+		active: active,
+	}
+}
+
+func (r *Runtime) resolveInitiatorRole(ctx context.Context, workspaceID, createdBy, launchRole string) (string, bool, error) {
+	ws := strings.TrimSpace(workspaceID)
+	uid := strings.TrimSpace(createdBy)
+	if ws == "" || uid == "" {
+		return strings.TrimSpace(launchRole), true, nil
+	}
+	r.membersMu.RLock()
+	resolver := r.roleResolver
+	st, hasState := r.memberStates[ws+":"+uid]
+	r.membersMu.RUnlock()
+
+	if resolver != nil {
+		role, active, err := resolver(ctx, ws, uid)
+		if err != nil {
+			return "", false, fmt.Errorf("%w: failed to verify initiator %s membership: %v", ErrPermissionDenied, uid, err)
+		}
+		trimmed := strings.TrimSpace(role)
+		if !active || trimmed == "" || strings.EqualFold(trimmed, "revoked") || strings.EqualFold(trimmed, "none") || strings.EqualFold(trimmed, "denied") {
+			return "", false, fmt.Errorf("%w: initiator %s workspace membership is inactive or revoked", ErrPermissionDenied, uid)
+		}
+		return trimmed, true, nil
+	}
+
+	if hasState {
+		if !st.active || st.role == "" || strings.EqualFold(st.role, "revoked") || strings.EqualFold(st.role, "none") || strings.EqualFold(st.role, "denied") {
+			return "", false, fmt.Errorf("%w: initiator %s workspace access has been revoked", ErrPermissionDenied, uid)
+		}
+		return st.role, true, nil
+	}
+
+	return strings.TrimSpace(launchRole), true, nil
 }
 
 // SetStepExecutor configures the concrete step executor for the runtime.
@@ -184,13 +279,34 @@ func (r *Runtime) ExecuteNextStep(ctx context.Context, caller CallerContext, run
 	currentStep.Status = StepStatusExecuting
 
 	// ------------------------------------------------------------------------
-	// Acceptance Target 1: Every step checks delegated permissions
+	// Acceptance Target 1 & F11: Every step checks live delegated permissions
 	// ------------------------------------------------------------------------
-	if currentStep.RequiredPermission != "" && !CheckPermission(caller.WorkspaceRole, currentStep.RequiredPermission) {
+	effectiveRole := caller.WorkspaceRole
+	if strings.TrimSpace(run.CreatedBy) != "" {
+		initRole, active, roleErr := r.resolveInitiatorRole(ctx, run.WorkspaceID, run.CreatedBy, run.CreatedByRole)
+		if roleErr != nil || !active || (initRole != "" && !CheckPermission(initRole, "agent:execute")) {
+			currentStep.Status = StepStatusFailed
+			currentStep.CompletedAt = &now
+			currentStep.ObservedOutcome = fmt.Sprintf("Permission denied: initiator [%s] workspace access was revoked or downgraded [%s]",
+				run.CreatedBy, initRole)
+			return r.HandlePartialFailure(ctx, caller, run, stepIndex, ErrPermissionDenied, caller.UserID)
+		}
+		if initRole != "" && currentStep.RequiredPermission != "" && !CheckPermission(initRole, currentStep.RequiredPermission) {
+			currentStep.Status = StepStatusFailed
+			currentStep.CompletedAt = &now
+			currentStep.ObservedOutcome = fmt.Sprintf("Permission denied: initiator role [%s] lacks delegated permission [%s]",
+				initRole, currentStep.RequiredPermission)
+			return r.HandlePartialFailure(ctx, caller, run, stepIndex, ErrPermissionDenied, caller.UserID)
+		}
+		if caller.UserID == run.CreatedBy && initRole != "" {
+			effectiveRole = initRole
+		}
+	}
+	if currentStep.RequiredPermission != "" && !CheckPermission(effectiveRole, currentStep.RequiredPermission) {
 		currentStep.Status = StepStatusFailed
 		currentStep.CompletedAt = &now
 		currentStep.ObservedOutcome = fmt.Sprintf("Permission denied: user role [%s] lacks delegated permission [%s]",
-			caller.WorkspaceRole, currentStep.RequiredPermission)
+			effectiveRole, currentStep.RequiredPermission)
 
 		return r.HandlePartialFailure(ctx, caller, run, stepIndex, ErrPermissionDenied, caller.UserID)
 	}
@@ -238,8 +354,8 @@ func (r *Runtime) ExecuteNextStep(ctx context.Context, caller CallerContext, run
 		stepCostDec = tenantdb.MustParseExactDecimal("0.000000")
 	}
 	ceilingDec, err := tenantdb.ParseExactDecimal(run.BudgetCeiling)
-	if err != nil {
-		ceilingDec = tenantdb.MustParseExactDecimal("0.000000")
+	if err != nil || ceilingDec.IsNegative() {
+		return fmt.Errorf("%w: invalid budget ceiling %q", ErrInvalidBudgetCeiling, run.BudgetCeiling)
 	}
 
 	newTotalDec, err := usedDec.Add(stepCostDec)
@@ -247,8 +363,8 @@ func (r *Runtime) ExecuteNextStep(ctx context.Context, caller CallerContext, run
 		return fmt.Errorf("credit addition overflow: %w", err)
 	}
 
-	// If ceiling is configured (> 0) and would be exceeded: PAUSE immediately!
-	if !ceilingDec.IsZero() && newTotalDec.Cmp(ceilingDec) > 0 {
+	// Enforce hard budget ceiling (F13: zero ceiling is NEVER treated as unlimited)
+	if newTotalDec.Cmp(ceilingDec) > 0 {
 		run.CurrentState = StateWaitingContext
 		currentStep.Status = StepStatusWaitingContext
 		currentStep.ObservedOutcome = fmt.Sprintf("Budget ceiling reached: step requires %s credits, cumulative %s exceeds ceiling %s. Pausing execution.",
@@ -377,7 +493,7 @@ func (r *Runtime) ExecuteNextStep(ctx context.Context, caller CallerContext, run
 	}
 
 	// If actual post-step spend exceeded the configured budget ceiling, pause the run before any further work
-	if !ceilingDec.IsZero() && newTotalDec.Cmp(ceilingDec) > 0 {
+	if newTotalDec.Cmp(ceilingDec) > 0 {
 		run.CurrentState = StateWaitingContext
 		pauseMsg := fmt.Sprintf("Budget ceiling reached after step %d: actual %s credits brought cumulative spend to %s (ceiling %s). Pausing execution.",
 			currentStep.StepOrder, actualStepCostDec.Fixed6String(), newTotalDec.Fixed6String(), ceilingDec.Fixed6String())

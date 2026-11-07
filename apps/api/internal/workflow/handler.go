@@ -33,6 +33,9 @@ func NewHandler(service *Service) *Handler {
 // WithMembershipRoleResolver configures a workspace membership role resolver for Handler.
 func (h *Handler) WithMembershipRoleResolver(resolver MembershipRoleResolver) *Handler {
 	h.roleResolver = resolver
+	if h.service != nil {
+		h.service.SetMembershipRoleResolver(resolver)
+	}
 	return h
 }
 

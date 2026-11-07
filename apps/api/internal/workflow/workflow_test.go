@@ -2716,3 +2716,169 @@ func TestR4_Workflow_CanonicalRPCPermissionAndSensitiveActionEnforcement(t *test
 		t.Fatalf("expected unregistered RPC to fail closed with PERMISSION_DENIED even for owner, got status=%s summary=%+v", runUnknown.Status, runUnknown.ResultSummary)
 	}
 }
+
+func TestS5_F10_SkipStepCannotClearUncertainEffectLockOrAllowDuplicateDispatch(t *testing.T) {
+	ctx := context.Background()
+	store := workflow.NewMemoryStore()
+	dispatcher := workflow.NewMockActionDispatcher()
+	primaryRPC := "creativanta.commerce.v1.InventoryService/ReserveStock"
+	dispatcher.SetError(primaryRPC, context.DeadlineExceeded)
+
+	svc := workflow.NewService(store, nil)
+	svc.SetActionDispatcher(dispatcher)
+
+	wsID := "22222222-2222-4222-8222-222222222295"
+	manager := workflow.CallerContext{UserID: "usr-mgr-f10", WorkspaceID: wsID, WorkspaceRole: "manager"}
+
+	graph := workflow.WorkflowGraph{
+		SchemaVersion: 1,
+		Nodes: []workflow.WorkflowNode{
+			{NodeID: "trig", NodeType: workflow.NodeTypeTrigger, TriggerConfig: &workflow.TriggerConfig{Type: workflow.TriggerTypeManual}},
+			{NodeID: "act_uncertain", NodeType: workflow.NodeTypeAction, ActionConfig: &workflow.ActionConfig{RPCName: primaryRPC, InputJSON: `{"sku":"sku-f10"}`}},
+			{NodeID: "term", NodeType: workflow.NodeTypeTerminal, TerminalConfig: &workflow.TerminalConfig{Outcome: "succeeded"}},
+		},
+		Edges: []workflow.WorkflowEdge{
+			{FromNodeID: "trig", ToNodeID: "act_uncertain"},
+			{FromNodeID: "act_uncertain", ToNodeID: "term"},
+		},
+	}
+
+	wf, err := svc.CreateWorkflow(ctx, manager, "F10 SkipStep Uncertain Lock Flow", "Desc", "custom", *graph.Nodes[0].TriggerConfig, graph, nil)
+	if err != nil {
+		t.Fatalf("CreateWorkflow: %v", err)
+	}
+	_, _ = svc.ActivateWorkflow(ctx, manager, wf.WorkflowID)
+
+	// 1. First execution times out -> step is left in uncertain "running" state, run is in RequiresManualIntervention
+	run, err := svc.RunWorkflow(ctx, manager, wf.WorkflowID, nil)
+	if !errors.Is(err, workflow.ErrUncertainStepEffect) {
+		t.Fatalf("expected ErrUncertainStepEffect on timeout, got: %v", err)
+	}
+	if run == nil || run.Status != workflow.WorkflowRunStatusRequiresManualIntervention {
+		t.Fatalf("expected run status RequiresManualIntervention, got %+v", run)
+	}
+
+	// 2. Attempting SkipStep on an uncertain/in-flight step MUST be rejected with ErrUncertainStepEffect!
+	_, skipErr := svc.SkipStep(ctx, manager, run.RunID, "act_uncertain", "operator trying to skip uncertain step")
+	if !errors.Is(skipErr, workflow.ErrUncertainStepEffect) {
+		t.Fatalf("F10 VIOLATION: expected SkipStep on uncertain running step to be rejected with ErrUncertainStepEffect, got: %v", skipErr)
+	}
+
+	// 3. Even if provider recovers now, RetryRun MUST still be blocked and MUST NOT re-dispatch the external action!
+	dispatcher.SetError(primaryRPC, nil)
+	_, retryErr := svc.RetryRun(ctx, manager, run.RunID, "retry after attempted skip")
+	if !errors.Is(retryErr, workflow.ErrUncertainStepEffect) {
+		t.Fatalf("F10 VIOLATION: expected RetryRun after rejected SkipStep to fail with ErrUncertainStepEffect, got: %v", retryErr)
+	}
+	if dispatcher.GetDispatchedCount(primaryRPC) != 0 {
+		t.Fatalf("F10 CRITICAL VIOLATION: SkipStep + RetryRun bypassed uncertain-effect lock and re-dispatched external action! count=%d",
+			dispatcher.GetDispatchedCount(primaryRPC))
+	}
+}
+
+func TestS5_F11_WorkflowRechecksInitiatorLiveRoleAndMembershipOnResumeAndApproval(t *testing.T) {
+	ctx := context.Background()
+	store := workflow.NewMemoryStore()
+	dispatcher := workflow.NewMockActionDispatcher()
+	svc := workflow.NewService(store, nil)
+	svc.SetActionDispatcher(dispatcher)
+
+	wsID := "22222222-2222-4222-8222-222222222296"
+	admin := workflow.CallerContext{UserID: "usr-admin-f11", WorkspaceID: wsID, WorkspaceRole: "admin"}
+	manager := workflow.CallerContext{UserID: "usr-mgr-f11", WorkspaceID: wsID, WorkspaceRole: "manager"}
+	deleteRPC := "creativanta.commerce.v1.ProductService/DeleteProduct"
+
+	graph := workflow.WorkflowGraph{
+		SchemaVersion: 1,
+		Nodes: []workflow.WorkflowNode{
+			{NodeID: "trig", NodeType: workflow.NodeTypeTrigger, TriggerConfig: &workflow.TriggerConfig{Type: workflow.TriggerTypeManual}},
+			{
+				NodeID:   "appr",
+				NodeType: workflow.NodeTypeApproval,
+				ApprovalConfig: &workflow.ApprovalConfig{
+					ApproverIDs:              []string{manager.UserID},
+					RequiredApprovals:        1,
+					ExpiresAtDurationSeconds: 3600,
+				},
+			},
+			{
+				NodeID:   "act_del",
+				NodeType: workflow.NodeTypeAction,
+				ActionConfig: &workflow.ActionConfig{
+					RPCName:   deleteRPC,
+					InputJSON: `{"id":"prod-f11"}`,
+				},
+			},
+			{NodeID: "term", NodeType: workflow.NodeTypeTerminal, TerminalConfig: &workflow.TerminalConfig{Outcome: "succeeded"}},
+		},
+		Edges: []workflow.WorkflowEdge{
+			{FromNodeID: "trig", ToNodeID: "appr"},
+			{FromNodeID: "appr", ToNodeID: "act_del", Branch: workflow.EdgeBranchSuccess},
+			{FromNodeID: "act_del", ToNodeID: "term"},
+		},
+	}
+
+	wf, err := svc.CreateWorkflow(ctx, admin, "F11 Initiator Downgrade Flow", "Desc", "custom", *graph.Nodes[0].TriggerConfig, graph, nil)
+	if err != nil {
+		t.Fatalf("CreateWorkflow: %v", err)
+	}
+	_, _ = svc.ActivateWorkflow(ctx, manager, wf.WorkflowID)
+
+	// Case 1: Admin launches workflow -> pauses at approval -> Admin is downgraded to Editor before Manager approves
+	run1, err := svc.RunWorkflow(ctx, admin, wf.WorkflowID, nil)
+	if err != nil {
+		t.Fatalf("RunWorkflow 1: %v", err)
+	}
+	if run1.Status != workflow.WorkflowRunStatusWaitingApproval {
+		t.Fatalf("expected waiting_approval, got %s", run1.Status)
+	}
+
+	// Downgrade initiator from Admin to Editor while run is paused
+	svc.SetMemberRole(wsID, admin.UserID, "editor", true)
+
+	pending1, _ := svc.ApprovalManager().FindPendingApprovalsByRun(ctx, wsID, run1.RunID)
+	if len(pending1) != 1 {
+		t.Fatalf("expected 1 pending approval for run1, got %d", len(pending1))
+	}
+	_, resumed1, err := svc.Approve(ctx, manager, pending1[0].RequestID)
+	if err != nil {
+		t.Fatalf("Approve run1: %v", err)
+	}
+	if resumed1 == nil || resumed1.Status != workflow.WorkflowRunStatusFailed {
+		t.Fatalf("F11 VIOLATION: expected resumed run to fail after initiator role downgrade to editor, got %+v", resumed1)
+	}
+	if resumed1.ResultSummary["failure_type"] != "PERMISSION_DENIED" {
+		t.Fatalf("expected failure_type PERMISSION_DENIED after downgrade, got %+v", resumed1.ResultSummary)
+	}
+	if dispatcher.GetDispatchedCount(deleteRPC) != 0 {
+		t.Fatalf("F11 CRITICAL VIOLATION: DeleteProduct executed despite initiator downgrade from admin to editor! count=%d",
+			dispatcher.GetDispatchedCount(deleteRPC))
+	}
+
+	// Case 2: Restore Admin, launch run2 -> pause at approval -> revoke Admin's workspace membership -> Manager approves
+	svc.SetMemberRole(wsID, admin.UserID, "admin", true)
+	run2, err := svc.RunWorkflow(ctx, admin, wf.WorkflowID, nil)
+	if err != nil {
+		t.Fatalf("RunWorkflow 2: %v", err)
+	}
+	svc.RevokeMemberAccess(wsID, admin.UserID)
+
+	pending2, _ := svc.ApprovalManager().FindPendingApprovalsByRun(ctx, wsID, run2.RunID)
+	if len(pending2) != 1 {
+		t.Fatalf("expected 1 pending approval for run2, got %d", len(pending2))
+	}
+	_, resumed2, err := svc.Approve(ctx, manager, pending2[0].RequestID)
+	if err != nil {
+		t.Fatalf("Approve run2: %v", err)
+	}
+	if resumed2 == nil || resumed2.Status != workflow.WorkflowRunStatusFailed {
+		t.Fatalf("F11 VIOLATION: expected resumed run to fail after initiator access revocation, got %+v", resumed2)
+	}
+	if resumed2.ResultSummary["failure_type"] != "PERMISSION_DENIED" {
+		t.Fatalf("expected failure_type PERMISSION_DENIED after revocation, got %+v", resumed2.ResultSummary)
+	}
+	if dispatcher.GetDispatchedCount(deleteRPC) != 0 {
+		t.Fatalf("F11 CRITICAL VIOLATION: DeleteProduct executed after initiator tenant access was revoked! count=%d",
+			dispatcher.GetDispatchedCount(deleteRPC))
+	}
+}

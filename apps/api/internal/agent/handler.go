@@ -29,6 +29,9 @@ func NewAgentHandler(service *Service) *AgentHandler {
 // WithMembershipRoleResolver configures a workspace membership role resolver for AgentHandler.
 func (h *AgentHandler) WithMembershipRoleResolver(resolver MembershipRoleResolver) *AgentHandler {
 	h.roleResolver = resolver
+	if h.service != nil {
+		h.service.SetMembershipRoleResolver(resolver)
+	}
 	return h
 }
 
@@ -91,6 +94,9 @@ func toConnectError(err error) error {
 	}
 	if errors.Is(err, ErrPermissionDenied) || errors.Is(err, ErrCrossTenantDenied) {
 		return connect.NewError(connect.CodePermissionDenied, err)
+	}
+	if errors.Is(err, ErrInvalidBudgetCeiling) {
+		return connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	if errors.Is(err, ErrCapabilityMissing) || errors.Is(err, ErrBudgetCeilingExceeded) ||
 		errors.Is(err, ErrApprovalRequired) || errors.Is(err, ErrInvalidStateTransition) ||

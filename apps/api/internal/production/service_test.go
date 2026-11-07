@@ -1359,3 +1359,269 @@ func TestR4_VideoEngineProvider_AmbiguousPostRenderJobsNeverTriggersFallback(t *
 		t.Fatalf("UNSAFE RETRY VIOLATION: fallback provider was called %d times after primary accepted render job!", klingFallback.GetGenerateCount())
 	}
 }
+
+func TestS5_F3_VideoEngineCancel202_HoldsCreditsUntilProviderConfirmsOutcome(t *testing.T) {
+	var (
+		statusPhase int32 // 0 = processing, 1 = completed
+		cancelCalls int32
+	)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v1/compositions":
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusCreated)
+			_ = json.NewEncoder(w).Encode(map[string]any{"id": "comp-f3", "status": "ready"})
+		case r.Method == http.MethodPost && r.URL.Path == "/v1/render-jobs":
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusAccepted)
+			_ = json.NewEncoder(w).Encode(map[string]any{"id": "cve-job-f3", "status": "queued"})
+		case r.Method == http.MethodGet && r.URL.Path == "/v1/jobs/cve-job-f3":
+			w.Header().Set("Content-Type", "application/json")
+			if atomic.LoadInt32(&statusPhase) == 0 {
+				_ = json.NewEncoder(w).Encode(map[string]any{
+					"id":           "cve-job-f3",
+					"status":       "processing",
+					"progress_pct": 55,
+				})
+				return
+			}
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"id":               "cve-job-f3",
+				"status":           "completed",
+				"progress_pct":     100,
+				"output_url":       "https://cdn.creativanta.test/cve/cve-job-f3.mp4",
+				"duration_seconds": 15.0,
+				"resolution":       "1080x1920",
+			})
+		case r.Method == http.MethodPost && r.URL.Path == "/v1/jobs/cve-job-f3/cancel":
+			atomic.AddInt32(&cancelCalls, 1)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusAccepted)
+			_, _ = w.Write([]byte(`{"status":"cancel_requested"}`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	cveProvider := NewVideoEngineProvider(VideoEngineConfig{
+		BaseURL: server.URL,
+		APIKey:  "cve-test-key",
+	})
+	store := NewMemoryStore()
+	wsID := "ws-f3-cancel-202"
+	svc := NewService(ServiceConfig{
+		Store:           store,
+		PrimaryProvider: cveProvider,
+		InitialBalances: map[string]tenantdb.ExactDecimal{
+			wsID: tenantdb.MustParseExactDecimal("100"),
+		},
+	})
+	ctx := contextWithRole("Editor", "user-f3")
+
+	genResp, err := svc.Generate(ctx, connect.NewRequest(&productionv1.GenerateRequest{
+		Context: &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: wsID}},
+		Title:   "F3 Cancel 202 Video",
+		Prompt:  "Async video render where cancel returns 202 Accepted before finishing",
+	}))
+	if err != nil {
+		t.Fatalf("Generate failed: %v", err)
+	}
+	jobID := genResp.Msg.GetJob().GetJobId()
+
+	// Cancel returns HTTP 202 Accepted while job is still processing on provider:
+	// MUST NOT release the 80 reserved credits before provider confirms actual stop!
+	_, cancelErr := svc.Cancel(ctx, connect.NewRequest(&productionv1.CancelRequest{
+		Context: &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: wsID}},
+		JobId:   jobID,
+	}))
+	if cancelErr == nil || !errors.Is(cancelErr, ErrOutcomeUnknown) {
+		t.Fatalf("expected Cancel with HTTP 202 unconfirmed stop to return ErrOutcomeUnknown, got: %v", cancelErr)
+	}
+	if atomic.LoadInt32(&cancelCalls) != 1 {
+		t.Fatalf("expected 1 provider cancel call, got %d", atomic.LoadInt32(&cancelCalls))
+	}
+	if bal := svc.GetWorkspaceBalance(wsID); bal.Cmp(tenantdb.MustParseExactDecimal("20")) != 0 {
+		t.Fatalf("F3 VIOLATION: Cancel released credits on HTTP 202 before provider confirmed stop! Balance=%s, expected 20", bal.String())
+	}
+
+	// Provider eventually completes before cancellation could stop rendering -> Reconcile commits held credits (capped at 80)
+	atomic.StoreInt32(&statusPhase, 1)
+	st, err := cveProvider.CheckStatus(ctx, "cve-job-f3")
+	if err != nil || st.Status != "completed" {
+		t.Fatalf("expected provider status completed, got st=%+v err=%v", st, err)
+	}
+	if err := svc.ReconcileJobOutcome(ctx, wsID, jobID, "completed", tenantdb.MustParseExactDecimal("60"), st.ResultURL); err != nil {
+		t.Fatalf("ReconcileJobOutcome(completed) failed: %v", err)
+	}
+	// Reserved 80, actual 60 -> 20 unused released -> final balance = 40
+	if bal := svc.GetWorkspaceBalance(wsID); bal.Cmp(tenantdb.MustParseExactDecimal("40")) != 0 {
+		t.Fatalf("expected final balance 40 after reconciling 60 actual credits from 80 hold, got %s", bal.String())
+	}
+	reconciledJob, _ := store.GetJob(ctx, wsID, jobID)
+	if reconciledJob.Status != "completed" || reconciledJob.ActualCredits.Cmp(tenantdb.MustParseExactDecimal("60")) != 0 {
+		t.Fatalf("expected reconciled job completed with 60 actual credits, got %+v", reconciledJob)
+	}
+}
+
+type blockingInFlightProvider struct {
+	started chan struct{}
+	release chan struct{}
+	rate    tenantdb.ExactDecimal
+}
+
+func (p *blockingInFlightProvider) Name() string { return "blocking-veo" }
+func (p *blockingInFlightProvider) CostRatePerSecondUSD() tenantdb.ExactDecimal {
+	return p.rate
+}
+func (p *blockingInFlightProvider) Generate(ctx context.Context, req ProviderGenRequest) (*ProviderGenResponse, error) {
+	close(p.started)
+	<-p.release
+	return &ProviderGenResponse{
+		ProviderJobID: "in-flight-job-1",
+		InitialStatus: "completed",
+		EstimatedCost: tenantdb.MustParseExactDecimal("0.600000"),
+	}, nil
+}
+func (p *blockingInFlightProvider) CheckStatus(ctx context.Context, providerJobID string) (*ProviderGenStatus, error) {
+	return &ProviderGenStatus{
+		ProviderJobID: providerJobID,
+		Status:        "completed",
+		ProgressPct:   100,
+		ResultURL:     "https://cdn.creativanta.test/outputs/in-flight-job-1.mp4",
+		DurationSecs:  tenantdb.MustParseExactDecimal("15.000000"),
+		Resolution:    "1080x1920",
+		CostUSD:       tenantdb.MustParseExactDecimal("0.600000"),
+	}, nil
+}
+func (p *blockingInFlightProvider) Cancel(ctx context.Context, providerJobID string) error {
+	return nil
+}
+
+func TestS5_R05_ConcurrentCancelDuringInFlightDispatch_NeverGrantsFreeOutput(t *testing.T) {
+	prov := &blockingInFlightProvider{
+		started: make(chan struct{}),
+		release: make(chan struct{}),
+		rate:    tenantdb.MustParseExactDecimal("0.040000"),
+	}
+	store := NewMemoryStore()
+	wsID := "ws-r05-race"
+	svc := NewService(ServiceConfig{
+		Store:            store,
+		PrimaryProvider:  prov,
+		PostProdExecutor: NewPostProductionExecutor(DefaultWorkerLimits()),
+		InitialBalances: map[string]tenantdb.ExactDecimal{
+			wsID: tenantdb.MustParseExactDecimal("100"),
+		},
+	})
+	ctx := contextWithRole("Editor", "user-r05")
+
+	var (
+		genResp *connect.Response[productionv1.GenerateResponse]
+		genErr  error
+		wg      sync.WaitGroup
+	)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		genResp, genErr = svc.Generate(ctx, connect.NewRequest(&productionv1.GenerateRequest{
+			Context: &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: wsID}},
+			Title:   "R05 In-Flight Cancel Race",
+			Prompt:  "Cancel while provider Generate is still in-flight before ProviderJobID is persisted",
+		}))
+	}()
+
+	// Wait until provider.Generate is in-flight
+	<-prov.started
+
+	activeJobs, err := store.ListActiveJobs(ctx, wsID)
+	if err != nil || len(activeJobs) != 1 {
+		t.Fatalf("expected 1 active in-flight job, got %d (err=%v)", len(activeJobs), err)
+	}
+	jobID := activeJobs[0].JobID
+
+	// Call Cancel while provider dispatch is still in-flight (ProviderJobID == ""):
+	// MUST NOT release the 80 reserved credits while provider execution is unconfirmed!
+	_, cancelErr := svc.Cancel(ctx, connect.NewRequest(&productionv1.CancelRequest{
+		Context: &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: wsID}},
+		JobId:   jobID,
+	}))
+	if cancelErr == nil || !errors.Is(cancelErr, ErrOutcomeUnknown) {
+		t.Fatalf("expected Cancel during in-flight dispatch to return ErrOutcomeUnknown, got: %v", cancelErr)
+	}
+	if bal := svc.GetWorkspaceBalance(wsID); bal.Cmp(tenantdb.MustParseExactDecimal("20")) != 0 {
+		t.Fatalf("R05 VIOLATION: Cancel released credits while provider dispatch was still in-flight! Balance=%s, expected 20", bal.String())
+	}
+
+	// Now allow the in-flight provider call to finish with "completed"
+	close(prov.release)
+	wg.Wait()
+
+	// Either the completed output is charged (balance == 20) OR if cancelled/quarantined, no usable output URL is exposed.
+	// Under no circumstances may workspace balance be 100 while a completed asset with FileUrl is produced!
+	finalBal := svc.GetWorkspaceBalance(wsID)
+	asset, _ := store.GetAsset(ctx, wsID, activeJobs[0].AssetID)
+	if finalBal.Cmp(tenantdb.MustParseExactDecimal("100")) == 0 && asset != nil && (asset.GenerationState == "generated" || asset.FileURL != "") {
+		t.Fatalf("R05 CRITICAL VIOLATION: Free video output granted after credit refund! Balance=%s, asset=%+v, genResp=%+v, genErr=%v",
+			finalBal.String(), asset, genResp, genErr)
+	}
+	if finalBal.Cmp(tenantdb.MustParseExactDecimal("20")) != 0 {
+		t.Fatalf("expected 80 credits committed when provider completed before cancel took effect (balance 20), got %s", finalBal.String())
+	}
+}
+
+func TestS5_F4_VideoEngineRenderJobs500_TreatedAsUnknownOutcomeNoFallbackOrRefund(t *testing.T) {
+	var renderCalls int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v1/compositions":
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusCreated)
+			_ = json.NewEncoder(w).Encode(map[string]any{"id": "comp-f4-500", "status": "ready"})
+		case r.Method == http.MethodPost && r.URL.Path == "/v1/render-jobs":
+			atomic.AddInt32(&renderCalls, 1)
+			// Server creates the render job internally, then returns HTTP 500 Internal Server Error
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(`{"error":"internal error after job creation"}`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	cveProvider := NewVideoEngineProvider(VideoEngineConfig{
+		BaseURL: server.URL,
+		APIKey:  "cve-test-key",
+	})
+	klingFallback := NewMockKlingProvider()
+	store := NewMemoryStore()
+	wsID := "ws-f4-500"
+	svc := NewService(ServiceConfig{
+		Store:            store,
+		PrimaryProvider:  cveProvider,
+		FallbackProvider: klingFallback,
+		InitialBalances: map[string]tenantdb.ExactDecimal{
+			wsID: tenantdb.MustParseExactDecimal("100"),
+		},
+	})
+
+	ctx := contextWithRole("Editor", "user-f4")
+	_, err := svc.Generate(ctx, connect.NewRequest(&productionv1.GenerateRequest{
+		Context: &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: wsID}},
+		Title:   "F4 Render HTTP 500 Video",
+		Prompt:  "Render job returns HTTP 500 after POST /v1/render-jobs is transmitted",
+	}))
+	if err == nil || !errors.Is(err, ErrOutcomeUnknown) {
+		t.Fatalf("F4 VIOLATION: expected ErrOutcomeUnknown on POST /v1/render-jobs HTTP 500, got: %v", err)
+	}
+	if atomic.LoadInt32(&renderCalls) != 1 {
+		t.Fatalf("expected 1 primary render-job call, got %d", atomic.LoadInt32(&renderCalls))
+	}
+	if klingFallback.GetGenerateCount() != 0 {
+		t.Fatalf("F4 VIOLATION: fallback provider was called %d times after primary POST /v1/render-jobs returned HTTP 500!", klingFallback.GetGenerateCount())
+	}
+	if bal := svc.GetWorkspaceBalance(wsID); bal.Cmp(tenantdb.MustParseExactDecimal("20")) != 0 {
+		t.Fatalf("F4 VIOLATION: expected 80 credits to remain held in reconciling (balance 20) on HTTP 500, got %s", bal.String())
+	}
+}

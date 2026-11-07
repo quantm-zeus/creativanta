@@ -880,3 +880,66 @@ func TestR4_Agent_ActualBudgetOverrunRecordsSpendPreservesOutputAndNeverReplaysE
 		t.Fatalf("expected step 2 to execute once after resume, got %d", exec.callsByStep[2])
 	}
 }
+
+func TestS5_F13_NegativeOrZeroBudgetCeilingIncrease_Rejected(t *testing.T) {
+	ctx := context.Background()
+	store := NewMemStore()
+	svc := NewService(store)
+	svc.SetStepExecutor(NewSimulatedStepExecutor())
+
+	wsID := "11111111-1111-4111-8111-111111111113"
+	editor := CallerContext{
+		UserID:        "user-editor-f13",
+		WorkspaceID:   wsID,
+		WorkspaceRole: "editor",
+	}
+
+	// Launch VideoAgent (total ~50 credits) with a 6.000000 budget ceiling so it pauses after Step 1 (5 credits) before Step 2 (2 credits)
+	run, _, _, err := svc.LaunchAgent(ctx, editor, AgentTypeVideoAgent, "F13 Budget Ceiling Test", "", "", "6.000000", "", true, nil)
+	if !errors.Is(err, ErrBudgetCeilingExceeded) {
+		t.Fatalf("expected initial launch to pause with ErrBudgetCeilingExceeded, got: %v", err)
+	}
+	if run.CurrentState != StateWaitingContext {
+		t.Fatalf("expected StateWaitingContext, got %s", run.CurrentState)
+	}
+
+	// 1. Passing "-6.000000" MUST NOT zero out the ceiling to 0.000000 (unlimited) and complete the 50-credit run!
+	for _, invalidInc := range []string{"-6.000000", "-100.000000", "-0.000001", "0", "0.000000"} {
+		_, incErr := svc.ProvideInput(ctx, editor, run.AgentRunID, "", "", false, invalidInc, "")
+		if !errors.Is(incErr, ErrInvalidBudgetCeiling) {
+			t.Fatalf("F13 VIOLATION: expected ProvideInput with budgetCeilingIncrease=%q to fail with ErrInvalidBudgetCeiling, got: %v", invalidInc, incErr)
+		}
+		freshRun, _ := store.GetRun(ctx, wsID, run.AgentRunID)
+		if freshRun.CurrentState != StateWaitingContext {
+			t.Fatalf("F13 VIOLATION: run escaped StateWaitingContext (now %s) after invalid budget increase %q!", freshRun.CurrentState, invalidInc)
+		}
+		if freshRun.BudgetCeiling != "6.000000" {
+			t.Fatalf("F13 VIOLATION: BudgetCeiling mutated from 6.000000 to %s after rejected increase %q!", freshRun.BudgetCeiling, invalidInc)
+		}
+		if freshRun.CreditsUsed != "5.000000" {
+			t.Fatalf("F13 VIOLATION: CreditsUsed changed from 5.000000 to %s after rejected increase %q!", freshRun.CreditsUsed, invalidInc)
+		}
+	}
+
+	// 2. Launching an agent with a negative budget ceiling must also fail with ErrInvalidBudgetCeiling
+	_, _, _, negLaunchErr := svc.LaunchAgent(ctx, editor, AgentTypeVideoAgent, "Negative Launch Ceiling", "", "", "-10.000000", "", true, nil)
+	if !errors.Is(negLaunchErr, ErrInvalidBudgetCeiling) {
+		t.Fatalf("expected LaunchAgent with negative budgetCeiling to fail with ErrInvalidBudgetCeiling, got: %v", negLaunchErr)
+	}
+
+	// 3. Initiator access revocation while paused at approval or budget gate must block resumed execution (F11)
+	pausedPublishRun, _, reqApp, err := svc.LaunchAgent(ctx, editor, AgentTypeCopilotAction, "Create and publish TikTok ad", "", "", "50.000000", "", false, nil)
+	if err != nil || !reqApp {
+		t.Fatalf("expected copilot publish run to pause for approval, got reqApp=%v err=%v", reqApp, err)
+	}
+	svc.RevokeMemberAccess(wsID, editor.UserID)
+	manager := CallerContext{
+		UserID:        "user-mgr-f13",
+		WorkspaceID:   wsID,
+		WorkspaceRole: "manager",
+	}
+	_, resumeRevokedErr := svc.ProvideInput(ctx, manager, pausedPublishRun.AgentRunID, "", "", true, "", "")
+	if !errors.Is(resumeRevokedErr, ErrPermissionDenied) {
+		t.Fatalf("expected ProvideInput approval after initiator access revocation to fail with ErrPermissionDenied, got: %v", resumeRevokedErr)
+	}
+}
