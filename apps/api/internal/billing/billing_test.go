@@ -1801,3 +1801,240 @@ func TestRemediation_F06_F21_F22_BillingLifecycleAndAccounting(t *testing.T) {
 		t.Fatalf("F22: missing positive 50-credit subscription_allocation ledger transaction after Day 14 dunning downgrade! txs=%+v", histDunning.GetEntries())
 	}
 }
+
+func TestRemediation_R01_UnrelatedInvoicePaidDoesNotActivatePendingPlan(t *testing.T) {
+	now := time.Date(2026, 11, 7, 12, 0, 0, 0, time.UTC)
+	reg := loadTestRBAC(t)
+	store := NewMemoryStore(now)
+	engine := NewEngine(store)
+	svc := NewService(reg, engine, "whsec_test_secret_r01")
+	svc.SetClock(func() time.Time { return now })
+	ctx := rbac.WithPolicyContext(context.Background(), rbac.PolicyContext{
+		ActorUserID: testUserOwner,
+		WorkspaceID: testWorkspaceA,
+		Role:        rbac.RoleOwner,
+	})
+
+	// 1. Upgrade workspace from Free to Starter and settle initial Starter checkout session.
+	starterInit, err := svc.ChangePlan(ctx, &adminv1.ChangePlanRequest{
+		Context:         &commonv1.CommandContext{IdempotencyKey: "r01-starter-init"},
+		TargetPlan:      "starter",
+		BillingInterval: "monthly",
+	})
+	if err != nil {
+		t.Fatalf("ChangePlan starter failed: %v", err)
+	}
+	starterSessID := starterInit.GetCheckoutSessionId()
+	starterSubID := starterInit.GetSubscription().GetSubscriptionId().GetValue()
+	if _, err := svc.SettleStripeWebhook(StripeWebhookEvent{
+		EventID:           "evt_r01_starter_init",
+		EventType:         "checkout.session.completed",
+		WorkspaceID:       testWorkspaceA,
+		CheckoutSessionID: starterSessID,
+		SubscriptionID:    starterSubID,
+		StripeInvoiceID:   "in_r01_starter_2026_11",
+		PeriodKey:         "2026-11",
+		PaymentStatus:     "paid",
+		OccurredAt:        now,
+	}); err != nil {
+		t.Fatalf("SettleStripeWebhook starter init failed: %v", err)
+	}
+
+	// 2. Initiate an upgrade to Business ($200/mo), creating a pending checkout session, then abandon checkout.
+	bizPending, err := svc.ChangePlan(ctx, &adminv1.ChangePlanRequest{
+		Context:         &commonv1.CommandContext{IdempotencyKey: "r01-biz-abandoned"},
+		TargetPlan:      "business",
+		BillingInterval: "monthly",
+	})
+	if err != nil {
+		t.Fatalf("ChangePlan business pending failed: %v", err)
+	}
+	bizSessID := bizPending.GetCheckoutSessionId()
+	if bizSessID == "" {
+		t.Fatalf("expected non-empty checkout_session_id for business upgrade")
+	}
+
+	// 3. Next cycle (2026-12): an invoice.paid webhook arrives for the active Starter subscription renewal
+	// (no CheckoutSessionID for the abandoned Business checkout).
+	renewalTime := now.Add(30 * 24 * time.Hour)
+	settleRenewal, err := svc.SettleStripeWebhook(StripeWebhookEvent{
+		EventID:         "evt_r01_starter_renewal_2026_12",
+		EventType:       "invoice.paid",
+		WorkspaceID:     testWorkspaceA,
+		SubscriptionID:  starterSubID,
+		StripeInvoiceID: "in_r01_starter_2026_12",
+		PeriodKey:       "2026-12",
+		PaymentStatus:   "paid",
+		NextPeriodEnd:   renewalTime.Add(30 * 24 * time.Hour),
+		OccurredAt:      renewalTime,
+	})
+	if err != nil {
+		t.Fatalf("Starter renewal invoice.paid failed: %v", err)
+	}
+	if settleRenewal.Duplicate {
+		t.Fatalf("expected Starter renewal invoice.paid not to be duplicate, got %+v", settleRenewal)
+	}
+
+	// Workspace MUST remain on Starter (not upgraded to Business by an unrelated Starter renewal invoice!).
+	_ = store.WithWorkspaceTx(testWorkspaceA, func(st *WorkspaceBillingState) error {
+		if st.SubscriptionTier != "starter" || st.Subscription.Plan != "starter" {
+			t.Fatalf("R01 VIOLATION: unrelated Starter renewal invoice.paid activated abandoned pending plan (tier=%q, plan=%q, expected starter)",
+				st.SubscriptionTier, st.Subscription.Plan)
+		}
+		if st.CheckoutSessions[bizSessID].Status != "pending" {
+			t.Fatalf("R01 VIOLATION: abandoned Business checkout session %s should remain pending, got %s",
+				bizSessID, st.CheckoutSessions[bizSessID].Status)
+		}
+		return nil
+	})
+
+	// 4. Replaying an already-settled invoice with a new EventID must be caught BEFORE mutating any pending plan session.
+	replayOldInv, err := svc.SettleStripeWebhook(StripeWebhookEvent{
+		EventID:         "evt_r01_starter_renewal_2026_12_replay",
+		EventType:       "invoice.paid",
+		WorkspaceID:     testWorkspaceA,
+		SubscriptionID:  starterSubID,
+		StripeInvoiceID: "in_r01_starter_2026_12",
+		PeriodKey:       "2026-12",
+		PaymentStatus:   "paid",
+		OccurredAt:      renewalTime.Add(5 * time.Minute),
+	})
+	if err != nil || !replayOldInv.Duplicate || replayOldInv.Status != "invoice_already_settled" {
+		t.Fatalf("expected replayed invoice to return Duplicate=true (invoice_already_settled), got %+v err=%v", replayOldInv, err)
+	}
+	_ = store.WithWorkspaceTx(testWorkspaceA, func(st *WorkspaceBillingState) error {
+		if st.SubscriptionTier != "starter" || st.CheckoutSessions[bizSessID].Status != "pending" {
+			t.Fatalf("replayed invoice must not activate pending Business plan: tier=%q session=%s",
+				st.SubscriptionTier, st.CheckoutSessions[bizSessID].Status)
+		}
+		return nil
+	})
+
+	// 5. Negative tests: unknown CheckoutSessionID, unrelated SubscriptionID, mismatched AmountPaid / Currency / TargetPlan / BillingInterval must fail closed.
+	if _, err := svc.SettleStripeWebhook(StripeWebhookEvent{
+		EventID:           "evt_r01_unknown_session_on_inv_paid",
+		EventType:         "invoice.paid",
+		WorkspaceID:       testWorkspaceA,
+		CheckoutSessionID: "cs_plan_unknown_cross_tenant",
+		PaymentStatus:     "paid",
+		OccurredAt:        renewalTime,
+	}); !errors.Is(err, ErrInvalidBillingInput) {
+		t.Fatalf("expected unknown CheckoutSessionID on invoice.paid to fail with ErrInvalidBillingInput, got %v", err)
+	}
+
+	if _, err := svc.SettleStripeWebhook(StripeWebhookEvent{
+		EventID:         "evt_r01_wrong_sub_id",
+		EventType:       "invoice.paid",
+		WorkspaceID:     testWorkspaceA,
+		SubscriptionID:  "sub_unrelated_external_999",
+		StripeInvoiceID: "in_unrelated_999",
+		PeriodKey:       "2027-01",
+		PaymentStatus:   "paid",
+		OccurredAt:      renewalTime,
+	}); !errors.Is(err, ErrInvalidBillingInput) {
+		t.Fatalf("expected unrelated SubscriptionID on invoice.paid to fail with ErrInvalidBillingInput, got %v", err)
+	}
+
+	if _, err := svc.SettleStripeWebhook(StripeWebhookEvent{
+		EventID:           "evt_r01_wrong_amount",
+		EventType:         "checkout.session.completed",
+		WorkspaceID:       testWorkspaceA,
+		CheckoutSessionID: bizSessID,
+		AmountPaid:        tenantdb.MustParseExactDecimal("20"), // Starter $20 instead of Business $200
+		Currency:          "USD",
+		PaymentStatus:     "paid",
+		OccurredAt:        renewalTime,
+	}); !errors.Is(err, ErrInvalidBillingInput) {
+		t.Fatalf("expected mismatched AmountPaid ($20 vs $200) to fail with ErrInvalidBillingInput, got %v", err)
+	}
+
+	if _, err := svc.SettleStripeWebhook(StripeWebhookEvent{
+		EventID:           "evt_r01_wrong_currency",
+		EventType:         "checkout.session.completed",
+		WorkspaceID:       testWorkspaceA,
+		CheckoutSessionID: bizSessID,
+		AmountPaid:        tenantdb.MustParseExactDecimal("200"),
+		Currency:          "EUR",
+		PaymentStatus:     "paid",
+		OccurredAt:        renewalTime,
+	}); !errors.Is(err, ErrInvalidBillingInput) {
+		t.Fatalf("expected mismatched Currency (EUR vs USD) to fail with ErrInvalidBillingInput, got %v", err)
+	}
+
+	if _, err := svc.SettleStripeWebhook(StripeWebhookEvent{
+		EventID:           "evt_r01_wrong_target_plan",
+		EventType:         "checkout.session.completed",
+		WorkspaceID:       testWorkspaceA,
+		CheckoutSessionID: bizSessID,
+		TargetPlan:        "starter",
+		AmountPaid:        tenantdb.MustParseExactDecimal("200"),
+		Currency:          "USD",
+		PaymentStatus:     "paid",
+		OccurredAt:        renewalTime,
+	}); !errors.Is(err, ErrInvalidBillingInput) {
+		t.Fatalf("expected mismatched TargetPlan (starter vs business) to fail with ErrInvalidBillingInput, got %v", err)
+	}
+
+	// 6. Multiple pending plan upgrades on a Free workspace: unbound invoice.paid must fail closed;
+	//    settling one exact session via CheckoutSessionID must leave the other pending session untouched.
+	const wsMultiPending = "44444444-4444-4444-8444-444444444444"
+	multiCtx := rbac.WithPolicyContext(context.Background(), rbac.PolicyContext{
+		ActorUserID: testUserOwner,
+		WorkspaceID: wsMultiPending,
+		Role:        rbac.RoleOwner,
+	})
+	proPending, err := svc.ChangePlan(multiCtx, &adminv1.ChangePlanRequest{
+		Context:         &commonv1.CommandContext{IdempotencyKey: "r01-multi-pro"},
+		TargetPlan:      "pro",
+		BillingInterval: "monthly",
+	})
+	if err != nil {
+		t.Fatalf("ChangePlan pro pending failed: %v", err)
+	}
+	bizPending2, err := svc.ChangePlan(multiCtx, &adminv1.ChangePlanRequest{
+		Context:         &commonv1.CommandContext{IdempotencyKey: "r01-multi-biz"},
+		TargetPlan:      "business",
+		BillingInterval: "monthly",
+	})
+	if err != nil {
+		t.Fatalf("ChangePlan business pending failed: %v", err)
+	}
+	if _, err := svc.SettleStripeWebhook(StripeWebhookEvent{
+		EventID:         "evt_r01_ambiguous_multi_pending",
+		EventType:       "invoice.paid",
+		WorkspaceID:     wsMultiPending,
+		SubscriptionID:  "sub_multi_1",
+		StripeInvoiceID: "in_multi_ambiguous",
+		PeriodKey:       "2026-11",
+		PaymentStatus:   "paid",
+		OccurredAt:      now,
+	}); !errors.Is(err, ErrInvalidBillingInput) {
+		t.Fatalf("expected ambiguous invoice.paid with multiple pending sessions to fail with ErrInvalidBillingInput, got %v", err)
+	}
+
+	// Settle only the Pro session via its exact CheckoutSessionID; Business session must stay pending.
+	if _, err := svc.SettleStripeWebhook(StripeWebhookEvent{
+		EventID:           "evt_r01_settle_only_pro",
+		EventType:         "checkout.session.completed",
+		WorkspaceID:       wsMultiPending,
+		CheckoutSessionID: proPending.GetCheckoutSessionId(),
+		TargetPlan:        "pro",
+		BillingInterval:   "monthly",
+		AmountPaid:        tenantdb.MustParseExactDecimal("60"),
+		Currency:          "USD",
+		PaymentStatus:     "paid",
+		OccurredAt:        now,
+	}); err != nil {
+		t.Fatalf("expected exact Pro session settlement to succeed, got %v", err)
+	}
+	_ = store.WithWorkspaceTx(wsMultiPending, func(st *WorkspaceBillingState) error {
+		if st.SubscriptionTier != "pro" || st.Subscription.Plan != "pro" {
+			t.Fatalf("expected wsMultiPending to be on pro, got tier=%q plan=%q", st.SubscriptionTier, st.Subscription.Plan)
+		}
+		if st.CheckoutSessions[bizPending2.GetCheckoutSessionId()].Status != "pending" {
+			t.Fatalf("expected unselected Business session to remain pending, got %s",
+				st.CheckoutSessions[bizPending2.GetCheckoutSessionId()].Status)
+		}
+		return nil
+	})
+}

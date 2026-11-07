@@ -32,6 +32,11 @@ type StripeWebhookEvent struct {
 	CheckoutSessionID string
 	StripeInvoiceID   string
 	SubscriptionID    string
+	StripePriceID     string
+	TargetPlan        string
+	BillingInterval   string
+	Currency          string
+	AmountPaid        tenantdb.ExactDecimal
 	PeriodKey         string
 	PaymentStatus     string // optional; when set on payment/invoice events, must be "paid"
 	NextPeriodEnd     time.Time
@@ -490,10 +495,17 @@ func (s *Service) ChangePlan(ctx context.Context, req *adminv1.ChangePlanRequest
 			if targetTier.Rank > currentTier.Rank && targetTier.TierCode != "free" {
 				checkoutTotal, _ = amount.Add(proratedAddonTotal)
 			}
+			sessionSubID := ""
+			if st.Subscription != nil && st.Subscription.SubscriptionID != "" {
+				sessionSubID = st.Subscription.SubscriptionID
+			}
+			priceID := fmt.Sprintf("price_%s_%s_%s", targetTier.TierCode, interval, strings.ToLower(curr))
 			st.CheckoutSessions[sessID] = &CheckoutSessionRecord{
 				SessionID:           sessID,
 				WorkspaceID:         pctx.WorkspaceID,
 				UserID:              pctx.ActorUserID,
+				SubscriptionID:      sessionSubID,
+				StripePriceID:       priceID,
 				Kind:                "subscription_plan",
 				TargetPlan:          targetTier.TierCode,
 				Interval:            interval,
@@ -891,7 +903,40 @@ func (s *Service) SettleStripeWebhook(evt StripeWebhookEvent) (WebhookSettlement
 		st.BillingEvents = append(st.BillingEvents, rec)
 	}
 
+	validateWebhookAgainstSession := func(sess *CheckoutSessionRecord) error {
+		if sess == nil {
+			return fmt.Errorf("%w: checkout session not found", ErrInvalidBillingInput)
+		}
+		if sess.WorkspaceID != "" && sess.WorkspaceID != evt.WorkspaceID {
+			return fmt.Errorf("%w: checkout session %q belongs to a different workspace", ErrInvalidBillingInput, sess.SessionID)
+		}
+		if strings.TrimSpace(evt.Currency) != "" && !strings.EqualFold(strings.TrimSpace(evt.Currency), sess.Currency) {
+			return fmt.Errorf("%w: webhook currency %q does not match session currency %q", ErrInvalidBillingInput, evt.Currency, sess.Currency)
+		}
+		if evt.AmountPaid.IsNegative() || (!evt.AmountPaid.IsZero() && evt.AmountPaid.Cmp(sess.Amount) != 0) {
+			return fmt.Errorf("%w: webhook amount_paid %s does not match session amount %s", ErrInvalidBillingInput, evt.AmountPaid.String(), sess.Amount.String())
+		}
+		if sess.Kind == "subscription_plan" {
+			if strings.TrimSpace(evt.TargetPlan) != "" && !strings.EqualFold(strings.TrimSpace(evt.TargetPlan), sess.TargetPlan) {
+				return fmt.Errorf("%w: webhook target_plan %q does not match session target_plan %q", ErrInvalidBillingInput, evt.TargetPlan, sess.TargetPlan)
+			}
+			if strings.TrimSpace(evt.BillingInterval) != "" && !strings.EqualFold(strings.TrimSpace(evt.BillingInterval), sess.Interval) {
+				return fmt.Errorf("%w: webhook billing_interval %q does not match session interval %q", ErrInvalidBillingInput, evt.BillingInterval, sess.Interval)
+			}
+			if strings.TrimSpace(evt.StripePriceID) != "" && sess.StripePriceID != "" && !strings.EqualFold(strings.TrimSpace(evt.StripePriceID), sess.StripePriceID) {
+				return fmt.Errorf("%w: webhook stripe_price_id %q does not match session price_id %q", ErrInvalidBillingInput, evt.StripePriceID, sess.StripePriceID)
+			}
+			if strings.TrimSpace(evt.SubscriptionID) != "" && sess.SubscriptionID != "" && strings.TrimSpace(evt.SubscriptionID) != sess.SubscriptionID {
+				return fmt.Errorf("%w: webhook subscription_id %q does not match session subscription_id %q", ErrInvalidBillingInput, evt.SubscriptionID, sess.SubscriptionID)
+			}
+		}
+		return nil
+	}
+
 	settleCreditPackSession := func(st *WorkspaceBillingState, sess *CheckoutSessionRecord) (WebhookSettlementResult, error) {
+		if err := validateWebhookAgainstSession(sess); err != nil {
+			return WebhookSettlementResult{}, err
+		}
 		grantKey := "stripe_pack:" + sess.SessionID
 		stripeInvID := strings.TrimSpace(evt.StripeInvoiceID)
 		if stripeInvID == "" {
@@ -1031,6 +1076,9 @@ func (s *Service) SettleStripeWebhook(evt StripeWebhookEvent) (WebhookSettlement
 	}
 
 	settleSubscriptionPlanSession := func(st *WorkspaceBillingState, sess *CheckoutSessionRecord) (WebhookSettlementResult, error) {
+		if err := validateWebhookAgainstSession(sess); err != nil {
+			return WebhookSettlementResult{}, err
+		}
 		if sess.Status == "expired" || sess.Status == "failed" {
 			return WebhookSettlementResult{}, fmt.Errorf("%w: checkout session %q is %s and cannot be settled", ErrInvalidBillingInput, sess.SessionID, sess.Status)
 		}
@@ -1063,12 +1111,16 @@ func (s *Service) SettleStripeWebhook(evt StripeWebhookEvent) (WebhookSettlement
 		}
 
 		subID := strings.TrimSpace(evt.SubscriptionID)
+		if subID == "" && sess.SubscriptionID != "" {
+			subID = sess.SubscriptionID
+		}
 		if subID == "" && st.Subscription != nil && st.Subscription.SubscriptionID != "" {
 			subID = st.Subscription.SubscriptionID
 		}
 		if subID == "" {
 			subID = "90000000-0000-4000-8000-000000000001"
 		}
+		sess.SubscriptionID = subID
 		periodStart := now.UTC()
 		periodEnd := now.UTC().Add(30 * 24 * time.Hour)
 		if sess.Interval == "annual" {
@@ -1231,82 +1283,29 @@ func (s *Service) SettleStripeWebhook(evt StripeWebhookEvent) (WebhookSettlement
 			return nil
 
 		case "invoice.paid":
-			// If this invoice corresponds to a checkout session, settle via the session handler.
+			// 1. If this invoice explicitly binds a checkout_session_id, settle only that exact session (fail closed if unknown).
 			if strings.TrimSpace(evt.CheckoutSessionID) != "" {
-				if sess, ok := st.CheckoutSessions[evt.CheckoutSessionID]; ok {
-					if sess.Kind == "subscription_plan" {
-						res, err := settleSubscriptionPlanSession(st, sess)
-						if err != nil {
-							return err
-						}
-						out = res
-						return nil
-					}
-					res, err := settleCreditPackSession(st, sess)
+				sess, ok := st.CheckoutSessions[strings.TrimSpace(evt.CheckoutSessionID)]
+				if !ok {
+					return fmt.Errorf("%w: unknown checkout_session_id %q", ErrInvalidBillingInput, evt.CheckoutSessionID)
+				}
+				if sess.Kind == "subscription_plan" {
+					res, err := settleSubscriptionPlanSession(st, sess)
 					if err != nil {
 						return err
 					}
 					out = res
 					return nil
 				}
-			}
-
-			// If there is a pending subscription_plan session on this workspace when invoice.paid arrives for the subscription,
-			// activate the pending plan change now as part of verified subscription invoice settlement.
-			for _, sess := range st.CheckoutSessions {
-				if sess != nil && sess.Kind == "subscription_plan" && sess.Status == "pending" {
-					if targetTier, tOK := LookupTier(sess.TargetPlan); tOK {
-						prevTier := st.SubscriptionTier
-						st.SubscriptionTier = targetTier.TierCode
-						if sess.AcceptOverageTerms {
-							st.OverageTermsAccepted = true
-						}
-						subIDForPlan := strings.TrimSpace(evt.SubscriptionID)
-						if subIDForPlan == "" && st.Subscription != nil && st.Subscription.SubscriptionID != "" {
-							subIDForPlan = st.Subscription.SubscriptionID
-						}
-						if subIDForPlan == "" {
-							subIDForPlan = "90000000-0000-4000-8000-000000000001"
-						}
-						baseAmt := sess.BaseAmount
-						if baseAmt.IsZero() {
-							baseAmt = sess.Amount
-						}
-						st.Subscription = &tenantdb.SubscriptionRow{
-							SubscriptionID:     subIDForPlan,
-							WorkspaceID:        evt.WorkspaceID,
-							Plan:               targetTier.TierCode,
-							BillingInterval:    sess.Interval,
-							Status:             "active",
-							Amount:             baseAmt,
-							Currency:           sess.Currency,
-							CurrentPeriodStart: now.UTC(),
-							CurrentPeriodEnd:   now.UTC().Add(30 * 24 * time.Hour),
-							CancelAtPeriodEnd:  false,
-							Addons:             append([]string{}, sess.Addons...),
-							CreatedAt:          now.UTC(),
-							UpdatedAt:          now.UTC(),
-						}
-						sess.Status = "settled"
-						sess.SettledAt = &now
-						st.OutboxEvents = append(st.OutboxEvents, EmittedEvent{
-							EventType:      EventBillingPlanChanged,
-							WorkspaceID:    evt.WorkspaceID,
-							AggregateType:  "subscription",
-							AggregateID:    subIDForPlan,
-							IdempotencyKey: "evt:plan_change:" + sess.SessionID,
-							Payload: map[string]any{
-								"previous_plan":         prevTier,
-								"target_plan":           targetTier.TierCode,
-								"effective_mode":        "immediate_prorated",
-								"prorated_addon_charge": sess.ProratedAddonCharge.String(),
-							},
-							CreatedAt: now,
-						})
-					}
+				res, err := settleCreditPackSession(st, sess)
+				if err != nil {
+					return err
 				}
+				out = res
+				return nil
 			}
 
+			// 2. Check duplicate invoice / billing period BEFORE mutating any subscription or pending session state (R01).
 			subID := strings.TrimSpace(evt.SubscriptionID)
 			if subID == "" && st.Subscription != nil {
 				subID = st.Subscription.SubscriptionID
@@ -1340,6 +1339,157 @@ func (s *Service) SettleStripeWebhook(evt StripeWebhookEvent) (WebhookSettlement
 					Invoice:    existingInv,
 				}
 				return nil
+			}
+
+			// 3. Determine whether this invoice.paid authorizes a pending subscription_plan session or renews an active subscription (R01).
+			hasActivePaidSub := st.Subscription != nil &&
+				st.Subscription.Plan != "" &&
+				!strings.EqualFold(st.Subscription.Plan, "free") &&
+				st.Subscription.Status != "incomplete"
+
+			var pendingPlanSessions []*CheckoutSessionRecord
+			for _, sess := range st.CheckoutSessions {
+				if sess != nil && sess.Kind == "subscription_plan" && sess.Status == "pending" {
+					pendingPlanSessions = append(pendingPlanSessions, sess)
+				}
+			}
+
+			var authorizedPendingSess *CheckoutSessionRecord
+			if hasActivePaidSub {
+				// On an already-active paid subscription, an invoice without CheckoutSessionID NEVER activates an abandoned pending
+				// plan session unless the webhook explicitly proves the exact subscription_id, target_plan/price_id, amount_paid, and currency of that pending session.
+				if strings.TrimSpace(evt.SubscriptionID) != "" &&
+					st.Subscription.SubscriptionID != "" &&
+					strings.TrimSpace(evt.SubscriptionID) != st.Subscription.SubscriptionID {
+					return fmt.Errorf("%w: invoice subscription_id %q does not match workspace subscription_id %q",
+						ErrInvalidBillingInput, evt.SubscriptionID, st.Subscription.SubscriptionID)
+				}
+
+				hasExplicitUpgradeProof := strings.TrimSpace(evt.SubscriptionID) != "" &&
+					(strings.TrimSpace(evt.TargetPlan) != "" || strings.TrimSpace(evt.StripePriceID) != "") &&
+					!evt.AmountPaid.IsZero() &&
+					strings.TrimSpace(evt.Currency) != ""
+
+				if hasExplicitUpgradeProof {
+					var matched []*CheckoutSessionRecord
+					for _, sess := range pendingPlanSessions {
+						if validateWebhookAgainstSession(sess) == nil {
+							matched = append(matched, sess)
+						}
+					}
+					if len(matched) > 1 {
+						return fmt.Errorf("%w: ambiguous pending subscription checkout sessions; checkout_session_id required", ErrInvalidBillingInput)
+					}
+					if len(matched) == 1 {
+						authorizedPendingSess = matched[0]
+					}
+				}
+
+				if authorizedPendingSess == nil {
+					// Validate renewal invoice attributes against the active subscription (fail closed on plan/interval/currency/amount mismatch).
+					if strings.TrimSpace(evt.TargetPlan) != "" && !strings.EqualFold(strings.TrimSpace(evt.TargetPlan), st.Subscription.Plan) {
+						return fmt.Errorf("%w: invoice target_plan %q does not match active subscription plan %q",
+							ErrInvalidBillingInput, evt.TargetPlan, st.Subscription.Plan)
+					}
+					if strings.TrimSpace(evt.BillingInterval) != "" && st.Subscription.BillingInterval != "" &&
+						!strings.EqualFold(strings.TrimSpace(evt.BillingInterval), st.Subscription.BillingInterval) {
+						return fmt.Errorf("%w: invoice billing_interval %q does not match active subscription interval %q",
+							ErrInvalidBillingInput, evt.BillingInterval, st.Subscription.BillingInterval)
+					}
+					if strings.TrimSpace(evt.Currency) != "" && st.Subscription.Currency != "" &&
+						!strings.EqualFold(strings.TrimSpace(evt.Currency), st.Subscription.Currency) {
+						return fmt.Errorf("%w: invoice currency %q does not match active subscription currency %q",
+							ErrInvalidBillingInput, evt.Currency, st.Subscription.Currency)
+					}
+					if evt.AmountPaid.IsNegative() || (!evt.AmountPaid.IsZero() && !st.Subscription.Amount.IsZero() && evt.AmountPaid.Cmp(st.Subscription.Amount) != 0) {
+						return fmt.Errorf("%w: invoice amount_paid %s does not match active subscription amount %s",
+							ErrInvalidBillingInput, evt.AmountPaid.String(), st.Subscription.Amount.String())
+					}
+				}
+			} else {
+				// Workspace has no active paid subscription yet.
+				if len(pendingPlanSessions) == 1 {
+					if err := validateWebhookAgainstSession(pendingPlanSessions[0]); err != nil {
+						return err
+					}
+					authorizedPendingSess = pendingPlanSessions[0]
+				} else if len(pendingPlanSessions) > 1 {
+					// Disambiguate only if explicit plan/price binding uniquely identifies one pending session.
+					if strings.TrimSpace(evt.TargetPlan) == "" && strings.TrimSpace(evt.StripePriceID) == "" {
+						return fmt.Errorf("%w: multiple pending subscription checkout sessions; checkout_session_id required", ErrInvalidBillingInput)
+					}
+					var matched []*CheckoutSessionRecord
+					for _, sess := range pendingPlanSessions {
+						if validateWebhookAgainstSession(sess) == nil {
+							matched = append(matched, sess)
+						}
+					}
+					if len(matched) != 1 {
+						return fmt.Errorf("%w: ambiguous or unmatched pending subscription checkout sessions; checkout_session_id required", ErrInvalidBillingInput)
+					}
+					authorizedPendingSess = matched[0]
+				} else if st.Subscription == nil && (st.SubscriptionTier == "" || strings.EqualFold(st.SubscriptionTier, "free")) {
+					return fmt.Errorf("%w: invoice.paid received for workspace without active subscription or pending checkout session", ErrInvalidBillingInput)
+				}
+			}
+
+			if authorizedPendingSess != nil {
+				targetTier, tOK := LookupTier(authorizedPendingSess.TargetPlan)
+				if !tOK {
+					return fmt.Errorf("%w: invalid target_plan %q on session", ErrInvalidBillingInput, authorizedPendingSess.TargetPlan)
+				}
+				prevTier := st.SubscriptionTier
+				st.SubscriptionTier = targetTier.TierCode
+				if authorizedPendingSess.AcceptOverageTerms {
+					st.OverageTermsAccepted = true
+				}
+				subIDForPlan := strings.TrimSpace(evt.SubscriptionID)
+				if subIDForPlan == "" && authorizedPendingSess.SubscriptionID != "" {
+					subIDForPlan = authorizedPendingSess.SubscriptionID
+				}
+				if subIDForPlan == "" && st.Subscription != nil && st.Subscription.SubscriptionID != "" {
+					subIDForPlan = st.Subscription.SubscriptionID
+				}
+				if subIDForPlan == "" {
+					subIDForPlan = "90000000-0000-4000-8000-000000000001"
+				}
+				subID = subIDForPlan
+				authorizedPendingSess.SubscriptionID = subIDForPlan
+				baseAmt := authorizedPendingSess.BaseAmount
+				if baseAmt.IsZero() {
+					baseAmt = authorizedPendingSess.Amount
+				}
+				st.Subscription = &tenantdb.SubscriptionRow{
+					SubscriptionID:     subIDForPlan,
+					WorkspaceID:        evt.WorkspaceID,
+					Plan:               targetTier.TierCode,
+					BillingInterval:    authorizedPendingSess.Interval,
+					Status:             "active",
+					Amount:             baseAmt,
+					Currency:           authorizedPendingSess.Currency,
+					CurrentPeriodStart: now.UTC(),
+					CurrentPeriodEnd:   now.UTC().Add(30 * 24 * time.Hour),
+					CancelAtPeriodEnd:  false,
+					Addons:             append([]string{}, authorizedPendingSess.Addons...),
+					CreatedAt:          now.UTC(),
+					UpdatedAt:          now.UTC(),
+				}
+				authorizedPendingSess.Status = "settled"
+				authorizedPendingSess.SettledAt = &now
+				st.OutboxEvents = append(st.OutboxEvents, EmittedEvent{
+					EventType:      EventBillingPlanChanged,
+					WorkspaceID:    evt.WorkspaceID,
+					AggregateType:  "subscription",
+					AggregateID:    subIDForPlan,
+					IdempotencyKey: "evt:plan_change:" + authorizedPendingSess.SessionID,
+					Payload: map[string]any{
+						"previous_plan":         prevTier,
+						"target_plan":           targetTier.TierCode,
+						"effective_mode":        "immediate_prorated",
+						"prorated_addon_charge": authorizedPendingSess.ProratedAddonCharge.String(),
+					},
+					CreatedAt: now,
+				})
 			}
 
 			tierCode := st.SubscriptionTier

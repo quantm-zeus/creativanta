@@ -1075,3 +1075,260 @@ type failingFinancialPostingStore struct {
 func (f *failingFinancialPostingStore) RecordFinancialPosting(_ context.Context, _ *FinancialPosting) error {
 	return errors.New("simulated ledger posting failure")
 }
+
+type failingSaveCheckoutStore struct {
+	Store
+	failSave bool
+}
+
+func (f *failingSaveCheckoutStore) SaveCheckoutResult(ctx context.Context, workspaceID, idempotencyKey string, result *CheckoutResult) error {
+	if f.failSave {
+		return errors.New("simulated SaveCheckoutResult persistence failure")
+	}
+	return f.Store.SaveCheckoutResult(ctx, workspaceID, idempotencyKey, result)
+}
+
+func TestRemediation_R02_CrossInstanceCheckoutIdempotencyAndAtomicCompensation(t *testing.T) {
+	ctx := context.Background()
+	now := time.Date(2026, 11, 7, 12, 0, 0, 0, time.UTC)
+	mem := NewMemoryStore()
+	sink := &mockSink{}
+
+	wsID := newUUID()
+	customerID := newUUID()
+	prodID := newUUID()
+	compID := newUUID()
+
+	_ = mem.SetProductStock(ctx, wsID, compID, 5)
+	svc1 := NewService(mem, sink, func() time.Time { return now })
+	svc2 := NewService(mem, sink, func() time.Time { return now })
+
+	if err := svc1.UpsertProduct(ctx, &StoreProduct{
+		ProductID:   prodID,
+		WorkspaceID: wsID,
+		Title:       "Cross-Instance Digital Pack",
+		Price:       mustDecimal(t, "50000.000000"),
+		Currency:    "VND",
+		Status:      ProductStatusActive,
+	}); err != nil {
+		t.Fatalf("UpsertProduct failed: %v", err)
+	}
+	bundle, err := svc1.CreateBundle(ctx, &Bundle{
+		WorkspaceID: wsID,
+		Title:       "Cross-Instance Bundle",
+		BundlePrice: mustDecimal(t, "100000.000000"),
+		Currency:    "VND",
+		Items:       []BundleItem{{ProductID: compID, Quantity: 1, ProductTitle: "Comp"}},
+	})
+	if err != nil {
+		t.Fatalf("CreateBundle failed: %v", err)
+	}
+	plan, err := svc1.CreatePlan(ctx, &MembershipPlan{
+		WorkspaceID: wsID,
+		Title:       "Cross-Instance VIP",
+		Price:       mustDecimal(t, "150000.000000"),
+		Currency:    "VND",
+	})
+	if err != nil {
+		t.Fatalf("CreatePlan failed: %v", err)
+	}
+	if _, err := svc1.PublishPlan(ctx, wsID, plan.PlanID); err != nil {
+		t.Fatalf("PublishPlan failed: %v", err)
+	}
+
+	// Barrier inside PaymentVerifier so both Service instances (svc1 and svc2) pass initial read-only prechecks concurrently.
+	var arrived int32
+	releaseCh := make(chan struct{})
+	barrierVerifier := func(_ context.Context, _ string, _ string, _ tenantdb.ExactDecimal, _ string) (PaymentStatus, error) {
+		if atomic.AddInt32(&arrived, 1) == 2 {
+			close(releaseCh)
+		}
+		select {
+		case <-releaseCh:
+		case <-time.After(2 * time.Second):
+		}
+		return PaymentStatusSucceeded, nil
+	}
+	svc1.SetPaymentVerifier(barrierVerifier)
+	svc2.SetPaymentVerifier(barrierVerifier)
+
+	// 1. Two Service instances concurrently attempt checkout with the SAME PaymentIntentID and DIFFERENT IdempotencyKeys.
+	const sharedPI = "pi_r02_cross_instance_diff_idem"
+	var wg sync.WaitGroup
+	errs := make([]error, 2)
+	results := make([]*CheckoutResult, 2)
+
+	for idx, inst := range []*Service{svc1, svc2} {
+		wg.Add(1)
+		go func(i int, s *Service) {
+			defer wg.Done()
+			results[i], errs[i] = s.Checkout(ctx, CheckoutRequest{
+				WorkspaceID:      wsID,
+				CustomerEntityID: customerID,
+				IdempotencyKey:   fmt.Sprintf("r02-diff-idem-%d", i),
+				PaymentIntentID:  sharedPI,
+				BundleID:         bundle.BundleID,
+				MembershipPlanID: plan.PlanID,
+				ProductIDs:       []string{prodID},
+				OrderAmount:      mustDecimal(t, "300000.000000"),
+				Currency:         "VND",
+			})
+		}(idx, inst)
+	}
+	wg.Wait()
+
+	successes := 0
+	replayErrors := 0
+	for i := 0; i < 2; i++ {
+		if errs[i] == nil {
+			successes++
+		} else if errors.Is(errs[i], ErrPaymentReplay) {
+			replayErrors++
+		} else {
+			t.Fatalf("unexpected error on instance %d: %v", i, errs[i])
+		}
+	}
+	if successes != 1 || replayErrors != 1 {
+		t.Fatalf("R02 VIOLATION: expected 1 success and 1 ErrPaymentReplay across two Service instances, got successes=%d replayErrors=%d (res0=%+v, res1=%+v)",
+			successes, replayErrors, results[0], results[1])
+	}
+
+	subs, _ := mem.ListSubscriptionsByCustomer(ctx, wsID, customerID)
+	delivs, _ := mem.ListDeliveriesByCustomer(ctx, wsID, customerID)
+	postings, _ := mem.ListFinancialPostings(ctx, wsID)
+	stock, _ := mem.GetProductStock(ctx, wsID, compID)
+	if len(subs) != 1 || len(delivs) != 1 || len(postings) != 1 || stock != 4 {
+		t.Fatalf("R02 VIOLATION: expected 1 sub, 1 delivery, 1 posting, stock=4 across instances; got subs=%d delivs=%d postings=%d stock=%d",
+			len(subs), len(delivs), len(postings), stock)
+	}
+
+	// 2. Two Service instances concurrently attempt checkout with the SAME PaymentIntentID and SAME IdempotencyKey.
+	var arrivedSame int32
+	releaseSameCh := make(chan struct{})
+	sameBarrierVerifier := func(_ context.Context, _ string, _ string, _ tenantdb.ExactDecimal, _ string) (PaymentStatus, error) {
+		if atomic.AddInt32(&arrivedSame, 1) == 2 {
+			close(releaseSameCh)
+		}
+		select {
+		case <-releaseSameCh:
+		case <-time.After(2 * time.Second):
+		}
+		return PaymentStatusSucceeded, nil
+	}
+	svc1.SetPaymentVerifier(sameBarrierVerifier)
+	svc2.SetPaymentVerifier(sameBarrierVerifier)
+
+	sameCustID := newUUID()
+	const samePI = "pi_r02_cross_instance_same_idem"
+	var wgSame sync.WaitGroup
+	errsSame := make([]error, 2)
+	resultsSame := make([]*CheckoutResult, 2)
+	for idx, inst := range []*Service{svc1, svc2} {
+		wgSame.Add(1)
+		go func(i int, s *Service) {
+			defer wgSame.Done()
+			resultsSame[i], errsSame[i] = s.Checkout(ctx, CheckoutRequest{
+				WorkspaceID:      wsID,
+				CustomerEntityID: sameCustID,
+				IdempotencyKey:   "r02-same-idem-key",
+				PaymentIntentID:  samePI,
+				BundleID:         bundle.BundleID,
+				MembershipPlanID: plan.PlanID,
+				ProductIDs:       []string{prodID},
+				OrderAmount:      mustDecimal(t, "300000.000000"),
+				Currency:         "VND",
+			})
+		}(idx, inst)
+	}
+	wgSame.Wait()
+
+	if errsSame[0] != nil || errsSame[1] != nil {
+		t.Fatalf("expected both concurrent same-idempotency checkouts to succeed, got err0=%v err1=%v", errsSame[0], errsSame[1])
+	}
+	if resultsSame[0].OrderID != resultsSame[1].OrderID {
+		t.Fatalf("expected identical OrderID across concurrent same-idempotency calls, got %s vs %s", resultsSame[0].OrderID, resultsSame[1].OrderID)
+	}
+	if resultsSame[0].IsReplayed == resultsSame[1].IsReplayed {
+		t.Fatalf("expected exactly one primary (IsReplayed=false) and one replay (IsReplayed=true), got %v and %v",
+			resultsSame[0].IsReplayed, resultsSame[1].IsReplayed)
+	}
+	sameSubs, _ := mem.ListSubscriptionsByCustomer(ctx, wsID, sameCustID)
+	sameDelivs, _ := mem.ListDeliveriesByCustomer(ctx, wsID, sameCustID)
+	postingsAfterSame, _ := mem.ListFinancialPostings(ctx, wsID)
+	stockAfterSame, _ := mem.GetProductStock(ctx, wsID, compID)
+	if len(sameSubs) != 1 || len(sameDelivs) != 1 || len(postingsAfterSame) != 2 || stockAfterSame != 3 {
+		t.Fatalf("expected 1 sub, 1 delivery for sameCustID, 2 total postings, stock=3; got subs=%d delivs=%d postings=%d stock=%d",
+			len(sameSubs), len(sameDelivs), len(postingsAfterSame), stockAfterSame)
+	}
+
+	// 3. Direct SaveCheckoutResult defense-in-depth: cannot overwrite an already-bound PaymentIntentID with a different IdempotencyKey.
+	if err := mem.SaveCheckoutResult(ctx, wsID, "r02-forged-overwrite-idem", &CheckoutResult{
+		Success:            true,
+		OrderID:            newUUID(),
+		Status:             "confirmed",
+		PaymentIntentID:    samePI,
+		RequestFingerprint: "fp-forged",
+	}); !errors.Is(err, ErrPaymentReplay) {
+		t.Fatalf("expected SaveCheckoutResult with conflicting IdempotencyKey for bound PaymentIntentID to fail with ErrPaymentReplay, got %v", err)
+	}
+
+	// 4. If SaveCheckoutResult fails after RecordFinancialPosting succeeded, rollback() must compensate FinancialPosting,
+	//    DigitalDelivery, MembershipSubscription, BundleStock, AND release the checkout claim so a subsequent retry succeeds!
+	rollbackCustID := newUUID()
+	failSaveStore := &failingSaveCheckoutStore{Store: mem, failSave: true}
+	failSaveSvc := NewService(failSaveStore, sink, func() time.Time { return now })
+	_ = svc1.RecordVerifiedPaymentIntent(ctx, &VerifiedPaymentIntent{
+		WorkspaceID:     wsID,
+		PaymentIntentID: "pi_r02_save_fail",
+		Amount:          mustDecimal(t, "300000.000000"),
+		Currency:        "VND",
+		Status:          PaymentStatusSucceeded,
+	})
+	_, err = failSaveSvc.Checkout(ctx, CheckoutRequest{
+		WorkspaceID:      wsID,
+		CustomerEntityID: rollbackCustID,
+		IdempotencyKey:   "r02-save-fail-idem",
+		PaymentIntentID:  "pi_r02_save_fail",
+		BundleID:         bundle.BundleID,
+		MembershipPlanID: plan.PlanID,
+		ProductIDs:       []string{prodID},
+		OrderAmount:      mustDecimal(t, "300000.000000"),
+		Currency:         "VND",
+	})
+	if err == nil {
+		t.Fatalf("expected Checkout to fail when SaveCheckoutResult fails")
+	}
+	postingsAfterSaveFail, _ := mem.ListFinancialPostings(ctx, wsID)
+	rbSubs, _ := mem.ListSubscriptionsByCustomer(ctx, wsID, rollbackCustID)
+	rbDelivs, _ := mem.ListDeliveriesByCustomer(ctx, wsID, rollbackCustID)
+	stockAfterSaveFail, _ := mem.GetProductStock(ctx, wsID, compID)
+	if len(postingsAfterSaveFail) != 2 || len(rbSubs) != 0 || len(rbDelivs) != 0 || stockAfterSaveFail != 3 {
+		t.Fatalf("R02 VIOLATION: orphaned state left behind after SaveCheckoutResult failed! postings=%d (want 2) subs=%d delivs=%d stock=%d (want 3)",
+			len(postingsAfterSaveFail), len(rbSubs), len(rbDelivs), stockAfterSaveFail)
+	}
+
+	// Retry after store recovers must succeed cleanly.
+	failSaveStore.failSave = false
+	retryRes, err := failSaveSvc.Checkout(ctx, CheckoutRequest{
+		WorkspaceID:      wsID,
+		CustomerEntityID: rollbackCustID,
+		IdempotencyKey:   "r02-save-fail-idem",
+		PaymentIntentID:  "pi_r02_save_fail",
+		BundleID:         bundle.BundleID,
+		MembershipPlanID: plan.PlanID,
+		ProductIDs:       []string{prodID},
+		OrderAmount:      mustDecimal(t, "300000.000000"),
+		Currency:         "VND",
+	})
+	if err != nil || retryRes == nil || !retryRes.Success {
+		t.Fatalf("expected retry after SaveCheckoutResult failure rollback to succeed, got res=%+v err=%v", retryRes, err)
+	}
+	postingsAfterRetry, _ := mem.ListFinancialPostings(ctx, wsID)
+	retrySubs, _ := mem.ListSubscriptionsByCustomer(ctx, wsID, rollbackCustID)
+	retryDelivs, _ := mem.ListDeliveriesByCustomer(ctx, wsID, rollbackCustID)
+	stockAfterRetry, _ := mem.GetProductStock(ctx, wsID, compID)
+	if len(postingsAfterRetry) != 3 || len(retrySubs) != 1 || len(retryDelivs) != 1 || stockAfterRetry != 2 {
+		t.Fatalf("expected clean state after retry: postings=%d (want 3) subs=%d (want 1) delivs=%d (want 1) stock=%d (want 2)",
+			len(postingsAfterRetry), len(retrySubs), len(retryDelivs), stockAfterRetry)
+	}
+}
