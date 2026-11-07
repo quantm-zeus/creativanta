@@ -740,6 +740,19 @@ func (s *Service) RegisterAdmin(admin InternalAdminRecord) error {
 	return nil
 }
 
+// RegisterAdminSession registers or replaces an AdminSessionRecord in the isolated admin store.
+func (s *Service) RegisterAdminSession(sess AdminSessionRecord) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	cp := sess
+	if cp.TokenHash != "" {
+		s.sessionsByToken[cp.TokenHash] = &cp
+	}
+	if cp.SessionID != "" {
+		s.sessionsByID[cp.SessionID] = &cp
+	}
+}
+
 // SeedModerationCase adds or updates a moderation case in the queue and emits moderation.case_created.
 func (s *Service) SeedModerationCase(mc ModerationCaseRecord) (*ModerationCaseRecord, error) {
 	if !tenantdb.IsValidNonZeroUUID(mc.CaseID) || !tenantdb.IsValidNonZeroUUID(mc.WorkspaceID) {
@@ -830,6 +843,33 @@ func (s *Service) AttemptWorkspacePackagingOverride(caseID, workspaceID, actorUs
 	return nil
 }
 
+// IsSessionActiveAt enforces bounded session age (AdminSessionTTL = 8h) independently from
+// both CreatedAt and ExpiresAt, rejecting zero/NULL timestamps, inverted bounds, or TTL > 8h.
+func (sess *AdminSessionRecord) IsSessionActiveAt(now time.Time) bool {
+	if sess == nil || sess.RevokedAt != nil {
+		return false
+	}
+	if sess.CreatedAt.IsZero() || sess.ExpiresAt.IsZero() {
+		return false
+	}
+	if !sess.ExpiresAt.After(sess.CreatedAt) {
+		return false
+	}
+	if sess.ExpiresAt.Sub(sess.CreatedAt) > AdminSessionTTL {
+		return false
+	}
+	if now.Before(sess.CreatedAt.Add(-1 * time.Minute)) {
+		return false
+	}
+	if !now.Before(sess.CreatedAt.Add(AdminSessionTTL)) {
+		return false
+	}
+	if !now.Before(sess.ExpiresAt) {
+		return false
+	}
+	return true
+}
+
 // Verify implements transportauth.Verifier for the isolated ModeAdminAPI listener.
 // It rejects any workspace token, workspace role, expired session, or session without VPN+MFA verification.
 func (s *Service) Verify(ctx context.Context, bearerToken string) (transportauth.Session, error) {
@@ -845,6 +885,9 @@ func (s *Service) Verify(ctx context.Context, bearerToken string) (transportauth
 			return transportauth.Session{}, ErrWorkspaceRoleRejectedOnAdminListener
 		}
 	}
+	if ev, hasEv := VPNTransportEvidenceFromContext(ctx); hasEv && (!ev.Verified || !IsTailscaleOrLoopbackVPNPeerIP(ev.PeerIP)) {
+		return transportauth.Session{}, ErrVPNRequired
+	}
 
 	now := s.Now()
 	th := hashToken(trimmed)
@@ -852,18 +895,21 @@ func (s *Service) Verify(ctx context.Context, bearerToken string) (transportauth
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	sess, ok := s.sessionsByToken[th]
-	if !ok {
+	if !ok || !sess.IsSessionActiveAt(now) {
 		return transportauth.Session{}, ErrAdminSessionExpired
 	}
-	if sess.RevokedAt != nil || !now.Before(sess.ExpiresAt) {
-		return transportauth.Session{}, ErrAdminSessionExpired
+	if !sess.VPNVerified {
+		return transportauth.Session{}, ErrVPNRequired
 	}
-	if !sess.VPNVerified || !sess.MFAVerified {
+	if !sess.MFAVerified {
 		return transportauth.Session{}, ErrMFARequired
 	}
 	admin, ok := s.adminsByID[sess.AdminID]
-	if !ok || admin.Status != "active" || !rbac.IsValidAdminRole(admin.AdminRole) {
+	if !ok || admin.Status != "active" || !rbac.IsValidAdminRole(admin.AdminRole) || strings.TrimSpace(admin.PasswordHash) == "" {
 		return transportauth.Session{}, ErrInvalidAdminCredentials
+	}
+	if !admin.MFAEnabled || strings.TrimSpace(admin.MFASecret) == "" {
+		return transportauth.Session{}, ErrMFARequired
 	}
 	return transportauth.Session{
 		UserID:        admin.AdminID,
@@ -926,7 +972,7 @@ func (s *Service) authorizeAdminRPC(ctx context.Context, rpcName, auditReason st
 	}
 	s.mu.Unlock()
 
-	if !sessOK || sess.RevokedAt != nil || !now.Before(sess.ExpiresAt) {
+	if !sessOK || !sess.IsSessionActiveAt(now) {
 		return AdminActorContext{}, nil, ErrAdminSessionExpired
 	}
 	if !sess.VPNVerified || !actor.VPNVerified {
@@ -938,8 +984,11 @@ func (s *Service) authorizeAdminRPC(ctx context.Context, rpcName, auditReason st
 	if !sess.MFAVerified || !actor.MFAVerified {
 		return AdminActorContext{}, nil, ErrMFARequired
 	}
-	if admin == nil || admin.Status != "active" {
+	if admin == nil || admin.Status != "active" || !rbac.IsValidAdminRole(admin.AdminRole) || strings.TrimSpace(admin.PasswordHash) == "" {
 		return AdminActorContext{}, nil, ErrInvalidAdminCredentials
+	}
+	if !admin.MFAEnabled || strings.TrimSpace(admin.MFASecret) == "" {
+		return AdminActorContext{}, nil, ErrMFARequired
 	}
 
 	_, err := s.Bindings.Authorize(rpcName, rbac.PolicyContext{

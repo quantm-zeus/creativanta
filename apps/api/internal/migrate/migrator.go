@@ -911,6 +911,17 @@ func ValidateCanonicalMigrationContract(m Migration) error {
 		requiredRLSTables = []string{
 			"workspace_acceptance_signoffs",
 		}
+	case 49:
+		requiredFragments = []requiredFragment{
+			{"user_self_clerk_bootstrap policy on users", "CREATE POLICY user_self_clerk_bootstrap ON users"},
+			{"composite tenant FK on orders -> connected_accounts", "fk_orders_connected_account_id_tenant"},
+			{"composite tenant FK on orders -> products", "fk_orders_product_id_tenant"},
+			{"composite tenant FK on orders -> offers", "fk_orders_offer_id_tenant"},
+			{"composite tenant FK on orders -> entities", "fk_orders_customer_entity_id_tenant"},
+			{"composite tenant FK on returns -> refunds", "fk_returns_refund_id_tenant"},
+			{"external refund identity unique index", "idx_refunds_external_identity"},
+			{"external return identity unique index", "idx_returns_external_identity"},
+		}
 	default:
 		return nil
 	}

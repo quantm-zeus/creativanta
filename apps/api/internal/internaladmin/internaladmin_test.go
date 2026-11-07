@@ -1075,3 +1075,136 @@ func TestTechnicalHealthStrictlySegregatedFromBusinessMetrics(t *testing.T) {
 			recheckedHealth.SystemUptimePct, recheckedHealth.TechnicalHealthScore, recheckedHealth.ErrorRatePct)
 	}
 }
+
+func TestAdminSessionExpiryAndAgeBounds(t *testing.T) {
+	reg, err := rbac.LoadCanonicalBindings(repoRoot(t))
+	if err != nil {
+		t.Fatalf("LoadCanonicalBindings: %v", err)
+	}
+	svc := internaladmin.NewService(reg)
+	now := time.Date(2026, 11, 7, 14, 0, 0, 0, time.UTC)
+	svc.Now = func() time.Time { return now }
+
+	adminID := "11111111-2222-4333-8444-555555555599"
+	password := "AdminBoundedSession#2026!"
+	mfaSecret := "JBSWY3DPEHPK3PXP"
+	if err := svc.RegisterAdmin(internaladmin.InternalAdminRecord{
+		AdminID:      adminID,
+		Email:        "bounded@internal.creativanta.vn",
+		FullName:     "Bounded Session Admin",
+		PasswordHash: internaladmin.HashAdminPassword(password),
+		AdminRole:    rbac.AdminRoleSuper,
+		MFASecret:    mfaSecret,
+		MFAEnabled:   true,
+		Status:       "active",
+	}); err != nil {
+		t.Fatalf("RegisterAdmin: %v", err)
+	}
+
+	totp, err := internaladmin.GenerateTOTPCode(mfaSecret, now)
+	if err != nil {
+		t.Fatalf("GenerateTOTPCode: %v", err)
+	}
+	vpnCtx := internaladmin.WithTrustedVPNTransport(context.Background(), "100.64.0.42")
+	loginResp, err := svc.Login(vpnCtx, connect.NewRequest(&adminv1.LoginRequest{
+		Email:       "bounded@internal.creativanta.vn",
+		Password:    password,
+		TotpCode:    totp,
+		VpnVerified: true,
+	}))
+	if err != nil {
+		t.Fatalf("Login: %v", err)
+	}
+	sid := loginResp.Msg.GetSessionId().GetValue()
+	rawToken := loginResp.Msg.GetSessionToken()
+	tokenHash := internaladmin.HashSessionToken(rawToken)
+	actorCtx := internaladmin.WithAdminActor(vpnCtx, internaladmin.AdminActorContext{
+		SessionID:   sid,
+		AdminID:     adminID,
+		AdminRole:   rbac.AdminRoleSuper,
+		VPNVerified: true,
+		MFAVerified: true,
+	})
+
+	// Baseline: newly issued session (CreatedAt=now, ExpiresAt=now+8h) verifies cleanly on both transportauth.Verifier and RPC boundary.
+	if _, err := svc.Verify(vpnCtx, rawToken); err != nil {
+		t.Fatalf("baseline Verify failed: %v", err)
+	}
+	if _, err := svc.GetDashboard(actorCtx, connect.NewRequest(&adminv1.GetDashboardRequest{})); err != nil {
+		t.Fatalf("baseline GetDashboard failed: %v", err)
+	}
+
+	makeSession := func(createdAt, expiresAt time.Time) internaladmin.AdminSessionRecord {
+		return internaladmin.AdminSessionRecord{
+			SessionID:   sid,
+			AdminID:     adminID,
+			AdminRole:   rbac.AdminRoleSuper,
+			TokenHash:   tokenHash,
+			IPAddress:   "100.64.0.42",
+			UserAgent:   "BoundsTest",
+			VPNVerified: true,
+			MFAVerified: true,
+			CreatedAt:   createdAt,
+			ExpiresAt:   expiresAt,
+		}
+	}
+
+	// Case 1: Zero/NULL ExpiresAt must be rejected (never treated as immortal).
+	svc.RegisterAdminSession(makeSession(now, time.Time{}))
+	if _, err := svc.Verify(vpnCtx, rawToken); !errors.Is(err, internaladmin.ErrAdminSessionExpired) {
+		t.Fatalf("expected zero/NULL ExpiresAt to fail Verify with ErrAdminSessionExpired, got %v", err)
+	}
+	if _, err := svc.GetDashboard(actorCtx, connect.NewRequest(&adminv1.GetDashboardRequest{})); connect.CodeOf(err) != connect.CodeUnauthenticated {
+		t.Fatalf("expected zero/NULL ExpiresAt to fail GetDashboard with Unauthenticated, got %v", err)
+	}
+
+	// Case 2: Zero CreatedAt must be rejected even if ExpiresAt is in the future.
+	svc.RegisterAdminSession(makeSession(time.Time{}, now.Add(2*time.Hour)))
+	if _, err := svc.Verify(vpnCtx, rawToken); !errors.Is(err, internaladmin.ErrAdminSessionExpired) {
+		t.Fatalf("expected zero CreatedAt to fail Verify with ErrAdminSessionExpired, got %v", err)
+	}
+	if _, err := svc.GetDashboard(actorCtx, connect.NewRequest(&adminv1.GetDashboardRequest{})); connect.CodeOf(err) != connect.CodeUnauthenticated {
+		t.Fatalf("expected zero CreatedAt to fail GetDashboard with Unauthenticated, got %v", err)
+	}
+
+	// Case 3: Session age >= 8h from CreatedAt must be rejected even if ExpiresAt is still in the future.
+	svc.RegisterAdminSession(makeSession(now.Add(-9*time.Hour), now.Add(1*time.Hour)))
+	if _, err := svc.Verify(vpnCtx, rawToken); !errors.Is(err, internaladmin.ErrAdminSessionExpired) {
+		t.Fatalf("expected session older than 8h from CreatedAt to fail Verify with ErrAdminSessionExpired, got %v", err)
+	}
+	if _, err := svc.GetDashboard(actorCtx, connect.NewRequest(&adminv1.GetDashboardRequest{})); connect.CodeOf(err) != connect.CodeUnauthenticated {
+		t.Fatalf("expected session older than 8h from CreatedAt to fail GetDashboard with Unauthenticated, got %v", err)
+	}
+
+	// Case 4: Session with ExpiresAt > CreatedAt + 8h must be rejected even when CreatedAt is fresh.
+	svc.RegisterAdminSession(makeSession(now.Add(-10*time.Minute), now.Add(-10*time.Minute).Add(internaladmin.AdminSessionTTL+time.Minute)))
+	if _, err := svc.Verify(vpnCtx, rawToken); !errors.Is(err, internaladmin.ErrAdminSessionExpired) {
+		t.Fatalf("expected session with ExpiresAt > CreatedAt + 8h to fail Verify with ErrAdminSessionExpired, got %v", err)
+	}
+	if _, err := svc.GetDashboard(actorCtx, connect.NewRequest(&adminv1.GetDashboardRequest{})); connect.CodeOf(err) != connect.CodeUnauthenticated {
+		t.Fatalf("expected session with ExpiresAt > CreatedAt + 8h to fail GetDashboard with Unauthenticated, got %v", err)
+	}
+
+	// Case 5: Session with ExpiresAt <= CreatedAt must be rejected.
+	svc.RegisterAdminSession(makeSession(now, now))
+	if _, err := svc.Verify(vpnCtx, rawToken); !errors.Is(err, internaladmin.ErrAdminSessionExpired) {
+		t.Fatalf("expected session with ExpiresAt <= CreatedAt to fail Verify with ErrAdminSessionExpired, got %v", err)
+	}
+
+	// Restore valid timestamps and verify unverified VPN transport evidence is rejected.
+	svc.RegisterAdminSession(makeSession(now, now.Add(internaladmin.AdminSessionTTL)))
+	untrustedVPNCtx := internaladmin.WithTrustedVPNTransport(context.Background(), "203.0.113.99")
+	if _, err := svc.Verify(untrustedVPNCtx, rawToken); !errors.Is(err, internaladmin.ErrVPNRequired) {
+		t.Fatalf("expected non-VPN transport evidence to fail Verify with ErrVPNRequired, got %v", err)
+	}
+	untrustedActorCtx := internaladmin.WithAdminActor(untrustedVPNCtx, internaladmin.AdminActorContext{
+		SessionID:   sid,
+		AdminID:     adminID,
+		AdminRole:   rbac.AdminRoleSuper,
+		VPNVerified: true,
+		MFAVerified: true,
+	})
+	if _, err := svc.GetDashboard(untrustedActorCtx, connect.NewRequest(&adminv1.GetDashboardRequest{})); connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("expected non-VPN transport evidence to fail GetDashboard with PermissionDenied, got %v", err)
+	}
+}
