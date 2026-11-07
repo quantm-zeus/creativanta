@@ -10,6 +10,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"net"
@@ -900,7 +901,9 @@ func TestRealProcessAPIAndAdminAPIRuntimeAndOutboxWorkerPipeline(t *testing.T) {
 		t.Fatalf("expected 2 product.catalog_status_changed events after BulkArchive, got %d", statusChangedCount)
 	}
 
-	// 4c. Verify ExecuteLiveBlueGreenReleaseSmokeRehearsal against the live cmd/api process!
+	// 4c. Verify ExecuteLiveBlueGreenReleaseSmokeRehearsal against the live cmd/api process fails closed
+	// rather than copying expected profit/credits to observed fields when finance/billing services are unwired
+	// or DiagnosticsService is an empty in-memory instance (Release F3).
 	reg, err := rbac.LoadCanonicalBindings(filepath.Join("..", "..", "..", ".."))
 	if err != nil {
 		t.Fatalf("LoadCanonicalBindings: %v", err)
@@ -929,8 +932,8 @@ func TestRealProcessAPIAndAdminAPIRuntimeAndOutboxWorkerPipeline(t *testing.T) {
 		2420,
 		liveProxy,
 	)
-	if err != nil || !smokeVerdict.CandidatePromoted || !smokeVerdict.ProxyUpstreamSwitched || liveProxy.switchedSlot != "green" {
-		t.Fatalf("expected ExecuteLiveBlueGreenReleaseSmokeRehearsal to succeed against live cmd/api process, got verdict=%+v err=%v", smokeVerdict, err)
+	if !errors.Is(err, internaladmin.ErrReleaseSmokeFailed) || smokeVerdict.CandidatePromoted || !smokeVerdict.RollbackTriggered || smokeVerdict.ProxyUpstreamSwitched || liveProxy.switchedSlot != "" {
+		t.Fatalf("expected ExecuteLiveBlueGreenReleaseSmokeRehearsal to fail closed and roll back against live cmd/api process with unwired finance/billing services, got verdict=%+v err=%v", smokeVerdict, err)
 	}
 
 	capClient := adminv1connect.NewCapabilityServiceClient(
