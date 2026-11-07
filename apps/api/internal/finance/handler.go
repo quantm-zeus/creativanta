@@ -296,6 +296,22 @@ func NewProfitHandler(service *Service) *ProfitHandler {
 
 var _ financev1connect.ProfitServiceHandler = (*ProfitHandler)(nil)
 
+func mapProfitSnapshotError(err error, notFoundFallback bool) error {
+	if errors.Is(err, ErrMissingTenant) || errors.Is(err, tenantdb.ErrScopeMismatch) {
+		return connect.NewError(connect.CodePermissionDenied, err)
+	}
+	if errors.Is(err, ErrInvalidScopeType) || errors.Is(err, ErrInvalidReportPeriod) || errors.Is(err, ErrInvalidAmount) {
+		return connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	if errors.Is(err, ErrCurrencyMismatch) {
+		return connect.NewError(connect.CodeFailedPrecondition, err)
+	}
+	if notFoundFallback {
+		return connect.NewError(connect.CodeNotFound, err)
+	}
+	return connect.NewError(connect.CodeInternal, err)
+}
+
 func (h *ProfitHandler) GetSummary(ctx context.Context, req *connect.Request[financev1.ProfitServiceGetSummaryRequest]) (*connect.Response[financev1.ProfitServiceGetSummaryResponse], error) {
 	wsID := req.Msg.WorkspaceId
 	if wsID == "" {
@@ -308,7 +324,7 @@ func (h *ProfitHandler) GetSummary(ctx context.Context, req *connect.Request[fin
 
 	snap, err := h.service.GetOrComputeProfitSnapshot(ctx, wsID, req.Msg.ScopeType, req.Msg.ScopeId, req.Msg.PeriodStart, req.Msg.PeriodEnd, false)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, mapProfitSnapshotError(err, false)
 	}
 
 	compBreakdown := map[string]string{
@@ -343,7 +359,7 @@ func (h *ProfitHandler) DrillDown(ctx context.Context, req *connect.Request[fina
 
 	snap, err := h.service.GetOrComputeProfitSnapshot(ctx, wsID, req.Msg.ScopeType, req.Msg.ScopeId, req.Msg.PeriodStart, req.Msg.PeriodEnd, false)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, mapProfitSnapshotError(err, false)
 	}
 
 	var items []*financev1.ProfitDrillDownItem
@@ -408,7 +424,7 @@ func (h *ProfitHandler) GetSnapshot(ctx context.Context, req *connect.Request[fi
 
 	snap, err := h.service.GetOrComputeProfitSnapshot(ctx, wsID, req.Msg.ScopeType, req.Msg.ScopeId, req.Msg.PeriodStart, req.Msg.PeriodEnd, false)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeNotFound, err)
+		return nil, mapProfitSnapshotError(err, true)
 	}
 
 	return connect.NewResponse(&financev1.ProfitServiceGetSnapshotResponse{
@@ -424,7 +440,7 @@ func (h *ProfitHandler) RefreshSnapshot(ctx context.Context, req *connect.Reques
 
 	snap, err := h.service.GetOrComputeProfitSnapshot(ctx, wsID, req.Msg.ScopeType, req.Msg.ScopeId, req.Msg.PeriodStart, req.Msg.PeriodEnd, true)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, mapProfitSnapshotError(err, false)
 	}
 
 	return connect.NewResponse(&financev1.ProfitServiceRefreshSnapshotResponse{
