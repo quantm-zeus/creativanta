@@ -610,6 +610,9 @@ func (m *MemoryStore) RevertRefundApproval(_ context.Context, workspaceID, refun
 }
 
 func validateAndAccumulateReturnItems(o *Order, existingReturns []*Return, ret *Return) error {
+	if o.LifecycleState == StateCreated || o.LifecycleState == StateCancelled {
+		return fmt.Errorf("%w: cannot create physical return for order in state %s", ErrInvalidReturnTransition, o.LifecycleState)
+	}
 	orderedQty := make(map[string]int32, len(o.Items))
 	for _, it := range o.Items {
 		orderedQty[it.Sku] += it.Quantity

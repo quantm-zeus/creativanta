@@ -86,6 +86,15 @@ func TestPostgresLiveAffiliateLinksAttributionsAndPayouts(t *testing.T) {
 	}
 	defer appPool.Close()
 
+	ownerUserID := uuidV4()
+	if _, err := adminPool.Exec(ctx, `
+		INSERT INTO users (user_id, external_auth_id, email, display_name, created_at, updated_at)
+		VALUES ($1::uuid, $2, $3, 'Affiliate Test Owner', NOW(), NOW())
+		ON CONFLICT (user_id) DO NOTHING
+	`, ownerUserID, "ext_"+ownerUserID, ownerUserID+"@test.com"); err != nil {
+		t.Fatalf("insert owner user: %v", err)
+	}
+
 	workspaceA := uuidV4()
 	workspaceB := uuidV4()
 
@@ -97,10 +106,10 @@ func TestPostgresLiveAffiliateLinksAttributionsAndPayouts(t *testing.T) {
 		{workspaceB, "Tenant B Affiliate"},
 	} {
 		_, err := adminPool.Exec(ctx, `
-			INSERT INTO workspaces (workspace_id, name, slug)
-			VALUES ($1, $2, $3)
+			INSERT INTO workspaces (workspace_id, name, slug, owner_user_id, created_at, updated_at)
+			VALUES ($1::uuid, $2, $3, $4::uuid, NOW(), NOW())
 			ON CONFLICT (workspace_id) DO NOTHING
-		`, ws.wsID, ws.name, ws.wsID)
+		`, ws.wsID, ws.name, ws.wsID, ownerUserID)
 		if err != nil {
 			t.Fatalf("insert workspace %s: %v", ws.wsID, err)
 		}
@@ -113,7 +122,7 @@ func TestPostgresLiveAffiliateLinksAttributionsAndPayouts(t *testing.T) {
 	}
 	defer txA.Rollback(ctx)
 
-	if _, err := txA.Exec(ctx, `SET LOCAL app.current_tenant_id = $1`, workspaceA); err != nil {
+	if _, err := txA.Exec(ctx, `SELECT set_config('app.current_tenant_id', $1, true), set_config('app.current_user_id', $2, true)`, workspaceA, ownerUserID); err != nil {
 		t.Fatalf("set tenantA: %v", err)
 	}
 
@@ -135,7 +144,7 @@ func TestPostgresLiveAffiliateLinksAttributionsAndPayouts(t *testing.T) {
 	}
 	defer txB.Rollback(ctx)
 
-	if _, err := txB.Exec(ctx, `SET LOCAL app.current_tenant_id = $1`, workspaceB); err != nil {
+	if _, err := txB.Exec(ctx, `SELECT set_config('app.current_tenant_id', $1, true), set_config('app.current_user_id', $2, true)`, workspaceB, ownerUserID); err != nil {
 		t.Fatalf("set tenantB: %v", err)
 	}
 

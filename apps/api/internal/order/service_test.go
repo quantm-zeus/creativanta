@@ -12,6 +12,7 @@ import (
 	"connectrpc.com/connect"
 	commercev1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/commerce/v1"
 	commonv1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/common/v1"
+	"github.com/quantm-zeus/creativanta/apps/api/internal/affiliate"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/finance"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/inventory"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/order"
@@ -1369,5 +1370,439 @@ func TestData16_ConcurrentReturnCreationAndDuplicateSkuCannotExceedOrderedQty(t 
 	bal, _ := invStore.GetBalance(ctx, wsID, skuID, locID)
 	if bal.OnHand != 10 {
 		t.Fatalf("expected OnHand restored to 10 (9+1), got %d", bal.OnHand)
+	}
+}
+
+// crashSimulatingInventoryService simulates a process crash or transient storage failure
+// after parent order creation (before ReserveStock or before FulfillReservation) to test Billing R06.
+type crashSimulatingInventoryService struct {
+	inner       *inventory.Service
+	failReserve bool
+	failFulfill bool
+}
+
+func (c *crashSimulatingInventoryService) Store() inventory.Store {
+	return c.inner.Store()
+}
+
+func (c *crashSimulatingInventoryService) ReserveStock(ctx context.Context, workspaceID, orderID string, items []inventory.ReservationItem, ttl time.Duration) ([]*inventory.Reservation, error) {
+	if c.failReserve {
+		return nil, errors.New("simulated crash before ReserveStock")
+	}
+	return c.inner.ReserveStock(ctx, workspaceID, orderID, items, ttl)
+}
+
+func (c *crashSimulatingInventoryService) FulfillReservation(ctx context.Context, workspaceID, orderID string) ([]*inventory.Movement, error) {
+	if c.failFulfill {
+		return nil, errors.New("simulated crash after ReserveStock before FulfillReservation")
+	}
+	return c.inner.FulfillReservation(ctx, workspaceID, orderID)
+}
+
+func (c *crashSimulatingInventoryService) ReleaseReservation(ctx context.Context, workspaceID, orderID, reason string) error {
+	return c.inner.ReleaseReservation(ctx, workspaceID, orderID, reason)
+}
+
+func (c *crashSimulatingInventoryService) ShouldDeductStockForImportedOrder(ctx context.Context, workspaceID, skuID, locationID string, orderOrderedAt time.Time) (bool, error) {
+	return c.inner.ShouldDeductStockForImportedOrder(ctx, workspaceID, skuID, locationID, orderOrderedAt)
+}
+
+func (c *crashSimulatingInventoryService) RecordPhysicalReturn(ctx context.Context, workspaceID, orderID, returnID, skuID, locationID string, quantity int32, reason string) (*inventory.Movement, error) {
+	return c.inner.RecordPhysicalReturn(ctx, workspaceID, orderID, returnID, skuID, locationID, quantity, reason)
+}
+
+// nonDeletingOrderStore simulates a crash between CreateOrder and DeleteOrder rollback
+// so the persisted parent order remains in the store when a crash occurs before stock effects complete.
+type nonDeletingOrderStore struct {
+	order.Store
+	blockDelete         bool
+	createdInitialState order.LifecycleState
+}
+
+func (n *nonDeletingOrderStore) CreateOrder(ctx context.Context, o *order.Order) error {
+	if n.createdInitialState == "" {
+		n.createdInitialState = o.LifecycleState
+	}
+	return n.Store.CreateOrder(ctx, o)
+}
+
+func (n *nonDeletingOrderStore) DeleteOrder(ctx context.Context, workspaceID, orderID string) error {
+	if n.blockDelete {
+		return errors.New("process crashed before rollback DeleteOrder could run")
+	}
+	return n.Store.DeleteOrder(ctx, workspaceID, orderID)
+}
+
+// Billing R06: Importing a completed (or fulfilled) order must NOT persist LifecycleState=fulfilled
+// before stock reservation/fulfillment succeeds, and if a crash/restart leaves the parent order row
+// persisted before stock effects complete, retrying IngestOrder across instances must recover stock
+// deduction and finance postings idempotently without skipping stock deduction.
+func TestR06_CrashAfterCreateOrderDoesNotSkipStockDeductionOnRetry(t *testing.T) {
+	ctx := context.Background()
+	_, invSvc, baseOrderStore, invStore, sink := setupTestHarness()
+	finStore := finance.NewMemoryStore()
+	finSvc := finance.NewService(finStore, nil, nil)
+
+	wsID := "00000000-0000-0000-0000-000000000001"
+	locID := "00000000-0000-0000-0000-000000000010"
+	skuID := "SKU-R06-01"
+
+	t0 := time.Date(2026, 3, 25, 10, 0, 0, 0, time.UTC)
+	if err := invSvc.RecordOpeningBaseline(ctx, wsID, skuID, locID, 10, t0); err != nil {
+		t.Fatalf("RecordOpeningBaseline failed: %v", err)
+	}
+
+	crashStore := &nonDeletingOrderStore{Store: baseOrderStore, blockDelete: true}
+	crashInv := &crashSimulatingInventoryService{inner: invSvc, failReserve: true}
+	svcInstance1 := order.NewService(crashStore, crashInv, sink, func() time.Time { return t0.Add(2 * time.Hour) }).WithFinance(finSvc)
+
+	makeCompletedOrder := func(extID string) *order.Order {
+		return &order.Order{
+			WorkspaceID:     wsID,
+			SourceClass:     order.SourceClassOfficial,
+			SourcePlatform:  "tiktok",
+			ExternalOrderID: extID,
+			LifecycleState:  order.StateCompleted,
+			Amount:          tenantdb.MustParseExactDecimal("300000.000000"),
+			Currency:        "VND",
+			OrderedAt:       t0.Add(1 * time.Hour),
+			Items: []order.OrderItem{
+				{
+					Sku:       skuID,
+					Name:      "R06 Product",
+					Quantity:  2,
+					UnitPrice: tenantdb.MustParseExactDecimal("150000.000000"),
+					Total:     tenantdb.MustParseExactDecimal("300000.000000"),
+				},
+			},
+		}
+	}
+
+	// 1. First instance crashes right after CreateOrder (before ReserveStock runs)
+	if _, _, err := svcInstance1.IngestOrder(ctx, makeCompletedOrder("tt-r06-crash-1"), locID); err == nil {
+		t.Fatalf("expected simulated crash before ReserveStock to return error")
+	}
+
+	// Verify initial persisted state at CreateOrder was NOT prematurely StateFulfilled or StateCompleted
+	if crashStore.createdInitialState == order.StateFulfilled || crashStore.createdInitialState == order.StateCompleted {
+		t.Fatalf("R06 violation: CreateOrder persisted order in %s before stock effects executed", crashStore.createdInitialState)
+	}
+
+	// 2. Second instance (restart / cross-instance replay) retries IngestOrder for the same order
+	svcInstance2 := order.NewService(baseOrderStore, invSvc, sink, func() time.Time { return t0.Add(2 * time.Hour) }).WithFinance(finSvc)
+	recoveredOrd, _, err := svcInstance2.IngestOrder(ctx, makeCompletedOrder("tt-r06-crash-1"), locID)
+	if err != nil {
+		t.Fatalf("retry IngestOrder on instance 2 failed: %v", err)
+	}
+	if recoveredOrd.LifecycleState != order.StateCompleted {
+		t.Fatalf("expected recovered order in StateCompleted, got %s", recoveredOrd.LifecycleState)
+	}
+
+	// Stock MUST be deducted (10 - 2 = 8), NOT skipped!
+	bal, err := invStore.GetBalance(ctx, wsID, skuID, locID)
+	if err != nil {
+		t.Fatalf("GetBalance failed: %v", err)
+	}
+	if bal.OnHand != 8 || bal.Reserved != 0 {
+		t.Fatalf("R06 violation: expected OnHand=8 Reserved=0 after retry recovery, got OnHand=%d Reserved=%d", bal.OnHand, bal.Reserved)
+	}
+
+	// 3. Also test crash after ReserveStock but before FulfillReservation on a second order
+	crashStore2 := &nonDeletingOrderStore{Store: baseOrderStore, blockDelete: true}
+	crashInv2 := &crashSimulatingInventoryService{inner: invSvc, failFulfill: true}
+	svcCrashMid := order.NewService(crashStore2, crashInv2, sink, func() time.Time { return t0.Add(2 * time.Hour) }).WithFinance(finSvc)
+	if _, _, err := svcCrashMid.IngestOrder(ctx, makeCompletedOrder("tt-r06-crash-2"), locID); err == nil {
+		t.Fatalf("expected simulated crash before FulfillReservation to return error")
+	}
+
+	recoveredOrd2, _, err := svcInstance2.IngestOrder(ctx, makeCompletedOrder("tt-r06-crash-2"), locID)
+	if err != nil {
+		t.Fatalf("retry IngestOrder for order 2 failed: %v", err)
+	}
+	if recoveredOrd2.LifecycleState != order.StateCompleted {
+		t.Fatalf("expected order 2 in StateCompleted, got %s", recoveredOrd2.LifecycleState)
+	}
+
+	bal2, _ := invStore.GetBalance(ctx, wsID, skuID, locID)
+	if bal2.OnHand != 6 || bal2.Reserved != 0 {
+		t.Fatalf("R06 violation: expected OnHand=6 Reserved=0 after second 2-unit order recovery, got OnHand=%d Reserved=%d", bal2.OnHand, bal2.Reserved)
+	}
+
+	// 4. Cross-instance replay of already completed order is idempotent (OnHand stays 6)
+	replayed, created, err := svcInstance2.IngestOrder(ctx, makeCompletedOrder("tt-r06-crash-2"), locID)
+	if err != nil || created || replayed.LifecycleState != order.StateCompleted {
+		t.Fatalf("expected idempotent replay on completed order, got created=%v state=%s err=%v", created, replayed.LifecycleState, err)
+	}
+	bal3, _ := invStore.GetBalance(ctx, wsID, skuID, locID)
+	if bal3.OnHand != 6 || bal3.Reserved != 0 {
+		t.Fatalf("expected OnHand=6 Reserved=0 after idempotent replay, got OnHand=%d Reserved=%d", bal3.OnHand, bal3.Reserved)
+	}
+}
+
+// Billing R07: Cancelling a confirmed order (both created->confirmed->cancelled and ingest-confirmed->cancelled)
+// must restore stock to initial on-hand with zero reserved hold, distinguish pre-fulfillment cancel
+// restoration from physical customer return, and be idempotent on duplicate cancellation replay.
+func TestR07_CancelConfirmedOrderRestoresStockAndReplayIsIdempotent(t *testing.T) {
+	ctx := context.Background()
+	orderSvc, invSvc, _, invStore, _ := setupTestHarness()
+
+	wsID := "00000000-0000-0000-0000-000000000001"
+	locID := "00000000-0000-0000-0000-000000000010"
+	skuID := "SKU-R07-01"
+
+	t0 := time.Date(2026, 3, 25, 10, 0, 0, 0, time.UTC)
+	if err := invSvc.RecordOpeningBaseline(ctx, wsID, skuID, locID, 10, t0); err != nil {
+		t.Fatalf("RecordOpeningBaseline failed: %v", err)
+	}
+
+	// Case 1: created -> confirmed -> cancelled
+	ord1, _, err := orderSvc.IngestOrder(ctx, &order.Order{
+		WorkspaceID:     wsID,
+		SourceClass:     order.SourceClassOfficial,
+		SourcePlatform:  "tiktok",
+		ExternalOrderID: "tt-r07-ord-1",
+		LifecycleState:  order.StateCreated,
+		Amount:          tenantdb.MustParseExactDecimal("200000.000000"),
+		Currency:        "VND",
+		OrderedAt:       t0.Add(1 * time.Hour),
+		Items: []order.OrderItem{
+			{Sku: skuID, Name: "R07 Item", Quantity: 3, UnitPrice: tenantdb.MustParseExactDecimal("100000.000000")},
+		},
+	}, locID)
+	if err != nil {
+		t.Fatalf("IngestOrder(created) failed: %v", err)
+	}
+	if _, err := orderSvc.ConfirmOrder(ctx, wsID, ord1.OrderID); err != nil {
+		t.Fatalf("ConfirmOrder failed: %v", err)
+	}
+	if _, err := orderSvc.CancelOrder(ctx, wsID, ord1.OrderID, "buyer_cancelled_before_shipment"); err != nil {
+		t.Fatalf("CancelOrder on confirmed order failed: %v", err)
+	}
+
+	bal1, err := invStore.GetBalance(ctx, wsID, skuID, locID)
+	if err != nil {
+		t.Fatalf("GetBalance failed: %v", err)
+	}
+	if bal1.OnHand != 10 || bal1.Reserved != 0 {
+		t.Fatalf("R07 violation (created->confirmed->cancelled): expected OnHand=10 Reserved=0, got OnHand=%d Reserved=%d", bal1.OnHand, bal1.Reserved)
+	}
+
+	// Replay cancellation must NOT add more stock
+	if _, err := orderSvc.CancelOrder(ctx, wsID, ord1.OrderID, "duplicate_cancel_webhook"); err != nil {
+		t.Fatalf("replay CancelOrder failed: %v", err)
+	}
+	bal1Replay, _ := invStore.GetBalance(ctx, wsID, skuID, locID)
+	if bal1Replay.OnHand != 10 || bal1Replay.Reserved != 0 {
+		t.Fatalf("R07 violation on cancel replay: expected OnHand=10 Reserved=0, got OnHand=%d Reserved=%d", bal1Replay.OnHand, bal1Replay.Reserved)
+	}
+
+	// Case 2: ingest-confirmed -> cancelled
+	ord2, _, err := orderSvc.IngestOrder(ctx, &order.Order{
+		WorkspaceID:     wsID,
+		SourceClass:     order.SourceClassOfficial,
+		SourcePlatform:  "shopee",
+		ExternalOrderID: "sp-r07-ord-2",
+		LifecycleState:  order.StateConfirmed,
+		Amount:          tenantdb.MustParseExactDecimal("400000.000000"),
+		Currency:        "VND",
+		OrderedAt:       t0.Add(2 * time.Hour),
+		Items: []order.OrderItem{
+			{Sku: skuID, Name: "R07 Item", Quantity: 4, UnitPrice: tenantdb.MustParseExactDecimal("100000.000000")},
+		},
+	}, locID)
+	if err != nil {
+		t.Fatalf("IngestOrder(confirmed) failed: %v", err)
+	}
+	if _, err := orderSvc.CancelOrder(ctx, wsID, ord2.OrderID, "seller_cancelled_before_fulfillment"); err != nil {
+		t.Fatalf("CancelOrder on ingest-confirmed order failed: %v", err)
+	}
+
+	bal2, _ := invStore.GetBalance(ctx, wsID, skuID, locID)
+	if bal2.OnHand != 10 || bal2.Reserved != 0 {
+		t.Fatalf("R07 violation (ingest-confirmed->cancelled): expected OnHand=10 Reserved=0, got OnHand=%d Reserved=%d", bal2.OnHand, bal2.Reserved)
+	}
+
+	// Verify ledger reconciliation passes with zero discrepancy and no MovementReturn was fabricated
+	rep, err := invSvc.ReconcileLedger(ctx, wsID, skuID, locID)
+	if err != nil || rep.Discrepancy != 0 {
+		t.Fatalf("expected zero ledger discrepancy after cancel compensation, got rep=%+v err=%v", rep, err)
+	}
+	movs, _, _ := invStore.ListMovements(ctx, wsID, skuID, locID, 100, 0)
+	for _, m := range movs {
+		if m.MovementType == inventory.MovementReturn {
+			t.Fatalf("pre-fulfillment cancel must not record physical MovementReturn, found %+v", m)
+		}
+	}
+
+	// Cancelled confirmed order must reject physical return creation
+	if _, err := orderSvc.CreateReturn(ctx, &order.Return{
+		WorkspaceID: wsID,
+		OrderID:     ord2.OrderID,
+		ReturnType:  "full",
+		Items:       []order.ReturnItem{{Sku: skuID, Quantity: 1, Reason: "invalid return on cancelled order"}},
+	}); !errors.Is(err, order.ErrInvalidReturnTransition) {
+		t.Fatalf("expected ErrInvalidReturnTransition on cancelled order, got %v", err)
+	}
+}
+
+// TestR08_OrderToAffiliateVerifierSyncAndConcurrentRefunds verifies end-to-end integration
+// between order.Service and affiliate.Service: order completion, concurrent partial/full refunds,
+// automatic commission clawback, payout exclusion, and reversible immutable ledger entries.
+func TestR08_OrderToAffiliateVerifierSyncAndConcurrentRefunds(t *testing.T) {
+	ctx := context.Background()
+	orderSvc, invSvc, orderStore, invStore, sink := setupTestHarness()
+	finStore := finance.NewMemoryStore()
+	finSvc := finance.NewService(finStore, nil, nil)
+
+	t0 := time.Date(2026, 3, 25, 10, 0, 0, 0, time.UTC)
+	now := t0
+	affStore := affiliate.NewMemoryStore()
+	affLedger := affiliate.NewDefaultLedgerRecorder()
+	affSvc := affiliate.NewService(affStore, affLedger, nil, func() time.Time { return now })
+
+	orderSvc.WithFinance(finSvc).WithAffiliateVerifier(affSvc)
+
+	wsID := "00000000-0000-0000-0000-000000000001"
+	otherWS := "00000000-0000-0000-0000-000000000099"
+	locID := "00000000-0000-0000-0000-000000000010"
+	skuID := "SKU-ORD-AFF-01"
+	creatorID := "creator-ord-aff-01"
+
+	if err := invSvc.RecordOpeningBaseline(ctx, wsID, skuID, locID, 20, t0); err != nil {
+		t.Fatalf("RecordOpeningBaseline: %v", err)
+	}
+
+	link, err := affSvc.CreateLink(ctx, &affiliate.AffiliateLink{
+		WorkspaceID:    wsID,
+		Platform:       "tiktok",
+		OriginalURL:    "https://shop.tiktok.com/product/ord-aff-1",
+		CommissionRate: tenantdb.MustParseExactDecimal("10.000000"),
+	})
+	if err != nil {
+		t.Fatalf("CreateLink: %v", err)
+	}
+
+	// 1. Ingest completed order of 1,000,000 VND -> automatically syncs VerifiedOrder into affSvc
+	ord, _, err := orderSvc.IngestOrder(ctx, &order.Order{
+		OrderID:         "ord-aff-sync-01",
+		WorkspaceID:     wsID,
+		SourceClass:     order.SourceClassOfficial,
+		SourcePlatform:  "tiktok",
+		ExternalOrderID: "tt-ord-aff-sync-01",
+		LifecycleState:  order.StateCompleted,
+		Amount:          tenantdb.MustParseExactDecimal("1000000.000000"),
+		Currency:        "VND",
+		OrderedAt:       t0.Add(1 * time.Hour),
+		Items: []order.OrderItem{
+			{Sku: skuID, Name: "Synced Item", Quantity: 2, UnitPrice: tenantdb.MustParseExactDecimal("500000.000000")},
+		},
+	}, locID)
+	if err != nil {
+		t.Fatalf("IngestOrder: %v", err)
+	}
+
+	// 2. Calculate & confirm commission, then post to creator ledger
+	comm, err := affSvc.CalculateCommission(ctx, wsID, link.AffiliateLinkID, ord.OrderID, &creatorID, tenantdb.MustParseExactDecimal("1000000.000000"), "VND", 15)
+	if err != nil {
+		t.Fatalf("CalculateCommission: %v", err)
+	}
+	now = now.Add(16 * 24 * time.Hour)
+	if _, err := affSvc.ConfirmCommission(ctx, wsID, comm.CommissionID); err != nil {
+		t.Fatalf("ConfirmCommission: %v", err)
+	}
+	initialPost, err := affSvc.PostCommissionToLedger(ctx, wsID, comm.CommissionID, affiliate.EconomicRoleCreator)
+	if err != nil {
+		t.Fatalf("PostCommissionToLedger: %v", err)
+	}
+
+	// 3. Fire concurrent partial refund requests & approvals across multiple order.Service instances
+	orderSvc2 := order.NewService(orderStore, invSvc, sink, func() time.Time { return now }).WithFinance(finSvc).WithAffiliateVerifier(affSvc)
+	ref1, _, err := orderSvc.RequestRefund(ctx, &order.Refund{
+		RefundID:    "ref-sync-300k",
+		WorkspaceID: wsID,
+		OrderID:     ord.OrderID,
+		Amount:      tenantdb.MustParseExactDecimal("300000.000000"),
+		Currency:    "VND",
+		Reason:      "partial refund 1",
+	})
+	if err != nil {
+		t.Fatalf("RequestRefund 1: %v", err)
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		_, _, _ = orderSvc.ApproveRefund(ctx, wsID, ref1.RefundID)
+	}()
+	go func() {
+		defer wg.Done()
+		_, _, _ = orderSvc2.ApproveRefund(ctx, wsID, ref1.RefundID)
+	}()
+	wg.Wait()
+
+	// Verify commission was reduced from 100,000 to 70,000 and ledger has immutable reversal + replacement
+	commAfterPartial, err := affStore.GetCommission(ctx, wsID, comm.CommissionID)
+	if err != nil {
+		t.Fatalf("GetCommission after partial refund: %v", err)
+	}
+	if commAfterPartial.CommissionAmount.Cmp(tenantdb.MustParseExactDecimal("70000.000000")) != 0 {
+		t.Fatalf("expected commission reduced to 70000 after 300k refund, got %s", commAfterPartial.CommissionAmount.String())
+	}
+	ledgerEntries := affSvc.ListLedgerPostings(wsID, comm.CommissionID)
+	if len(ledgerEntries) != 3 {
+		t.Fatalf("expected 3 immutable ledger entries (initial +100k, reversal -100k, replacement +70k), got %d", len(ledgerEntries))
+	}
+	if ledgerEntries[1].ReversalOf == nil || *ledgerEntries[1].ReversalOf != initialPost.PostingID {
+		t.Fatalf("expected 2nd ledger entry to reference initial posting %s via ReversalOf, got %+v", initialPost.PostingID, ledgerEntries[1])
+	}
+
+	// 4. Approve remaining 700,000 VND refund (full refund) -> commission clawed back, payout blocked
+	ref2, _, err := orderSvc.RequestRefund(ctx, &order.Refund{
+		RefundID:    "ref-sync-700k",
+		WorkspaceID: wsID,
+		OrderID:     ord.OrderID,
+		Amount:      tenantdb.MustParseExactDecimal("700000.000000"),
+		Currency:    "VND",
+		Reason:      "remaining refund",
+	})
+	if err != nil {
+		t.Fatalf("RequestRefund 2: %v", err)
+	}
+	if _, _, err := orderSvc.ApproveRefund(ctx, wsID, ref2.RefundID); err != nil {
+		t.Fatalf("ApproveRefund 2: %v", err)
+	}
+
+	commAfterFull, _ := affStore.GetCommission(ctx, wsID, comm.CommissionID)
+	if commAfterFull.Status != affiliate.CommissionClawedBack {
+		t.Fatalf("expected commission clawed_back after full refund, got %s", commAfterFull.Status)
+	}
+	if _, err := affSvc.CreatePayoutBatch(ctx, wsID, creatorID, []string{comm.CommissionID}); !errors.Is(err, affiliate.ErrInvalidPayoutBatch) && !errors.Is(err, affiliate.ErrOrderIneligible) {
+		t.Fatalf("expected CreatePayoutBatch on refunded order to fail closed, got %v", err)
+	}
+
+	// Verify net sum of immutable ledger entries for fully refunded order is 0
+	finalLedger := affSvc.ListLedgerPostings(wsID, comm.CommissionID)
+	netLedger := tenantdb.ZeroDecimal()
+	for _, entry := range finalLedger {
+		netLedger, _ = netLedger.Add(entry.Amount)
+	}
+	if !netLedger.IsZero() {
+		t.Fatalf("expected net ledger balance 0 after full refund reversal, got %s", netLedger.String())
+	}
+
+	// 5. Negative security & tenant isolation checks
+	if _, err := orderSvc.GetOrder(ctx, otherWS, ord.OrderID); !errors.Is(err, order.ErrOrderNotFound) {
+		t.Fatalf("expected cross-tenant GetOrder to fail with ErrOrderNotFound, got %v", err)
+	}
+	if _, err := orderSvc.CancelOrder(ctx, otherWS, ord.OrderID, "cross-tenant-attack"); !errors.Is(err, order.ErrOrderNotFound) {
+		t.Fatalf("expected cross-tenant CancelOrder to fail with ErrOrderNotFound, got %v", err)
+	}
+	if _, _, err := orderSvc.ApproveRefund(ctx, otherWS, ref2.RefundID); !errors.Is(err, order.ErrRefundNotFound) {
+		t.Fatalf("expected cross-tenant ApproveRefund to fail with ErrRefundNotFound, got %v", err)
+	}
+	bal, _ := invStore.GetBalance(ctx, wsID, skuID, locID)
+	if bal.OnHand != 18 {
+		t.Fatalf("financial refunds must not restock physical inventory: expected OnHand=18, got %d", bal.OnHand)
 	}
 }
