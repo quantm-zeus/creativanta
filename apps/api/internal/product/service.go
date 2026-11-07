@@ -79,36 +79,61 @@ func NewService(store Store, sink EventSink, clock Clock) *Service {
 	}
 }
 
+var (
+	globalProductLocksMu sync.Mutex
+	globalProductLocks   = make(map[string]*sync.Mutex)
+	globalIdemLocksMu    sync.Mutex
+	globalIdemLocks      = make(map[string]*sync.Mutex)
+)
+
 func (s *Service) lockProduct(workspaceID, productID string) func() {
 	key := workspaceID + ":" + productID
-	s.productLocksMu.Lock()
-	if s.productLocks == nil {
-		s.productLocks = make(map[string]*sync.Mutex)
-	}
-	mu, ok := s.productLocks[key]
+	globalProductLocksMu.Lock()
+	mu, ok := globalProductLocks[key]
 	if !ok {
 		mu = &sync.Mutex{}
-		s.productLocks[key] = mu
+		globalProductLocks[key] = mu
 	}
-	s.productLocksMu.Unlock()
+	globalProductLocksMu.Unlock()
 	mu.Lock()
 	return mu.Unlock
 }
 
 func (s *Service) lockIdempotency(workspaceID, idempotencyKey string) func() {
 	key := workspaceID + ":" + idempotencyKey
-	s.idemLocksMu.Lock()
-	if s.idemLocks == nil {
-		s.idemLocks = make(map[string]*sync.Mutex)
-	}
-	mu, ok := s.idemLocks[key]
+	globalIdemLocksMu.Lock()
+	mu, ok := globalIdemLocks[key]
 	if !ok {
 		mu = &sync.Mutex{}
-		s.idemLocks[key] = mu
+		globalIdemLocks[key] = mu
 	}
-	s.idemLocksMu.Unlock()
+	globalIdemLocksMu.Unlock()
 	mu.Lock()
 	return mu.Unlock
+}
+
+func (s *Service) emitEvent(ctx context.Context, evt OutboxEvent) error {
+	if buf, ok := txEventBufferFromContext(ctx); ok {
+		buf.mu.Lock()
+		buf.events = append(buf.events, evt)
+		buf.mu.Unlock()
+		return nil
+	}
+	return s.eventSink.Emit(ctx, evt)
+}
+
+func (s *Service) flushBufferedEvents(ctx context.Context) {
+	buf, ok := txEventBufferFromContext(ctx)
+	if !ok {
+		return
+	}
+	buf.mu.Lock()
+	events := append([]OutboxEvent(nil), buf.events...)
+	buf.events = nil
+	buf.mu.Unlock()
+	for _, evt := range events {
+		_ = s.eventSink.Emit(ctx, evt)
+	}
 }
 
 func (s *Service) CreateProduct(ctx context.Context, p *Product) (*Product, error) {
@@ -165,7 +190,7 @@ func (s *Service) CreateProduct(ctx context.Context, p *Product) (*Product, erro
 		"product_id": p.ProductID,
 		"type":       p.ProductType,
 	})
-	_ = s.eventSink.Emit(ctx, OutboxEvent{
+	_ = s.emitEvent(ctx, OutboxEvent{
 		EventID:       newUUID(),
 		EventType:     "product.created",
 		AggregateType: "product",
@@ -230,14 +255,23 @@ func (s *Service) UpdateProduct(ctx context.Context, p *Product) (*Product, erro
 		now = prevUpdatedAt.Add(time.Microsecond)
 	}
 
-	if p.Title != "" {
+	if p.PatchTitle != nil {
+		existing.Title = *p.PatchTitle
+	} else if p.Title != "" {
 		existing.Title = p.Title
 	}
-	if p.Description != "" {
+	if p.PatchDescription != nil {
+		existing.Description = *p.PatchDescription
+	} else if p.Description != "" {
 		existing.Description = p.Description
 	}
-	if p.Category != "" {
+	if p.PatchCategory != nil {
+		existing.Category = *p.PatchCategory
+	} else if p.Category != "" {
 		existing.Category = p.Category
+	}
+	if p.PatchInventoryEnabled != nil {
+		existing.InventoryEnabled = *p.PatchInventoryEnabled
 	}
 	if p.BasePrice != nil {
 		existing.BasePrice = p.BasePrice
@@ -254,7 +288,22 @@ func (s *Service) UpdateProduct(ctx context.Context, p *Product) (*Product, erro
 	if len(p.Images) > 0 {
 		existing.Images = p.Images
 	}
-	if p.Metadata != nil {
+	if p.HasPatchMetadata {
+		if len(p.PatchMetadata) == 0 {
+			existing.Metadata = make(map[string]any)
+		} else {
+			if existing.Metadata == nil {
+				existing.Metadata = make(map[string]any)
+			}
+			for k, v := range p.PatchMetadata {
+				if v == nil {
+					delete(existing.Metadata, k)
+				} else {
+					existing.Metadata[k] = v
+				}
+			}
+		}
+	} else if p.Metadata != nil {
 		if existing.Metadata == nil {
 			existing.Metadata = make(map[string]any)
 		}
@@ -281,7 +330,7 @@ func (s *Service) UpdateProduct(ctx context.Context, p *Product) (*Product, erro
 			"from":       oldStatus,
 			"to":         existing.CatalogStatus,
 		})
-		_ = s.eventSink.Emit(ctx, OutboxEvent{
+		_ = s.emitEvent(ctx, OutboxEvent{
 			EventID:       newUUID(),
 			EventType:     "product.catalog_status_changed",
 			AggregateType: "product",
@@ -315,6 +364,10 @@ func (s *Service) ArchiveProduct(ctx context.Context, workspaceID, productID str
 	if err != nil {
 		return nil, err
 	}
+	if _, hasExpected := ExpectedUpdatedAtFromContext(ctx); !hasExpected {
+		prevUpdated := existing.UpdatedAt
+		ctx = WithExpectedUpdatedAt(ctx, &prevUpdated)
+	}
 	oldStatus := existing.CatalogStatus
 	if err := s.store.ArchiveProduct(ctx, workspaceID, productID); err != nil {
 		return nil, err
@@ -326,7 +379,7 @@ func (s *Service) ArchiveProduct(ctx context.Context, workspaceID, productID str
 			"from":       oldStatus,
 			"to":         StatusArchived,
 		})
-		_ = s.eventSink.Emit(ctx, OutboxEvent{
+		_ = s.emitEvent(ctx, OutboxEvent{
 			EventID:       newUUID(),
 			EventType:     "product.catalog_status_changed",
 			AggregateType: "product",
@@ -380,7 +433,7 @@ func (s *Service) Import(
 				"product_id": p.ProductID,
 				"type":       p.ProductType,
 			})
-			_ = s.eventSink.Emit(ctx, OutboxEvent{
+			_ = s.emitEvent(ctx, OutboxEvent{
 				EventID:       newUUID(),
 				EventType:     "product.created",
 				AggregateType: "product",
@@ -456,7 +509,7 @@ func (s *Service) UpdateStock(ctx context.Context, workspaceID, skuID string, de
 		"reason":       cleanReason,
 		"new_quantity": newQty,
 	})
-	_ = s.eventSink.Emit(ctx, OutboxEvent{
+	_ = s.emitEvent(ctx, OutboxEvent{
 		EventID:       newUUID(),
 		EventType:     "inventory.stock_moved",
 		AggregateType: "product_sku",
@@ -499,8 +552,31 @@ func (s *Service) GetStats(ctx context.Context, workspaceID, productID string) (
 }
 
 func (s *Service) GetSalesSummary(ctx context.Context, workspaceID, productID string) (*ProductSalesSummary, error) {
+	return s.GetSalesSummaryWithPeriod(ctx, workspaceID, productID, "")
+}
+
+func (s *Service) GetSalesSummaryWithPeriod(ctx context.Context, workspaceID, productID, period string) (*ProductSalesSummary, error) {
 	if strings.TrimSpace(workspaceID) == "" {
 		return nil, ErrMissingTenant
+	}
+	cleanPeriod := strings.ToLower(strings.TrimSpace(period))
+	if _, hasExisting := SalesStatsFilterFromContext(ctx); !hasExisting {
+		now := s.clock().UTC()
+		switch cleanPeriod {
+		case "", "all":
+			ctx = WithSalesStatsFilter(ctx, SalesStatsFilter{Period: "all"})
+		case "7d":
+			since := now.Add(-7 * 24 * time.Hour)
+			ctx = WithSalesStatsFilter(ctx, SalesStatsFilter{Period: "7d", Since: &since, Until: &now})
+		case "30d":
+			since := now.Add(-30 * 24 * time.Hour)
+			ctx = WithSalesStatsFilter(ctx, SalesStatsFilter{Period: "30d", Since: &since, Until: &now})
+		case "90d":
+			since := now.Add(-90 * 24 * time.Hour)
+			ctx = WithSalesStatsFilter(ctx, SalesStatsFilter{Period: "90d", Since: &since, Until: &now})
+		default:
+			return nil, fmt.Errorf("%w: unsupported period %q (must be 7d, 30d, or 90d)", ErrInvalidInput, period)
+		}
 	}
 	return s.store.GetProductSalesSummary(ctx, workspaceID, productID)
 }
@@ -512,6 +588,10 @@ func (s *Service) GetSalesChart(ctx context.Context, workspaceID, productID stri
 	p, err := s.GetProduct(ctx, workspaceID, productID)
 	if err != nil {
 		return nil, "", err
+	}
+	if _, hasExisting := SalesStatsFilterFromContext(ctx); !hasExisting {
+		now := s.clock().UTC()
+		ctx = WithSalesStatsFilter(ctx, SalesStatsFilter{Until: &now})
 	}
 	pts, err := s.store.GetProductSalesChart(ctx, workspaceID, productID, days)
 	if err != nil {

@@ -11,9 +11,13 @@ import (
 	"testing"
 	"time"
 
+	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5/pgxpool"
+	commercev1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/commerce/v1"
+	commonv1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/common/v1"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/migrate"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/product"
+	"github.com/quantm-zeus/creativanta/apps/api/internal/rbac"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb"
 )
 
@@ -69,6 +73,7 @@ func TestPostgresLiveProductAndSkuCatalog(t *testing.T) {
 	)
 
 	// Clean up previous runs
+	_, _ = adminPool.Exec(ctx, `DELETE FROM refunds WHERE workspace_id IN ($1::uuid, $2::uuid)`, tenantA, tenantB)
 	_, _ = adminPool.Exec(ctx, `DELETE FROM stock_movements WHERE workspace_id IN ($1::uuid, $2::uuid)`, tenantA, tenantB)
 	_, _ = adminPool.Exec(ctx, `DELETE FROM inventory_balances WHERE workspace_id IN ($1::uuid, $2::uuid)`, tenantA, tenantB)
 	_, _ = adminPool.Exec(ctx, `DELETE FROM inventory_locations WHERE workspace_id IN ($1::uuid, $2::uuid)`, tenantA, tenantB)
@@ -369,8 +374,199 @@ func TestPostgresLiveProductAndSkuCatalog(t *testing.T) {
 		t.Fatalf("expected prodA rank 1 and prodA2 rank 2, got %d and %d", rankA.WorkspaceRank, rankA2.WorkspaceRank)
 	}
 
+	// 7. Second-pass Data F2: Multi-location stock adjustment without double counting + opening_balance ledger row
+	openingSkuID := uuidV4()
+	if err := storeA2.CreateSku(ctx, &product.ProductSku{
+		SkuID:             openingSkuID,
+		WorkspaceID:       tenantA,
+		ProductID:         prodA2.ProductID,
+		SkuCode:           "TUI-14-OPEN",
+		VariantAttributes: map[string]string{"color": "black"},
+		Currency:          "VND",
+		StockQuantity:     15,
+		LowStockThreshold: 3,
+		IsActive:          true,
+		CreatedAt:         t0,
+		UpdatedAt:         t0,
+	}); err != nil {
+		t.Fatalf("CreateSku with opening stock: %v", err)
+	}
+	var openMovCount int
+	var openMovQty int32
+	if err := txA2.QueryRow(ctx, `
+		SELECT COUNT(*), COALESCE(SUM(quantity), 0)
+		FROM stock_movements
+		WHERE workspace_id = $1::uuid AND sku_id = $2::uuid AND movement_type = 'opening_balance'
+	`, tenantA, openingSkuID).Scan(&openMovCount, &openMovQty); err != nil {
+		t.Fatalf("query opening_balance stock_movements: %v", err)
+	}
+	if openMovCount != 1 || openMovQty != 15 {
+		t.Fatalf("expected 1 opening_balance movement of 15, got count=%d qty=%d", openMovCount, openMovQty)
+	}
+
+	// Create a second location (Location A) holding 10 units of a new SKU, while default Location B has NO balance row yet
+	multiLocSkuID := uuidV4()
+	if err := storeA2.CreateSku(ctx, &product.ProductSku{
+		SkuID:             multiLocSkuID,
+		WorkspaceID:       tenantA,
+		ProductID:         prodA2.ProductID,
+		SkuCode:           "TUI-14-MULTILOC",
+		VariantAttributes: map[string]string{"color": "navy"},
+		Currency:          "VND",
+		StockQuantity:     0,
+		LowStockThreshold: 2,
+		IsActive:          true,
+		CreatedAt:         t0,
+		UpdatedAt:         t0,
+	}); err != nil {
+		t.Fatalf("CreateSku multiLocSkuID: %v", err)
+	}
+	locAID := uuidV4()
+	if _, err := txA2.Exec(ctx, `
+		INSERT INTO inventory_locations (location_id, workspace_id, name, location_type, is_default, status, created_at)
+		VALUES ($1::uuid, $2::uuid, 'Secondary Warehouse', 'warehouse', FALSE, 'active', NOW())
+	`, locAID, tenantA); err != nil {
+		t.Fatalf("insert secondary location: %v", err)
+	}
+	locACtx := product.WithStockAdjustmentLocation(product.WithStockAdjustmentMeta(ctx, "seed_loc_a", "pg-f2-loc-a"), locAID)
+	if qtyAfterLocA, err := storeA2.UpdateSkuStock(locACtx, tenantA, multiLocSkuID, 10); err != nil || qtyAfterLocA != 10 {
+		t.Fatalf("UpdateSkuStock at locA failed: qty=%d err=%v", qtyAfterLocA, err)
+	}
+	// Now adjust stock by +5 at the default location (which has no inventory_balances row for multiLocSkuID yet!)
+	defCtx := product.WithStockAdjustmentMeta(ctx, "receive_default_loc", "pg-f2-def-loc")
+	qtyAfterDef, err := storeA2.UpdateSkuStock(defCtx, tenantA, multiLocSkuID, 5)
+	if err != nil {
+		t.Fatalf("UpdateSkuStock at default location failed: %v", err)
+	}
+	if qtyAfterDef != 15 {
+		t.Fatalf("Data F2 regression in Postgres: expected total stock 15 (10 + 5), got %d", qtyAfterDef)
+	}
+	var sumBalances, sumMovements, skuStock int32
+	if err := txA2.QueryRow(ctx, `SELECT COALESCE(SUM(on_hand), 0) FROM inventory_balances WHERE workspace_id = $1::uuid AND sku_id = $2::uuid`, tenantA, multiLocSkuID).Scan(&sumBalances); err != nil {
+		t.Fatalf("sum inventory_balances: %v", err)
+	}
+	if err := txA2.QueryRow(ctx, `SELECT COALESCE(SUM(quantity), 0) FROM stock_movements WHERE workspace_id = $1::uuid AND sku_id = $2::uuid`, tenantA, multiLocSkuID).Scan(&sumMovements); err != nil {
+		t.Fatalf("sum stock_movements: %v", err)
+	}
+	if err := txA2.QueryRow(ctx, `SELECT stock_quantity FROM product_skus WHERE workspace_id = $1::uuid AND sku_id = $2::uuid`, tenantA, multiLocSkuID).Scan(&skuStock); err != nil {
+		t.Fatalf("select product_skus.stock_quantity: %v", err)
+	}
+	if sumBalances != 15 || sumMovements != 15 || skuStock != 15 {
+		t.Fatalf("Data F2 ledger mismatch: balances=%d movements=%d skuStock=%d (want 15, 15, 15)", sumBalances, sumMovements, skuStock)
+	}
+
+	// 8. Second-pass Data F6: Multi-product order with partial refund allocates proportionally
+	multiOrderID := uuidV4()
+	_, err = txA2.Exec(ctx, `
+		INSERT INTO orders (
+			order_id, workspace_id, product_id, amount, currency, items, lifecycle_state, ordered_at
+		) VALUES (
+			$1::uuid, $2::uuid, $3::uuid, 1000000.000000, 'VND', $4::jsonb, 'partially_refunded', NOW()
+		)
+	`, multiOrderID, tenantA, prodA.ProductID, fmt.Sprintf(
+		`[{"product_id":%q,"quantity":2,"unit_price":"350000.000000","total":"700000.000000","unit_cogs":"180000.000000"},{"product_id":%q,"quantity":1,"unit_price":"300000.000000","total":"300000.000000","unit_cogs":"150000.000000"}]`,
+		prodA.ProductID, prodA2.ProductID,
+	))
+	if err != nil {
+		t.Fatalf("insert multi-product order: %v", err)
+	}
+	_, err = txA2.Exec(ctx, `
+		INSERT INTO refunds (
+			refund_id, workspace_id, order_id, refund_type, amount, currency, reason, lifecycle_state, created_at, updated_at
+		) VALUES (
+			$1::uuid, $2::uuid, $3::uuid, 'partial', 100000.000000, 'VND', 'partial_discount', 'completed', NOW(), NOW()
+		)
+	`, uuidV4(), tenantA, multiOrderID)
+	if err != nil {
+		t.Fatalf("insert partial refund: %v", err)
+	}
+	sumA2, err := storeA2.GetProductSalesSummary(ctx, tenantA, prodA2.ProductID)
+	if err != nil {
+		t.Fatalf("GetProductSalesSummary prodA2: %v", err)
+	}
+	// prodA2 has 300,000 VND out of 1,000,000 VND order (30%), so its share of 100,000 VND refund is 30,000 VND -> NetRevenue = 270,000 VND
+	if sumA2.GrossRevenue.String() != "300000" || sumA2.NetRevenue.String() != "270000" || sumA2.RefundCount != 1 {
+		t.Fatalf("Data F6 Postgres regression: expected prodA2 gross=300000 net=270000 refunds=1, got %+v", sumA2)
+	}
+
+	// 9. Second-pass Data F7 & F8: Multi-currency order FX conversion / fail-closed and period window in Postgres
+	fxOrderID := uuidV4()
+	_, err = txA2.Exec(ctx, `
+		INSERT INTO orders (
+			order_id, workspace_id, product_id, amount, currency, items, exchange_rate_snapshot, lifecycle_state, ordered_at
+		) VALUES (
+			$1::uuid, $2::uuid, $3::uuid, 10.000000, 'USD', $4::jsonb, '{}'::jsonb, 'completed', NOW() - INTERVAL '45 days'
+		)
+	`, fxOrderID, tenantA, prodA2.ProductID, fmt.Sprintf(
+		`[{"product_id":%q,"quantity":1,"unit_price":"10.000000","total":"10.000000","unit_cogs":"4.000000"}]`,
+		prodA2.ProductID,
+	))
+	if err != nil {
+		t.Fatalf("insert cross-currency order without FX snapshot: %v", err)
+	}
+	// All-time summary must fail closed with ErrCurrencyMismatch because the 45-day-old USD order lacks exchange_rate_snapshot
+	if _, err := storeA2.GetProductSalesSummary(ctx, tenantA, prodA2.ProductID); !errors.Is(err, product.ErrCurrencyMismatch) {
+		t.Fatalf("Data F7 Postgres regression: expected ErrCurrencyMismatch for USD order without FX snapshot, got %v", err)
+	}
+	// 7-day period filter excludes the 45-day-old USD order and succeeds (Data F8)
+	since7d := time.Now().UTC().Add(-7 * 24 * time.Hour)
+	ctx7d := product.WithSalesStatsFilter(ctx, product.SalesStatsFilter{Period: "7d", Since: &since7d})
+	sum7d, err := storeA2.GetProductSalesSummary(ctx7d, tenantA, prodA2.ProductID)
+	if err != nil || sum7d.UnitsSold != 1 || sum7d.NetRevenue.String() != "270000" {
+		t.Fatalf("Data F8 Postgres regression: expected 7d summary units=1 net=270000, got %+v (err=%v)", sum7d, err)
+	}
+	// Attach valid exchange_rate_snapshot (1 USD = 25,000 VND) and verify all-time summary converts 10 USD -> 250,000 VND
+	_, err = txA2.Exec(ctx, `
+		UPDATE orders
+		SET exchange_rate_snapshot = '{"base_currency":"VND","quote_currency":"USD","rate_to_base":"25000.000000"}'::jsonb
+		WHERE workspace_id = $1::uuid AND order_id = $2::uuid
+	`, tenantA, fxOrderID)
+	if err != nil {
+		t.Fatalf("update order FX snapshot: %v", err)
+	}
+	sumAll, err := storeA2.GetProductSalesSummary(ctx, tenantA, prodA2.ProductID)
+	if err != nil || sumAll.UnitsSold != 2 || sumAll.GrossRevenue.String() != "550000" || sumAll.NetRevenue.String() != "520000" {
+		t.Fatalf("Data F7 Postgres regression: expected converted gross=550000 net=520000 units=2, got %+v (err=%v)", sumAll, err)
+	}
+
+	// 10. Second-pass Data F10: Store-level ArchiveProduct and DeleteProduct enforce ExpectedUpdatedAt atomically
+	staleExpected := t0.Add(-10 * time.Minute)
+	staleCtx := product.WithExpectedUpdatedAt(ctx, &staleExpected)
+	if err := storeA2.ArchiveProduct(staleCtx, tenantA, prodA2.ProductID); !errors.Is(err, product.ErrConcurrencyConflict) {
+		t.Fatalf("Data F10 Postgres regression: expected ErrConcurrencyConflict on stale ArchiveProduct, got %v", err)
+	}
+	if err := storeA2.DeleteProduct(staleCtx, tenantA, prodA2.ProductID); !errors.Is(err, product.ErrConcurrencyConflict) {
+		t.Fatalf("Data F10 Postgres regression: expected ErrConcurrencyConflict on stale DeleteProduct, got %v", err)
+	}
+
 	if err := txA2.Commit(ctx); err != nil {
 		t.Fatalf("commit txA2: %v", err)
+	}
+
+	// 11. Second-pass Data F1 & F11: Pool-backed PostgresStore + Handler atomic idempotency & Update clear/inventory_enabled
+	poolStore := product.NewPostgresStore(appPool)
+	sink := product.NewMemoryEventSink()
+	svc := product.NewService(poolStore, sink, func() time.Time { return t0 })
+	h := product.NewHandler(svc)
+	callerCtx := product.WithCaller(ctx, tenantA, userA, rbac.RoleOwner)
+
+	emptyStr := ""
+	invFalse := false
+	updResp, err := h.Update(callerCtx, connect.NewRequest(&commercev1.UpdateRequest{
+		Context: &commonv1.CommandContext{
+			WorkspaceId:    &commonv1.UUID{Value: tenantA},
+			IdempotencyKey: "pg-f1-f11-atomic-update",
+		},
+		ProductId:        prodA2.ProductID,
+		Category:         &emptyStr,
+		InventoryEnabled: &invFalse,
+	}))
+	if err != nil {
+		t.Fatalf("Handler.Update via pool-backed PostgresStore failed: %v", err)
+	}
+	if updResp.Msg.Product.InventoryEnabled || updResp.Msg.Product.Category != "" {
+		t.Fatalf("Data F11 Postgres regression: expected InventoryEnabled=false and Category=\"\", got inv=%v cat=%q",
+			updResp.Msg.Product.InventoryEnabled, updResp.Msg.Product.Category)
 	}
 
 	t.Log("PASS: Live PostgreSQL RLS isolation, product catalog, stock movements ledger, CAS, keyset cursor, and sales analytics verified.")
