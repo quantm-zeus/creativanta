@@ -267,11 +267,14 @@ type AffiliateStatementItem struct {
 type LedgerPostingResult struct {
 	PostingID       string                `json:"posting_id"`
 	WorkspaceID     string                `json:"workspace_id"`
+	CommissionID    string                `json:"commission_id,omitempty"`
+	OrderID         string                `json:"order_id,omitempty"`
 	EconomicRole    EconomicRole          `json:"economic_role"`
 	PostingType     string                `json:"posting_type"` // creator_income vs seller_commission_expense
 	Amount          tenantdb.ExactDecimal `json:"amount"`
 	Currency        string                `json:"currency"`
 	COGSDeducted    bool                  `json:"cogs_deducted"`
 	NetProfitImpact tenantdb.ExactDecimal `json:"net_profit_impact"`
+	ReversalOf      *string               `json:"reversal_of,omitempty"`
 	PostedAt        time.Time             `json:"posted_at"`
 }

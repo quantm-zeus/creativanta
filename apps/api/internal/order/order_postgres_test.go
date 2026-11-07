@@ -211,9 +211,9 @@ func TestPostgresLiveOrderStore(t *testing.T) {
 		`INSERT INTO users (user_id, external_auth_id, email, display_name, created_at, updated_at) VALUES ('11111111-1111-4111-8111-111111111115'::uuid, 'ext_order_user_15', 'order-user@test.com', 'Order User', NOW(), NOW()) ON CONFLICT (user_id) DO NOTHING`,
 		`INSERT INTO workspaces (workspace_id, name, slug, owner_user_id, created_at, updated_at) VALUES ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa15'::uuid, 'Order Workspace', 'order-ws', '11111111-1111-4111-8111-111111111115'::uuid, NOW(), NOW()) ON CONFLICT (workspace_id) DO NOTHING`,
 		`INSERT INTO workspaces (workspace_id, name, slug, owner_user_id, created_at, updated_at) VALUES ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbb15'::uuid, 'Other Order Workspace', 'other-order-ws', '11111111-1111-4111-8111-111111111115'::uuid, NOW(), NOW()) ON CONFLICT (workspace_id) DO NOTHING`,
-		`DELETE FROM returns WHERE order_id = '33333333-3333-3333-3333-333333333333'::uuid`,
-		`DELETE FROM refunds WHERE order_id = '33333333-3333-3333-3333-333333333333'::uuid`,
-		`DELETE FROM orders WHERE order_id = '33333333-3333-3333-3333-333333333333'::uuid`,
+		`DELETE FROM returns WHERE order_id IN ('33333333-3333-3333-3333-333333333333'::uuid, '33333333-3333-3333-3333-333333333335'::uuid)`,
+		`DELETE FROM refunds WHERE order_id IN ('33333333-3333-3333-3333-333333333333'::uuid, '33333333-3333-3333-3333-333333333335'::uuid)`,
+		`DELETE FROM orders WHERE order_id IN ('33333333-3333-3333-3333-333333333333'::uuid, '33333333-3333-3333-3333-333333333335'::uuid)`,
 	}
 	for _, stmt := range seedStmts {
 		if _, err := pool.Exec(ctx, stmt); err != nil {
@@ -364,6 +364,36 @@ func TestPostgresLiveOrderStore(t *testing.T) {
 	}
 	if err := store.CreateReturn(ctx, retExcess); !errors.Is(err, order.ErrReturnExceedsOrderQuantity) {
 		t.Fatalf("expected ErrReturnExceedsOrderQuantity on excess return in PostgresStore, got %v", err)
+	}
+
+	// Verify PostgresStore rejects physical return on cancelled order (Billing R07)
+	cancelledOrdID := "33333333-3333-3333-3333-333333333335"
+	cancelledOrd := &order.Order{
+		OrderID:        cancelledOrdID,
+		WorkspaceID:    wsID,
+		SourceClass:    order.SourceClassOfficial,
+		Amount:         tenantdb.MustParseExactDecimal("225000.000000"),
+		Currency:       "VND",
+		LifecycleState: order.StateCancelled,
+		OrderedAt:      time.Now().UTC(),
+		Items: []order.OrderItem{
+			{Sku: "PG-SKU-1", Quantity: 1, UnitPrice: tenantdb.MustParseExactDecimal("225000.000000"), Total: tenantdb.MustParseExactDecimal("225000.000000")},
+		},
+	}
+	if err := store.CreateOrder(ctx, cancelledOrd); err != nil {
+		t.Fatalf("create cancelled order: %v", err)
+	}
+	retOnCancelled := &order.Return{
+		WorkspaceID:      wsID,
+		OrderID:          cancelledOrdID,
+		ReturnType:       "full",
+		Items:            []order.ReturnItem{{Sku: "PG-SKU-1", Quantity: 1}},
+		LifecycleState:   order.ReturnInitiated,
+		SourcePlatform:   "tiktok",
+		ExternalReturnID: "pg-ext-ret-cancelled",
+	}
+	if err := store.CreateReturn(ctx, retOnCancelled); !errors.Is(err, order.ErrInvalidReturnTransition) {
+		t.Fatalf("expected ErrInvalidReturnTransition on cancelled order in PostgresStore, got %v", err)
 	}
 }
 

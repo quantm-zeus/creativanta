@@ -363,6 +363,64 @@ func (s *MemoryStore) ListAttributions(_ context.Context, workspaceID string, li
 // Commission implementations
 // ----------------------------------------------------------------------------
 
+func cloneCommission(comm *AffiliateCommission) *AffiliateCommission {
+	if comm == nil {
+		return nil
+	}
+	cp := *comm
+	if comm.CreatorEntityID != nil {
+		v := *comm.CreatorEntityID
+		cp.CreatorEntityID = &v
+	}
+	if comm.ClawbackAmount != nil {
+		v := *comm.ClawbackAmount
+		cp.ClawbackAmount = &v
+	}
+	if comm.PayoutID != nil {
+		v := *comm.PayoutID
+		cp.PayoutID = &v
+	}
+	if comm.ConfirmedAt != nil {
+		v := *comm.ConfirmedAt
+		cp.ConfirmedAt = &v
+	}
+	if comm.ClawedBackAt != nil {
+		v := *comm.ClawedBackAt
+		cp.ClawedBackAt = &v
+	}
+	if comm.PaidOutAt != nil {
+		v := *comm.PaidOutAt
+		cp.PaidOutAt = &v
+	}
+	return &cp
+}
+
+func clonePayout(payout *AffiliatePayout) *AffiliatePayout {
+	if payout == nil {
+		return nil
+	}
+	cp := *payout
+	if payout.CommissionIDs != nil {
+		cp.CommissionIDs = append([]string(nil), payout.CommissionIDs...)
+	}
+	if payout.SettlementID != nil {
+		v := *payout.SettlementID
+		cp.SettlementID = &v
+	}
+	if payout.PaidAt != nil {
+		v := *payout.PaidAt
+		cp.PaidAt = &v
+	}
+	if payout.ProofMetadata != nil {
+		m := make(map[string]any, len(payout.ProofMetadata))
+		for k, v := range payout.ProofMetadata {
+			m[k] = v
+		}
+		cp.ProofMetadata = m
+	}
+	return &cp
+}
+
 func (s *MemoryStore) CreateCommission(_ context.Context, comm *AffiliateCommission) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -376,8 +434,7 @@ func (s *MemoryStore) CreateCommission(_ context.Context, comm *AffiliateCommiss
 	}
 
 	key := comm.WorkspaceID + ":" + comm.CommissionID
-	cp := *comm
-	s.commissions[key] = &cp
+	s.commissions[key] = cloneCommission(comm)
 	return nil
 }
 
@@ -387,8 +444,7 @@ func (s *MemoryStore) GetCommissionByOrder(_ context.Context, workspaceID, order
 
 	for _, c := range s.commissions {
 		if c.WorkspaceID == workspaceID && c.OrderID == orderID {
-			cp := *c
-			return &cp, nil
+			return cloneCommission(c), nil
 		}
 	}
 	return nil, ErrCommissionNotFound
@@ -403,8 +459,7 @@ func (s *MemoryStore) GetCommission(_ context.Context, workspaceID, commissionID
 	if !ok {
 		return nil, ErrCommissionNotFound
 	}
-	cp := *c
-	return &cp, nil
+	return cloneCommission(c), nil
 }
 
 func (s *MemoryStore) ListCommissions(_ context.Context, workspaceID string, linkID *string, status *CommissionState, limit, offset int) ([]*AffiliateCommission, error) {
@@ -422,8 +477,7 @@ func (s *MemoryStore) ListCommissions(_ context.Context, workspaceID string, lin
 		if status != nil && c.Status != *status {
 			continue
 		}
-		cp := *c
-		matches = append(matches, &cp)
+		matches = append(matches, cloneCommission(c))
 	}
 
 	sort.Slice(matches, func(i, j int) bool {
@@ -448,8 +502,7 @@ func (s *MemoryStore) UpdateCommission(_ context.Context, comm *AffiliateCommiss
 	if _, ok := s.commissions[key]; !ok {
 		return ErrCommissionNotFound
 	}
-	cp := *comm
-	s.commissions[key] = &cp
+	s.commissions[key] = cloneCommission(comm)
 	return nil
 }
 
@@ -462,8 +515,7 @@ func (s *MemoryStore) CreatePayout(_ context.Context, payout *AffiliatePayout) e
 	defer s.mu.Unlock()
 
 	key := payout.WorkspaceID + ":" + payout.PayoutID
-	cp := *payout
-	s.payouts[key] = &cp
+	s.payouts[key] = clonePayout(payout)
 	return nil
 }
 
@@ -476,8 +528,7 @@ func (s *MemoryStore) GetPayout(_ context.Context, workspaceID, payoutID string)
 	if !ok {
 		return nil, ErrPayoutNotFound
 	}
-	cp := *p
-	return &cp, nil
+	return clonePayout(p), nil
 }
 
 func (s *MemoryStore) ListPayouts(_ context.Context, workspaceID string, creatorID *string) ([]*AffiliatePayout, error) {
@@ -492,8 +543,7 @@ func (s *MemoryStore) ListPayouts(_ context.Context, workspaceID string, creator
 		if creatorID != nil && p.CreatorEntityID != *creatorID {
 			continue
 		}
-		cp := *p
-		matches = append(matches, &cp)
+		matches = append(matches, clonePayout(p))
 	}
 
 	sort.Slice(matches, func(i, j int) bool {
@@ -510,8 +560,7 @@ func (s *MemoryStore) UpdatePayout(_ context.Context, payout *AffiliatePayout) e
 	if _, ok := s.payouts[key]; !ok {
 		return ErrPayoutNotFound
 	}
-	cp := *payout
-	s.payouts[key] = &cp
+	s.payouts[key] = clonePayout(payout)
 	return nil
 }
 

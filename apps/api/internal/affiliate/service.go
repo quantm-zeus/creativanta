@@ -31,18 +31,89 @@ type LedgerRecorder interface {
 	RecordAffiliatePosting(ctx context.Context, wsID string, comm *AffiliateCommission, role EconomicRole, now time.Time) (*LedgerPostingResult, error)
 }
 
+type ReversibleLedgerRecorder interface {
+	LedgerRecorder
+	ReconcileCommissionObligation(ctx context.Context, wsID string, comm *AffiliateCommission, now time.Time) error
+	ListCommissionPostings(wsID, commissionID string) []*LedgerPostingResult
+}
+
 type DefaultLedgerRecorder struct {
-	mu       sync.RWMutex
-	postings map[string]*LedgerPostingResult
+	mu           sync.RWMutex
+	postings     map[string]*LedgerPostingResult
+	entries      []*LedgerPostingResult
+	activeByRole map[string]*LedgerPostingResult // key: wsID:commissionID:role
 }
 
 func NewDefaultLedgerRecorder() *DefaultLedgerRecorder {
-	return &DefaultLedgerRecorder{postings: make(map[string]*LedgerPostingResult)}
+	return &DefaultLedgerRecorder{
+		postings:     make(map[string]*LedgerPostingResult),
+		activeByRole: make(map[string]*LedgerPostingResult),
+	}
+}
+
+func cloneLedgerPosting(p *LedgerPostingResult) *LedgerPostingResult {
+	if p == nil {
+		return nil
+	}
+	cp := *p
+	if p.ReversalOf != nil {
+		r := *p.ReversalOf
+		cp.ReversalOf = &r
+	}
+	return &cp
+}
+
+func ledgerRoleKey(wsID, commissionID string, role EconomicRole) string {
+	return fmt.Sprintf("%s:%s:%s", strings.TrimSpace(wsID), strings.TrimSpace(commissionID), string(role))
 }
 
 func (d *DefaultLedgerRecorder) RecordAffiliatePosting(_ context.Context, wsID string, comm *AffiliateCommission, role EconomicRole, now time.Time) (*LedgerPostingResult, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+
+	return d.recordOrAdjustLocked(wsID, comm, role, now)
+}
+
+func (d *DefaultLedgerRecorder) recordOrAdjustLocked(wsID string, comm *AffiliateCommission, role EconomicRole, now time.Time) (*LedgerPostingResult, error) {
+	if d.activeByRole == nil {
+		d.activeByRole = make(map[string]*LedgerPostingResult)
+	}
+	key := ledgerRoleKey(wsID, comm.CommissionID, role)
+	if prior, ok := d.activeByRole[key]; ok && prior != nil {
+		// Idempotent replay when commission obligation is unchanged and not clawed back
+		if comm.Status != CommissionClawedBack && prior.Amount.Cmp(comm.CommissionAmount) == 0 {
+			return cloneLedgerPosting(prior), nil
+		}
+		// Append immutable reversal entry referencing the prior posting
+		negAmt, _ := tenantdb.ZeroDecimal().Sub(prior.Amount)
+		negImpact, _ := tenantdb.ZeroDecimal().Sub(prior.NetProfitImpact)
+		priorID := prior.PostingID
+		revResult := &LedgerPostingResult{
+			PostingID:       fmt.Sprintf("post-aff-rev-%s", newUUID()[:8]),
+			WorkspaceID:     wsID,
+			CommissionID:    comm.CommissionID,
+			OrderID:         comm.OrderID,
+			EconomicRole:    role,
+			PostingType:     prior.PostingType + "_reversal",
+			Amount:          negAmt,
+			Currency:        prior.Currency,
+			COGSDeducted:    prior.COGSDeducted,
+			NetProfitImpact: negImpact,
+			ReversalOf:      &priorID,
+			PostedAt:        now,
+		}
+		d.postings[revResult.PostingID] = cloneLedgerPosting(revResult)
+		d.entries = append(d.entries, cloneLedgerPosting(revResult))
+		delete(d.activeByRole, key)
+
+		if comm.Status == CommissionClawedBack || comm.CommissionAmount.Cmp(tenantdb.ZeroDecimal()) <= 0 {
+			return cloneLedgerPosting(revResult), nil
+		}
+	}
+
+	if comm.Status == CommissionClawedBack || comm.CommissionAmount.Cmp(tenantdb.ZeroDecimal()) <= 0 {
+		return nil, fmt.Errorf("%w: cannot record positive ledger posting for clawed-back or zero commission", ErrOrderIneligible)
+	}
 
 	postingID := fmt.Sprintf("post-aff-%s", newUUID()[:8])
 	var postingType string
@@ -62,6 +133,8 @@ func (d *DefaultLedgerRecorder) RecordAffiliatePosting(_ context.Context, wsID s
 	result := &LedgerPostingResult{
 		PostingID:       postingID,
 		WorkspaceID:     wsID,
+		CommissionID:    comm.CommissionID,
+		OrderID:         comm.OrderID,
 		EconomicRole:    role,
 		PostingType:     postingType,
 		Amount:          comm.CommissionAmount,
@@ -70,8 +143,43 @@ func (d *DefaultLedgerRecorder) RecordAffiliatePosting(_ context.Context, wsID s
 		NetProfitImpact: netProfitImpact,
 		PostedAt:        now,
 	}
-	d.postings[postingID] = result
-	return result, nil
+	d.postings[postingID] = cloneLedgerPosting(result)
+	d.entries = append(d.entries, cloneLedgerPosting(result))
+	if comm.CommissionID != "" {
+		d.activeByRole[key] = cloneLedgerPosting(result)
+	}
+	return cloneLedgerPosting(result), nil
+}
+
+func (d *DefaultLedgerRecorder) ReconcileCommissionObligation(_ context.Context, wsID string, comm *AffiliateCommission, now time.Time) error {
+	if comm == nil || comm.CommissionID == "" {
+		return nil
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	for _, role := range []EconomicRole{EconomicRoleCreator, EconomicRoleSeller} {
+		key := ledgerRoleKey(wsID, comm.CommissionID, role)
+		if prior, ok := d.activeByRole[key]; ok && prior != nil {
+			if _, err := d.recordOrAdjustLocked(wsID, comm, role, now); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (d *DefaultLedgerRecorder) ListCommissionPostings(wsID, commissionID string) []*LedgerPostingResult {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+
+	var out []*LedgerPostingResult
+	for _, entry := range d.entries {
+		if entry.WorkspaceID == wsID && (commissionID == "" || entry.CommissionID == commissionID) {
+			out = append(out, cloneLedgerPosting(entry))
+		}
+	}
+	return out
 }
 
 type Service struct {
@@ -458,6 +566,10 @@ func (s *Service) RegisterVerifiedOrder(ctx context.Context, ord *VerifiedOrder)
 	if curr == "" {
 		return ErrOrderCurrencyMismatch
 	}
+
+	s.payoutMu.Lock()
+	defer s.payoutMu.Unlock()
+
 	now := s.nowFunc()
 	cp := *ord
 	cp.WorkspaceID = strings.TrimSpace(ord.WorkspaceID)
@@ -470,7 +582,142 @@ func (s *Service) RegisterVerifiedOrder(ctx context.Context, ord *VerifiedOrder)
 		cp.CreatedAt = now
 	}
 	cp.UpdatedAt = now
-	return s.store.UpsertVerifiedOrder(ctx, &cp)
+	if err := s.store.UpsertVerifiedOrder(ctx, &cp); err != nil {
+		return err
+	}
+
+	// Billing R08: If a commission already exists for this order, immediately reconcile
+	// its eligibility, net obligation, and reversible ledger state against the updated order.
+	if comm, err := s.store.GetCommissionByOrder(ctx, cp.WorkspaceID, cp.OrderID); err == nil && comm != nil {
+		_, _ = s.reconcileCommissionWithVerifiedOrderLocked(ctx, cp.WorkspaceID, comm)
+	}
+	return nil
+}
+
+// SyncOrderState implements order.AffiliateOrderVerifier so order completion, cancellation, and refund
+// transitions automatically synchronize authoritative order snapshots into the affiliate service.
+func (s *Service) SyncOrderState(ctx context.Context, workspaceID, orderID string, grossAmount, refundedAmount tenantdb.ExactDecimal, currency, lifecycleState string) error {
+	return s.RegisterVerifiedOrder(ctx, &VerifiedOrder{
+		OrderID:        orderID,
+		WorkspaceID:    workspaceID,
+		GrossAmount:    grossAmount,
+		RefundedAmount: refundedAmount,
+		Currency:       currency,
+		LifecycleState: lifecycleState,
+	})
+}
+
+func (s *Service) reconcileLedgerObligationLocked(ctx context.Context, wsID string, comm *AffiliateCommission, now time.Time) {
+	if revLedger, ok := s.ledger.(ReversibleLedgerRecorder); ok && revLedger != nil {
+		_ = revLedger.ReconcileCommissionObligation(ctx, wsID, comm, now)
+	}
+}
+
+func (s *Service) ListLedgerPostings(wsID, commissionID string) []*LedgerPostingResult {
+	if revLedger, ok := s.ledger.(ReversibleLedgerRecorder); ok && revLedger != nil {
+		return revLedger.ListCommissionPostings(wsID, commissionID)
+	}
+	return nil
+}
+
+// reconcileCommissionWithVerifiedOrderLocked re-verifies a commission against the authoritative
+// order/refund record in the store (Billing R08).
+// - Full refund or cancelled/ineligible order -> transitions commission to clawed_back, reverses ledger, returns ErrOrderIneligible.
+// - Partial refund -> reduces commission proportionally to post-refund eligible order amount, records partial clawback & ledger adjustment.
+func (s *Service) reconcileCommissionWithVerifiedOrderLocked(ctx context.Context, wsID string, comm *AffiliateCommission) (*AffiliateCommission, error) {
+	if comm == nil || strings.TrimSpace(comm.OrderID) == "" {
+		return comm, nil
+	}
+	ord, err := s.store.GetVerifiedOrder(ctx, wsID, comm.OrderID)
+	if err != nil || ord == nil {
+		// If the commission was created via CalculateCommission (OrderAmount > 0), its verified order must exist.
+		if comm.OrderAmount.Cmp(tenantdb.ZeroDecimal()) > 0 {
+			return nil, ErrOrderNotVerified
+		}
+		return comm, nil
+	}
+
+	now := s.nowFunc()
+	eligibleAmount, subErr := ord.GrossAmount.Sub(ord.RefundedAmount)
+	orderIneligible := !isEligibleCommissionOrderState(ord.LifecycleState) ||
+		subErr != nil ||
+		ord.RefundedAmount.IsNegative() ||
+		eligibleAmount.Cmp(tenantdb.ZeroDecimal()) <= 0
+
+	if orderIneligible {
+		if comm.Status != CommissionClawedBack && comm.Status != CommissionPaidOut {
+			clawDelta := comm.CommissionAmount
+			totalClaw := clawDelta
+			if comm.ClawbackAmount != nil {
+				if sum, addErr := comm.ClawbackAmount.Add(clawDelta); addErr == nil {
+					totalClaw = sum
+				}
+			}
+			comm.Status = CommissionClawedBack
+			comm.ClawbackReason = "order_refunded"
+			comm.ClawbackAmount = &totalClaw
+			comm.ClawedBackAt = &now
+			comm.UpdatedAt = now
+			_ = s.store.UpdateCommission(ctx, comm)
+			s.reconcileLedgerObligationLocked(ctx, wsID, comm, now)
+
+			s.emitEvent(ctx, "affiliate.commission.clawed_back", "commission", comm.CommissionID, wsID, map[string]any{
+				"commission_id":   comm.CommissionID,
+				"order_id":        comm.OrderID,
+				"clawback_reason": comm.ClawbackReason,
+				"refund_amount":   clawDelta.String(),
+			})
+		}
+		return comm, fmt.Errorf("%w (%w): source order %s is refunded or ineligible (state=%s)", ErrOrderIneligible, ErrCommissionAlreadyConfirmed, comm.OrderID, ord.LifecycleState)
+	}
+
+	// Partial refund handling: if eligibleAmount < comm.OrderAmount (or order has positive RefundedAmount),
+	// recompute the canonical post-refund commission obligation.
+	if ord.RefundedAmount.Cmp(tenantdb.ZeroDecimal()) > 0 && (comm.OrderAmount.IsZero() || eligibleAmount.Cmp(comm.OrderAmount) < 0) {
+		var newCommAmt tenantdb.ExactDecimal
+		hasNewComm := false
+		if link, linkErr := s.store.GetLink(ctx, wsID, comm.AffiliateLinkID); linkErr == nil && link != nil && link.CommissionRate.Cmp(tenantdb.ZeroDecimal()) > 0 {
+			newCommAmt = calculateCommissionAmount(eligibleAmount, link.CommissionRate)
+			hasNewComm = true
+		} else if comm.OrderAmount.Cmp(tenantdb.ZeroDecimal()) > 0 {
+			// Proportional reduction when link is not present in store
+			if ratio, divErr := eligibleAmount.QuoRoundHalfUp(comm.OrderAmount); divErr == nil {
+				if quot, mulErr := comm.CommissionAmount.MulFloor(ratio); mulErr == nil {
+					newCommAmt = quot
+					hasNewComm = true
+				}
+			}
+		}
+
+		if hasNewComm && newCommAmt.Cmp(comm.CommissionAmount) < 0 {
+			clawDelta, _ := comm.CommissionAmount.Sub(newCommAmt)
+			totalClaw := clawDelta
+			if comm.ClawbackAmount != nil {
+				if sum, addErr := comm.ClawbackAmount.Add(clawDelta); addErr == nil {
+					totalClaw = sum
+				}
+			}
+			comm.OrderAmount = eligibleAmount
+			comm.CommissionAmount = newCommAmt
+			comm.ClawbackReason = "partial_order_refund"
+			comm.ClawbackAmount = &totalClaw
+			comm.UpdatedAt = now
+			if err := s.store.UpdateCommission(ctx, comm); err != nil {
+				return nil, err
+			}
+			s.reconcileLedgerObligationLocked(ctx, wsID, comm, now)
+
+			s.emitEvent(ctx, "affiliate.commission.clawed_back", "commission", comm.CommissionID, wsID, map[string]any{
+				"commission_id":        comm.CommissionID,
+				"order_id":             comm.OrderID,
+				"clawback_reason":      comm.ClawbackReason,
+				"refund_amount":        clawDelta.String(),
+				"remaining_commission": newCommAmt.String(),
+			})
+		}
+	}
+
+	return comm, nil
 }
 
 func (s *Service) RegisterVerifiedSettlement(ctx context.Context, settle *VerifiedSettlement) error {
@@ -615,7 +862,16 @@ func (s *Service) CalculateCommission(ctx context.Context, wsID, linkID, orderID
 }
 
 func (s *Service) ConfirmCommission(ctx context.Context, wsID, commissionID string) (*AffiliateCommission, error) {
+	s.payoutMu.Lock()
+	defer s.payoutMu.Unlock()
+
 	comm, err := s.store.GetCommission(ctx, wsID, commissionID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Billing R08: Re-check authoritative order/refund state before confirming commission.
+	comm, err = s.reconcileCommissionWithVerifiedOrderLocked(ctx, wsID, comm)
 	if err != nil {
 		return nil, err
 	}
@@ -643,6 +899,9 @@ func (s *Service) ConfirmCommission(ctx context.Context, wsID, commissionID stri
 }
 
 func (s *Service) ClawbackCommission(ctx context.Context, wsID, commissionID, reason, amountStr string) (*AffiliateCommission, error) {
+	s.payoutMu.Lock()
+	defer s.payoutMu.Unlock()
+
 	comm, err := s.store.GetCommission(ctx, wsID, commissionID)
 	if err != nil {
 		return nil, err
@@ -671,6 +930,7 @@ func (s *Service) ClawbackCommission(ctx context.Context, wsID, commissionID, re
 	if err := s.store.UpdateCommission(ctx, comm); err != nil {
 		return nil, err
 	}
+	s.reconcileLedgerObligationLocked(ctx, wsID, comm, now)
 
 	s.emitEvent(ctx, "affiliate.commission.clawed_back", "commission", comm.CommissionID, wsID, map[string]any{
 		"commission_id":   comm.CommissionID,
@@ -689,9 +949,20 @@ func (s *Service) PostCommissionToLedger(ctx context.Context, wsID, commissionID
 		return nil, ErrEconomicRoleRequired
 	}
 
+	s.payoutMu.Lock()
+	defer s.payoutMu.Unlock()
+
 	comm, err := s.store.GetCommission(ctx, wsID, commissionID)
 	if err != nil {
 		return nil, err
+	}
+
+	comm, err = s.reconcileCommissionWithVerifiedOrderLocked(ctx, wsID, comm)
+	if err != nil {
+		return nil, err
+	}
+	if comm.Status == CommissionClawedBack {
+		return nil, fmt.Errorf("%w: commission %s is clawed back", ErrOrderIneligible, commissionID)
 	}
 
 	now := s.nowFunc()
@@ -736,6 +1007,13 @@ func (s *Service) CreatePayoutBatch(ctx context.Context, wsID, creatorID string,
 		if err != nil {
 			return nil, err
 		}
+
+		// Billing R08: Re-verify authoritative order/refund state before including commission in payout batch.
+		comm, err = s.reconcileCommissionWithVerifiedOrderLocked(ctx, wsID, comm)
+		if err != nil {
+			return nil, fmt.Errorf("%w (%w): commission %s source order is refunded or ineligible: %v", ErrInvalidPayoutBatch, ErrOrderIneligible, cid, err)
+		}
+
 		if comm.Status != CommissionConfirmed {
 			return nil, ErrCommissionHoldPeriodActive
 		}
@@ -819,6 +1097,9 @@ func (s *Service) ExecutePayoutBatch(ctx context.Context, wsID, payoutID, settle
 	if len(payout.CommissionIDs) == 0 {
 		return nil, ErrInvalidPayoutBatch
 	}
+	if payout.SettlementID != nil && strings.TrimSpace(*payout.SettlementID) != "" && strings.TrimSpace(*payout.SettlementID) != settlementID {
+		return nil, fmt.Errorf("%w (%w): payout %s is already bound to settlement %s", ErrSettlementAlreadyUsed, ErrSettlementRequired, payout.PayoutID, *payout.SettlementID)
+	}
 
 	// Verify authoritative settlement record in the same workspace
 	settle, err := s.store.GetVerifiedSettlement(ctx, wsID, settlementID)
@@ -837,22 +1118,72 @@ func (s *Service) ExecutePayoutBatch(ctx context.Context, wsID, payoutID, settle
 	if settle.BoundPayoutID != nil && strings.TrimSpace(*settle.BoundPayoutID) != "" && strings.TrimSpace(*settle.BoundPayoutID) != payout.PayoutID {
 		return nil, fmt.Errorf("%w (%w): settlement %s is already bound to payout %s", ErrSettlementAlreadyUsed, ErrSettlementRequired, settlementID, *settle.BoundPayoutID)
 	}
-	remainingSettle, err := settle.NetAmount.Sub(settle.AllocatedAmount)
-	if err != nil || settle.NetAmount.Cmp(payout.TotalAmount) != 0 || remainingSettle.Cmp(payout.TotalAmount) < 0 {
-		return nil, fmt.Errorf("%w (%w): settlement net amount %s (remaining %s) does not match payout total %s", ErrSettlementAmountMismatch, ErrSettlementRequired, settle.NetAmount.Fixed6String(), remainingSettle.Fixed6String(), payout.TotalAmount.Fixed6String())
+
+	// Billing R10: Recognize when this exact payout batch already reserved the settlement allocation
+	// on an earlier interrupted execution attempt so retries can complete idempotently.
+	alreadyAllocatedToThisPayout := settle.BoundPayoutID != nil &&
+		strings.TrimSpace(*settle.BoundPayoutID) == payout.PayoutID &&
+		settle.AllocatedAmount.Cmp(payout.TotalAmount) >= 0
+
+	if !alreadyAllocatedToThisPayout {
+		remainingSettle, err := settle.NetAmount.Sub(settle.AllocatedAmount)
+		if err != nil || settle.NetAmount.Cmp(payout.TotalAmount) != 0 || remainingSettle.Cmp(payout.TotalAmount) < 0 {
+			return nil, fmt.Errorf("%w (%w): settlement net amount %s (remaining %s) does not match payout total %s", ErrSettlementAmountMismatch, ErrSettlementRequired, settle.NetAmount.Fixed6String(), remainingSettle.Fixed6String(), payout.TotalAmount.Fixed6String())
+		}
+	} else if settle.NetAmount.Cmp(payout.TotalAmount) != 0 {
+		return nil, fmt.Errorf("%w (%w): settlement net amount %s does not match payout total %s", ErrSettlementAmountMismatch, ErrSettlementRequired, settle.NetAmount.Fixed6String(), payout.TotalAmount.Fixed6String())
 	}
 
 	now := s.nowFunc()
 	comms := make([]*AffiliateCommission, 0, len(payout.CommissionIDs))
 	expectedTotal := tenantdb.ZeroDecimal()
 
-	// Verify all commissions are still confirmed, past hold window, and bound to this payout batch
+	releaseTentativeSettlement := func() {
+		if alreadyAllocatedToThisPayout {
+			if rem, subErr := settle.AllocatedAmount.Sub(payout.TotalAmount); subErr == nil && !rem.IsNegative() {
+				settle.AllocatedAmount = rem
+			} else {
+				settle.AllocatedAmount = tenantdb.ZeroDecimal()
+			}
+			settle.BoundPayoutID = nil
+			settle.UpdatedAt = now
+			_ = s.store.UpsertVerifiedSettlement(ctx, settle)
+		}
+	}
+
+	invalidateBatchBindings := func(loaded []*AffiliateCommission) {
+		for _, c := range loaded {
+			if c != nil && c.PayoutID != nil && *c.PayoutID == payout.PayoutID && c.Status != CommissionPaidOut {
+				c.PayoutID = nil
+				c.UpdatedAt = now
+				_ = s.store.UpdateCommission(ctx, c)
+			}
+		}
+		payout.Status = PayoutFailed
+		payout.UpdatedAt = now
+		_ = s.store.UpdatePayout(ctx, payout)
+	}
+
+	// Verify all commissions are still confirmed (or already paid_out for THIS payout on retry),
+	// past hold window, bound to this payout batch, and backed by an un-refunded source order (Billing R08, R10).
 	for _, cid := range payout.CommissionIDs {
 		comm, err := s.store.GetCommission(ctx, wsID, cid)
 		if err != nil {
 			return nil, err
 		}
-		if comm.Status != CommissionConfirmed {
+
+		// Billing R08: Re-check authoritative order/refund state before executing payout.
+		comm, reconErr := s.reconcileCommissionWithVerifiedOrderLocked(ctx, wsID, comm)
+		if reconErr != nil {
+			releaseTentativeSettlement()
+			invalidateBatchBindings(comms)
+			return nil, fmt.Errorf("%w (%w): commission %s source order refunded before payout execution: %v", ErrInvalidPayoutBatch, ErrOrderIneligible, cid, reconErr)
+		}
+
+		isResumedPaidOutForThisBatch := comm.Status == CommissionPaidOut && comm.PayoutID != nil && strings.TrimSpace(*comm.PayoutID) == payout.PayoutID
+		if comm.Status != CommissionConfirmed && !isResumedPaidOutForThisBatch {
+			releaseTentativeSettlement()
+			invalidateBatchBindings(comms)
 			return nil, fmt.Errorf("%w: commission %s is in status %s and cannot be paid out", ErrInvalidPayoutBatch, cid, comm.Status)
 		}
 		if !comm.HoldUntil.IsZero() && now.Before(comm.HoldUntil) {
@@ -869,23 +1200,39 @@ func (s *Service) ExecutePayoutBatch(ctx context.Context, wsID, payoutID, settle
 	}
 
 	if expectedTotal.Cmp(payout.TotalAmount) != 0 {
-		return nil, fmt.Errorf("%w: commission total %s does not match batch total %s", ErrInvalidPayoutBatch, expectedTotal.Fixed6String(), payout.TotalAmount.Fixed6String())
+		releaseTentativeSettlement()
+		invalidateBatchBindings(comms)
+		return nil, fmt.Errorf("%w (%w): commission total %s after refund reconciliation does not match batch total %s", ErrInvalidPayoutBatch, ErrOrderIneligible, expectedTotal.Fixed6String(), payout.TotalAmount.Fixed6String())
 	}
 
-	// Atomically bind settlement capacity to this payout batch
-	newAllocated, err := settle.AllocatedAmount.Add(payout.TotalAmount)
-	if err != nil {
-		return nil, err
-	}
-	settle.AllocatedAmount = newAllocated
-	settle.BoundPayoutID = &payout.PayoutID
-	settle.UpdatedAt = now
-	if err := s.store.UpsertVerifiedSettlement(ctx, settle); err != nil {
-		return nil, err
+	// Billing R10: Persist resumable processing state and settlement binding idempotently
+	if payout.Status != PayoutProcessing || payout.SettlementID == nil || *payout.SettlementID != settlementID {
+		payout.Status = PayoutProcessing
+		payout.SettlementID = &settlementID
+		payout.UpdatedAt = now
+		if err := s.store.UpdatePayout(ctx, payout); err != nil {
+			return nil, err
+		}
 	}
 
-	// Update each commission status to paid_out first, checking errors
+	if !alreadyAllocatedToThisPayout {
+		newAllocated, err := settle.AllocatedAmount.Add(payout.TotalAmount)
+		if err != nil {
+			return nil, err
+		}
+		settle.AllocatedAmount = newAllocated
+		settle.BoundPayoutID = &payout.PayoutID
+		settle.UpdatedAt = now
+		if err := s.store.UpsertVerifiedSettlement(ctx, settle); err != nil {
+			return nil, err
+		}
+	}
+
+	// Update each commission status to paid_out (skipping commissions already paid_out for this batch on retry)
 	for _, comm := range comms {
+		if comm.Status == CommissionPaidOut && comm.PayoutID != nil && *comm.PayoutID == payout.PayoutID {
+			continue
+		}
 		comm.Status = CommissionPaidOut
 		comm.PayoutID = &payout.PayoutID
 		comm.PaidOutAt = &now

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -19,6 +20,14 @@ type InventoryService interface {
 	ReleaseReservation(ctx context.Context, workspaceID, orderID, reason string) error
 	ShouldDeductStockForImportedOrder(ctx context.Context, workspaceID, skuID, locationID string, orderOrderedAt time.Time) (bool, error)
 	RecordPhysicalReturn(ctx context.Context, workspaceID, orderID, returnID, skuID, locationID string, quantity int32, reason string) (*inventory.Movement, error)
+}
+
+type inventoryStoreProvider interface {
+	Store() inventory.Store
+}
+
+type AffiliateOrderVerifier interface {
+	SyncOrderState(ctx context.Context, workspaceID, orderID string, grossAmount, refundedAmount tenantdb.ExactDecimal, currency, lifecycleState string) error
 }
 
 type FinanceService interface {
@@ -45,6 +54,7 @@ type Service struct {
 	store      Store
 	inventory  InventoryService
 	finance    FinanceService
+	affiliate  AffiliateOrderVerifier
 	eventSink  EventSink
 	clock      func() time.Time
 	entityLock sync.Map
@@ -97,6 +107,22 @@ func (s *Service) SetFinance(fin FinanceService) {
 func (s *Service) WithFinance(fin FinanceService) *Service {
 	s.finance = fin
 	return s
+}
+
+func (s *Service) SetAffiliateVerifier(v AffiliateOrderVerifier) {
+	s.affiliate = v
+}
+
+func (s *Service) WithAffiliateVerifier(v AffiliateOrderVerifier) *Service {
+	s.affiliate = v
+	return s
+}
+
+func (s *Service) syncAffiliateOrder(ctx context.Context, o *Order) {
+	if s.affiliate == nil || o == nil {
+		return
+	}
+	_ = s.affiliate.SyncOrderState(ctx, o.WorkspaceID, o.OrderID, o.Amount, o.RefundedAmount, o.Currency, string(o.LifecycleState))
 }
 
 func (s *Service) GetOrder(ctx context.Context, workspaceID, orderID string) (*Order, error) {
@@ -174,11 +200,193 @@ func (s *Service) recordOrderPosting(ctx context.Context, o *Order) error {
 	})
 }
 
+func (s *Service) buildReservationItems(ctx context.Context, o *Order, defaultLocationID string) ([]inventory.ReservationItem, error) {
+	if s.inventory == nil || o == nil {
+		return nil, nil
+	}
+	var reservationItems []inventory.ReservationItem
+	for _, item := range o.Items {
+		if item.Sku == "" || item.Quantity <= 0 {
+			continue
+		}
+		locID := defaultLocationID
+		if locID == "" {
+			locID = "00000000-0000-0000-0000-000000000001" // standard fallback
+		}
+		shouldDeduct, err := s.inventory.ShouldDeductStockForImportedOrder(ctx, o.WorkspaceID, item.Sku, locID, o.OrderedAt)
+		if err != nil {
+			return nil, fmt.Errorf("evaluate stock deduction for sku %s: %w", item.Sku, err)
+		}
+		if shouldDeduct {
+			reservationItems = append(reservationItems, inventory.ReservationItem{
+				SkuID:      item.Sku,
+				LocationID: locID,
+				Quantity:   item.Quantity,
+			})
+		}
+	}
+	return reservationItems, nil
+}
+
+// ensureOrderStockEffects idempotently reconciles stock reservations and sale deductions for an order's
+// target/effective lifecycle state, recovering safely if a previous attempt crashed after persisting the order row.
+func (s *Service) ensureOrderStockEffects(ctx context.Context, o *Order, effectiveState LifecycleState, defaultLocationID string) error {
+	if s.inventory == nil || o == nil || effectiveState == StateCancelled || effectiveState == StateReturned {
+		return nil
+	}
+	reservationItems, err := s.buildReservationItems(ctx, o, defaultLocationID)
+	if err != nil {
+		return err
+	}
+	if len(reservationItems) == 0 {
+		return nil
+	}
+
+	if effectiveState == StateCreated {
+		const holdTTL = 30 * time.Minute
+		_, err := s.inventory.ReserveStock(ctx, o.WorkspaceID, o.OrderID, reservationItems, holdTTL)
+		if err != nil && !errors.Is(err, inventory.ErrReservationConflict) {
+			return fmt.Errorf("reserve stock: %w", err)
+		}
+		return nil
+	}
+
+	if effectiveState == StateConfirmed || effectiveState == StateFulfilled || effectiveState == StateCompleted ||
+		effectiveState == StatePartiallyRefunded || effectiveState == StateRefunded {
+		_, err := s.inventory.FulfillReservation(ctx, o.WorkspaceID, o.OrderID)
+		if err == nil {
+			return nil
+		}
+		if errors.Is(err, inventory.ErrReservationNotFound) || errors.Is(err, inventory.ErrReservationExpired) || errors.Is(err, inventory.ErrReservationConflict) {
+			const holdTTL = 5 * time.Minute
+			if _, resErr := s.inventory.ReserveStock(ctx, o.WorkspaceID, o.OrderID, reservationItems, holdTTL); resErr != nil && !errors.Is(resErr, inventory.ErrReservationConflict) {
+				return fmt.Errorf("reserve stock for order %s: %w", o.OrderID, resErr)
+			}
+			if _, fulErr := s.inventory.FulfillReservation(ctx, o.WorkspaceID, o.OrderID); fulErr != nil {
+				return fmt.Errorf("fulfill stock for order %s: %w", o.OrderID, fulErr)
+			}
+			return nil
+		}
+		return fmt.Errorf("fulfill stock for order %s: %w", o.OrderID, err)
+	}
+	return nil
+}
+
+// releaseOrCompensateOrderStockOnCancel releases held reservations and, if an order was already confirmed
+// (consuming its reservation prior to physical fulfillment), idempotently restores on-hand stock using a
+// deterministic cancellation compensation adjustment movement (distinct from physical customer returns).
+func (s *Service) releaseOrCompensateOrderStockOnCancel(ctx context.Context, o *Order, reason string) error {
+	if s.inventory == nil || o == nil {
+		return nil
+	}
+	if err := s.inventory.ReleaseReservation(ctx, o.WorkspaceID, o.OrderID, reason); err != nil {
+		return err
+	}
+
+	sp, ok := s.inventory.(inventoryStoreProvider)
+	if !ok || sp.Store() == nil {
+		return nil
+	}
+	invStore := sp.Store()
+	resList, err := invStore.ListReservationsByOrder(ctx, o.WorkspaceID, o.OrderID)
+	if err != nil || len(resList) == 0 {
+		return err
+	}
+
+	var pairs []inventory.SkuLocPair
+	seen := make(map[string]struct{}, len(resList))
+	for _, r := range resList {
+		k := r.SkuID + ":" + r.LocationID
+		if _, exists := seen[k]; !exists {
+			seen[k] = struct{}{}
+			pairs = append(pairs, inventory.SkuLocPair{SkuID: r.SkuID, LocationID: r.LocationID})
+		}
+	}
+
+	return invStore.AtomicExecute(ctx, o.WorkspaceID, pairs, func(tx inventory.StoreTx) error {
+		activeResList, err := tx.ListReservationsByOrder(ctx, o.WorkspaceID, o.OrderID)
+		if err != nil {
+			return err
+		}
+		for _, r := range activeResList {
+			if r.Status == inventory.ResHeld {
+				if err := tx.UpdateReservationStatus(ctx, o.WorkspaceID, r.ReservationID, inventory.ResReleased); err != nil {
+					return err
+				}
+				if bal, bErr := tx.GetBalanceForUpdate(ctx, o.WorkspaceID, r.SkuID, r.LocationID); bErr == nil && bal != nil {
+					bal.Reserved -= r.Quantity
+					if bal.Reserved < 0 {
+						bal.Reserved = 0
+					}
+					if err := tx.UpdateBalance(ctx, bal); err != nil {
+						return err
+					}
+				}
+				continue
+			}
+
+			// Pre-fulfillment cancellation compensation: check if a sale movement was recorded for this order line
+			saleMovKey := fmt.Sprintf("mov_sale_%s_%s_%s", o.OrderID, r.SkuID, r.LocationID)
+			saleMov, err := tx.FindMovementByKey(ctx, o.WorkspaceID, saleMovKey)
+			if err != nil {
+				return err
+			}
+			if saleMov == nil {
+				continue
+			}
+
+			compMovKey := fmt.Sprintf("mov_cancel_comp_%s_%s_%s", o.OrderID, r.SkuID, r.LocationID)
+			existingComp, err := tx.FindMovementByKey(ctx, o.WorkspaceID, compMovKey)
+			if err != nil {
+				return err
+			}
+			if existingComp == nil {
+				cancelReason := strings.TrimSpace(reason)
+				if cancelReason == "" {
+					cancelReason = "Pre-fulfillment confirmed order cancelled"
+				}
+				mov := &inventory.Movement{
+					MovementID:    newUUID(),
+					WorkspaceID:   o.WorkspaceID,
+					SkuID:         r.SkuID,
+					LocationID:    r.LocationID,
+					MovementType:  inventory.MovementAdjustment,
+					MovementKey:   compMovKey,
+					Quantity:      r.Quantity,
+					ReferenceType: "order_cancel",
+					ReferenceID:   o.OrderID,
+					Reason:        cancelReason,
+					CreatedAt:     s.clock().UTC(),
+				}
+				if err := tx.AppendMovement(ctx, mov); err != nil {
+					return err
+				}
+				bal, err := tx.GetBalanceForUpdate(ctx, o.WorkspaceID, r.SkuID, r.LocationID)
+				if err != nil {
+					return err
+				}
+				bal.OnHand += r.Quantity
+				if err := tx.UpdateBalance(ctx, bal); err != nil {
+					return err
+				}
+			}
+			if r.Status == inventory.ResConsumed {
+				if err := tx.UpdateReservationStatus(ctx, o.WorkspaceID, r.ReservationID, inventory.ResReleased); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	})
+}
+
 // IngestOrder handles order creation and ingestion from external platforms or native channels.
 // Enforces:
-// 1. Idempotency on (platform, external_id, connected_account) and import_fingerprint, plus forward lifecycle progression on updates (F13)
-// 2. Historical order stock protection (I04 / Acceptance Target 2)
-// 3. State initialization and reservation AFTER parent order row exists, preserving replay identity on post-fulfillment finance failure (F12)
+//  1. Idempotency on (platform, external_id, connected_account) and import_fingerprint, plus forward lifecycle progression on updates (F13)
+//  2. Historical order stock protection (I04 / Acceptance Target 2)
+//  3. Safe transactional ordering (Billing R06): parent order row is persisted initially in StateCreated,
+//     stock reservation/fulfillment executes before advancing persisted state to confirmed/fulfilled,
+//     and retries idempotently recover stock and finance effects on crash/restart (F12, R06).
 func (s *Service) IngestOrder(ctx context.Context, o *Order, defaultLocationID string) (*Order, bool, error) {
 	if o.WorkspaceID == "" {
 		return nil, false, ErrMissingTenant
@@ -230,40 +438,16 @@ func (s *Service) IngestOrder(ctx context.Context, o *Order, defaultLocationID s
 	}
 
 	targetState := o.LifecycleState
-	// When ingesting directly as StateCompleted, persist initially in StateFulfilled so that if
-	// finance posting fails after stock is fulfilled, the order row and replay identity remain intact
-	// in StateFulfilled and a retry can complete the finance posting without re-deducting stock (F12).
-	if targetState == StateCompleted {
-		o.LifecycleState = StateFulfilled
-	}
 
 	// 2. Inventory evaluation: check if items should deduct stock
-	var reservationItems []inventory.ReservationItem
-	for _, item := range o.Items {
-		if item.Sku == "" || item.Quantity <= 0 {
-			continue
-		}
-		locID := defaultLocationID
-		if locID == "" {
-			locID = "00000000-0000-0000-0000-000000000001" // standard fallback
-		}
-
-		if s.inventory != nil {
-			shouldDeduct, err := s.inventory.ShouldDeductStockForImportedOrder(ctx, o.WorkspaceID, item.Sku, locID, o.OrderedAt)
-			if err != nil {
-				return nil, false, fmt.Errorf("evaluate stock deduction for sku %s: %w", item.Sku, err)
-			}
-			if shouldDeduct {
-				reservationItems = append(reservationItems, inventory.ReservationItem{
-					SkuID:      item.Sku,
-					LocationID: locID,
-					Quantity:   item.Quantity,
-				})
-			}
-		}
+	reservationItems, err := s.buildReservationItems(ctx, o, defaultLocationID)
+	if err != nil {
+		return nil, false, err
 	}
 
-	// 3. Persist Parent Order FIRST so inventory_reservations FK to orders(id) is always satisfied
+	// 3. Persist Parent Order FIRST in StateCreated so inventory_reservations FK to orders(id) is satisfied
+	// without prematurely marking the order confirmed/fulfilled/completed before stock effects run (Billing R06).
+	o.LifecycleState = StateCreated
 	if err := s.store.CreateOrder(ctx, o); err != nil {
 		return nil, false, err
 	}
@@ -294,7 +478,28 @@ func (s *Service) IngestOrder(ctx context.Context, o *Order, defaultLocationID s
 		}
 	}
 
-	// 5. If order was requested in StateCompleted, transition from StateFulfilled -> StateCompleted and post to finance ledger.
+	// 5. Advance persisted order status only AFTER required stock effects have succeeded (Billing R06).
+	if targetState == StateConfirmed {
+		if err := s.store.UpdateOrderStatus(ctx, o.WorkspaceID, o.OrderID, StateConfirmed, nil); err != nil {
+			return nil, false, err
+		}
+		o.LifecycleState = StateConfirmed
+		o.UpdatedAt = s.clock().UTC()
+	} else if targetState == StateFulfilled || targetState == StateCompleted {
+		if err := s.store.UpdateOrderStatus(ctx, o.WorkspaceID, o.OrderID, StateFulfilled, nil); err != nil {
+			return nil, false, err
+		}
+		o.LifecycleState = StateFulfilled
+		o.UpdatedAt = s.clock().UTC()
+	} else if targetState != StateCreated {
+		if err := s.store.UpdateOrderStatus(ctx, o.WorkspaceID, o.OrderID, targetState, nil); err != nil {
+			return nil, false, err
+		}
+		o.LifecycleState = targetState
+		o.UpdatedAt = s.clock().UTC()
+	}
+
+	// 6. If order was requested in StateCompleted, transition from StateFulfilled -> StateCompleted and post to finance ledger.
 	// If finance fails, CompleteOrder rolls back status to StateFulfilled (NOT deleting the order!), preserving stock & replay identity.
 	if targetState == StateCompleted {
 		completedOrder, err := s.CompleteOrder(ctx, o.WorkspaceID, o.OrderID)
@@ -303,6 +508,8 @@ func (s *Service) IngestOrder(ctx context.Context, o *Order, defaultLocationID s
 		}
 		o = completedOrder
 	}
+
+	s.syncAffiliateOrder(ctx, o)
 
 	s.emitEvent(ctx, "commerce.order.created", "order", o.OrderID, o.WorkspaceID, map[string]any{
 		"order_id":        o.OrderID,
@@ -330,6 +537,17 @@ func (s *Service) reconcileExistingOrderOnIngest(ctx context.Context, existing *
 
 	targetState := incoming.LifecycleState
 	if targetState == "" || targetState == existing.LifecycleState {
+		// Billing R06: Even if the persisted state already matches targetState, ensure stock and finance
+		// effects actually completed in case a prior crash occurred after status persistence.
+		if err := s.ensureOrderStockEffects(ctx, existing, existing.LifecycleState, defaultLocationID); err != nil {
+			return nil, false, err
+		}
+		if existing.LifecycleState == StateCompleted {
+			if err := s.recordOrderPosting(ctx, existing); err != nil {
+				return nil, false, fmt.Errorf("record completed order finance posting: %w", err)
+			}
+			s.syncAffiliateOrder(ctx, existing)
+		}
 		return existing, false, nil
 	}
 
@@ -374,6 +592,11 @@ func (s *Service) reconcileExistingOrderOnIngest(ctx context.Context, existing *
 		return existing, false, nil
 	}
 
+	// Billing R06: Ensure stock effects for the existing state are reconciled before stepping forward.
+	if err := s.ensureOrderStockEffects(ctx, existing, existing.LifecycleState, defaultLocationID); err != nil {
+		return nil, false, err
+	}
+
 	cur := existing
 	var err error
 	if cur.LifecycleState == StateCreated && targetRank >= orderForwardRank(StateConfirmed) {
@@ -399,11 +622,17 @@ func (s *Service) reconcileExistingOrderOnIngest(ctx context.Context, existing *
 
 // ConfirmOrder transitions an order from created to confirmed and fulfills any held stock reservation.
 func (s *Service) ConfirmOrder(ctx context.Context, workspaceID, orderID string) (*Order, error) {
+	unlock := s.lockEntity("order", workspaceID, orderID)
+	defer unlock()
+
 	o, err := s.store.GetOrder(ctx, workspaceID, orderID)
 	if err != nil {
 		return nil, err
 	}
 	if o.LifecycleState == StateConfirmed {
+		if err := s.ensureOrderStockEffects(ctx, o, StateConfirmed, ""); err != nil {
+			return nil, err
+		}
 		return o, nil // Idempotent
 	}
 	if !CanTransitionOrder(o.LifecycleState, StateConfirmed) {
@@ -433,15 +662,25 @@ func (s *Service) ConfirmOrder(ctx context.Context, workspaceID, orderID string)
 
 // FulfillOrder transitions an order from confirmed to fulfilled.
 func (s *Service) FulfillOrder(ctx context.Context, workspaceID, orderID string) (*Order, error) {
+	unlock := s.lockEntity("order", workspaceID, orderID)
+	defer unlock()
+
 	o, err := s.store.GetOrder(ctx, workspaceID, orderID)
 	if err != nil {
 		return nil, err
 	}
 	if o.LifecycleState == StateFulfilled {
+		if err := s.ensureOrderStockEffects(ctx, o, StateFulfilled, ""); err != nil {
+			return nil, err
+		}
 		return o, nil // Idempotent
 	}
 	if !CanTransitionOrder(o.LifecycleState, StateFulfilled) {
 		return nil, fmt.Errorf("%w: cannot transition from %s to %s", ErrInvalidOrderTransition, o.LifecycleState, StateFulfilled)
+	}
+
+	if err := s.ensureOrderStockEffects(ctx, o, StateFulfilled, ""); err != nil {
+		return nil, err
 	}
 
 	if err := s.store.UpdateOrderStatus(ctx, workspaceID, orderID, StateFulfilled, nil); err != nil {
@@ -459,18 +698,29 @@ func (s *Service) FulfillOrder(ctx context.Context, workspaceID, orderID string)
 
 // CompleteOrder marks an order completed and ensures its revenue/cost postings exist in Finance.
 func (s *Service) CompleteOrder(ctx context.Context, workspaceID, orderID string) (*Order, error) {
+	unlock := s.lockEntity("order", workspaceID, orderID)
+	defer unlock()
+
 	o, err := s.store.GetOrder(ctx, workspaceID, orderID)
 	if err != nil {
 		return nil, err
 	}
 	if o.LifecycleState == StateCompleted {
+		if err := s.ensureOrderStockEffects(ctx, o, StateCompleted, ""); err != nil {
+			return nil, err
+		}
 		if err := s.recordOrderPosting(ctx, o); err != nil {
 			return nil, fmt.Errorf("record completed order finance posting: %w", err)
 		}
+		s.syncAffiliateOrder(ctx, o)
 		return o, nil
 	}
 	if !CanTransitionOrder(o.LifecycleState, StateCompleted) {
 		return nil, fmt.Errorf("%w: cannot transition from %s to %s", ErrInvalidOrderTransition, o.LifecycleState, StateCompleted)
+	}
+
+	if err := s.ensureOrderStockEffects(ctx, o, StateCompleted, ""); err != nil {
+		return nil, err
 	}
 
 	prevState := o.LifecycleState
@@ -486,6 +736,8 @@ func (s *Service) CompleteOrder(ctx context.Context, workspaceID, orderID string
 		return nil, fmt.Errorf("record completed order finance posting: %w", err)
 	}
 
+	s.syncAffiliateOrder(ctx, o)
+
 	s.emitEvent(ctx, "commerce.order.completed", "order", orderID, workspaceID, map[string]any{
 		"order_id": orderID,
 	})
@@ -493,22 +745,29 @@ func (s *Service) CompleteOrder(ctx context.Context, workspaceID, orderID string
 	return o, nil
 }
 
-// CancelOrder cancels an order and releases any held stock reservations.
+// CancelOrder cancels an order, releases any held stock reservations, and idempotently compensates
+// any reservation that was consumed at confirmation prior to physical fulfillment (Billing R07).
 func (s *Service) CancelOrder(ctx context.Context, workspaceID, orderID, reason string) (*Order, error) {
+	unlock := s.lockEntity("order", workspaceID, orderID)
+	defer unlock()
+
 	o, err := s.store.GetOrder(ctx, workspaceID, orderID)
 	if err != nil {
 		return nil, err
 	}
 	if o.LifecycleState == StateCancelled {
+		if err := s.releaseOrCompensateOrderStockOnCancel(ctx, o, reason); err != nil {
+			return nil, err
+		}
+		s.syncAffiliateOrder(ctx, o)
 		return o, nil // Idempotent
 	}
 	if !CanTransitionOrder(o.LifecycleState, StateCancelled) {
 		return nil, fmt.Errorf("%w: cannot transition from %s to %s", ErrInvalidOrderTransition, o.LifecycleState, StateCancelled)
 	}
 
-	// Release reservations if any held
-	if s.inventory != nil {
-		_ = s.inventory.ReleaseReservation(ctx, workspaceID, orderID, reason)
+	if err := s.releaseOrCompensateOrderStockOnCancel(ctx, o, reason); err != nil {
+		return nil, err
 	}
 
 	if err := s.store.UpdateOrderStatus(ctx, workspaceID, orderID, StateCancelled, nil); err != nil {
@@ -516,6 +775,8 @@ func (s *Service) CancelOrder(ctx context.Context, workspaceID, orderID, reason 
 	}
 	o.LifecycleState = StateCancelled
 	o.UpdatedAt = s.clock().UTC()
+
+	s.syncAffiliateOrder(ctx, o)
 
 	s.emitEvent(ctx, "commerce.order.cancelled", "order", orderID, workspaceID, map[string]any{
 		"order_id": orderID,
@@ -638,6 +899,7 @@ func (s *Service) ApproveRefund(ctx context.Context, workspaceID, refundID strin
 			"refunded_total":  o.RefundedAmount.Fixed6String(),
 		})
 	}
+	s.syncAffiliateOrder(ctx, o)
 
 	return r, o, nil
 }
@@ -799,6 +1061,14 @@ func (s *Service) ReceiveReturn(ctx context.Context, workspaceID, returnID, rest
 		return nil, fmt.Errorf("%w: cannot receive a rejected return", ErrReturnAlreadyProcessed)
 	}
 
+	o, err := s.store.GetOrder(ctx, workspaceID, ret.OrderID)
+	if err != nil {
+		return nil, err
+	}
+	if o.LifecycleState == StateCreated || o.LifecycleState == StateCancelled {
+		return nil, fmt.Errorf("%w: cannot receive physical return for order in state %s", ErrInvalidReturnTransition, o.LifecycleState)
+	}
+
 	// Physical restock (aggregate quantities per SKU so duplicate SKU lines in a return restock accurately)
 	if s.inventory != nil && restockLocationID != "" {
 		qtyBySku := make(map[string]int32)
@@ -828,9 +1098,10 @@ func (s *Service) ReceiveReturn(ctx context.Context, workspaceID, returnID, rest
 	ret.UpdatedAt = s.clock().UTC()
 
 	// Update order state to returned if not already refunded
-	o, err := s.store.GetOrder(ctx, workspaceID, ret.OrderID)
-	if err == nil && o.LifecycleState != StateRefunded && o.LifecycleState != StatePartiallyRefunded {
+	if o.LifecycleState != StateRefunded && o.LifecycleState != StatePartiallyRefunded {
 		_ = s.store.UpdateOrderStatus(ctx, workspaceID, ret.OrderID, StateReturned, nil)
+		o.LifecycleState = StateReturned
+		s.syncAffiliateOrder(ctx, o)
 	}
 
 	s.emitEvent(ctx, "commerce.return.closed", "return", returnID, workspaceID, map[string]any{

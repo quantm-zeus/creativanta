@@ -982,3 +982,294 @@ func TestF17_FabricatedSettlementReferenceRejected(t *testing.T) {
 		t.Fatalf("expected ErrSettlementAlreadyUsed when reusing settlement across payout batches, got %v", err)
 	}
 }
+
+// Billing R08: Affiliate commission must NOT remain eligible for confirmation or payout after
+// the source order is refunded (fully or partially), and ledger postings must be reversible and immutable.
+func TestR08_RefundedOrderExcludedFromConfirmAndPayoutWithReversibleLedger(t *testing.T) {
+	ctx := context.Background()
+	store := NewMemoryStore()
+	sink := &mockSink{}
+	ledger := NewDefaultLedgerRecorder()
+	now := time.Date(2026, 11, 4, 12, 0, 0, 0, time.UTC)
+	svc := NewService(store, ledger, sink, func() time.Time { return now })
+
+	wsID := "019086a1-7c3e-7000-8000-000000000010"
+	creatorID := "creator-r08-01"
+	prodID := newUUID()
+
+	link, err := svc.CreateLink(ctx, &AffiliateLink{
+		WorkspaceID:    wsID,
+		ProductID:      &prodID,
+		Platform:       "tiktok",
+		OriginalURL:    "https://shop.tiktok.com/product/r08",
+		CommissionRate: mustDecimal(t, "10.00"),
+	})
+	if err != nil {
+		t.Fatalf("CreateLink: %v", err)
+	}
+
+	// -------------------------------------------------------------------------
+	// Case 1: Order completed -> CalculateCommission -> Full Refund before ConfirmCommission
+	// -------------------------------------------------------------------------
+	if err := svc.RegisterVerifiedOrder(ctx, &VerifiedOrder{
+		OrderID:        "ord-r08-full-before-confirm",
+		WorkspaceID:    wsID,
+		GrossAmount:    mustDecimal(t, "1000000.000000"),
+		RefundedAmount: tenantdb.ZeroDecimal(),
+		Currency:       "VND",
+		LifecycleState: "completed",
+	}); err != nil {
+		t.Fatalf("RegisterVerifiedOrder 1: %v", err)
+	}
+	comm1, err := svc.CalculateCommission(ctx, wsID, link.AffiliateLinkID, "ord-r08-full-before-confirm", &creatorID, mustDecimal(t, "1000000.000000"), "VND", 15)
+	if err != nil {
+		t.Fatalf("CalculateCommission 1: %v", err)
+	}
+	// Source order is fully refunded during hold period
+	if err := svc.RegisterVerifiedOrder(ctx, &VerifiedOrder{
+		OrderID:        "ord-r08-full-before-confirm",
+		WorkspaceID:    wsID,
+		GrossAmount:    mustDecimal(t, "1000000.000000"),
+		RefundedAmount: mustDecimal(t, "1000000.000000"),
+		Currency:       "VND",
+		LifecycleState: "refunded",
+	}); err != nil {
+		t.Fatalf("RegisterVerifiedOrder 1 refund: %v", err)
+	}
+	now = now.Add(16 * 24 * time.Hour)
+	if _, err := svc.ConfirmCommission(ctx, wsID, comm1.CommissionID); !errors.Is(err, ErrOrderIneligible) {
+		t.Fatalf("R08 violation: expected ErrOrderIneligible when confirming commission for refunded order, got %v", err)
+	}
+	comm1After, _ := store.GetCommission(ctx, wsID, comm1.CommissionID)
+	if comm1After.Status != CommissionClawedBack {
+		t.Fatalf("R08 violation: expected comm1 status clawed_back after full order refund, got %s", comm1After.Status)
+	}
+
+	// -------------------------------------------------------------------------
+	// Case 2: Order completed -> Calculate -> Confirm -> PostToLedger -> Full Refund before Payout
+	// -------------------------------------------------------------------------
+	if err := svc.RegisterVerifiedOrder(ctx, &VerifiedOrder{
+		OrderID:        "ord-r08-full-after-confirm",
+		WorkspaceID:    wsID,
+		GrossAmount:    mustDecimal(t, "500000.000000"),
+		RefundedAmount: tenantdb.ZeroDecimal(),
+		Currency:       "VND",
+		LifecycleState: "completed",
+	}); err != nil {
+		t.Fatalf("RegisterVerifiedOrder 2: %v", err)
+	}
+	comm2, err := svc.CalculateCommission(ctx, wsID, link.AffiliateLinkID, "ord-r08-full-after-confirm", &creatorID, mustDecimal(t, "500000.000000"), "VND", 15)
+	if err != nil {
+		t.Fatalf("CalculateCommission 2: %v", err)
+	}
+	now = now.Add(16 * 24 * time.Hour)
+	if _, err := svc.ConfirmCommission(ctx, wsID, comm2.CommissionID); err != nil {
+		t.Fatalf("ConfirmCommission 2: %v", err)
+	}
+	if _, err := svc.PostCommissionToLedger(ctx, wsID, comm2.CommissionID, EconomicRoleCreator); err != nil {
+		t.Fatalf("PostCommissionToLedger 2: %v", err)
+	}
+	batch2, err := svc.CreatePayoutBatch(ctx, wsID, creatorID, []string{comm2.CommissionID})
+	if err != nil {
+		t.Fatalf("CreatePayoutBatch 2: %v", err)
+	}
+	// Source order is fully refunded after batch creation, before ExecutePayoutBatch!
+	if err := svc.RegisterVerifiedOrder(ctx, &VerifiedOrder{
+		OrderID:        "ord-r08-full-after-confirm",
+		WorkspaceID:    wsID,
+		GrossAmount:    mustDecimal(t, "500000.000000"),
+		RefundedAmount: mustDecimal(t, "500000.000000"),
+		Currency:       "VND",
+		LifecycleState: "refunded",
+	}); err != nil {
+		t.Fatalf("RegisterVerifiedOrder 2 refund: %v", err)
+	}
+	_ = svc.RegisterVerifiedSettlement(ctx, &VerifiedSettlement{
+		SettlementID:       "settle-r08-2",
+		WorkspaceID:        wsID,
+		CreatorEntityID:    creatorID,
+		NetAmount:          mustDecimal(t, "50000.000000"),
+		Currency:           "VND",
+		VerificationStatus: "verified",
+	})
+	if _, err := svc.ExecutePayoutBatch(ctx, wsID, batch2.PayoutID, "settle-r08-2"); !errors.Is(err, ErrInvalidPayoutBatch) && !errors.Is(err, ErrOrderIneligible) {
+		t.Fatalf("R08 violation: expected ExecutePayoutBatch to reject batch when source order was refunded, got %v", err)
+	}
+	// Verify immutable ledger recorded original posting and reversal with net balance 0
+	entries2 := svc.ListLedgerPostings(wsID, comm2.CommissionID)
+	if len(entries2) != 2 || entries2[1].ReversalOf == nil || *entries2[1].ReversalOf != entries2[0].PostingID {
+		t.Fatalf("R08 violation: expected immutable original + reversal ledger entries for comm2, got %+v", entries2)
+	}
+	net2, _ := entries2[0].Amount.Add(entries2[1].Amount)
+	if !net2.IsZero() {
+		t.Fatalf("R08 violation: expected net ledger amount 0 after full refund, got %s", net2.String())
+	}
+	// Settlement must remain unallocated after rejected payout execution
+	settle2, _ := store.GetVerifiedSettlement(ctx, wsID, "settle-r08-2")
+	if !settle2.AllocatedAmount.IsZero() {
+		t.Fatalf("expected settlement AllocatedAmount=0 after rejected payout, got %s", settle2.AllocatedAmount.String())
+	}
+
+	// -------------------------------------------------------------------------
+	// Case 3: Partial Refund before Confirm / Payout reduces commission proportionally
+	// -------------------------------------------------------------------------
+	if err := svc.RegisterVerifiedOrder(ctx, &VerifiedOrder{
+		OrderID:        "ord-r08-partial",
+		WorkspaceID:    wsID,
+		GrossAmount:    mustDecimal(t, "1000000.000000"),
+		RefundedAmount: tenantdb.ZeroDecimal(),
+		Currency:       "VND",
+		LifecycleState: "completed",
+	}); err != nil {
+		t.Fatalf("RegisterVerifiedOrder 3: %v", err)
+	}
+	comm3, err := svc.CalculateCommission(ctx, wsID, link.AffiliateLinkID, "ord-r08-partial", &creatorID, mustDecimal(t, "1000000.000000"), "VND", 15)
+	if err != nil {
+		t.Fatalf("CalculateCommission 3: %v", err)
+	}
+	// Initial commission = 10% of 1,000,000 = 100,000
+	if comm3.CommissionAmount.Cmp(mustDecimal(t, "100000.000000")) != 0 {
+		t.Fatalf("expected initial commission 100000, got %s", comm3.CommissionAmount.String())
+	}
+	// Partial refund of 400,000 -> net eligible order amount is 600,000 -> commission must become 60,000 (clawback 40,000)
+	if err := svc.RegisterVerifiedOrder(ctx, &VerifiedOrder{
+		OrderID:        "ord-r08-partial",
+		WorkspaceID:    wsID,
+		GrossAmount:    mustDecimal(t, "1000000.000000"),
+		RefundedAmount: mustDecimal(t, "400000.000000"),
+		Currency:       "VND",
+		LifecycleState: "partially_refunded",
+	}); err != nil {
+		t.Fatalf("RegisterVerifiedOrder 3 partial refund: %v", err)
+	}
+	now = now.Add(16 * 24 * time.Hour)
+	confirmed3, err := svc.ConfirmCommission(ctx, wsID, comm3.CommissionID)
+	if err != nil {
+		t.Fatalf("ConfirmCommission 3 after partial refund: %v", err)
+	}
+	if confirmed3.CommissionAmount.Cmp(mustDecimal(t, "60000.000000")) != 0 {
+		t.Fatalf("R08 violation: expected confirmed commission reduced to 60000 after 40%% partial refund, got %s", confirmed3.CommissionAmount.String())
+	}
+	if confirmed3.ClawbackAmount == nil || confirmed3.ClawbackAmount.Cmp(mustDecimal(t, "40000.000000")) != 0 {
+		t.Fatalf("R08 violation: expected clawback_amount=40000 on partial refund, got %v", confirmed3.ClawbackAmount)
+	}
+	batch3, err := svc.CreatePayoutBatch(ctx, wsID, creatorID, []string{confirmed3.CommissionID})
+	if err != nil {
+		t.Fatalf("CreatePayoutBatch 3: %v", err)
+	}
+	if batch3.TotalAmount.Cmp(mustDecimal(t, "60000.000000")) != 0 {
+		t.Fatalf("expected payout batch total 60000, got %s", batch3.TotalAmount.String())
+	}
+}
+
+// failingAffiliateStore injects transient errors during ExecutePayoutBatch to test Billing R10.
+type failingAffiliateStore struct {
+	Store
+	failUpdateCommCount int
+	updateCommCalls     int
+	failUpdatePayout    bool
+}
+
+func (f *failingAffiliateStore) UpdateCommission(ctx context.Context, comm *AffiliateCommission) error {
+	f.updateCommCalls++
+	if f.failUpdateCommCount > 0 && f.updateCommCalls == f.failUpdateCommCount {
+		return errors.New("simulated transient DB failure during UpdateCommission")
+	}
+	return f.Store.UpdateCommission(ctx, comm)
+}
+
+func (f *failingAffiliateStore) UpdatePayout(ctx context.Context, payout *AffiliatePayout) error {
+	if f.failUpdatePayout && payout.Status == PayoutCompleted {
+		return errors.New("simulated transient DB failure during final UpdatePayout")
+	}
+	return f.Store.UpdatePayout(ctx, payout)
+}
+
+// Billing R10: If ExecutePayoutBatch fails after settlement allocation or mid-way through
+// updating commissions/payout, retrying ExecutePayoutBatch with the same (payoutID, settlementID)
+// must resume idempotently and complete once without failing on remainingSettle or commission status.
+func TestR10_ExecutePayoutBatchMidwayFailureIsRetryableIdempotently(t *testing.T) {
+	ctx := context.Background()
+	baseStore := NewMemoryStore()
+	fStore := &failingAffiliateStore{Store: baseStore}
+	sink := &mockSink{}
+	now := time.Date(2026, 11, 4, 12, 0, 0, 0, time.UTC)
+	svc := NewService(fStore, nil, sink, func() time.Time { return now })
+
+	wsID := "019086a1-7c3e-7000-8000-000000000010"
+	creatorID := "creator-r10-01"
+
+	comm1 := &AffiliateCommission{
+		CommissionID:     newUUID(),
+		WorkspaceID:      wsID,
+		AffiliateLinkID:  newUUID(),
+		OrderID:          "ord-r10-1",
+		CreatorEntityID:  &creatorID,
+		CommissionAmount: mustDecimal(t, "150000.000000"),
+		Currency:         "VND",
+		Status:           CommissionConfirmed,
+		HoldUntil:        now.Add(-24 * time.Hour),
+	}
+	comm2 := &AffiliateCommission{
+		CommissionID:     newUUID(),
+		WorkspaceID:      wsID,
+		AffiliateLinkID:  newUUID(),
+		OrderID:          "ord-r10-2",
+		CreatorEntityID:  &creatorID,
+		CommissionAmount: mustDecimal(t, "250000.000000"),
+		Currency:         "VND",
+		Status:           CommissionConfirmed,
+		HoldUntil:        now.Add(-24 * time.Hour),
+	}
+	_ = baseStore.CreateCommission(ctx, comm1)
+	_ = baseStore.CreateCommission(ctx, comm2)
+
+	batch, err := svc.CreatePayoutBatch(ctx, wsID, creatorID, []string{comm1.CommissionID, comm2.CommissionID})
+	if err != nil {
+		t.Fatalf("CreatePayoutBatch failed: %v", err)
+	}
+
+	settlementID := "settle-r10-400k"
+	if err := svc.RegisterVerifiedSettlement(ctx, &VerifiedSettlement{
+		SettlementID:       settlementID,
+		WorkspaceID:        wsID,
+		CreatorEntityID:    creatorID,
+		NetAmount:          mustDecimal(t, "400000.000000"),
+		Currency:           "VND",
+		VerificationStatus: "verified",
+	}); err != nil {
+		t.Fatalf("RegisterVerifiedSettlement failed: %v", err)
+	}
+
+	// 1. Fail on the 2nd commission update inside ExecutePayoutBatch (after settlement is allocated and comm1 is paid_out)
+	fStore.updateCommCalls = 0
+	fStore.failUpdateCommCount = 2
+	if _, err := svc.ExecutePayoutBatch(ctx, wsID, batch.PayoutID, settlementID); err == nil {
+		t.Fatalf("expected ExecutePayoutBatch to fail when 2nd UpdateCommission fails")
+	}
+
+	// 2. Retry ExecutePayoutBatch with final UpdatePayout failing
+	fStore.failUpdateCommCount = 0
+	fStore.failUpdatePayout = true
+	if _, err := svc.ExecutePayoutBatch(ctx, wsID, batch.PayoutID, settlementID); err == nil {
+		t.Fatalf("expected ExecutePayoutBatch to fail when final UpdatePayout fails")
+	}
+
+	// 3. Retry ExecutePayoutBatch with healthy store -> MUST succeed idempotently!
+	fStore.failUpdatePayout = false
+	executed, err := svc.ExecutePayoutBatch(ctx, wsID, batch.PayoutID, settlementID)
+	if err != nil {
+		t.Fatalf("R10 violation: retry of ExecutePayoutBatch after partial failure failed: %v", err)
+	}
+	if executed.Status != PayoutCompleted {
+		t.Fatalf("expected PayoutCompleted after retry, got %s", executed.Status)
+	}
+
+	settleAfter, err := baseStore.GetVerifiedSettlement(ctx, wsID, settlementID)
+	if err != nil {
+		t.Fatalf("GetVerifiedSettlement failed: %v", err)
+	}
+	if settleAfter.AllocatedAmount.Cmp(mustDecimal(t, "400000.000000")) != 0 {
+		t.Fatalf("expected settlement AllocatedAmount=400000 (allocated once), got %s", settleAfter.AllocatedAmount.String())
+	}
+}
