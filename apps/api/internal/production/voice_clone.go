@@ -68,12 +68,39 @@ func (m *VoiceCloneManager) SetConsentStatus(consentRecordID string, valid bool)
 	}
 }
 
+func isValidVoiceCloneConsentType(consentType string) bool {
+	switch strings.ToLower(strings.TrimSpace(consentType)) {
+	case "voice_clone", "voice_likeness":
+		return true
+	default:
+		return false
+	}
+}
+
+func sameSampleAudioSet(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if strings.TrimSpace(a[i]) != strings.TrimSpace(b[i]) {
+			return false
+		}
+	}
+	return true
+}
+
 // VerifyConsent validates that a consent record exists in the canonical store (or explicit test fixture),
-// belongs to the caller's workspace, matches the character if character-bound, and has not been revoked.
+// belongs to the caller's workspace, has a voice-cloning consent type, matches the voice subject/character
+// and voice owner, and has not been revoked.
 func (m *VoiceCloneManager) VerifyConsent(ctx context.Context, workspaceID, characterID, consentRecordID string) error {
+	workspaceID = strings.TrimSpace(workspaceID)
+	characterID = strings.TrimSpace(characterID)
 	consentRecordID = strings.TrimSpace(consentRecordID)
 	if consentRecordID == "" {
 		return connect.NewError(connect.CodeFailedPrecondition, ErrConsentRequired)
+	}
+	if characterID == "" {
+		return connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("%w: character_id subject is required for voice consent verification", ErrConsentNotVerified))
 	}
 
 	m.mu.Lock()
@@ -89,6 +116,18 @@ func (m *VoiceCloneManager) VerifyConsent(ctx context.Context, workspaceID, char
 	}
 
 	if m.store != nil {
+		if char, charErr := m.store.GetCharacter(ctx, workspaceID, characterID); charErr == nil && char != nil {
+			if char.WorkspaceID != "" && char.WorkspaceID != workspaceID {
+				return connect.NewError(connect.CodePermissionDenied, fmt.Errorf("%w: character %q workspace mismatch", ErrCrossTenantDenied, characterID))
+			}
+			if !char.ConsentVerified || strings.EqualFold(char.Status, "archived") || strings.EqualFold(char.Status, "revoked") {
+				return connect.NewError(connect.CodeFailedPrecondition, ErrConsentRevoked)
+			}
+			if strings.TrimSpace(char.ConsentRecordID) != "" && strings.TrimSpace(char.ConsentRecordID) != consentRecordID {
+				return connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("%w: character %q is bound to consent record %q, not %q", ErrConsentNotVerified, characterID, char.ConsentRecordID, consentRecordID))
+			}
+		}
+
 		if cr, err := m.store.GetConsentRecord(ctx, workspaceID, consentRecordID); err == nil && cr != nil {
 			if cr.WorkspaceID != "" && cr.WorkspaceID != workspaceID {
 				return connect.NewError(connect.CodePermissionDenied, fmt.Errorf("%w: consent record %q workspace mismatch", ErrCrossTenantDenied, consentRecordID))
@@ -96,8 +135,21 @@ func (m *VoiceCloneManager) VerifyConsent(ctx context.Context, workspaceID, char
 			if !cr.Granted || cr.RevokedAt != nil {
 				return connect.NewError(connect.CodeFailedPrecondition, ErrConsentRevoked)
 			}
-			if cr.CharacterID != "" && characterID != "" && cr.CharacterID != characterID {
-				return connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("%w: consent record %q is bound to character %q, not %q", ErrConsentNotVerified, consentRecordID, cr.CharacterID, characterID))
+			if !isValidVoiceCloneConsentType(cr.ConsentType) {
+				return connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("%w: consent record %q has invalid type %q (requires voice_clone or voice_likeness)", ErrConsentNotVerified, consentRecordID, cr.ConsentType))
+			}
+			boundCharID := strings.TrimSpace(cr.CharacterID)
+			if boundCharID == "" {
+				return connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("%w: consent record %q is not bound to a character subject", ErrConsentNotVerified, consentRecordID))
+			}
+			if boundCharID != characterID {
+				return connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("%w: consent record %q is bound to character %q, not %q", ErrConsentNotVerified, consentRecordID, boundCharID, characterID))
+			}
+			if boundUserID := strings.TrimSpace(cr.UserID); boundUserID != "" {
+				caller := extractCallerContext(ctx, workspaceID)
+				if callerUser := strings.TrimSpace(caller.UserID); callerUser != "" && callerUser != boundUserID {
+					return connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("%w: consent record %q is bound to voice owner %q, not %q", ErrConsentNotVerified, consentRecordID, boundUserID, callerUser))
+				}
 			}
 			m.mu.Lock()
 			m.consentWorkspace[consentRecordID] = workspaceID
@@ -120,6 +172,7 @@ func (m *VoiceCloneManager) VerifyConsent(ctx context.Context, workspaceID, char
 		_ = m.store.SaveConsentRecord(ctx, &ProductionConsentRecord{
 			ConsentID:   consentRecordID,
 			WorkspaceID: workspaceID,
+			CharacterID: characterID,
 			ConsentType: "voice_likeness",
 			Granted:     true,
 			GrantedAt:   &now,
@@ -158,8 +211,31 @@ func (m *VoiceCloneManager) Create(
 	if !msg.ConsentConfirmed || strings.TrimSpace(msg.ConsentRecordId) == "" {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, ErrConsentRequired)
 	}
+	if strings.TrimSpace(msg.CharacterId) == "" {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("%w: character_id subject is required", ErrConsentNotVerified))
+	}
+	if len(msg.SampleAudioUrls) == 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("at least one sample audio URL is required"))
+	}
+	for _, u := range msg.SampleAudioUrls {
+		if strings.TrimSpace(u) == "" {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("sample audio URL cannot be empty"))
+		}
+	}
 	if err := m.VerifyConsent(ctx, wsID, msg.CharacterId, msg.ConsentRecordId); err != nil {
 		return nil, err
+	}
+	if m.store != nil {
+		if existingClones, _, listErr := m.store.ListVoiceClones(ctx, wsID, "", 1000, 0); listErr == nil {
+			for _, ex := range existingClones {
+				if ex == nil || ex.ConsentRecordID != strings.TrimSpace(msg.ConsentRecordId) {
+					continue
+				}
+				if strings.TrimSpace(ex.CharacterID) != strings.TrimSpace(msg.CharacterId) || !sameSampleAudioSet(ex.SampleAudioURLs, msg.SampleAudioUrls) {
+					return nil, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("%w: consent record %q is already bound to a different voice source or character", ErrConsentNotVerified, msg.ConsentRecordId))
+				}
+			}
+		}
 	}
 
 	// 3. Measured Quote & Credit Check

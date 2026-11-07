@@ -5,6 +5,8 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"strings"
+	"sync"
 	"time"
 
 	publishv1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/publish/v1"
@@ -12,26 +14,29 @@ import (
 
 // Standard Publish Domain Errors (error_catalog.md & publish_hub.md)
 var (
-	ErrItemNotFound             = errors.New("publish: publish item not found")
-	ErrJobNotFound              = errors.New("publish: publish job not found")
-	ErrAccountNotFound          = errors.New("publish: connected account not found")
-	ErrPrematurePublish         = errors.New("publish: invariant violation - cannot publish before scheduled time (RULE-M11-006)")
-	ErrAuthRevoked              = errors.New("publish: connector authentication revoked or expired (auth_revoked)")
-	ErrCapabilityDegraded       = errors.New("publish: platform capability degraded or unsupported, requires manual fallback")
-	ErrApprovalRequired         = errors.New("publish: publish requires human approval gate before execution")
-	ErrUnknownSubmit            = errors.New("publish: submission outcome unknown, pending reconciliation before retry")
-	ErrDuplicatePostPrevented   = errors.New("publish: duplicate post prevented by reconciliation check")
-	ErrInvalidState             = errors.New("publish: invalid lifecycle state transition")
-	ErrProofRequired            = errors.New("publish: evidence ref or screenshot URL required for manual proof")
-	ErrRateLimitExceeded        = errors.New("publish: platform rate limit exceeded")
-	ErrStoreNotConfigured       = errors.New("publish: durable store is not configured (fail-closed)")
-	ErrUnauthenticated          = errors.New("publish: unauthenticated caller principal")
-	ErrPermissionDenied         = errors.New("publish: permission denied or workspace scope mismatch")
-	ErrComplianceHardBlocked    = errors.New("publish: compliance/QA hard block active; publishing is forbidden and cannot be overridden")
-	ErrComplianceReviewRequired = errors.New("publish: compliance review required; soft-flag override acknowledgement and reason required")
-	ErrDiagnosticsBlocked       = errors.New("publish: item diagnostics state is blocked; publishing is forbidden until resolved")
-	ErrConnectorNotConfigured   = errors.New("publish: platform connector is not configured (fail-closed)")
-	ErrJobItemMismatch          = errors.New("publish: publish_job_id does not belong to the requested publish_item_id")
+	ErrItemNotFound                   = errors.New("publish: publish item not found")
+	ErrJobNotFound                    = errors.New("publish: publish job not found")
+	ErrAccountNotFound                = errors.New("publish: connected account not found")
+	ErrPrematurePublish               = errors.New("publish: invariant violation - cannot publish before scheduled time (RULE-M11-006)")
+	ErrAuthRevoked                    = errors.New("publish: connector authentication revoked or expired (auth_revoked)")
+	ErrCapabilityDegraded             = errors.New("publish: platform capability degraded or unsupported, requires manual fallback")
+	ErrApprovalRequired               = errors.New("publish: publish requires human approval gate before execution")
+	ErrUnknownSubmit                  = errors.New("publish: submission outcome unknown, pending reconciliation before retry")
+	ErrDuplicatePostPrevented         = errors.New("publish: duplicate post prevented by reconciliation check")
+	ErrInvalidState                   = errors.New("publish: invalid lifecycle state transition")
+	ErrProofRequired                  = errors.New("publish: evidence ref or screenshot URL required for manual proof")
+	ErrRateLimitExceeded              = errors.New("publish: platform rate limit exceeded")
+	ErrStoreNotConfigured             = errors.New("publish: durable store is not configured (fail-closed)")
+	ErrUnauthenticated                = errors.New("publish: unauthenticated caller principal")
+	ErrPermissionDenied               = errors.New("publish: permission denied or workspace scope mismatch")
+	ErrComplianceHardBlocked          = errors.New("publish: compliance/QA hard block active; publishing is forbidden and cannot be overridden")
+	ErrComplianceCheckerNotConfigured = fmt.Errorf("%w: compliance checker is not configured (fail-closed)", ErrComplianceHardBlocked)
+	ErrComplianceReviewRequired       = errors.New("publish: compliance review required; soft-flag override acknowledgement and reason required")
+	ErrDiagnosticsBlocked             = errors.New("publish: item diagnostics state is blocked; publishing is forbidden until resolved")
+	ErrConnectorNotConfigured         = errors.New("publish: platform connector is not configured (fail-closed)")
+	ErrJobItemMismatch                = errors.New("publish: publish_job_id does not belong to the requested publish_item_id")
+	ErrIdempotencyKeyConflict         = errors.New("publish: idempotency key already bound to a different publish item, target account, or payload")
+	ErrProviderRequestMismatch        = errors.New("publish: provider_request_id does not match the bound external effect")
 )
 
 // Lifecycle State Constants (database_schema.md §8.1, §8.2)
@@ -251,6 +256,201 @@ type ConnectorStatusResult struct {
 	Found             bool
 	PublishedAt       *time.Time
 	Status            string // confirmed_published, confirmed_not_published, still_unknown
+}
+
+// AssetComplianceRecord represents canonical QA, rights, and consent metadata for a publishable asset.
+type AssetComplianceRecord struct {
+	AssetID          string
+	WorkspaceID      string
+	QualityState     string // approved, pass, pass_with_warnings, review_required, blocked, hard_blocked, pending
+	HasHardBlocks    bool
+	ViolationReasons []string
+	PackagingScore   float32
+	RightsVerified   bool
+	ConsentRequired  bool
+	ConsentRecordID  string
+	CharacterID      string
+	SubjectUserID    string
+}
+
+// PublishConsentRecord represents a canonical consent record verified prior to publishing.
+type PublishConsentRecord struct {
+	ConsentID   string
+	WorkspaceID string
+	CharacterID string
+	UserID      string
+	ConsentType string // voice_clone, voice_likeness, digital_twin, likeness_release, talent_release
+	Granted     bool
+	RevokedAt   *time.Time
+}
+
+// CanonicalComplianceChecker evaluates canonical QA, rights, and likeness/voice consent records before publishing.
+type CanonicalComplianceChecker struct {
+	mu                          sync.RWMutex
+	requireAssetRecord          bool
+	defaultPassWhenUnregistered bool
+	assets                      map[string]*AssetComplianceRecord
+	consents                    map[string]*PublishConsentRecord
+}
+
+// NewCanonicalComplianceChecker creates a strict compliance checker backed by canonical QA and consent records.
+func NewCanonicalComplianceChecker(requireAssetRecord bool) *CanonicalComplianceChecker {
+	return &CanonicalComplianceChecker{
+		requireAssetRecord:          requireAssetRecord,
+		defaultPassWhenUnregistered: !requireAssetRecord,
+		assets:                      make(map[string]*AssetComplianceRecord),
+		consents:                    make(map[string]*PublishConsentRecord),
+	}
+}
+
+// NewDefaultComplianceChecker creates a compliance checker that enforces registered QA/consent blocks
+// and passes items with no registered violations.
+func NewDefaultComplianceChecker() *CanonicalComplianceChecker {
+	return NewCanonicalComplianceChecker(false)
+}
+
+// SetAssetCompliance registers or updates a canonical asset QA/rights/consent record.
+func (c *CanonicalComplianceChecker) SetAssetCompliance(rec AssetComplianceRecord) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	cp := rec
+	c.assets[strings.TrimSpace(rec.WorkspaceID)+"|"+strings.TrimSpace(rec.AssetID)] = &cp
+}
+
+// SetConsentRecord registers or updates a canonical consent record.
+func (c *CanonicalComplianceChecker) SetConsentRecord(rec PublishConsentRecord) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	cp := rec
+	c.consents[strings.TrimSpace(rec.WorkspaceID)+"|"+strings.TrimSpace(rec.ConsentID)] = &cp
+}
+
+// RevokeConsent marks a canonical consent record as revoked.
+func (c *CanonicalComplianceChecker) RevokeConsent(workspaceID, consentID string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	key := strings.TrimSpace(workspaceID) + "|" + strings.TrimSpace(consentID)
+	if cr, ok := c.consents[key]; ok && cr != nil {
+		now := time.Now().UTC()
+		cr.Granted = false
+		cr.RevokedAt = &now
+	}
+}
+
+func isValidPublishConsentType(consentType string) bool {
+	switch strings.ToLower(strings.TrimSpace(consentType)) {
+	case "voice_clone", "voice_likeness", "digital_twin", "likeness_release", "talent_release":
+		return true
+	default:
+		return false
+	}
+}
+
+// CheckPublishCompliance implements ComplianceChecker.
+func (c *CanonicalComplianceChecker) CheckPublishCompliance(_ context.Context, workspaceID, assetID, _ string) (string, bool, map[string]any, error) {
+	workspaceID = strings.TrimSpace(workspaceID)
+	assetID = strings.TrimSpace(assetID)
+	if workspaceID == "" {
+		return "blocked", true, map[string]any{"has_hard_blocks": true}, ErrPermissionDenied
+	}
+
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	if assetID != "" {
+		for k, other := range c.assets {
+			if strings.HasSuffix(k, "|"+assetID) && other != nil && other.WorkspaceID != "" && other.WorkspaceID != workspaceID {
+				return "blocked", true, map[string]any{"has_hard_blocks": true, "reason": "cross_tenant_asset"}, ErrPermissionDenied
+			}
+		}
+	}
+
+	rec := c.assets[workspaceID+"|"+assetID]
+	if rec == nil {
+		if c.requireAssetRecord || !c.defaultPassWhenUnregistered {
+			return "unverified", true, map[string]any{"has_hard_blocks": true, "reason": "canonical_qa_report_missing"}, ErrComplianceHardBlocked
+		}
+		return "pass", false, map[string]any{
+			"packaging_score":  float32(85.0),
+			"rights_verified":  true,
+			"consent_verified": true,
+		}, nil
+	}
+
+	score := rec.PackagingScore
+	if score == 0 {
+		score = 85.0
+	}
+	details := map[string]any{
+		"packaging_score": score,
+		"rights_verified": rec.RightsVerified,
+	}
+	if len(rec.ViolationReasons) > 0 {
+		details["violation_reasons"] = append([]string(nil), rec.ViolationReasons...)
+	}
+
+	qs := strings.ToLower(strings.TrimSpace(rec.QualityState))
+	if rec.HasHardBlocks || qs == "blocked" || qs == "hard_blocked" || qs == "fail" || qs == "rejected" {
+		details["has_hard_blocks"] = true
+		return "blocked", true, details, nil
+	}
+	if !rec.RightsVerified {
+		details["has_hard_blocks"] = true
+		details["rights_blocked"] = true
+		return "blocked", true, details, ErrComplianceHardBlocked
+	}
+
+	if rec.ConsentRequired || strings.TrimSpace(rec.ConsentRecordID) != "" {
+		details["consent_required"] = true
+		cid := strings.TrimSpace(rec.ConsentRecordID)
+		if cid == "" {
+			details["consent_verified"] = false
+			details["has_hard_blocks"] = true
+			return "blocked", true, details, ErrComplianceHardBlocked
+		}
+		cr := c.consents[workspaceID+"|"+cid]
+		if cr == nil || (cr.WorkspaceID != "" && cr.WorkspaceID != workspaceID) || !cr.Granted || cr.RevokedAt != nil {
+			details["consent_verified"] = false
+			details["consent_revoked"] = true
+			details["has_hard_blocks"] = true
+			return "blocked", true, details, ErrComplianceHardBlocked
+		}
+		if !isValidPublishConsentType(cr.ConsentType) {
+			details["consent_verified"] = false
+			details["has_hard_blocks"] = true
+			return "blocked", true, details, ErrComplianceHardBlocked
+		}
+		if reqChar := strings.TrimSpace(rec.CharacterID); reqChar != "" {
+			if strings.TrimSpace(cr.CharacterID) == "" || strings.TrimSpace(cr.CharacterID) != reqChar {
+				details["consent_verified"] = false
+				details["has_hard_blocks"] = true
+				return "blocked", true, details, ErrComplianceHardBlocked
+			}
+		}
+		if reqUser := strings.TrimSpace(rec.SubjectUserID); reqUser != "" {
+			if strings.TrimSpace(cr.UserID) == "" || strings.TrimSpace(cr.UserID) != reqUser {
+				details["consent_verified"] = false
+				details["has_hard_blocks"] = true
+				return "blocked", true, details, ErrComplianceHardBlocked
+			}
+		}
+		details["consent_verified"] = true
+		details["consent_record_id"] = cid
+	} else {
+		details["consent_verified"] = true
+	}
+
+	switch qs {
+	case "review_required":
+		return "review_required", false, details, nil
+	case "approved", "pass":
+		return "pass", false, details, nil
+	case "pass_with_warnings":
+		return "pass_with_warnings", false, details, nil
+	default:
+		details["has_hard_blocks"] = true
+		return "unverified", true, details, ErrComplianceHardBlocked
+	}
 }
 
 // Helpers for UUID generation (RFC 4122 v4)

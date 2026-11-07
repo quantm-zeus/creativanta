@@ -3,6 +3,7 @@ package publish
 import (
 	"context"
 	"errors"
+	"io"
 	"strings"
 	"testing"
 	"time"
@@ -141,7 +142,8 @@ func (m *MockCapabilityEvaluator) EvaluateActionAccess(workspaceID, platform, ac
 func TestAcceptanceTarget1_NeverPublishBeforeSchedule(t *testing.T) {
 	simulatedTime := time.Date(2026, 11, 3, 10, 0, 0, 0, time.UTC)
 	svc := NewService(ServiceConfig{
-		Clock: func() time.Time { return simulatedTime },
+		Clock:             func() time.Time { return simulatedTime },
+		ComplianceChecker: NewDefaultComplianceChecker(),
 	})
 
 	mockConn := &MockConnector{platform: "tiktok"}
@@ -250,7 +252,8 @@ func TestAcceptanceTarget1_ScheduleFairnessJitterActivation(t *testing.T) {
 func TestAcceptanceTarget2_UnknownSubmitReconciles(t *testing.T) {
 	simulatedTime := time.Date(2026, 11, 3, 14, 0, 0, 0, time.UTC)
 	svc := NewService(ServiceConfig{
-		Clock: func() time.Time { return simulatedTime },
+		Clock:             func() time.Time { return simulatedTime },
+		ComplianceChecker: NewDefaultComplianceChecker(),
 	})
 
 	mockConn := &MockConnector{
@@ -359,7 +362,8 @@ func TestAcceptanceTarget2_UnknownSubmitReconciles(t *testing.T) {
 func TestAcceptanceTarget3_ManualProofRetainsGraph(t *testing.T) {
 	now := time.Date(2026, 11, 3, 15, 0, 0, 0, time.UTC)
 	svc := NewService(ServiceConfig{
-		Clock: func() time.Time { return now },
+		Clock:             func() time.Time { return now },
+		ComplianceChecker: NewDefaultComplianceChecker(),
 	})
 
 	ctx := WithCaller(context.Background(), testWorkspaceA, testUserA, rbac.RoleOwner)
@@ -447,7 +451,8 @@ func TestAcceptanceTarget3_ManualProofRetainsGraph(t *testing.T) {
 func TestAcceptanceTarget4_TokenRevokePausesAffectedQueuedWork(t *testing.T) {
 	now := time.Date(2026, 11, 3, 16, 0, 0, 0, time.UTC)
 	svc := NewService(ServiceConfig{
-		Clock: func() time.Time { return now },
+		Clock:             func() time.Time { return now },
+		ComplianceChecker: NewDefaultComplianceChecker(),
 	})
 
 	mockConn := &MockConnector{
@@ -543,7 +548,8 @@ func TestAcceptanceTarget4_TokenRevokePausesAffectedQueuedWork(t *testing.T) {
 func TestCapabilityRecheckAtExecution(t *testing.T) {
 	now := time.Date(2026, 11, 3, 17, 0, 0, 0, time.UTC)
 	svc := NewService(ServiceConfig{
-		Clock: func() time.Time { return now },
+		Clock:             func() time.Time { return now },
+		ComplianceChecker: NewDefaultComplianceChecker(),
 	})
 
 	mockCap := &MockCapabilityEvaluator{state: capability.StateNative}
@@ -582,7 +588,8 @@ func TestCapabilityRecheckAtExecution(t *testing.T) {
 func TestRemediation_PUB01_R02_TenantIsolationAndRBAC(t *testing.T) {
 	now := time.Date(2026, 11, 5, 9, 0, 0, 0, time.UTC)
 	svc := NewService(ServiceConfig{
-		Clock: func() time.Time { return now },
+		Clock:             func() time.Time { return now },
+		ComplianceChecker: NewDefaultComplianceChecker(),
 		Accounts: &loopMockAccountLookup{
 			accounts: map[string]*capability.ConnectedAccountRecord{
 				"acc-ws-a": {ConnectedAccountID: "acc-ws-a", WorkspaceID: testWorkspaceA, Platform: "tiktok"},
@@ -762,6 +769,7 @@ func (f *fixedSessionVerifier) Verify(_ context.Context, _ string) (transportaut
 
 func TestRemediation_TransportAuthInterceptorIntegration(t *testing.T) {
 	svc := NewService(ServiceConfig{
+		ComplianceChecker: NewDefaultComplianceChecker(),
 		RoleResolver: func(_ context.Context, userID, workspaceID string) (string, error) {
 			if userID == testUserA && workspaceID == testWorkspaceA {
 				return rbac.RoleViewer, nil
@@ -804,7 +812,8 @@ func TestRemediation_TransportAuthInterceptorIntegration(t *testing.T) {
 func TestRemediation_PUB02_UnknownOutcomeBlocksRetryUntilReconciled(t *testing.T) {
 	now := time.Date(2026, 11, 5, 10, 0, 0, 0, time.UTC)
 	svc := NewService(ServiceConfig{
-		Clock: func() time.Time { return now },
+		Clock:             func() time.Time { return now },
+		ComplianceChecker: NewDefaultComplianceChecker(),
 	})
 
 	// Case A: Unknown outcome WITHOUT ProviderRequestID (e.g. socket drop before response header)
@@ -926,6 +935,7 @@ func TestRemediation_R10_FailClosedAndRestartSurvival(t *testing.T) {
 		Store:               durableStore,
 		RequireDurableStore: true,
 		Clock:               func() time.Time { return now },
+		ComplianceChecker:   NewDefaultComplianceChecker(),
 	})
 	svcBeforeRestart.RegisterConnector(conn1)
 
@@ -973,8 +983,9 @@ func TestRemediation_R10_FailClosedAndRestartSurvival(t *testing.T) {
 		reconcileOutcome: "still_unknown",
 	}
 	svcAfterRestart, err := NewStrictService(ServiceConfig{
-		Store: durableStore,
-		Clock: func() time.Time { return now },
+		Store:             durableStore,
+		Clock:             func() time.Time { return now },
+		ComplianceChecker: NewDefaultComplianceChecker(),
 	})
 	if err != nil {
 		t.Fatalf("NewStrictService after restart failed: %v", err)
@@ -1174,7 +1185,8 @@ func TestR4_Publish_ComplianceHardBlockAndDiagnosticsGateCannotBeBypassed(t *tes
 func TestR4_Publish_UnconfiguredConnectorFailsClosedWithoutFakeSuccess(t *testing.T) {
 	now := time.Date(2026, 11, 6, 13, 0, 0, 0, time.UTC)
 	svc := NewService(ServiceConfig{
-		Clock: func() time.Time { return now },
+		Clock:             func() time.Time { return now },
+		ComplianceChecker: NewDefaultComplianceChecker(),
 		// No connectors registered!
 	})
 	ctxOwner := WithCaller(context.Background(), testWorkspaceA, testUserA, rbac.RoleOwner)
@@ -1218,8 +1230,9 @@ func TestR4_Publish_AppendLogFailurePreventsPublishedStateAndRecoversOnRetry(t *
 		failAppendLog: true,
 	}
 	svc := NewService(ServiceConfig{
-		Store: wrapStore,
-		Clock: func() time.Time { return now },
+		Store:             wrapStore,
+		Clock:             func() time.Time { return now },
+		ComplianceChecker: NewDefaultComplianceChecker(),
 	})
 	mockConn := &MockConnector{
 		platform:       "tiktok",
@@ -1280,9 +1293,10 @@ func TestR4_Publish_ApprovedJobCannotBeReusedForDifferentItem(t *testing.T) {
 		approvedIDs:     map[string]bool{"apr-item-a": true},
 	}
 	svc := NewService(ServiceConfig{
-		Store:           store,
-		Clock:           func() time.Time { return now },
-		ApprovalChecker: approvals,
+		Store:             store,
+		Clock:             func() time.Time { return now },
+		ApprovalChecker:   approvals,
+		ComplianceChecker: NewDefaultComplianceChecker(),
 	})
 	mockConn := &MockConnector{platform: "tiktok", publishOutcome: "success"}
 	svc.RegisterConnector(mockConn)
@@ -1343,5 +1357,791 @@ func TestR4_Publish_ApprovedJobCannotBeReusedForDifferentItem(t *testing.T) {
 		PublishJobId:  jobA.PublishJobID,
 	})); err != nil {
 		t.Fatalf("expected Item A with its own approved job to succeed, got: %v", err)
+	}
+}
+
+// ============================================================================
+// REMEDIATION TESTS: S6 (F1, F2, F5, F6, F7, F8, F12)
+// ============================================================================
+
+func sessionContextFromInterceptor(t *testing.T, sess transportauth.Session) context.Context {
+	t.Helper()
+	interceptor, err := transportauth.NewServerInterceptor(transportauth.Options{
+		Mode:     transportauth.ModeAPI,
+		Verifier: &fixedSessionVerifier{sess: sess},
+	})
+	if err != nil {
+		t.Fatalf("NewServerInterceptor: %v", err)
+	}
+	var capturedCtx context.Context
+	unary := interceptor.WrapUnary(func(ctx context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
+		capturedCtx = ctx
+		return connect.NewResponse(&publishv1.ListQueueResponse{}), nil
+	})
+	req := connect.NewRequest(&publishv1.ListQueueRequest{})
+	req.Header().Set("Authorization", "Bearer valid-session-token")
+	if _, err := unary(context.Background(), req); err != nil {
+		t.Fatalf("interceptor session setup failed: %v", err)
+	}
+	return capturedCtx
+}
+
+func TestS6_F1_PublishAuthorizationFailsClosedWithoutRoleElevation(t *testing.T) {
+	now := time.Date(2026, 11, 7, 10, 0, 0, 0, time.UTC)
+	svc := NewService(ServiceConfig{
+		Clock:             func() time.Time { return now },
+		ComplianceChecker: NewDefaultComplianceChecker(),
+		// Intentionally nil RoleResolver to test fail-closed behavior!
+	})
+	mockConn := &MockConnector{platform: "tiktok", publishOutcome: "success"}
+	svc.RegisterConnector(mockConn)
+
+	// Seed an item as Owner
+	ctxOwner := WithCaller(context.Background(), testWorkspaceA, testUserA, rbac.RoleOwner)
+	createResp, err := svc.CreateItem(ctxOwner, connect.NewRequest(&publishv1.CreateItemRequest{
+		TargetPlatform:  "tiktok",
+		TargetAccountId: "acc-s6-f1",
+		Title:           "S6 F1 RBAC Item",
+	}))
+	if err != nil {
+		t.Fatalf("CreateItem failed: %v", err)
+	}
+	itemID := createResp.Msg.Item.PublishItemId
+
+	// 1. Session with Viewer role and nil RoleResolver MUST NOT elevate to Manager!
+	ctxSessionViewer := sessionContextFromInterceptor(t, transportauth.Session{
+		UserID:      testUserA,
+		WorkspaceID: testWorkspaceA,
+		Role:        rbac.RoleViewer,
+	})
+	if _, err := svc.Execute(ctxSessionViewer, connect.NewRequest(&publishv1.ExecuteRequest{
+		PublishItemId: itemID,
+	})); connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("F1 VIOLATION: Viewer session without RoleResolver was elevated on Execute: %v", err)
+	}
+	if _, err := svc.CreateItem(ctxSessionViewer, connect.NewRequest(&publishv1.CreateItemRequest{
+		TargetPlatform: "tiktok",
+		Title:          "Viewer Create",
+	})); connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("F1 VIOLATION: Viewer session without RoleResolver was allowed CreateItem: %v", err)
+	}
+
+	// 2. Session with Editor role and nil RoleResolver MUST be denied Execute and PublishVariants (requires Manager+)
+	ctxSessionEditor := sessionContextFromInterceptor(t, transportauth.Session{
+		UserID:      testUserA,
+		WorkspaceID: testWorkspaceA,
+		Role:        rbac.RoleEditor,
+	})
+	if _, err := svc.Execute(ctxSessionEditor, connect.NewRequest(&publishv1.ExecuteRequest{
+		PublishItemId: itemID,
+	})); connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("F1 VIOLATION: Editor session was allowed Execute (requires Manager+): %v", err)
+	}
+	if _, err := svc.PublishVariants(ctxSessionEditor, connect.NewRequest(&publishv1.PublishVariantsRequest{
+		Context:        &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: testWorkspaceA}},
+		PublishItemIds: []string{itemID},
+	})); connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("F1 VIOLATION: Editor session was allowed PublishVariants (elevated to Manager): %v", err)
+	}
+
+	// 3. Session with empty Role and nil RoleResolver MUST fail closed with CodePermissionDenied
+	ctxSessionEmptyRole := sessionContextFromInterceptor(t, transportauth.Session{
+		UserID:      testUserA,
+		WorkspaceID: testWorkspaceA,
+		Role:        "",
+	})
+	if _, err := svc.Get(ctxSessionEmptyRole, connect.NewRequest(&publishv1.GetRequest{
+		PublishItemId: itemID,
+	})); connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("F1 VIOLATION: Session with empty Role and nil RoleResolver did not fail closed: %v", err)
+	}
+
+	// 4. WithCaller with empty role MUST NOT default to RoleOwner
+	ctxCallerEmptyRole := WithCaller(context.Background(), testWorkspaceA, testUserA, "")
+	if _, err := svc.Get(ctxCallerEmptyRole, connect.NewRequest(&publishv1.GetRequest{
+		PublishItemId: itemID,
+	})); connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("F1 VIOLATION: WithCaller empty role defaulted to Owner instead of failing closed: %v", err)
+	}
+
+	// 5. Conflicting Session (Viewer) + PolicyContext (Owner) in same context MUST be rejected
+	ctxConflicting := WithCaller(ctxSessionViewer, testWorkspaceA, testUserA, rbac.RoleOwner)
+	if _, err := svc.Execute(ctxConflicting, connect.NewRequest(&publishv1.ExecuteRequest{
+		PublishItemId: itemID,
+	})); connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("F1 VIOLATION: Conflicting Session(Viewer) and PolicyContext(Owner) was not rejected: %v", err)
+	}
+
+	// 6. Conflicting Session (Owner) + RoleResolver (Editor) MUST be rejected
+	svcWithResolver := NewService(ServiceConfig{
+		Clock:             func() time.Time { return now },
+		ComplianceChecker: NewDefaultComplianceChecker(),
+		RoleResolver: func(_ context.Context, _, _ string) (string, error) {
+			return rbac.RoleEditor, nil
+		},
+	})
+	ctxSessionOwner := sessionContextFromInterceptor(t, transportauth.Session{
+		UserID:      testUserA,
+		WorkspaceID: testWorkspaceA,
+		Role:        rbac.RoleOwner,
+	})
+	if _, err := svcWithResolver.ListQueue(ctxSessionOwner, connect.NewRequest(&publishv1.ListQueueRequest{})); connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("F1 VIOLATION: Mismatch between Session.Role and RoleResolver was not rejected: %v", err)
+	}
+
+	// 7. PublishVariants with Editor via WithCaller MUST fail closed, and with Manager must propagate child errors
+	ctxEditor := WithCaller(context.Background(), testWorkspaceA, testUserA, rbac.RoleEditor)
+	if _, err := svc.PublishVariants(ctxEditor, connect.NewRequest(&publishv1.PublishVariantsRequest{
+		Context:        &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: testWorkspaceA}},
+		PublishItemIds: []string{itemID},
+	})); connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("F1 VIOLATION: Editor caller allowed PublishVariants: %v", err)
+	}
+	if mockConn.publishCalls != 0 {
+		t.Fatalf("expected 0 connector calls after all unauthorized attempts, got %d", mockConn.publishCalls)
+	}
+
+	ctxManager := WithCaller(context.Background(), testWorkspaceA, testUserA, rbac.RoleManager)
+	if _, err := svc.PublishVariants(ctxManager, connect.NewRequest(&publishv1.PublishVariantsRequest{
+		Context:        &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: testWorkspaceA}},
+		PublishItemIds: []string{"nonexistent-variant-id"},
+	})); connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("expected PublishVariants to propagate child Execute error (CodeNotFound), got %v", err)
+	}
+}
+
+func TestS6_F2_ComplianceGateFailsClosedWhenCheckerNilOrConsentRevoked(t *testing.T) {
+	now := time.Date(2026, 11, 7, 11, 0, 0, 0, time.UTC)
+	ctxOwner := WithCaller(context.Background(), testWorkspaceA, testUserA, rbac.RoleOwner)
+
+	// Part A: Service with nil ComplianceChecker MUST fail closed on Schedule, Execute, and SubmitManualProof
+	svcNilChecker := NewService(ServiceConfig{
+		Clock:             func() time.Time { return now },
+		ComplianceChecker: nil,
+	})
+	mockConn := &MockConnector{platform: "tiktok", publishOutcome: "success"}
+	svcNilChecker.RegisterConnector(mockConn)
+
+	draftResp, err := svcNilChecker.CreateItem(ctxOwner, connect.NewRequest(&publishv1.CreateItemRequest{
+		TargetPlatform:  "tiktok",
+		TargetAccountId: "acc-s6-f2",
+		AssetId:         "asset-unverified-1",
+		Title:           "Unverified Compliance Item",
+	}))
+	if err != nil {
+		t.Fatalf("CreateItem draft failed: %v", err)
+	}
+	unverifiedID := draftResp.Msg.Item.PublishItemId
+
+	storedDraft, _ := svcNilChecker.Store().GetItem(ctxOwner, testWorkspaceA, unverifiedID)
+	if storedDraft.ComplianceScanResult != "pending" {
+		t.Fatalf("F2 VIOLATION: expected default ComplianceScanResult='pending' when checker is nil, got %q", storedDraft.ComplianceScanResult)
+	}
+	if storedDraft.DiagnosticsState != DiagnosticsBlocked {
+		t.Fatalf("F2 VIOLATION: expected DiagnosticsState='blocked' when checker is nil, got %q", storedDraft.DiagnosticsState)
+	}
+
+	// Even if someone tampers with stored item fields to say "passed", nil ComplianceChecker must STILL fail closed!
+	storedDraft.ComplianceScanResult = "passed"
+	storedDraft.DiagnosticsState = DiagnosticsHealthy
+	_ = svcNilChecker.Store().SaveItem(ctxOwner, storedDraft)
+
+	if _, err := svcNilChecker.Schedule(ctxOwner, connect.NewRequest(&publishv1.ScheduleRequest{
+		PublishItemId: unverifiedID,
+		ScheduledAt:   timestamppb.New(now.Add(15 * time.Minute)),
+	})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("F2 VIOLATION: Schedule succeeded with nil ComplianceChecker: %v", err)
+	}
+	if _, err := svcNilChecker.Execute(ctxOwner, connect.NewRequest(&publishv1.ExecuteRequest{
+		PublishItemId: unverifiedID,
+	})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("F2 VIOLATION: Execute succeeded with nil ComplianceChecker: %v", err)
+	}
+	if _, err := svcNilChecker.SubmitManualProof(ctxOwner, connect.NewRequest(&publishv1.SubmitManualProofRequest{
+		PublishItemId:   unverifiedID,
+		ExternalPostUrl: "https://tiktok.com/@user/video/1",
+	})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("F2 VIOLATION: SubmitManualProof succeeded with nil ComplianceChecker: %v", err)
+	}
+	if mockConn.publishCalls != 0 {
+		t.Fatalf("expected 0 connector calls when ComplianceChecker is nil, got %d", mockConn.publishCalls)
+	}
+
+	// Part B: CanonicalComplianceChecker enforces QA scan, rights status, and consent proof
+	canonChecker := NewCanonicalComplianceChecker(true)
+	canonChecker.SetAssetCompliance(AssetComplianceRecord{
+		AssetID:         "asset-consented",
+		WorkspaceID:     testWorkspaceA,
+		QualityState:    "pass",
+		PackagingScore:  92,
+		RightsVerified:  true,
+		ConsentRequired: true,
+		ConsentRecordID: "consent-valid-1",
+		CharacterID:     "char-talent-1",
+		SubjectUserID:   testUserA,
+	})
+	canonChecker.SetConsentRecord(PublishConsentRecord{
+		ConsentID:   "consent-valid-1",
+		WorkspaceID: testWorkspaceA,
+		CharacterID: "char-talent-1",
+		UserID:      testUserA,
+		ConsentType: "likeness_release",
+		Granted:     true,
+	})
+
+	svcCanon := NewService(ServiceConfig{
+		Clock:             func() time.Time { return now },
+		ComplianceChecker: canonChecker,
+	})
+	svcCanon.RegisterConnector(mockConn)
+
+	itemResp, err := svcCanon.CreateItem(ctxOwner, connect.NewRequest(&publishv1.CreateItemRequest{
+		TargetPlatform:  "tiktok",
+		TargetAccountId: "acc-s6-f2",
+		AssetId:         "asset-consented",
+		Title:           "Consented Video",
+	}))
+	if err != nil {
+		t.Fatalf("CreateItem with valid consent failed: %v", err)
+	}
+	consentedItemID := itemResp.Msg.Item.PublishItemId
+
+	// Schedule succeeds while consent is valid
+	schedTime := now.Add(10 * time.Minute)
+	schedResp, err := svcCanon.Schedule(ctxOwner, connect.NewRequest(&publishv1.ScheduleRequest{
+		PublishItemId: consentedItemID,
+		ScheduledAt:   timestamppb.New(schedTime),
+	}))
+	if err != nil {
+		t.Fatalf("Schedule with valid consent failed: %v", err)
+	}
+
+	// Advance clock past scheduled time, but REVOKE consent before Execute!
+	now = schedResp.Msg.ScheduledAt.AsTime().Add(1 * time.Minute)
+	canonChecker.RevokeConsent(testWorkspaceA, "consent-valid-1")
+
+	if _, err := svcCanon.Execute(ctxOwner, connect.NewRequest(&publishv1.ExecuteRequest{
+		PublishItemId: consentedItemID,
+	})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("F2 VIOLATION: Execute allowed publishing after consent was revoked: %v", err)
+	}
+	if mockConn.publishCalls != 0 {
+		t.Fatalf("expected 0 connector calls when consent is revoked before Execute, got %d", mockConn.publishCalls)
+	}
+
+	// Restore consent with wrong ConsentType ("marketing") -> must be rejected
+	canonChecker.SetConsentRecord(PublishConsentRecord{
+		ConsentID:   "consent-valid-1",
+		WorkspaceID: testWorkspaceA,
+		CharacterID: "char-talent-1",
+		UserID:      testUserA,
+		ConsentType: "marketing",
+		Granted:     true,
+	})
+	if _, err := svcCanon.Execute(ctxOwner, connect.NewRequest(&publishv1.ExecuteRequest{
+		PublishItemId: consentedItemID,
+	})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("F2 VIOLATION: Execute allowed publishing with marketing consent instead of likeness/voice_clone: %v", err)
+	}
+
+	// Restore valid ConsentType ("likeness_release") -> Execute succeeds
+	canonChecker.SetConsentRecord(PublishConsentRecord{
+		ConsentID:   "consent-valid-1",
+		WorkspaceID: testWorkspaceA,
+		CharacterID: "char-talent-1",
+		UserID:      testUserA,
+		ConsentType: "likeness_release",
+		Granted:     true,
+	})
+	if _, err := svcCanon.Execute(ctxOwner, connect.NewRequest(&publishv1.ExecuteRequest{
+		PublishItemId: consentedItemID,
+	})); err != nil {
+		t.Fatalf("expected Execute to succeed once likeness consent is valid, got: %v", err)
+	}
+	if mockConn.publishCalls != 1 {
+		t.Fatalf("expected 1 connector call after valid consent, got %d", mockConn.publishCalls)
+	}
+}
+
+type ambiguousTransportConnector struct {
+	platform             string
+	externalPostsCreated int
+	callErr              error
+	callRes              *ConnectorPublishResult
+	reconcileOutcome     string
+}
+
+func (c *ambiguousTransportConnector) Platform() string { return c.platform }
+
+func (c *ambiguousTransportConnector) PublishPost(_ context.Context, _ string, _ *PublishItem, _ string) (*ConnectorPublishResult, error) {
+	// Simulate provider accepting the post on the remote server before the connection drops with EOF / reset!
+	c.externalPostsCreated++
+	return c.callRes, c.callErr
+}
+
+func (c *ambiguousTransportConnector) CheckPostStatus(_ context.Context, _ string, providerRequestID string) (*ConnectorStatusResult, error) {
+	if c.reconcileOutcome == "confirmed_published" {
+		return &ConnectorStatusResult{
+			ProviderRequestID: providerRequestID,
+			ExternalPostID:    "ext_eof_post_1",
+			ExternalPostURL:   "https://tiktok.com/@brand/video/ext_eof_post_1",
+			Found:             true,
+			Status:            "confirmed_published",
+		}, nil
+	}
+	return &ConnectorStatusResult{
+		ProviderRequestID: providerRequestID,
+		Status:            "still_unknown",
+	}, nil
+}
+
+func TestS6_F5_AmbiguousTransportEOFAndResetLockRetryUntilReconciled(t *testing.T) {
+	now := time.Date(2026, 11, 7, 12, 0, 0, 0, time.UTC)
+	ctxOwner := WithCaller(context.Background(), testWorkspaceA, testUserA, rbac.RoleOwner)
+
+	transportErrors := []struct {
+		name string
+		err  error
+	}{
+		{name: "io.EOF", err: io.EOF},
+		{name: "io.ErrUnexpectedEOF", err: io.ErrUnexpectedEOF},
+		{name: "connection_reset", err: errors.New("read tcp 10.0.0.1:443: connection reset by peer")},
+		{name: "context_canceled", err: context.Canceled},
+	}
+
+	for _, tc := range transportErrors {
+		t.Run(tc.name, func(t *testing.T) {
+			svc := NewService(ServiceConfig{
+				Clock:             func() time.Time { return now },
+				ComplianceChecker: NewDefaultComplianceChecker(),
+			})
+			conn := &ambiguousTransportConnector{
+				platform:         "tiktok",
+				callErr:          tc.err,
+				reconcileOutcome: "still_unknown",
+			}
+			svc.RegisterConnector(conn)
+
+			createResp, err := svc.CreateItem(ctxOwner, connect.NewRequest(&publishv1.CreateItemRequest{
+				TargetPlatform:  "tiktok",
+				TargetAccountId: "acc-s6-f5",
+				Title:           "EOF Post " + tc.name,
+			}))
+			if err != nil {
+				t.Fatalf("CreateItem failed: %v", err)
+			}
+			itemID := createResp.Msg.Item.PublishItemId
+
+			// 1. First Execute encounters EOF/reset after provider accepted post -> MUST classify as unknown (CodeDeadlineExceeded)
+			_, err = svc.Execute(ctxOwner, connect.NewRequest(&publishv1.ExecuteRequest{
+				PublishItemId: itemID,
+			}))
+			if connect.CodeOf(err) != connect.CodeDeadlineExceeded {
+				t.Fatalf("F5 VIOLATION (%s): expected CodeDeadlineExceeded (ErrUnknownSubmit), got %v", tc.name, err)
+			}
+			if conn.externalPostsCreated != 1 {
+				t.Fatalf("expected 1 external post created on first attempt, got %d", conn.externalPostsCreated)
+			}
+
+			// Verify effect status is "unknown", NOT "failed"
+			job, _ := svc.Store().GetJobByItemID(ctxOwner, testWorkspaceA, itemID)
+			effects, _ := svc.Store().ListEffectsByAggregate(ctxOwner, testWorkspaceA, "publish_job", job.PublishJobID)
+			if len(effects) != 1 || effects[0].Status != "unknown" {
+				t.Fatalf("F5 VIOLATION (%s): expected 1 effect with status='unknown', got %+v", tc.name, effects)
+			}
+
+			// 2. Subsequent Execute or Retry MUST be blocked and MUST NOT create a second external post!
+			conn.callErr = nil
+			conn.callRes = &ConnectorPublishResult{
+				ProviderRequestID: "prov_req_2",
+				ExternalPostID:    "ext_post_duplicate",
+				ExternalPostURL:   "https://tiktok.com/@brand/video/ext_post_duplicate",
+				ResultStatus:      ResultSuccess,
+			}
+
+			if _, err := svc.Execute(ctxOwner, connect.NewRequest(&publishv1.ExecuteRequest{
+				PublishItemId: itemID,
+			})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+				t.Fatalf("F5 VIOLATION (%s): second Execute after EOF was not blocked: %v", tc.name, err)
+			}
+			if _, err := svc.Retry(ctxOwner, connect.NewRequest(&publishv1.RetryRequest{
+				PublishItemId: itemID,
+			})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+				t.Fatalf("F5 VIOLATION (%s): Retry after EOF was not blocked: %v", tc.name, err)
+			}
+			if conn.externalPostsCreated != 1 {
+				t.Fatalf("F5 VIOLATION (%s): duplicate external post was created (%d total)!", tc.name, conn.externalPostsCreated)
+			}
+		})
+	}
+}
+
+func TestS6_F6_IdempotencyKeyBoundToExactItemAccountAndPayload(t *testing.T) {
+	now := time.Date(2026, 11, 7, 13, 0, 0, 0, time.UTC)
+	svc := NewService(ServiceConfig{
+		Clock:             func() time.Time { return now },
+		ComplianceChecker: NewDefaultComplianceChecker(),
+	})
+	mockConn := &MockConnector{
+		platform:         "tiktok",
+		publishOutcome:   "success",
+		publishedPostID:  "post_item_a_only",
+		publishedPostURL: "https://tiktok.com/@brand/video/post_item_a_only",
+	}
+	svc.RegisterConnector(mockConn)
+
+	ctxOwner := WithCaller(context.Background(), testWorkspaceA, testUserA, rbac.RoleOwner)
+
+	itemAResp, _ := svc.CreateItem(ctxOwner, connect.NewRequest(&publishv1.CreateItemRequest{
+		TargetPlatform:  "tiktok",
+		TargetAccountId: "acc-s6-f6-1",
+		AssetId:         "asset-a",
+		Title:           "Original Video A",
+		Description:     "Caption A",
+	}))
+	itemAID := itemAResp.Msg.Item.PublishItemId
+
+	itemBResp, _ := svc.CreateItem(ctxOwner, connect.NewRequest(&publishv1.CreateItemRequest{
+		TargetPlatform:  "tiktok",
+		TargetAccountId: "acc-s6-f6-1",
+		AssetId:         "asset-b",
+		Title:           "Different Video B",
+		Description:     "Caption B",
+	}))
+	itemBID := itemBResp.Msg.Item.PublishItemId
+
+	itemCResp, _ := svc.CreateItem(ctxOwner, connect.NewRequest(&publishv1.CreateItemRequest{
+		TargetPlatform:  "tiktok",
+		TargetAccountId: "acc-s6-f6-2", // Different target account!
+		AssetId:         "asset-a",
+		Title:           "Original Video A",
+		Description:     "Caption A",
+	}))
+	itemCID := itemCResp.Msg.Item.PublishItemId
+
+	sharedKey := "idem-key-s6-f6"
+
+	// 1. Execute Item A with sharedKey -> succeeds
+	respA, err := svc.Execute(ctxOwner, connect.NewRequest(&publishv1.ExecuteRequest{
+		PublishItemId: itemAID,
+		Context:       &commonv1.CommandContext{IdempotencyKey: sharedKey},
+	}))
+	if err != nil {
+		t.Fatalf("Execute Item A failed: %v", err)
+	}
+	if mockConn.publishCalls != 1 {
+		t.Fatalf("expected 1 publish call, got %d", mockConn.publishCalls)
+	}
+
+	// 2. Reusing sharedKey on Item B MUST fail with CodeAlreadyExists (ErrIdempotencyKeyConflict) and NEVER mark Item B published!
+	_, errB := svc.Execute(ctxOwner, connect.NewRequest(&publishv1.ExecuteRequest{
+		PublishItemId: itemBID,
+		Context:       &commonv1.CommandContext{IdempotencyKey: sharedKey},
+	}))
+	if connect.CodeOf(errB) != connect.CodeAlreadyExists {
+		t.Fatalf("F6 VIOLATION: reusing idempotency key on Item B did not fail with CodeAlreadyExists, got %v", errB)
+	}
+	itemBStored, _ := svc.Store().GetItem(ctxOwner, testWorkspaceA, itemBID)
+	if itemBStored.LifecycleState == StatePublished {
+		t.Fatalf("F6 VIOLATION: Item B was falsely marked published using Item A's idempotency key!")
+	}
+	if postB, _ := svc.Store().GetPostByItemID(ctxOwner, testWorkspaceA, itemBID); postB != nil {
+		t.Fatalf("F6 VIOLATION: ChannelPost fabricated for Item B: %+v", postB)
+	}
+
+	// 3. Reusing sharedKey on Item C (same content, different TargetAccountID) MUST also fail with CodeAlreadyExists
+	_, errC := svc.Execute(ctxOwner, connect.NewRequest(&publishv1.ExecuteRequest{
+		PublishItemId: itemCID,
+		Context:       &commonv1.CommandContext{IdempotencyKey: sharedKey},
+	}))
+	if connect.CodeOf(errC) != connect.CodeAlreadyExists {
+		t.Fatalf("F6 VIOLATION: reusing idempotency key on different account Item C did not fail with CodeAlreadyExists, got %v", errC)
+	}
+
+	// 4. Replaying sharedKey on the EXACT same Item A succeeds idempotently without calling connector
+	respAReplay, err := svc.Execute(ctxOwner, connect.NewRequest(&publishv1.ExecuteRequest{
+		PublishItemId: itemAID,
+		Context:       &commonv1.CommandContext{IdempotencyKey: sharedKey},
+	}))
+	if err != nil {
+		t.Fatalf("expected idempotent replay on Item A to succeed, got %v", err)
+	}
+	if respAReplay.Msg.ChannelPost.ExternalPostId != respA.Msg.ChannelPost.ExternalPostId {
+		t.Fatalf("expected identical ExternalPostId on Item A replay")
+	}
+	if mockConn.publishCalls != 1 {
+		t.Fatalf("expected still 1 publish call, got %d", mockConn.publishCalls)
+	}
+}
+
+func TestS6_F7_RescheduleScheduleAndScheduleRetryBlockedWhileUnknownEffectPending(t *testing.T) {
+	now := time.Date(2026, 11, 7, 14, 0, 0, 0, time.UTC)
+	svc := NewService(ServiceConfig{
+		Clock:             func() time.Time { return now },
+		ComplianceChecker: NewDefaultComplianceChecker(),
+	})
+	mockConn := &MockConnector{
+		platform:         "tiktok",
+		publishOutcome:   "unknown",
+		reconcileOutcome: "still_unknown",
+	}
+	svc.RegisterConnector(mockConn)
+
+	ctxOwner := WithCaller(context.Background(), testWorkspaceA, testUserA, rbac.RoleOwner)
+	createResp, err := svc.CreateItem(ctxOwner, connect.NewRequest(&publishv1.CreateItemRequest{
+		TargetPlatform:  "tiktok",
+		TargetAccountId: "acc-s6-f7",
+		Title:           "S6 F7 Unknown Attempt Item",
+	}))
+	if err != nil {
+		t.Fatalf("CreateItem failed: %v", err)
+	}
+	itemID := createResp.Msg.Item.PublishItemId
+
+	// 1. First Execute hits unknown submit on Job 1
+	_, err = svc.Execute(ctxOwner, connect.NewRequest(&publishv1.ExecuteRequest{
+		PublishItemId: itemID,
+	}))
+	if connect.CodeOf(err) != connect.CodeDeadlineExceeded {
+		t.Fatalf("expected CodeDeadlineExceeded on initial unknown submit, got %v", err)
+	}
+	if mockConn.publishCalls != 1 {
+		t.Fatalf("expected 1 publish call, got %d", mockConn.publishCalls)
+	}
+
+	// 2. Schedule, Reschedule, ScheduleRetry, Retry, Cancel, Delete, UpdateDraft, UpdateMetadata MUST all fail closed!
+	future := timestamppb.New(now.Add(20 * time.Minute))
+	if _, err := svc.Schedule(ctxOwner, connect.NewRequest(&publishv1.ScheduleRequest{
+		PublishItemId: itemID,
+		ScheduledAt:   future,
+	})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("F7 VIOLATION: Schedule succeeded while unknown publish attempt was pending: %v", err)
+	}
+	if _, err := svc.Reschedule(ctxOwner, connect.NewRequest(&publishv1.RescheduleRequest{
+		PublishItemId: itemID,
+		NewScheduleAt: future,
+	})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("F7 VIOLATION: Reschedule succeeded while unknown publish attempt was pending: %v", err)
+	}
+	if _, err := svc.ScheduleRetry(ctxOwner, connect.NewRequest(&publishv1.ScheduleRetryRequest{
+		PublishItemId: itemID,
+		RetryAt:       future,
+	})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("F7 VIOLATION: ScheduleRetry succeeded while unknown publish attempt was pending: %v", err)
+	}
+	if _, err := svc.Cancel(ctxOwner, connect.NewRequest(&publishv1.CancelRequest{
+		PublishItemId: itemID,
+	})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("F7 VIOLATION: Cancel succeeded while unknown publish attempt was pending: %v", err)
+	}
+	if _, err := svc.Delete(ctxOwner, connect.NewRequest(&publishv1.DeleteRequest{
+		PublishItemId: itemID,
+	})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("F7 VIOLATION: Delete succeeded while unknown publish attempt was pending: %v", err)
+	}
+	if _, err := svc.UpdateMetadata(ctxOwner, connect.NewRequest(&publishv1.UpdateMetadataRequest{
+		PublishItemId: itemID,
+		Title:         "Mutated Title During Unknown",
+	})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("F7 VIOLATION: UpdateMetadata succeeded while unknown publish attempt was pending: %v", err)
+	}
+
+	// 3. Even if a second PublishJob is persisted in the store for the same item, Execute must inspect effects across ALL jobs for the item!
+	secondJob := &PublishJob{
+		PublishJobID:     "job-s6-f7-second",
+		WorkspaceID:      testWorkspaceA,
+		PublishItemID:    itemID,
+		DispatchStrategy: "direct",
+		LifecycleState:   JobStateCreated,
+		CreatedAt:        now.Add(1 * time.Minute),
+		UpdatedAt:        now.Add(1 * time.Minute),
+	}
+	_ = svc.Store().SaveJob(ctxOwner, secondJob)
+
+	mockConn.publishOutcome = "success"
+	_, err = svc.Execute(ctxOwner, connect.NewRequest(&publishv1.ExecuteRequest{
+		PublishItemId: itemID,
+		PublishJobId:  secondJob.PublishJobID,
+	}))
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("F7 VIOLATION: Execute on second job bypassed prior job's unknown effect: %v", err)
+	}
+	if mockConn.publishCalls != 1 {
+		t.Fatalf("F7 VIOLATION: connector was called %d times across jobs!", mockConn.publishCalls)
+	}
+}
+
+func TestS6_F8_ReconcilePublishRejectsMismatchedOrUnboundProviderRequestID(t *testing.T) {
+	now := time.Date(2026, 11, 7, 15, 0, 0, 0, time.UTC)
+	svc := NewService(ServiceConfig{
+		Clock:             func() time.Time { return now },
+		ComplianceChecker: NewDefaultComplianceChecker(),
+	})
+	mockConn := &MockConnector{
+		platform:         "youtube",
+		publishOutcome:   "unknown", // sets ProviderRequestID = "prov_req_12345"
+		reconcileOutcome: "confirmed_not_published",
+	}
+	svc.RegisterConnector(mockConn)
+
+	ctxOwner := WithCaller(context.Background(), testWorkspaceA, testUserA, rbac.RoleOwner)
+
+	// Item A: has unknown effect with bound ProviderRequestID = "prov_req_12345"
+	itemAResp, _ := svc.CreateItem(ctxOwner, connect.NewRequest(&publishv1.CreateItemRequest{
+		TargetPlatform:  "youtube",
+		TargetAccountId: "acc-s6-f8",
+		Title:           "S6 F8 Item A",
+	}))
+	itemAID := itemAResp.Msg.Item.PublishItemId
+	_, _ = svc.Execute(ctxOwner, connect.NewRequest(&publishv1.ExecuteRequest{PublishItemId: itemAID}))
+
+	// 1. Supplying a different ProviderRequestId ("bogus_nonexistent_req") MUST fail with CodeInvalidArgument (ErrProviderRequestMismatch)
+	_, err := svc.ReconcilePublish(ctxOwner, connect.NewRequest(&publishv1.ReconcilePublishRequest{
+		PublishItemId:     itemAID,
+		ProviderRequestId: "bogus_nonexistent_req",
+	}))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("F8 VIOLATION: ReconcilePublish accepted mismatched client ProviderRequestId: %v", err)
+	}
+	if mockConn.reconcileCalls != 0 {
+		t.Fatalf("F8 VIOLATION: CheckPostStatus was called with mismatched ProviderRequestId (%d calls)", mockConn.reconcileCalls)
+	}
+
+	// Verify Item A's unknown effect was NOT cleared and Retry is still blocked
+	if _, err := svc.Retry(ctxOwner, connect.NewRequest(&publishv1.RetryRequest{
+		PublishItemId: itemAID,
+	})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("F8 VIOLATION: Retry was unlocked after rejected ReconcilePublish: %v", err)
+	}
+
+	// 2. Item B: hits unknown outcome WITHOUT a bound ProviderRequestID ("unknown_no_req_id")
+	mockConn.publishOutcome = "unknown_no_req_id"
+	itemBResp, _ := svc.CreateItem(ctxOwner, connect.NewRequest(&publishv1.CreateItemRequest{
+		TargetPlatform:  "youtube",
+		TargetAccountId: "acc-s6-f8",
+		Title:           "S6 F8 Item B",
+	}))
+	itemBID := itemBResp.Msg.Item.PublishItemId
+	_, _ = svc.Execute(ctxOwner, connect.NewRequest(&publishv1.ExecuteRequest{PublishItemId: itemBID}))
+
+	// Attempting to reconcile Item B using Item A's ProviderRequestID ("prov_req_12345") MUST fail with CodeInvalidArgument!
+	_, err = svc.ReconcilePublish(ctxOwner, connect.NewRequest(&publishv1.ReconcilePublishRequest{
+		PublishItemId:     itemBID,
+		ProviderRequestId: "prov_req_12345",
+	}))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("F8 VIOLATION: ReconcilePublish allowed binding Item A's ProviderRequestId onto Item B: %v", err)
+	}
+
+	// 3. Reconciling Item A with empty ProviderRequestId uses Item A's durable bound "prov_req_12345" and succeeds
+	mockConn.reconcileOutcome = "confirmed_published"
+	recRespA, err := svc.ReconcilePublish(ctxOwner, connect.NewRequest(&publishv1.ReconcilePublishRequest{
+		PublishItemId:     itemAID,
+		ProviderRequestId: "", // Empty -> uses durable bound ID
+	}))
+	if err != nil || !recRespA.Msg.Reconciled || recRespA.Msg.ReconciliationOutcome != "confirmed_published" {
+		t.Fatalf("expected ReconcilePublish with empty ProviderRequestId to use durable bound ID and succeed, got %+v, err=%v", recRespA, err)
+	}
+}
+
+type faultInjectingPublishStore struct {
+	Store
+	failSavePost    bool
+	failAppendEvent bool
+}
+
+func (s *faultInjectingPublishStore) SavePost(ctx context.Context, post *ChannelPost) error {
+	if s.failSavePost {
+		return errors.New("simulated SavePost database failure")
+	}
+	return s.Store.SavePost(ctx, post)
+}
+
+func (s *faultInjectingPublishStore) AppendEvent(ctx context.Context, evt DomainEvent) error {
+	if s.failAppendEvent && (evt.EventType == EventPublishSucceeded || evt.EventType == EventChannelPostSynced) {
+		return errors.New("simulated AppendEvent outbox failure")
+	}
+	return s.Store.AppendEvent(ctx, evt)
+}
+
+func TestS6_F12_SavePostAndAppendEventFailuresRecoverIdempotentlyOnReplay(t *testing.T) {
+	now := time.Date(2026, 11, 7, 16, 0, 0, 0, time.UTC)
+	baseStore := NewMemoryStore()
+	faultStore := &faultInjectingPublishStore{
+		Store:        baseStore,
+		failSavePost: true,
+	}
+	svc := NewService(ServiceConfig{
+		Store:             faultStore,
+		Clock:             func() time.Time { return now },
+		ComplianceChecker: NewDefaultComplianceChecker(),
+	})
+	mockConn := &MockConnector{
+		platform:         "tiktok",
+		publishOutcome:   "success",
+		publishedPostID:  "ext_post_f12_1",
+		publishedPostURL: "https://tiktok.com/@brand/video/ext_post_f12_1",
+	}
+	svc.RegisterConnector(mockConn)
+
+	ctxOwner := WithCaller(context.Background(), testWorkspaceA, testUserA, rbac.RoleOwner)
+	createResp, err := svc.CreateItem(ctxOwner, connect.NewRequest(&publishv1.CreateItemRequest{
+		TargetPlatform:  "tiktok",
+		TargetAccountId: "acc-s6-f12",
+		Title:           "S6 F12 Durable Completion Video",
+	}))
+	if err != nil {
+		t.Fatalf("CreateItem failed: %v", err)
+	}
+	itemID := createResp.Msg.Item.PublishItemId
+
+	// 1. First Execute: connector succeeds, AppendLog succeeds, but SavePost fails -> returns CodeInternal and item is NOT marked published!
+	_, err = svc.Execute(ctxOwner, connect.NewRequest(&publishv1.ExecuteRequest{
+		PublishItemId: itemID,
+	}))
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("expected CodeInternal when SavePost fails, got %v", err)
+	}
+	if mockConn.publishCalls != 1 {
+		t.Fatalf("expected 1 connector call, got %d", mockConn.publishCalls)
+	}
+	itemAfterSavePostFail, _ := baseStore.GetItem(ctxOwner, testWorkspaceA, itemID)
+	if itemAfterSavePostFail.LifecycleState == StatePublished {
+		t.Fatalf("F12 VIOLATION: item was marked StatePublished before SavePost succeeded!")
+	}
+
+	// 2. Second Execute: SavePost now succeeds, but AppendEvent fails -> returns CodeInternal and item is still NOT marked published
+	faultStore.failSavePost = false
+	faultStore.failAppendEvent = true
+	_, err = svc.Execute(ctxOwner, connect.NewRequest(&publishv1.ExecuteRequest{
+		PublishItemId: itemID,
+	}))
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("expected CodeInternal when AppendEvent fails, got %v", err)
+	}
+	if mockConn.publishCalls != 1 {
+		t.Fatalf("F12 VIOLATION: connector called again (%d times) during SavePost/AppendEvent recovery!", mockConn.publishCalls)
+	}
+
+	// 3. Third Execute: AppendEvent now succeeds -> repairs ChannelPost, domain events, job, and item state=published with 0 extra connector calls!
+	faultStore.failAppendEvent = false
+	execResp, err := svc.Execute(ctxOwner, connect.NewRequest(&publishv1.ExecuteRequest{
+		PublishItemId: itemID,
+	}))
+	if err != nil {
+		t.Fatalf("expected third Execute to complete recovery cleanly, got %v", err)
+	}
+	if mockConn.publishCalls != 1 {
+		t.Fatalf("expected 1 total connector call after full recovery, got %d", mockConn.publishCalls)
+	}
+	if execResp.Msg.Item.LifecycleState != publishv1.PublishItemLifecycleState_PUBLISH_ITEM_LIFECYCLE_STATE_PUBLISHED {
+		t.Fatalf("expected item state PUBLISHED after recovery, got %v", execResp.Msg.Item.LifecycleState)
+	}
+	if execResp.Msg.ChannelPost == nil || execResp.Msg.ChannelPost.ExternalPostId != "ext_post_f12_1" {
+		t.Fatalf("expected recovered ChannelPost with ExternalPostId='ext_post_f12_1', got %+v", execResp.Msg.ChannelPost)
+	}
+	logs, _ := baseStore.ListLogsByItemID(ctxOwner, testWorkspaceA, itemID)
+	if len(logs) != 1 {
+		t.Fatalf("expected exactly 1 immutable publish log (no duplicate logs during recovery), got %d", len(logs))
 	}
 }

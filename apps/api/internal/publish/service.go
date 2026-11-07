@@ -2,6 +2,8 @@ package publish
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -130,14 +132,12 @@ func (s *Service) Store() Store {
 }
 
 // WithCaller attaches a verified workspace PolicyContext to ctx for authenticated RPC calls.
+// Never defaults an empty role to a privileged role; missing roles fail closed in authorizeRPC.
 func WithCaller(ctx context.Context, workspaceID, userID, role string) context.Context {
-	if role == "" {
-		role = rbac.RoleOwner
-	}
 	return rbac.WithPolicyContext(ctx, rbac.PolicyContext{
 		WorkspaceID: workspaceID,
 		ActorUserID: userID,
-		Role:        role,
+		Role:        strings.ToLower(strings.TrimSpace(role)),
 	})
 }
 
@@ -199,7 +199,7 @@ var publishRoleRank = map[string]int{
 }
 
 func checkPublishRoleEnvelope(role, envelope string) error {
-	rank, ok := publishRoleRank[role]
+	rank, ok := publishRoleRank[strings.ToLower(strings.TrimSpace(role))]
 	if !ok {
 		return ErrPermissionDenied
 	}
@@ -269,22 +269,37 @@ func (s *Service) authorizeRPC(ctx context.Context, rpcName string, requestedWor
 		}
 		pctx.WorkspaceID = session.WorkspaceID
 		pctx.ActorUserID = session.UserID
-		if pctx.Role == "" {
-			if s.roleResolver != nil {
-				resolvedRole, err := s.roleResolver(ctx, session.UserID, session.WorkspaceID)
-				if err != nil || strings.TrimSpace(resolvedRole) == "" {
-					return rbac.PolicyContext{}, connect.NewError(connect.CodePermissionDenied, ErrPermissionDenied)
-				}
-				pctx.Role = resolvedRole
-			} else {
-				pctx.Role = rbac.RoleManager
+
+		sessionRole := strings.ToLower(strings.TrimSpace(session.Role))
+		var authoritativeRole string
+		if s.roleResolver != nil {
+			resolvedRole, err := s.roleResolver(ctx, session.UserID, session.WorkspaceID)
+			if err != nil || strings.TrimSpace(resolvedRole) == "" {
+				return rbac.PolicyContext{}, connect.NewError(connect.CodePermissionDenied, ErrPermissionDenied)
+			}
+			authoritativeRole = strings.ToLower(strings.TrimSpace(resolvedRole))
+			if sessionRole != "" && sessionRole != authoritativeRole {
+				return rbac.PolicyContext{}, connect.NewError(connect.CodePermissionDenied, ErrPermissionDenied)
+			}
+		} else {
+			if sessionRole == "" {
+				return rbac.PolicyContext{}, connect.NewError(connect.CodePermissionDenied, ErrPermissionDenied)
+			}
+			authoritativeRole = sessionRole
+		}
+
+		if hasPolicy && strings.TrimSpace(pctx.Role) != "" {
+			if strings.ToLower(strings.TrimSpace(pctx.Role)) != authoritativeRole {
+				return rbac.PolicyContext{}, connect.NewError(connect.CodePermissionDenied, ErrPermissionDenied)
 			}
 		}
+		pctx.Role = authoritativeRole
 	} else {
 		if strings.TrimSpace(pctx.WorkspaceID) == "" {
 			return rbac.PolicyContext{}, connect.NewError(connect.CodeUnauthenticated, ErrUnauthenticated)
 		}
-		if strings.TrimSpace(pctx.Role) == "" {
+		pctx.Role = strings.ToLower(strings.TrimSpace(pctx.Role))
+		if pctx.Role == "" {
 			return rbac.PolicyContext{}, connect.NewError(connect.CodePermissionDenied, ErrPermissionDenied)
 		}
 	}
@@ -349,10 +364,14 @@ func (s *Service) SetTimeProvider(nowFn func() time.Time) {
 }
 
 func (s *Service) recordEvent(ctx context.Context, workspaceID, eventType, aggType, aggID string, payload map[string]any) {
+	_ = s.recordEventErr(ctx, workspaceID, eventType, aggType, aggID, payload)
+}
+
+func (s *Service) recordEventErr(ctx context.Context, workspaceID, eventType, aggType, aggID string, payload map[string]any) error {
 	if s.store == nil {
-		return
+		return ErrStoreNotConfigured
 	}
-	_ = s.store.AppendEvent(ctx, DomainEvent{
+	return s.store.AppendEvent(ctx, DomainEvent{
 		EventID:       NewID(),
 		WorkspaceID:   workspaceID,
 		EventType:     eventType,
@@ -361,6 +380,21 @@ func (s *Service) recordEvent(ctx context.Context, workspaceID, eventType, aggTy
 		Payload:       payload,
 		OccurredAt:    s.nowFn(),
 	})
+}
+
+func (s *Service) ensureEventRecorded(ctx context.Context, workspaceID, eventType, aggType, aggID string, payload map[string]any) error {
+	if s.store == nil {
+		return ErrStoreNotConfigured
+	}
+	existing, err := s.store.ListEvents(ctx, workspaceID)
+	if err == nil {
+		for _, ev := range existing {
+			if ev.EventType == eventType && ev.AggregateType == aggType && ev.AggregateID == aggID {
+				return nil
+			}
+		}
+	}
+	return s.recordEventErr(ctx, workspaceID, eventType, aggType, aggID, payload)
 }
 
 // Events returns a copy of recorded domain events.
@@ -488,53 +522,132 @@ func stringFromMap(m map[string]any, key string) string {
 	return ""
 }
 
-// enforceComplianceAndDiagnosticsGate checks QA/compliance hard blocks, soft-flag override requirements,
-// and blocked diagnostics state. Hard blocks cannot be overridden even by Owner.
+func mapHasKey(m map[string]any, key string) bool {
+	if m == nil {
+		return false
+	}
+	_, ok := m[key]
+	return ok
+}
+
+func float32FromMap(m map[string]any, key string) (float32, bool) {
+	if m == nil {
+		return 0, false
+	}
+	v, ok := m[key]
+	if !ok {
+		return 0, false
+	}
+	switch n := v.(type) {
+	case float32:
+		return n, true
+	case float64:
+		return float32(n), true
+	case int:
+		return float32(n), true
+	}
+	return 0, false
+}
+
+// enforceComplianceAndDiagnosticsGate checks QA/compliance hard blocks, consent/rights proofs,
+// soft-flag override requirements, and blocked diagnostics state.
+// Fails closed if s.complianceChecker is nil or if compliance state is unverified.
+// Hard blocks cannot be overridden even by Owner.
 func (s *Service) enforceComplianceAndDiagnosticsGate(ctx context.Context, item *PublishItem) error {
 	s.mu.RLock()
 	checker := s.complianceChecker
 	s.mu.RUnlock()
 
-	if checker != nil {
-		scanRes, hasHard, details, err := checker.CheckPublishCompliance(ctx, item.WorkspaceID, item.AssetID, item.TargetPlatform)
-		if err != nil {
-			item.DiagnosticsState = DiagnosticsBlocked
-			_ = s.store.SaveItem(ctx, item)
-			return connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("%w: %v", ErrComplianceHardBlocked, err))
+	if checker == nil {
+		item.ComplianceScanResult = "unverified"
+		item.DiagnosticsState = DiagnosticsBlocked
+		item.UpdatedAt = s.nowFn()
+		_ = s.store.SaveItem(ctx, item)
+		return connect.NewError(connect.CodeFailedPrecondition, ErrComplianceCheckerNotConfigured)
+	}
+
+	wasBlockedByCompliance := boolFromMap(item.ComplianceDetails, "blocked_by_compliance")
+	scanRes, hasHard, details, err := checker.CheckPublishCompliance(ctx, item.WorkspaceID, item.AssetID, item.TargetPlatform)
+	if details != nil {
+		if item.ComplianceDetails == nil {
+			item.ComplianceDetails = make(map[string]any)
 		}
-		if scanRes != "" {
-			item.ComplianceScanResult = scanRes
+		if wasBlockedByCompliance && err == nil && !hasHard {
+			delete(item.ComplianceDetails, "has_hard_blocks")
+			delete(item.ComplianceDetails, "consent_revoked")
+			delete(item.ComplianceDetails, "rights_blocked")
+			delete(item.ComplianceDetails, "blocked_by_compliance")
 		}
-		if details != nil {
-			if item.ComplianceDetails == nil {
-				item.ComplianceDetails = make(map[string]any)
-			}
-			for k, v := range details {
-				item.ComplianceDetails[k] = v
-			}
+		for k, v := range details {
+			item.ComplianceDetails[k] = v
 		}
-		if hasHard {
-			if item.ComplianceDetails == nil {
-				item.ComplianceDetails = make(map[string]any)
-			}
-			item.ComplianceDetails["has_hard_blocks"] = true
-			item.ComplianceScanResult = "blocked"
+		if score, ok := float32FromMap(details, "packaging_score"); ok && score > 0 {
+			item.PackagingScore = score
 		}
+	}
+	if err != nil {
+		if item.ComplianceDetails == nil {
+			item.ComplianceDetails = make(map[string]any)
+		}
+		item.ComplianceDetails["blocked_by_compliance"] = true
+		item.ComplianceScanResult = "blocked"
+		item.DiagnosticsState = DiagnosticsBlocked
+		item.UpdatedAt = s.nowFn()
+		_ = s.store.SaveItem(ctx, item)
+		return connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("%w: %v", ErrComplianceHardBlocked, err))
+	}
+	trimmedScan := strings.ToLower(strings.TrimSpace(scanRes))
+	if trimmedScan == "" {
+		item.ComplianceScanResult = "unverified"
+	} else {
+		item.ComplianceScanResult = trimmedScan
+		if (trimmedScan == "pass" || trimmedScan == "pass_with_warnings") && item.PackagingScore == 0 {
+			item.PackagingScore = 85.0
+		}
+	}
+	if hasHard {
+		if item.ComplianceDetails == nil {
+			item.ComplianceDetails = make(map[string]any)
+		}
+		item.ComplianceDetails["has_hard_blocks"] = true
+		item.ComplianceScanResult = "blocked"
 	}
 
 	scanResult := strings.ToLower(strings.TrimSpace(item.ComplianceScanResult))
 	metaScanResult := strings.ToLower(stringFromMap(item.Metadata, "compliance_scan_result"))
-	if metaScanResult != "" && scanResult == "pass" {
+	if metaScanResult != "" && (scanResult == "pass" || scanResult == "pass_with_warnings") {
 		scanResult = metaScanResult
 	}
 
-	hasHardBlocks := scanResult == "blocked" || scanResult == "hard_blocked" || scanResult == "fail" ||
+	consentRequired := boolFromMap(item.ComplianceDetails, "consent_required") || boolFromMap(item.Metadata, "consent_required")
+	consentVerified := boolFromMap(item.ComplianceDetails, "consent_verified") || boolFromMap(item.Metadata, "consent_verified")
+	consentExplicitlyUnverified := (mapHasKey(item.ComplianceDetails, "consent_verified") && !boolFromMap(item.ComplianceDetails, "consent_verified")) ||
+		(mapHasKey(item.Metadata, "consent_verified") && !boolFromMap(item.Metadata, "consent_verified"))
+	rightsExplicitlyUnverified := (mapHasKey(item.ComplianceDetails, "rights_verified") && !boolFromMap(item.ComplianceDetails, "rights_verified")) ||
+		(mapHasKey(item.Metadata, "rights_verified") && !boolFromMap(item.Metadata, "rights_verified"))
+
+	hasHardBlocks := scanResult == "blocked" || scanResult == "hard_blocked" || scanResult == "fail" || scanResult == "rejected" ||
 		boolFromMap(item.ComplianceDetails, "has_hard_blocks") ||
 		boolFromMap(item.ComplianceDetails, "is_hard_blocked") ||
 		boolFromMap(item.Metadata, "has_hard_blocks") ||
-		boolFromMap(item.Metadata, "is_hard_blocked")
+		boolFromMap(item.Metadata, "is_hard_blocked") ||
+		boolFromMap(item.ComplianceDetails, "consent_revoked") ||
+		boolFromMap(item.Metadata, "consent_revoked") ||
+		boolFromMap(item.ComplianceDetails, "rights_blocked") ||
+		boolFromMap(item.Metadata, "rights_blocked") ||
+		boolFromMap(item.ComplianceDetails, "unlicensed_media") ||
+		boolFromMap(item.Metadata, "unlicensed_media") ||
+		boolFromMap(item.ComplianceDetails, "policy_violation") ||
+		boolFromMap(item.Metadata, "policy_violation") ||
+		(consentRequired && !consentVerified) ||
+		consentExplicitlyUnverified ||
+		rightsExplicitlyUnverified
 
 	if hasHardBlocks {
+		if item.ComplianceDetails == nil {
+			item.ComplianceDetails = make(map[string]any)
+		}
+		item.ComplianceDetails["blocked_by_compliance"] = true
 		item.ComplianceScanResult = "blocked"
 		item.DiagnosticsState = DiagnosticsBlocked
 		item.UpdatedAt = s.nowFn()
@@ -553,6 +666,24 @@ func (s *Service) enforceComplianceAndDiagnosticsGate(ctx context.Context, item 
 			_ = s.store.SaveItem(ctx, item)
 			return connect.NewError(connect.CodeFailedPrecondition, ErrComplianceReviewRequired)
 		}
+	}
+
+	if scanResult != "pass" && scanResult != "pass_with_warnings" && scanResult != "review_required" {
+		if item.ComplianceDetails == nil {
+			item.ComplianceDetails = make(map[string]any)
+		}
+		item.ComplianceDetails["blocked_by_compliance"] = true
+		item.ComplianceScanResult = "unverified"
+		item.DiagnosticsState = DiagnosticsBlocked
+		item.UpdatedAt = s.nowFn()
+		_ = s.store.SaveItem(ctx, item)
+		return connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("%w: compliance status %q is unverified", ErrComplianceHardBlocked, scanResult))
+	}
+
+	if wasBlockedByCompliance && item.DiagnosticsState == DiagnosticsBlocked {
+		item.DiagnosticsState = DiagnosticsHealthy
+		item.UpdatedAt = s.nowFn()
+		_ = s.store.SaveItem(ctx, item)
 	}
 
 	if item.DiagnosticsState == DiagnosticsBlocked {
@@ -591,8 +722,8 @@ func (s *Service) CreateItem(ctx context.Context, req *connect.Request[publishv1
 		Hashtags:             req.Msg.Hashtags,
 		LifecycleState:       StateDraft,
 		DiagnosticsState:     DiagnosticsHealthy,
-		PackagingScore:       85.0,
-		ComplianceScanResult: "pass",
+		PackagingScore:       0,
+		ComplianceScanResult: "pending",
 		CreatedBy:            caller.ActorUserID,
 		CreatedAt:            now,
 		UpdatedAt:            now,
@@ -603,16 +734,24 @@ func (s *Service) CreateItem(ctx context.Context, req *connect.Request[publishv1
 	s.mu.RUnlock()
 	if checker != nil {
 		scanRes, hasHard, details, cErr := checker.CheckPublishCompliance(ctx, workspaceID, item.AssetID, platform)
-		if scanRes != "" {
-			item.ComplianceScanResult = scanRes
+		trimmed := strings.ToLower(strings.TrimSpace(scanRes))
+		if trimmed != "" {
+			item.ComplianceScanResult = trimmed
 		}
 		if details != nil {
 			item.ComplianceDetails = details
+			if score, ok := float32FromMap(details, "packaging_score"); ok && score > 0 {
+				item.PackagingScore = score
+			}
 		}
-		if cErr != nil || hasHard || strings.EqualFold(scanRes, "blocked") {
+		if cErr != nil || hasHard || strings.EqualFold(trimmed, "blocked") || strings.EqualFold(trimmed, "hard_blocked") || strings.EqualFold(trimmed, "fail") {
 			item.ComplianceScanResult = "blocked"
 			item.DiagnosticsState = DiagnosticsBlocked
+		} else if (trimmed == "pass" || trimmed == "pass_with_warnings") && item.PackagingScore == 0 {
+			item.PackagingScore = 85.0
 		}
+	} else {
+		item.DiagnosticsState = DiagnosticsBlocked
 	}
 
 	if req.Msg.ScheduleAt != nil {
@@ -650,6 +789,10 @@ func (s *Service) Schedule(ctx context.Context, req *connect.Request[publishv1.S
 		return nil, connect.NewError(connect.CodeNotFound, ErrItemNotFound)
 	}
 
+	if err := s.ensureNoActiveOrSucceededEffect(ctx, caller.WorkspaceID, item); err != nil {
+		return nil, err
+	}
+
 	if err := s.enforceComplianceAndDiagnosticsGate(ctx, item); err != nil {
 		return nil, err
 	}
@@ -676,16 +819,23 @@ func (s *Service) Schedule(ctx context.Context, req *connect.Request[publishv1.S
 	item.LifecycleState = StateScheduled
 	item.UpdatedAt = now
 
-	job := &PublishJob{
-		PublishJobID:     NewID(),
-		WorkspaceID:      item.WorkspaceID,
-		PublishItemID:    item.PublishItemID,
-		DispatchStrategy: "scheduled_jitter",
-		LifecycleState:   JobStateCreated,
-		AttemptCount:     0,
-		MaxAttempts:      3,
-		CreatedAt:        now,
-		UpdatedAt:        now,
+	job, _ := s.store.GetJobByItemID(ctx, caller.WorkspaceID, item.PublishItemID)
+	if job == nil || job.LifecycleState == StateFailed || job.LifecycleState == StateCancelled {
+		job = &PublishJob{
+			PublishJobID:     NewID(),
+			WorkspaceID:      item.WorkspaceID,
+			PublishItemID:    item.PublishItemID,
+			DispatchStrategy: "scheduled_jitter",
+			LifecycleState:   JobStateCreated,
+			AttemptCount:     0,
+			MaxAttempts:      3,
+			CreatedAt:        now,
+			UpdatedAt:        now,
+		}
+	} else {
+		job.DispatchStrategy = "scheduled_jitter"
+		job.LifecycleState = JobStateCreated
+		job.UpdatedAt = now
 	}
 
 	if err := s.store.SaveItem(ctx, item); err != nil {
@@ -708,7 +858,65 @@ func (s *Service) Schedule(ctx context.Context, req *connect.Request[publishv1.S
 	}), nil
 }
 
-// findJobEffects returns all ExternalEffects associated with the item or job in the workspace.
+func computePublishRequestHash(item *PublishItem) string {
+	if item == nil {
+		return ""
+	}
+	h := sha256.New()
+	_, _ = h.Write([]byte(strings.TrimSpace(item.PublishItemID) + "\x00"))
+	_, _ = h.Write([]byte(strings.TrimSpace(item.AssetID) + "\x00"))
+	_, _ = h.Write([]byte(strings.ToLower(strings.TrimSpace(item.TargetPlatform)) + "\x00"))
+	_, _ = h.Write([]byte(strings.TrimSpace(item.TargetAccountID) + "\x00"))
+	_, _ = h.Write([]byte(strings.TrimSpace(item.TargetFormat) + "\x00"))
+	_, _ = h.Write([]byte(strings.TrimSpace(item.PublishMode) + "\x00"))
+	_, _ = h.Write([]byte(item.Title + "\x00"))
+	_, _ = h.Write([]byte(item.Description + "\x00"))
+	_, _ = h.Write([]byte(strings.Join(item.Hashtags, "\x1f")))
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+func (s *Service) verifyEffectMatchesItem(ctx context.Context, eff *ExternalEffect, item *PublishItem) error {
+	if eff == nil || item == nil {
+		return nil
+	}
+	if eff.WorkspaceID != "" && eff.WorkspaceID != item.WorkspaceID {
+		return ErrIdempotencyKeyConflict
+	}
+	if eff.Provider != "" && !strings.EqualFold(strings.TrimSpace(eff.Provider), strings.TrimSpace(item.TargetPlatform)) {
+		return ErrIdempotencyKeyConflict
+	}
+	if eff.ConnectedAccountID != item.TargetAccountID {
+		return ErrIdempotencyKeyConflict
+	}
+	boundItemID := stringFromMap(eff.ResultPayload, "publish_item_id")
+	if boundItemID != "" && boundItemID != item.PublishItemID {
+		return ErrIdempotencyKeyConflict
+	}
+	if boundItemID == "" {
+		switch eff.AggregateType {
+		case "publish_item":
+			if eff.AggregateID != "" && eff.AggregateID != item.PublishItemID {
+				return ErrIdempotencyKeyConflict
+			}
+		case "publish_job":
+			if eff.AggregateID != "" {
+				if j, err := s.store.GetJob(ctx, item.WorkspaceID, eff.AggregateID); err == nil && j != nil {
+					if j.PublishItemID != item.PublishItemID {
+						return ErrIdempotencyKeyConflict
+					}
+				}
+			}
+		}
+	}
+	boundHash := stringFromMap(eff.ResultPayload, "request_hash")
+	if boundHash != "" && boundHash != computePublishRequestHash(item) {
+		return ErrIdempotencyKeyConflict
+	}
+	return nil
+}
+
+// findJobEffects returns the latest active or succeeded ExternalEffect associated with the operation key,
+// specific job, any job of the publish item, or the publish item aggregate in the workspace.
 func (s *Service) findJobEffects(ctx context.Context, workspaceID, publishItemID, publishJobID, opKey string) (*ExternalEffect, error) {
 	if opKey != "" {
 		eff, err := s.store.GetEffectByKey(ctx, workspaceID, opKey)
@@ -732,6 +940,27 @@ func (s *Service) findJobEffects(ctx context.Context, workspaceID, publishItemID
 		}
 	}
 	if publishItemID != "" {
+		allJobs, err := s.store.ListJobs(ctx, workspaceID)
+		if err != nil {
+			return nil, err
+		}
+		for i := len(allJobs) - 1; i >= 0; i-- {
+			j := allJobs[i]
+			if j == nil || j.PublishItemID != publishItemID || j.PublishJobID == publishJobID {
+				continue
+			}
+			jEffects, err := s.store.ListEffectsByAggregate(ctx, workspaceID, "publish_job", j.PublishJobID)
+			if err != nil {
+				return nil, err
+			}
+			for k := len(jEffects) - 1; k >= 0; k-- {
+				eff := jEffects[k]
+				if eff.Status == "succeeded" || eff.Status == "prepared" || eff.Status == "submitted" || eff.Status == "unknown" {
+					return eff, nil
+				}
+			}
+		}
+
 		itemEffects, err := s.store.ListEffectsByAggregate(ctx, workspaceID, "publish_item", publishItemID)
 		if err != nil {
 			return nil, err
@@ -744,6 +973,306 @@ func (s *Service) findJobEffects(ctx context.Context, workspaceID, publishItemID
 		}
 	}
 	return nil, nil
+}
+
+func (s *Service) listAllItemEffects(ctx context.Context, workspaceID, publishItemID, primaryJobID string) ([]*ExternalEffect, error) {
+	seen := make(map[string]bool)
+	out := make([]*ExternalEffect, 0)
+	addEffects := func(list []*ExternalEffect) {
+		for _, eff := range list {
+			if eff == nil || seen[eff.EffectID] {
+				continue
+			}
+			seen[eff.EffectID] = true
+			out = append(out, eff)
+		}
+	}
+
+	if primaryJobID != "" {
+		list, err := s.store.ListEffectsByAggregate(ctx, workspaceID, "publish_job", primaryJobID)
+		if err != nil {
+			return nil, err
+		}
+		addEffects(list)
+	}
+	if publishItemID != "" {
+		allJobs, err := s.store.ListJobs(ctx, workspaceID)
+		if err != nil {
+			return nil, err
+		}
+		for _, j := range allJobs {
+			if j == nil || j.PublishItemID != publishItemID || j.PublishJobID == primaryJobID {
+				continue
+			}
+			list, err := s.store.ListEffectsByAggregate(ctx, workspaceID, "publish_job", j.PublishJobID)
+			if err != nil {
+				return nil, err
+			}
+			addEffects(list)
+		}
+		itemList, err := s.store.ListEffectsByAggregate(ctx, workspaceID, "publish_item", publishItemID)
+		if err != nil {
+			return nil, err
+		}
+		addEffects(itemList)
+	}
+	return out, nil
+}
+
+func (s *Service) ensureNoActiveOrSucceededEffect(ctx context.Context, workspaceID string, item *PublishItem) error {
+	if item == nil {
+		return nil
+	}
+	if item.LifecycleState == StatePublished {
+		return connect.NewError(connect.CodeFailedPrecondition, ErrDuplicatePostPrevented)
+	}
+	if item.LifecycleState == StateExecuting {
+		return connect.NewError(connect.CodeFailedPrecondition, ErrUnknownSubmit)
+	}
+	allJobs, _ := s.store.ListJobs(ctx, workspaceID)
+	for _, j := range allJobs {
+		if j == nil || j.PublishItemID != item.PublishItemID {
+			continue
+		}
+		if j.LifecycleState == StateExecuting {
+			return connect.NewError(connect.CodeFailedPrecondition, ErrUnknownSubmit)
+		}
+		if j.LifecycleState == JobStateSucceeded {
+			return connect.NewError(connect.CodeFailedPrecondition, ErrDuplicatePostPrevented)
+		}
+		if j.LastExecutionSummary != nil && boolFromMap(j.LastExecutionSummary, "requires_reconciliation") {
+			return connect.NewError(connect.CodeFailedPrecondition, ErrUnknownSubmit)
+		}
+	}
+	eff, err := s.findJobEffects(ctx, workspaceID, item.PublishItemID, "", "")
+	if err != nil {
+		return connect.NewError(connect.CodeInternal, err)
+	}
+	if eff != nil {
+		if eff.Status == "unknown" || eff.Status == "submitted" || eff.Status == "prepared" {
+			return connect.NewError(connect.CodeFailedPrecondition, ErrUnknownSubmit)
+		}
+		if eff.Status == "succeeded" {
+			return connect.NewError(connect.CodeFailedPrecondition, ErrDuplicatePostPrevented)
+		}
+	}
+	return nil
+}
+
+func (s *Service) isProviderRequestIDBoundToOtherEffect(ctx context.Context, workspaceID string, activeEffect *ExternalEffect, providerReqID string) bool {
+	providerReqID = strings.TrimSpace(providerReqID)
+	if providerReqID == "" {
+		return false
+	}
+	activeID := ""
+	if activeEffect != nil {
+		activeID = activeEffect.EffectID
+	}
+	allJobs, _ := s.store.ListJobs(ctx, workspaceID)
+	for _, j := range allJobs {
+		if j == nil {
+			continue
+		}
+		effs, _ := s.store.ListEffectsByAggregate(ctx, workspaceID, "publish_job", j.PublishJobID)
+		for _, eff := range effs {
+			if eff != nil && eff.EffectID != activeID && strings.TrimSpace(eff.ProviderRequestID) == providerReqID {
+				return true
+			}
+		}
+	}
+	allItems, _ := s.store.ListItems(ctx, workspaceID)
+	for _, it := range allItems {
+		if it == nil {
+			continue
+		}
+		effs, _ := s.store.ListEffectsByAggregate(ctx, workspaceID, "publish_item", it.PublishItemID)
+		for _, eff := range effs {
+			if eff != nil && eff.EffectID != activeID && strings.TrimSpace(eff.ProviderRequestID) == providerReqID {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func isAmbiguousErrorCode(code string) bool {
+	c := strings.ToLower(strings.TrimSpace(code))
+	return c == "" || c == ErrorCodeUnknownSubmit || c == ErrorCodeNetworkTimeout ||
+		strings.Contains(c, "timeout") || strings.Contains(c, "eof") ||
+		strings.Contains(c, "reset") || strings.Contains(c, "unknown") ||
+		strings.Contains(c, "500") || strings.Contains(c, "502") ||
+		strings.Contains(c, "503") || strings.Contains(c, "504")
+}
+
+// completePublishedItem idempotently persists the succeeded ExternalEffect, immutable PublishLog,
+// ChannelPost, completion domain events, succeeded PublishJob, and published PublishItem in a safe order
+// so that a transient SavePost or AppendEvent error never leaves the item unrecoverably published without a post.
+func (s *Service) completePublishedItem(
+	ctx context.Context,
+	caller rbac.PolicyContext,
+	item *PublishItem,
+	job *PublishJob,
+	effect *ExternalEffect,
+	extPostID string,
+	extPostURL string,
+	executionPath string,
+	evidenceRef string,
+	logMeta map[string]any,
+	completedAt time.Time,
+	reconciled bool,
+) (*PublishLog, *ChannelPost, error) {
+	if completedAt.IsZero() {
+		completedAt = s.nowFn()
+	}
+	if executionPath == "" {
+		executionPath = PathNativeAPI
+	}
+
+	if effect != nil {
+		if extPostID == "" {
+			extPostID = stringFromMap(effect.ResultPayload, "external_post_id")
+		}
+		if extPostURL == "" {
+			extPostURL = stringFromMap(effect.ResultPayload, "external_post_url")
+		}
+	}
+
+	logs, _ := s.store.ListLogsByItemID(ctx, item.WorkspaceID, item.PublishItemID)
+	var successLog *PublishLog
+	for i := len(logs) - 1; i >= 0; i-- {
+		if logs[i] != nil && logs[i].ResultStatus == ResultSuccess {
+			successLog = logs[i]
+			break
+		}
+	}
+	if successLog != nil {
+		if extPostID == "" {
+			extPostID = successLog.ExternalPostID
+		}
+		if extPostURL == "" {
+			extPostURL = successLog.ExternalPostURL
+		}
+	}
+
+	if effect != nil {
+		effect.Status = "succeeded"
+		if effect.ResultPayload == nil {
+			effect.ResultPayload = make(map[string]any)
+		}
+		effect.ResultPayload["publish_item_id"] = item.PublishItemID
+		if job != nil {
+			effect.ResultPayload["publish_job_id"] = job.PublishJobID
+		}
+		effect.ResultPayload["request_hash"] = computePublishRequestHash(item)
+		if extPostID != "" {
+			effect.ResultPayload["external_post_id"] = extPostID
+		}
+		if extPostURL != "" {
+			effect.ResultPayload["external_post_url"] = extPostURL
+		}
+		effect.UpdatedAt = completedAt
+		if err := s.store.SaveEffect(ctx, effect); err != nil {
+			return nil, nil, connect.NewError(connect.CodeInternal, err)
+		}
+	}
+
+	if successLog == nil {
+		jobID := ""
+		if job != nil {
+			jobID = job.PublishJobID
+		}
+		attemptedAt := completedAt
+		if effect != nil && !effect.CreatedAt.IsZero() {
+			attemptedAt = effect.CreatedAt
+		}
+		successLog = &PublishLog{
+			PublishLogID:    NewID(),
+			WorkspaceID:     item.WorkspaceID,
+			PublishJobID:    jobID,
+			PublishItemID:   item.PublishItemID,
+			AttemptedAt:     attemptedAt,
+			CompletedAt:     &completedAt,
+			ActorUserID:     caller.ActorUserID,
+			ExecutionPath:   executionPath,
+			ResultStatus:    ResultSuccess,
+			ExternalPostID:  extPostID,
+			ExternalPostURL: extPostURL,
+			EvidenceRef:     evidenceRef,
+			Metadata:        logMeta,
+		}
+		// RULE-M11-002: Immutable PublishLog MUST succeed before item/job transitions to published/succeeded.
+		if err := s.store.AppendLog(ctx, successLog); err != nil {
+			return nil, nil, connect.NewError(connect.CodeInternal, fmt.Errorf("publish: failed to append immutable publish log: %w", err))
+		}
+	}
+
+	channelPost, _ := s.store.GetPostByItemID(ctx, item.WorkspaceID, item.PublishItemID)
+	if channelPost == nil {
+		channelPost = &ChannelPost{
+			ChannelPostID:      NewID(),
+			WorkspaceID:        item.WorkspaceID,
+			PublishItemID:      item.PublishItemID,
+			ConnectedAccountID: item.TargetAccountID,
+			ExternalPostID:     extPostID,
+			ExternalPermalink:  extPostURL,
+			Title:              item.Title,
+			SyncedAt:           &completedAt,
+			CreatedAt:          completedAt,
+			UpdatedAt:          completedAt,
+		}
+		// F12: SavePost MUST succeed before item transitions to StatePublished.
+		if err := s.store.SavePost(ctx, channelPost); err != nil {
+			return nil, nil, connect.NewError(connect.CodeInternal, fmt.Errorf("publish: failed to save channel post: %w", err))
+		}
+	}
+
+	pubSucceededPayload := map[string]any{
+		"external_id": extPostID,
+		"url":         extPostURL,
+	}
+	if reconciled {
+		pubSucceededPayload["reconciled"] = true
+	}
+	if evidenceRef != "" {
+		pubSucceededPayload["execution_path"] = executionPath
+		pubSucceededPayload["evidence_ref"] = evidenceRef
+	}
+	if err := s.ensureEventRecorded(ctx, item.WorkspaceID, EventPublishSucceeded, "publish_item", item.PublishItemID, pubSucceededPayload); err != nil {
+		return nil, nil, connect.NewError(connect.CodeInternal, fmt.Errorf("publish: failed to record %s event: %w", EventPublishSucceeded, err))
+	}
+	if err := s.ensureEventRecorded(ctx, item.WorkspaceID, EventPublishItemSucceeded, "publish_item", item.PublishItemID, map[string]any{
+		"external_post_id":  extPostID,
+		"external_post_url": extPostURL,
+	}); err != nil {
+		return nil, nil, connect.NewError(connect.CodeInternal, fmt.Errorf("publish: failed to record %s event: %w", EventPublishItemSucceeded, err))
+	}
+	if err := s.ensureEventRecorded(ctx, item.WorkspaceID, EventChannelPostSynced, "channel_post", channelPost.ChannelPostID, map[string]any{
+		"publish_item_id":  item.PublishItemID,
+		"external_post_id": extPostID,
+	}); err != nil {
+		return nil, nil, connect.NewError(connect.CodeInternal, fmt.Errorf("publish: failed to record %s event: %w", EventChannelPostSynced, err))
+	}
+
+	if job != nil {
+		job.LifecycleState = JobStateSucceeded
+		if job.LastExecutionSummary == nil {
+			job.LastExecutionSummary = make(map[string]any)
+		}
+		job.LastExecutionSummary["requires_reconciliation"] = false
+		job.UpdatedAt = completedAt
+		if err := s.store.SaveJob(ctx, job); err != nil {
+			return nil, nil, connect.NewError(connect.CodeInternal, err)
+		}
+	}
+
+	item.LifecycleState = StatePublished
+	item.DiagnosticsState = DiagnosticsHealthy
+	item.UpdatedAt = completedAt
+	if err := s.store.SaveItem(ctx, item); err != nil {
+		return nil, nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	return successLog, channelPost, nil
 }
 
 // Execute executes publish immediately or dispatches a due scheduled job.
@@ -763,17 +1292,18 @@ func (s *Service) Execute(ctx context.Context, req *connect.Request[publishv1.Ex
 
 	now := s.nowFn()
 
-	// REPLAY PROTECTION (Acceptance Target: Replay with one external result)
-	if item.LifecycleState == StatePublished {
-		logs, _ := s.store.ListLogsByItemID(ctx, caller.WorkspaceID, item.PublishItemID)
-		var successLog *PublishLog
-		for i := len(logs) - 1; i >= 0; i-- {
-			if logs[i].ResultStatus == ResultSuccess {
-				successLog = logs[i]
-				break
+	var idemOpKey string
+	if req.Msg.Context != nil && strings.TrimSpace(req.Msg.Context.IdempotencyKey) != "" {
+		idemOpKey = fmt.Sprintf("pub_idem_%s_%s", item.WorkspaceID, strings.TrimSpace(req.Msg.Context.IdempotencyKey))
+		if byKey, kErr := s.store.GetEffectByKey(ctx, item.WorkspaceID, idemOpKey); kErr == nil && byKey != nil {
+			if err := s.verifyEffectMatchesItem(ctx, byKey, item); err != nil {
+				return nil, connect.NewError(connect.CodeAlreadyExists, err)
 			}
 		}
-		channelPost, _ := s.store.GetPostByItemID(ctx, caller.WorkspaceID, item.PublishItemID)
+	}
+
+	// REPLAY PROTECTION (Acceptance Target: Replay with one external result, repairing any partial post/event state)
+	if item.LifecycleState == StatePublished {
 		var job *PublishJob
 		if req.Msg.PublishJobId != "" {
 			var jErr error
@@ -787,6 +1317,15 @@ func (s *Service) Execute(ctx context.Context, req *connect.Request[publishv1.Ex
 		}
 		if job == nil {
 			job, _ = s.store.GetJobByItemID(ctx, caller.WorkspaceID, item.PublishItemID)
+		}
+		jobID := ""
+		if job != nil {
+			jobID = job.PublishJobID
+		}
+		existingEff, _ := s.findJobEffects(ctx, caller.WorkspaceID, item.PublishItemID, jobID, idemOpKey)
+		successLog, channelPost, cErr := s.completePublishedItem(ctx, caller, item, job, existingEff, "", "", PathNativeAPI, "", nil, now, false)
+		if cErr != nil {
+			return nil, cErr
 		}
 		return connect.NewResponse(&publishv1.ExecuteResponse{
 			Item:        ItemToProto(item),
@@ -873,8 +1412,8 @@ func (s *Service) Execute(ctx context.Context, req *connect.Request[publishv1.Ex
 
 	// Stable operation key BEFORE incrementing AttemptCount (PUB-02).
 	var opKey string
-	if req.Msg.Context != nil && req.Msg.Context.IdempotencyKey != "" {
-		opKey = fmt.Sprintf("pub_idem_%s_%s", item.WorkspaceID, req.Msg.Context.IdempotencyKey)
+	if idemOpKey != "" {
+		opKey = idemOpKey
 	} else {
 		opKey = fmt.Sprintf("pub_job_%s_%s", item.WorkspaceID, job.PublishJobID)
 	}
@@ -883,77 +1422,25 @@ func (s *Service) Execute(ctx context.Context, req *connect.Request[publishv1.Ex
 	connector := s.connectors[item.TargetPlatform]
 	s.mu.RUnlock()
 
-	// Check if this operation or job/item already has a succeeded or unresolved external effect (PUB-02)
+	// Check if this operation or job/item already has a succeeded or unresolved external effect (PUB-02 / F6 / F7)
 	existingEffect, err := s.findJobEffects(ctx, item.WorkspaceID, item.PublishItemID, job.PublishJobID, opKey)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	if existingEffect != nil {
+		if err := s.verifyEffectMatchesItem(ctx, existingEffect, item); err != nil {
+			return nil, connect.NewError(connect.CodeAlreadyExists, err)
+		}
 		if existingEffect.Status == "succeeded" {
-			logs, _ := s.store.ListLogsByItemID(ctx, caller.WorkspaceID, item.PublishItemID)
-			var successLog *PublishLog
-			for i := len(logs) - 1; i >= 0; i-- {
-				if logs[i].ResultStatus == ResultSuccess {
-					successLog = logs[i]
-					break
-				}
+			completedAt := existingEffect.UpdatedAt
+			if completedAt.IsZero() {
+				completedAt = now
 			}
 			extPostID := stringFromMap(existingEffect.ResultPayload, "external_post_id")
 			extPostURL := stringFromMap(existingEffect.ResultPayload, "external_post_url")
-			if successLog == nil {
-				completedAt := existingEffect.UpdatedAt
-				if completedAt.IsZero() {
-					completedAt = now
-				}
-				successLog = &PublishLog{
-					PublishLogID:    NewID(),
-					WorkspaceID:     item.WorkspaceID,
-					PublishJobID:    job.PublishJobID,
-					PublishItemID:   item.PublishItemID,
-					AttemptedAt:     existingEffect.CreatedAt,
-					CompletedAt:     &completedAt,
-					ActorUserID:     caller.ActorUserID,
-					ExecutionPath:   PathNativeAPI,
-					ResultStatus:    ResultSuccess,
-					ExternalPostID:  extPostID,
-					ExternalPostURL: extPostURL,
-				}
-				if err := s.store.AppendLog(ctx, successLog); err != nil {
-					return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("publish: failed to append immutable publish log: %w", err))
-				}
-			}
-			if job.LifecycleState != JobStateSucceeded {
-				job.LifecycleState = JobStateSucceeded
-				job.UpdatedAt = now
-				if err := s.store.SaveJob(ctx, job); err != nil {
-					return nil, connect.NewError(connect.CodeInternal, err)
-				}
-			}
-			if item.LifecycleState != StatePublished {
-				item.LifecycleState = StatePublished
-				item.DiagnosticsState = DiagnosticsHealthy
-				item.UpdatedAt = now
-				if err := s.store.SaveItem(ctx, item); err != nil {
-					return nil, connect.NewError(connect.CodeInternal, err)
-				}
-			}
-			channelPost, _ := s.store.GetPostByItemID(ctx, caller.WorkspaceID, item.PublishItemID)
-			if channelPost == nil {
-				channelPost = &ChannelPost{
-					ChannelPostID:      NewID(),
-					WorkspaceID:        item.WorkspaceID,
-					PublishItemID:      item.PublishItemID,
-					ConnectedAccountID: item.TargetAccountID,
-					ExternalPostID:     extPostID,
-					ExternalPermalink:  extPostURL,
-					Title:              item.Title,
-					SyncedAt:           &now,
-					CreatedAt:          now,
-					UpdatedAt:          now,
-				}
-				if err := s.store.SavePost(ctx, channelPost); err != nil {
-					return nil, connect.NewError(connect.CodeInternal, err)
-				}
+			successLog, channelPost, cErr := s.completePublishedItem(ctx, caller, item, job, existingEffect, extPostID, extPostURL, PathNativeAPI, "", nil, completedAt, false)
+			if cErr != nil {
+				return nil, cErr
 			}
 			return connect.NewResponse(&publishv1.ExecuteResponse{
 				Item:        ItemToProto(item),
@@ -976,72 +1463,10 @@ func (s *Service) Execute(ctx context.Context, req *connect.Request[publishv1.Ex
 					if statusRes.PublishedAt != nil {
 						completedAt = *statusRes.PublishedAt
 					}
-					existingEffect.Status = "succeeded"
-					if existingEffect.ResultPayload == nil {
-						existingEffect.ResultPayload = make(map[string]any)
+					log, channelPost, cErr := s.completePublishedItem(ctx, caller, item, job, existingEffect, statusRes.ExternalPostID, statusRes.ExternalPostURL, PathNativeAPI, "", nil, completedAt, true)
+					if cErr != nil {
+						return nil, cErr
 					}
-					existingEffect.ResultPayload["external_post_id"] = statusRes.ExternalPostID
-					existingEffect.ResultPayload["external_post_url"] = statusRes.ExternalPostURL
-					if err := s.store.SaveEffect(ctx, existingEffect); err != nil {
-						return nil, connect.NewError(connect.CodeInternal, err)
-					}
-
-					log := &PublishLog{
-						PublishLogID:    NewID(),
-						WorkspaceID:     item.WorkspaceID,
-						PublishJobID:    job.PublishJobID,
-						PublishItemID:   item.PublishItemID,
-						AttemptedAt:     now,
-						CompletedAt:     &completedAt,
-						ActorUserID:     caller.ActorUserID,
-						ExecutionPath:   PathNativeAPI,
-						ResultStatus:    ResultSuccess,
-						ExternalPostID:  statusRes.ExternalPostID,
-						ExternalPostURL: statusRes.ExternalPostURL,
-					}
-					// RULE-M11-002: Immutable PublishLog MUST succeed before item/job transitions to published/succeeded
-					if err := s.store.AppendLog(ctx, log); err != nil {
-						return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("publish: failed to append immutable publish log: %w", err))
-					}
-
-					job.LifecycleState = JobStateSucceeded
-					job.UpdatedAt = completedAt
-					if job.LastExecutionSummary == nil {
-						job.LastExecutionSummary = make(map[string]any)
-					}
-					job.LastExecutionSummary["requires_reconciliation"] = false
-					if err := s.store.SaveJob(ctx, job); err != nil {
-						return nil, connect.NewError(connect.CodeInternal, err)
-					}
-
-					item.LifecycleState = StatePublished
-					item.DiagnosticsState = DiagnosticsHealthy
-					item.UpdatedAt = completedAt
-					if err := s.store.SaveItem(ctx, item); err != nil {
-						return nil, connect.NewError(connect.CodeInternal, err)
-					}
-
-					channelPost := &ChannelPost{
-						ChannelPostID:      NewID(),
-						WorkspaceID:        item.WorkspaceID,
-						PublishItemID:      item.PublishItemID,
-						ConnectedAccountID: item.TargetAccountID,
-						ExternalPostID:     statusRes.ExternalPostID,
-						ExternalPermalink:  statusRes.ExternalPostURL,
-						Title:              item.Title,
-						SyncedAt:           &completedAt,
-						CreatedAt:          completedAt,
-						UpdatedAt:          completedAt,
-					}
-					if err := s.store.SavePost(ctx, channelPost); err != nil {
-						return nil, connect.NewError(connect.CodeInternal, err)
-					}
-
-					s.recordEvent(ctx, item.WorkspaceID, EventPublishSucceeded, "publish_item", item.PublishItemID, map[string]any{
-						"external_id": statusRes.ExternalPostID,
-						"url":         statusRes.ExternalPostURL,
-						"reconciled":  true,
-					})
 					return connect.NewResponse(&publishv1.ExecuteResponse{
 						Item:        ItemToProto(item),
 						Job:         JobToProto(job),
@@ -1092,6 +1517,25 @@ func (s *Service) Execute(ctx context.Context, req *connect.Request[publishv1.Ex
 		return nil, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("%w: platform %q", ErrConnectorNotConfigured, item.TargetPlatform))
 	}
 
+	if priorByKey, _ := s.store.GetEffectByKey(ctx, item.WorkspaceID, opKey); priorByKey != nil {
+		if err := s.verifyEffectMatchesItem(ctx, priorByKey, item); err != nil {
+			return nil, connect.NewError(connect.CodeAlreadyExists, err)
+		}
+		if priorByKey.Status == "failed" {
+			if stringFromMap(priorByKey.ResultPayload, "reconciled") == "confirmed_not_published" ||
+				boolFromMap(priorByKey.ResultPayload, "definitive_rejection") {
+				opKey = fmt.Sprintf("%s_attempt_%d", opKey, job.AttemptCount+1)
+			} else {
+				return nil, connect.NewError(connect.CodeFailedPrecondition, ErrUnknownSubmit)
+			}
+		}
+	}
+
+	// Re-verify canonical QA/rights/consent gate immediately before external dispatch (F2).
+	if err := s.enforceComplianceAndDiagnosticsGate(ctx, item); err != nil {
+		return nil, err
+	}
+
 	// Transition to executing
 	item.LifecycleState = StateExecuting
 	item.UpdatedAt = now
@@ -1110,11 +1554,6 @@ func (s *Service) Execute(ctx context.Context, req *connect.Request[publishv1.Ex
 		"attempt": job.AttemptCount,
 	})
 
-	if priorByKey, _ := s.store.GetEffectByKey(ctx, item.WorkspaceID, opKey); priorByKey != nil && priorByKey.Status == "failed" {
-		// Prior effect on this key was reconciled as confirmed_not_published; use attempt-scoped key for the new attempt.
-		opKey = fmt.Sprintf("%s_attempt_%d", opKey, job.AttemptCount)
-	}
-
 	effect := &ExternalEffect{
 		EffectID:           NewID(),
 		WorkspaceID:        item.WorkspaceID,
@@ -1124,9 +1563,13 @@ func (s *Service) Execute(ctx context.Context, req *connect.Request[publishv1.Ex
 		AggregateType:      "publish_job",
 		AggregateID:        job.PublishJobID,
 		Status:             "submitted",
-		ResultPayload:      make(map[string]any),
-		CreatedAt:          now,
-		UpdatedAt:          now,
+		ResultPayload: map[string]any{
+			"publish_item_id": item.PublishItemID,
+			"publish_job_id":  job.PublishJobID,
+			"request_hash":    computePublishRequestHash(item),
+		},
+		CreatedAt: now,
+		UpdatedAt: now,
 	}
 	if err := s.store.SaveEffect(ctx, effect); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -1146,6 +1589,7 @@ func (s *Service) Execute(ctx context.Context, req *connect.Request[publishv1.Ex
 		item.UpdatedAt = failedAt
 
 		effect.Status = "failed"
+		effect.ResultPayload["definitive_rejection"] = true
 		effect.UpdatedAt = failedAt
 		_ = s.store.SaveEffect(ctx, effect)
 		_ = s.store.SaveItem(ctx, item)
@@ -1191,19 +1635,23 @@ func (s *Service) Execute(ctx context.Context, req *connect.Request[publishv1.Ex
 		return nil, connect.NewError(connect.CodeUnauthenticated, ErrAuthRevoked)
 	}
 
-	// ACCEPTANCE TARGET 2: Unknown Submit Reconciles
-	if (pubResult != nil && (pubResult.ResultStatus == "unknown" || pubResult.ResultStatus == ResultTimeout)) ||
-		(callErr != nil && (errors.Is(callErr, context.DeadlineExceeded) || strings.Contains(callErr.Error(), "timeout"))) {
+	isDefinitiveFailure := callErr == nil && pubResult != nil && pubResult.ResultStatus == ResultFailed && !isAmbiguousErrorCode(pubResult.ErrorCode)
+	isConfirmedSuccess := callErr == nil && pubResult != nil && pubResult.ResultStatus == ResultSuccess && strings.TrimSpace(pubResult.ExternalPostID) != ""
 
+	// ACCEPTANCE TARGET 2 / F5: Unknown or Ambiguous Transport Submit (timeout, EOF, connection reset, context cancel, 5xx, etc.)
+	if !isDefinitiveFailure && !isConfirmedSuccess {
 		updatedAt := s.nowFn()
 		effect.Status = "unknown"
 		if pubResult != nil {
 			effect.ProviderRequestID = pubResult.ProviderRequestID
 		}
+		if callErr != nil {
+			effect.ResultPayload["transport_error"] = callErr.Error()
+		}
 		effect.UpdatedAt = updatedAt
 		_ = s.store.SaveEffect(ctx, effect)
 
-		// Keep in executing or pending reconciliation; NEVER blindly mark failed or publish without proof
+		// Keep in executing / pending reconciliation; NEVER blindly mark failed or publish without proof
 		job.LifecycleState = StateExecuting
 		job.LastExecutionSummary = map[string]any{
 			"status":                  "unknown_submit",
@@ -1239,8 +1687,8 @@ func (s *Service) Execute(ctx context.Context, req *connect.Request[publishv1.Ex
 		return nil, connect.NewError(connect.CodeDeadlineExceeded, ErrUnknownSubmit)
 	}
 
-	// Normal Failure (Definitive 4xx / business rejection)
-	if callErr != nil || pubResult == nil || pubResult.ResultStatus == ResultFailed {
+	// Normal Failure (Definitive 4xx / business rejection before external creation)
+	if isDefinitiveFailure {
 		failedAt := s.nowFn()
 		job.LifecycleState = StateFailed
 		job.UpdatedAt = failedAt
@@ -1248,6 +1696,7 @@ func (s *Service) Execute(ctx context.Context, req *connect.Request[publishv1.Ex
 		item.DiagnosticsState = DiagnosticsDegraded
 		item.UpdatedAt = failedAt
 		effect.Status = "failed"
+		effect.ResultPayload["definitive_rejection"] = true
 		effect.UpdatedAt = failedAt
 		_ = s.store.SaveEffect(ctx, effect)
 		_ = s.store.SaveItem(ctx, item)
@@ -1256,8 +1705,6 @@ func (s *Service) Execute(ctx context.Context, req *connect.Request[publishv1.Ex
 		errMsg := "Đăng bài thất bại"
 		if pubResult != nil && pubResult.ErrorMessage != "" {
 			errMsg = pubResult.ErrorMessage
-		} else if callErr != nil {
-			errMsg = callErr.Error()
 		}
 
 		log := &PublishLog{
@@ -1282,81 +1729,13 @@ func (s *Service) Execute(ctx context.Context, req *connect.Request[publishv1.Ex
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("publish failed: %s", errMsg))
 	}
 
-	// SUCCESS PATH (RULE-M11-002: Published state requires immutable success log)
+	// SUCCESS PATH (RULE-M11-002 & F12: Published state requires immutable success log, ChannelPost, and domain events)
 	completedAt := s.nowFn()
-	effect.Status = "succeeded"
 	effect.ProviderRequestID = pubResult.ProviderRequestID
-	if effect.ResultPayload == nil {
-		effect.ResultPayload = make(map[string]any)
+	log, channelPost, cErr := s.completePublishedItem(ctx, caller, item, job, effect, pubResult.ExternalPostID, pubResult.ExternalPostURL, PathNativeAPI, "", nil, completedAt, false)
+	if cErr != nil {
+		return nil, cErr
 	}
-	effect.ResultPayload["external_post_id"] = pubResult.ExternalPostID
-	effect.ResultPayload["external_post_url"] = pubResult.ExternalPostURL
-	effect.UpdatedAt = completedAt
-	if err := s.store.SaveEffect(ctx, effect); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-
-	log := &PublishLog{
-		PublishLogID:    NewID(),
-		WorkspaceID:     item.WorkspaceID,
-		PublishJobID:    job.PublishJobID,
-		PublishItemID:   item.PublishItemID,
-		AttemptedAt:     now,
-		CompletedAt:     &completedAt,
-		ActorUserID:     caller.ActorUserID,
-		ExecutionPath:   PathNativeAPI,
-		ResultStatus:    ResultSuccess,
-		ExternalPostID:  pubResult.ExternalPostID,
-		ExternalPostURL: pubResult.ExternalPostURL,
-	}
-	// RULE-M11-002: Item and Job MUST NOT transition to published/succeeded if immutable PublishLog write fails!
-	if err := s.store.AppendLog(ctx, log); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("publish: failed to append immutable publish log: %w", err))
-	}
-
-	job.LifecycleState = JobStateSucceeded
-	job.UpdatedAt = completedAt
-	if err := s.store.SaveJob(ctx, job); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-
-	// Item state marked published ONLY AFTER immutable log is appended (RULE-M11-002)
-	item.LifecycleState = StatePublished
-	item.DiagnosticsState = DiagnosticsHealthy
-	item.UpdatedAt = completedAt
-	if err := s.store.SaveItem(ctx, item); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-
-	// Post-publish sync (RULE-M11-007)
-	channelPost := &ChannelPost{
-		ChannelPostID:      NewID(),
-		WorkspaceID:        item.WorkspaceID,
-		PublishItemID:      item.PublishItemID,
-		ConnectedAccountID: item.TargetAccountID,
-		ExternalPostID:     pubResult.ExternalPostID,
-		ExternalPermalink:  pubResult.ExternalPostURL,
-		Title:              item.Title,
-		SyncedAt:           &completedAt,
-		CreatedAt:          completedAt,
-		UpdatedAt:          completedAt,
-	}
-	if err := s.store.SavePost(ctx, channelPost); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-
-	s.recordEvent(ctx, item.WorkspaceID, EventPublishSucceeded, "publish_item", item.PublishItemID, map[string]any{
-		"external_id": pubResult.ExternalPostID,
-		"url":         pubResult.ExternalPostURL,
-	})
-	s.recordEvent(ctx, item.WorkspaceID, EventPublishItemSucceeded, "publish_item", item.PublishItemID, map[string]any{
-		"external_post_id":  pubResult.ExternalPostID,
-		"external_post_url": pubResult.ExternalPostURL,
-	})
-	s.recordEvent(ctx, item.WorkspaceID, EventChannelPostSynced, "channel_post", channelPost.ChannelPostID, map[string]any{
-		"publish_item_id":  item.PublishItemID,
-		"external_post_id": pubResult.ExternalPostID,
-	})
 
 	return connect.NewResponse(&publishv1.ExecuteResponse{
 		Item:        ItemToProto(item),
@@ -1366,8 +1745,9 @@ func (s *Service) Execute(ctx context.Context, req *connect.Request[publishv1.Ex
 	}), nil
 }
 
-// ReconcilePublish reconciles unknown platform submission outcomes (Acceptance Target 2 / PUB-02).
-// Never fabricates confirmed_published when connector is nil or provider request ID is empty.
+// ReconcilePublish reconciles unknown platform submission outcomes (Acceptance Target 2 / PUB-02 / F8).
+// Never fabricates confirmed_published when connector is nil or provider request ID is empty,
+// and strictly binds reconciliation to the effect's durable ProviderRequestID.
 func (s *Service) ReconcilePublish(ctx context.Context, req *connect.Request[publishv1.ReconcilePublishRequest]) (*connect.Response[publishv1.ReconcilePublishResponse], error) {
 	caller, err := s.authorizeRPC(ctx, "PublishService/ReconcilePublish", extractCmdWorkspaceID(req.Msg.Context))
 	if err != nil {
@@ -1397,24 +1777,41 @@ func (s *Service) ReconcilePublish(ctx context.Context, req *connect.Request[pub
 		return nil, connect.NewError(connect.CodeNotFound, ErrJobNotFound)
 	}
 
-	providerReqID := strings.TrimSpace(req.Msg.ProviderRequestId)
-	if providerReqID == "" && job.LastExecutionSummary != nil {
-		if v, ok := job.LastExecutionSummary["provider_request_id"].(string); ok {
-			providerReqID = v
+	allEffects, err := s.listAllItemEffects(ctx, caller.WorkspaceID, item.PublishItemID, job.PublishJobID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	var activeEffect *ExternalEffect
+	for i := len(allEffects) - 1; i >= 0; i-- {
+		eff := allEffects[i]
+		if eff.Status == "unknown" || eff.Status == "submitted" || eff.Status == "prepared" {
+			activeEffect = eff
+			break
 		}
 	}
 
-	jobEffects, _ := s.store.ListEffectsByAggregate(ctx, caller.WorkspaceID, "publish_job", job.PublishJobID)
-	var activeEffect *ExternalEffect
-	for i := len(jobEffects) - 1; i >= 0; i-- {
-		eff := jobEffects[i]
-		if eff.Status == "unknown" || eff.Status == "submitted" || eff.Status == "prepared" {
-			activeEffect = eff
-			if providerReqID == "" && eff.ProviderRequestID != "" {
-				providerReqID = eff.ProviderRequestID
-			}
-			break
+	boundReqID := ""
+	if activeEffect != nil && strings.TrimSpace(activeEffect.ProviderRequestID) != "" {
+		boundReqID = strings.TrimSpace(activeEffect.ProviderRequestID)
+	}
+	if boundReqID == "" && job.LastExecutionSummary != nil {
+		if v, ok := job.LastExecutionSummary["provider_request_id"].(string); ok {
+			boundReqID = strings.TrimSpace(v)
 		}
+	}
+
+	clientReqID := strings.TrimSpace(req.Msg.ProviderRequestId)
+	var providerReqID string
+	if boundReqID != "" {
+		if clientReqID != "" && clientReqID != boundReqID {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%w: effect is bound to %q, got %q", ErrProviderRequestMismatch, boundReqID, clientReqID))
+		}
+		providerReqID = boundReqID
+	} else if clientReqID != "" {
+		if s.isProviderRequestIDBoundToOtherEffect(ctx, caller.WorkspaceID, activeEffect, clientReqID) {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%w: provider_request_id %q is already bound to another effect", ErrProviderRequestMismatch, clientReqID))
+		}
+		providerReqID = clientReqID
 	}
 
 	s.mu.RLock()
@@ -1422,8 +1819,8 @@ func (s *Service) ReconcilePublish(ctx context.Context, req *connect.Request[pub
 	s.mu.RUnlock()
 
 	now := s.nowFn()
-	if connector == nil || providerReqID == "" {
-		// Fail closed: cannot verify provider status without a live connector and provider_request_id.
+	if connector == nil || providerReqID == "" || activeEffect == nil {
+		// Fail closed: cannot verify provider status without a live connector, pending effect, and provider_request_id.
 		if activeEffect != nil {
 			activeEffect.LastCheckedAt = &now
 			activeEffect.UpdatedAt = now
@@ -1438,15 +1835,11 @@ func (s *Service) ReconcilePublish(ctx context.Context, req *connect.Request[pub
 	}
 
 	statusRes, callErr := connector.CheckPostStatus(ctx, item.TargetAccountID, providerReqID)
-	if activeEffect != nil {
-		activeEffect.LastCheckedAt = &now
-		activeEffect.UpdatedAt = now
-	}
+	activeEffect.LastCheckedAt = &now
+	activeEffect.UpdatedAt = now
 
 	if callErr != nil || statusRes == nil || statusRes.Status == "still_unknown" {
-		if activeEffect != nil {
-			_ = s.store.SaveEffect(ctx, activeEffect)
-		}
+		_ = s.store.SaveEffect(ctx, activeEffect)
 		return connect.NewResponse(&publishv1.ReconcilePublishResponse{
 			Item:                  ItemToProto(item),
 			Job:                   JobToProto(job),
@@ -1455,78 +1848,28 @@ func (s *Service) ReconcilePublish(ctx context.Context, req *connect.Request[pub
 		}), nil
 	}
 
+	if strings.TrimSpace(statusRes.ProviderRequestID) != "" && strings.TrimSpace(statusRes.ProviderRequestID) != providerReqID {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%w: connector returned status for %q instead of %q", ErrProviderRequestMismatch, statusRes.ProviderRequestID, providerReqID))
+	}
+
+	if boundReqID == "" {
+		activeEffect.ProviderRequestID = providerReqID
+		if activeEffect.ResultPayload == nil {
+			activeEffect.ResultPayload = make(map[string]any)
+		}
+		activeEffect.ResultPayload["recovered_provider_request_id"] = providerReqID
+		activeEffect.ResultPayload["recovered_by_user_id"] = caller.ActorUserID
+	}
+
 	if statusRes.Found || statusRes.Status == "confirmed_published" {
-		if activeEffect != nil {
-			activeEffect.Status = "succeeded"
-			if activeEffect.ResultPayload == nil {
-				activeEffect.ResultPayload = make(map[string]any)
-			}
-			activeEffect.ResultPayload["external_post_id"] = statusRes.ExternalPostID
-			activeEffect.ResultPayload["external_post_url"] = statusRes.ExternalPostURL
-			if err := s.store.SaveEffect(ctx, activeEffect); err != nil {
-				return nil, connect.NewError(connect.CodeInternal, err)
-			}
+		logMeta := map[string]any{
+			"reconciled":          true,
+			"provider_request_id": providerReqID,
 		}
-
-		log := &PublishLog{
-			PublishLogID:    NewID(),
-			WorkspaceID:     item.WorkspaceID,
-			PublishJobID:    job.PublishJobID,
-			PublishItemID:   item.PublishItemID,
-			AttemptedAt:     now,
-			CompletedAt:     &now,
-			ActorUserID:     caller.ActorUserID,
-			ExecutionPath:   PathNativeAPI,
-			ResultStatus:    ResultSuccess,
-			ExternalPostID:  statusRes.ExternalPostID,
-			ExternalPostURL: statusRes.ExternalPostURL,
-			Metadata: map[string]any{
-				"reconciled":          true,
-				"provider_request_id": providerReqID,
-			},
+		log, _, cErr := s.completePublishedItem(ctx, caller, item, job, activeEffect, statusRes.ExternalPostID, statusRes.ExternalPostURL, PathNativeAPI, "", logMeta, now, true)
+		if cErr != nil {
+			return nil, cErr
 		}
-		if err := s.store.AppendLog(ctx, log); err != nil {
-			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("publish: failed to append immutable publish log: %w", err))
-		}
-
-		job.LifecycleState = JobStateSucceeded
-		if job.LastExecutionSummary == nil {
-			job.LastExecutionSummary = make(map[string]any)
-		}
-		job.LastExecutionSummary["requires_reconciliation"] = false
-		job.UpdatedAt = now
-		if err := s.store.SaveJob(ctx, job); err != nil {
-			return nil, connect.NewError(connect.CodeInternal, err)
-		}
-
-		item.LifecycleState = StatePublished
-		item.DiagnosticsState = DiagnosticsHealthy
-		item.UpdatedAt = now
-		if err := s.store.SaveItem(ctx, item); err != nil {
-			return nil, connect.NewError(connect.CodeInternal, err)
-		}
-
-		channelPost := &ChannelPost{
-			ChannelPostID:      NewID(),
-			WorkspaceID:        item.WorkspaceID,
-			PublishItemID:      item.PublishItemID,
-			ConnectedAccountID: item.TargetAccountID,
-			ExternalPostID:     statusRes.ExternalPostID,
-			ExternalPermalink:  statusRes.ExternalPostURL,
-			Title:              item.Title,
-			SyncedAt:           &now,
-			CreatedAt:          now,
-			UpdatedAt:          now,
-		}
-		if err := s.store.SavePost(ctx, channelPost); err != nil {
-			return nil, connect.NewError(connect.CodeInternal, err)
-		}
-
-		s.recordEvent(ctx, item.WorkspaceID, EventPublishSucceeded, "publish_item", item.PublishItemID, map[string]any{
-			"external_id": statusRes.ExternalPostID,
-			"url":         statusRes.ExternalPostURL,
-			"reconciled":  true,
-		})
 
 		return connect.NewResponse(&publishv1.ReconcilePublishResponse{
 			Item:                  ItemToProto(item),
@@ -1537,18 +1880,34 @@ func (s *Service) ReconcilePublish(ctx context.Context, req *connect.Request[pub
 		}), nil
 	}
 
-	// Post was confirmed NOT published: mark unresolved effects as failed so retry can proceed safely
-	for _, eff := range jobEffects {
+	// Post was confirmed NOT published: mark only the matched effect as failed so retry can proceed safely
+	hasRemainingUnknown := false
+	for _, eff := range allEffects {
 		if eff.Status == "unknown" || eff.Status == "submitted" || eff.Status == "prepared" {
-			eff.Status = "failed"
-			eff.LastCheckedAt = &now
-			eff.UpdatedAt = now
-			if eff.ResultPayload == nil {
-				eff.ResultPayload = make(map[string]any)
+			effReqID := strings.TrimSpace(eff.ProviderRequestID)
+			if eff.EffectID == activeEffect.EffectID || (effReqID != "" && effReqID == providerReqID) {
+				eff.Status = "failed"
+				eff.LastCheckedAt = &now
+				eff.UpdatedAt = now
+				if eff.ResultPayload == nil {
+					eff.ResultPayload = make(map[string]any)
+				}
+				eff.ResultPayload["reconciled"] = "confirmed_not_published"
+				eff.ResultPayload["reconciled_provider_request_id"] = providerReqID
+				_ = s.store.SaveEffect(ctx, eff)
+			} else {
+				hasRemainingUnknown = true
 			}
-			eff.ResultPayload["reconciled"] = "confirmed_not_published"
-			_ = s.store.SaveEffect(ctx, eff)
 		}
+	}
+
+	if hasRemainingUnknown {
+		return connect.NewResponse(&publishv1.ReconcilePublishResponse{
+			Item:                  ItemToProto(item),
+			Job:                   JobToProto(job),
+			Reconciled:            false,
+			ReconciliationOutcome: "still_unknown",
+		}), nil
 	}
 
 	job.LifecycleState = StateFailed
@@ -1648,75 +2007,29 @@ func (s *Service) SubmitManualProof(ctx context.Context, req *connect.Request[pu
 		}
 	}
 
-	evidenceRef := NewID()
-	log := &PublishLog{
-		PublishLogID:    NewID(),
-		WorkspaceID:     item.WorkspaceID,
-		PublishJobID:    job.PublishJobID,
-		PublishItemID:   item.PublishItemID,
-		AttemptedAt:     now,
-		CompletedAt:     &now,
-		ActorUserID:     caller.ActorUserID,
-		ExecutionPath:   PathManualUpload,
-		ResultStatus:    ResultSuccess,
-		ExternalPostURL: req.Msg.ExternalPostUrl,
-		EvidenceRef:     evidenceRef,
-		Metadata: map[string]any{
-			"evidence_url": req.Msg.EvidenceUrl,
-			"notes":        req.Msg.Notes,
-		},
-	}
-	if err := s.store.AppendLog(ctx, log); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("publish: failed to append immutable publish log: %w", err))
-	}
-
-	// Resolve any pending unknown effects for this job via audited manual proof
-	jobEffects, _ := s.store.ListEffectsByAggregate(ctx, caller.WorkspaceID, "publish_job", job.PublishJobID)
-	for _, eff := range jobEffects {
+	// Resolve any pending unknown effects for this item/job via audited manual proof
+	var resolvedEffect *ExternalEffect
+	allEffects, _ := s.listAllItemEffects(ctx, caller.WorkspaceID, item.PublishItemID, job.PublishJobID)
+	for _, eff := range allEffects {
 		if eff.Status == "unknown" || eff.Status == "submitted" || eff.Status == "prepared" {
 			eff.Status = "succeeded"
 			eff.UpdatedAt = now
 			if err := s.store.SaveEffect(ctx, eff); err != nil {
 				return nil, connect.NewError(connect.CodeInternal, err)
 			}
+			resolvedEffect = eff
 		}
 	}
 
-	job.LifecycleState = JobStateSucceeded
-	if job.LastExecutionSummary != nil {
-		job.LastExecutionSummary["requires_reconciliation"] = false
+	evidenceRef := NewID()
+	logMeta := map[string]any{
+		"evidence_url": req.Msg.EvidenceUrl,
+		"notes":        req.Msg.Notes,
 	}
-	job.UpdatedAt = now
-	if err := s.store.SaveJob(ctx, job); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+	log, channelPost, cErr := s.completePublishedItem(ctx, caller, item, job, resolvedEffect, "", req.Msg.ExternalPostUrl, PathManualUpload, evidenceRef, logMeta, now, false)
+	if cErr != nil {
+		return nil, cErr
 	}
-
-	item.LifecycleState = StatePublished
-	item.DiagnosticsState = DiagnosticsHealthy
-	item.UpdatedAt = now
-	if err := s.store.SaveItem(ctx, item); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-
-	channelPost := &ChannelPost{
-		ChannelPostID:      NewID(),
-		WorkspaceID:        item.WorkspaceID,
-		PublishItemID:      item.PublishItemID,
-		ConnectedAccountID: item.TargetAccountID,
-		ExternalPermalink:  req.Msg.ExternalPostUrl,
-		Title:              item.Title,
-		SyncedAt:           &now,
-		CreatedAt:          now,
-		UpdatedAt:          now,
-	}
-	if err := s.store.SavePost(ctx, channelPost); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-
-	s.recordEvent(ctx, item.WorkspaceID, EventPublishSucceeded, "publish_item", item.PublishItemID, map[string]any{
-		"execution_path": PathManualUpload,
-		"evidence_ref":   evidenceRef,
-	})
 
 	return connect.NewResponse(&publishv1.SubmitManualProofResponse{
 		Item:          ItemToProto(item),
@@ -1821,25 +2134,11 @@ func (s *Service) Retry(ctx context.Context, req *connect.Request[publishv1.Retr
 		return nil, connect.NewError(connect.CodeNotFound, ErrItemNotFound)
 	}
 
-	job, _ := s.store.GetJobByItemID(ctx, caller.WorkspaceID, item.PublishItemID)
-	if job != nil && job.LastExecutionSummary != nil {
-		if reqRec, ok := job.LastExecutionSummary["requires_reconciliation"].(bool); ok && reqRec {
-			return nil, connect.NewError(connect.CodeFailedPrecondition, ErrUnknownSubmit)
-		}
+	if err := s.ensureNoActiveOrSucceededEffect(ctx, caller.WorkspaceID, item); err != nil {
+		return nil, err
 	}
 
-	var jobID string
-	if job != nil {
-		jobID = job.PublishJobID
-	}
-	if eff, _ := s.findJobEffects(ctx, caller.WorkspaceID, item.PublishItemID, jobID, ""); eff != nil {
-		if eff.Status == "unknown" || eff.Status == "submitted" || eff.Status == "prepared" {
-			return nil, connect.NewError(connect.CodeFailedPrecondition, ErrUnknownSubmit)
-		}
-		if eff.Status == "succeeded" {
-			return nil, connect.NewError(connect.CodeFailedPrecondition, ErrDuplicatePostPrevented)
-		}
-	}
+	job, _ := s.store.GetJobByItemID(ctx, caller.WorkspaceID, item.PublishItemID)
 
 	now := s.nowFn()
 	item.LifecycleState = StateQueued
@@ -1889,6 +2188,9 @@ func (s *Service) Cancel(ctx context.Context, req *connect.Request[publishv1.Can
 
 	if item.LifecycleState == StatePublished {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("cannot cancel already published item"))
+	}
+	if err := s.ensureNoActiveOrSucceededEffect(ctx, caller.WorkspaceID, item); err != nil {
+		return nil, err
 	}
 
 	now := s.nowFn()
@@ -2104,19 +2406,21 @@ func (s *Service) SaveDraft(ctx context.Context, req *connect.Request[publishv1.
 
 	now := s.nowFn()
 	item := &PublishItem{
-		PublishItemID:    NewID(),
-		WorkspaceID:      caller.WorkspaceID,
-		AssetID:          pItem.AssetId,
-		TargetPlatform:   pItem.TargetPlatform,
-		TargetAccountID:  pItem.TargetAccountId,
-		Title:            pItem.Title,
-		Description:      pItem.Description,
-		Hashtags:         pItem.Hashtags,
-		LifecycleState:   StateDraft,
-		DiagnosticsState: DiagnosticsHealthy,
-		CreatedBy:        caller.ActorUserID,
-		CreatedAt:        now,
-		UpdatedAt:        now,
+		PublishItemID:        NewID(),
+		WorkspaceID:          caller.WorkspaceID,
+		AssetID:              pItem.AssetId,
+		TargetPlatform:       strings.ToLower(pItem.TargetPlatform),
+		TargetAccountID:      pItem.TargetAccountId,
+		Title:                pItem.Title,
+		Description:          pItem.Description,
+		Hashtags:             pItem.Hashtags,
+		LifecycleState:       StateDraft,
+		DiagnosticsState:     DiagnosticsHealthy,
+		PackagingScore:       0,
+		ComplianceScanResult: "pending",
+		CreatedBy:            caller.ActorUserID,
+		CreatedAt:            now,
+		UpdatedAt:            now,
 	}
 	if err := s.store.SaveItem(ctx, item); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -2135,6 +2439,9 @@ func (s *Service) UpdateDraft(ctx context.Context, req *connect.Request[publishv
 	item, err := s.store.GetItem(ctx, caller.WorkspaceID, req.Msg.PublishItemId)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeNotFound, ErrItemNotFound)
+	}
+	if err := s.ensureNoActiveOrSucceededEffect(ctx, caller.WorkspaceID, item); err != nil {
+		return nil, err
 	}
 	item.Title = req.Msg.Title
 	item.Description = req.Msg.Description
@@ -2199,6 +2506,16 @@ func (s *Service) Reschedule(ctx context.Context, req *connect.Request[publishv1
 		return nil, connect.NewError(connect.CodeNotFound, ErrItemNotFound)
 	}
 
+	if err := s.ensureNoActiveOrSucceededEffect(ctx, caller.WorkspaceID, item); err != nil {
+		return nil, err
+	}
+	if err := s.enforceComplianceAndDiagnosticsGate(ctx, item); err != nil {
+		return nil, err
+	}
+	if req.Msg.NewScheduleAt == nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("new_schedule_at is required"))
+	}
+
 	newTime := req.Msg.NewScheduleAt.AsTime()
 	item.ScheduleAt = &newTime
 	item.LifecycleState = StateScheduled
@@ -2215,6 +2532,14 @@ func (s *Service) Reschedule(ctx context.Context, req *connect.Request[publishv1
 func (s *Service) Delete(ctx context.Context, req *connect.Request[publishv1.DeleteRequest]) (*connect.Response[publishv1.DeleteResponse], error) {
 	caller, err := s.authorizeRPC(ctx, "PublishService/Delete", extractCmdWorkspaceID(req.Msg.Context))
 	if err != nil {
+		return nil, err
+	}
+
+	item, err := s.store.GetItem(ctx, caller.WorkspaceID, req.Msg.PublishItemId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeNotFound, ErrItemNotFound)
+	}
+	if err := s.ensureNoActiveOrSucceededEffect(ctx, caller.WorkspaceID, item); err != nil {
 		return nil, err
 	}
 
@@ -2319,6 +2644,9 @@ func (s *Service) UpdateMetadata(ctx context.Context, req *connect.Request[publi
 	item, err := s.store.GetItem(ctx, caller.WorkspaceID, req.Msg.PublishItemId)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeNotFound, ErrItemNotFound)
+	}
+	if err := s.ensureNoActiveOrSucceededEffect(ctx, caller.WorkspaceID, item); err != nil {
+		return nil, err
 	}
 	item.Title = req.Msg.Title
 	item.Description = req.Msg.Description
@@ -2592,22 +2920,26 @@ func (s *Service) PublishVariants(ctx context.Context, req *connect.Request[publ
 		return nil, err
 	}
 
-	execCtx := ctx
-	if publishRoleRank[caller.Role] == publishRoleRank[rbac.RoleEditor] {
-		elevated := caller
-		elevated.Role = rbac.RoleManager
-		execCtx = rbac.WithPolicyContext(ctx, elevated)
+	// F1: External publish execution requires publish:execute (Manager+); never elevate Editor to Manager.
+	if err := rbac.CheckWorkspacePermission("publish:execute", caller); err != nil {
+		return nil, connect.NewError(connect.CodePermissionDenied, err)
+	}
+	if err := checkPublishRoleEnvelope(caller.Role, "Manager+"); err != nil {
+		return nil, connect.NewError(connect.CodePermissionDenied, err)
 	}
 
-	items := make([]*publishv1.PublishItem, 0)
-	jobs := make([]*publishv1.PublishJob, 0)
+	items := make([]*publishv1.PublishItem, 0, len(req.Msg.PublishItemIds))
+	jobs := make([]*publishv1.PublishJob, 0, len(req.Msg.PublishItemIds))
 
 	for _, id := range req.Msg.PublishItemIds {
-		res, err := s.Execute(execCtx, connect.NewRequest(&publishv1.ExecuteRequest{
+		res, err := s.Execute(ctx, connect.NewRequest(&publishv1.ExecuteRequest{
 			Context:       req.Msg.Context,
 			PublishItemId: id,
 		}))
-		if err == nil && res != nil {
+		if err != nil {
+			return nil, err
+		}
+		if res != nil {
 			items = append(items, res.Msg.Item)
 			jobs = append(jobs, res.Msg.Job)
 		}
@@ -2648,6 +2980,15 @@ func (s *Service) ScheduleRetry(ctx context.Context, req *connect.Request[publis
 	item, err := s.store.GetItem(ctx, caller.WorkspaceID, req.Msg.PublishItemId)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeNotFound, ErrItemNotFound)
+	}
+	if err := s.ensureNoActiveOrSucceededEffect(ctx, caller.WorkspaceID, item); err != nil {
+		return nil, err
+	}
+	if err := s.enforceComplianceAndDiagnosticsGate(ctx, item); err != nil {
+		return nil, err
+	}
+	if req.Msg.RetryAt == nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("retry_at is required"))
 	}
 	retryTime := req.Msg.RetryAt.AsTime()
 	item.ScheduleAt = &retryTime
