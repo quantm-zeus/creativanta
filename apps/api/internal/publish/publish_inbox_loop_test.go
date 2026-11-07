@@ -80,7 +80,8 @@ func TestPublishInboxLoop_Path1_HappyPath(t *testing.T) {
 
 	conn := &loopMockConnector{platform: "tiktok"}
 	pubSvc := NewService(ServiceConfig{
-		Clock: clock,
+		Clock:             clock,
+		ComplianceChecker: NewDefaultComplianceChecker(),
 		Accounts: &loopMockAccountLookup{
 			accounts: map[string]*capability.ConnectedAccountRecord{
 				"acc-tt-1": {
@@ -209,7 +210,8 @@ func TestPublishInboxLoop_Path2_DegradedPath(t *testing.T) {
 
 	// Platform has degraded capability requiring manual fallback
 	pubSvc := NewService(ServiceConfig{
-		Clock: clock,
+		Clock:             clock,
+		ComplianceChecker: NewDefaultComplianceChecker(),
 		Accounts: &loopMockAccountLookup{
 			accounts: map[string]*capability.ConnectedAccountRecord{
 				"acc-shopee-1": {
@@ -293,7 +295,9 @@ func TestPublishInboxLoop_Path2_DegradedPath(t *testing.T) {
 func TestPublishInboxLoop_Path3_MissingDataPath(t *testing.T) {
 	wsID := "ws-loop-empty"
 	ctx := WithCaller(context.Background(), wsID, "user-loop-3", "owner")
-	pubSvc := NewService(ServiceConfig{})
+	pubSvc := NewService(ServiceConfig{
+		ComplianceChecker: NewDefaultComplianceChecker(),
+	})
 	engSvc := engagement.NewService(&engagement.ServiceConfig{})
 
 	// 1. Preflight check: cannot execute publish on nonexistent item
@@ -351,7 +355,8 @@ func TestPublishInboxLoop_Path4_BrokenPath(t *testing.T) {
 		},
 	}
 	pubSvc := NewService(ServiceConfig{
-		Clock: clock,
+		Clock:             clock,
+		ComplianceChecker: NewDefaultComplianceChecker(),
 	})
 	pubSvc.RegisterConnector(revokedConn)
 
@@ -462,7 +467,8 @@ func TestPublishInboxLoop_Path5_AuditPath(t *testing.T) {
 
 	conn := &loopMockConnector{platform: "tiktok"}
 	pubSvc := NewService(ServiceConfig{
-		Clock: clock,
+		Clock:             clock,
+		ComplianceChecker: NewDefaultComplianceChecker(),
 	})
 	pubSvc.RegisterConnector(conn)
 	engSvc := engagement.NewService(&engagement.ServiceConfig{Clock: clock})
@@ -551,7 +557,8 @@ func TestPublishInboxLoop_Target2_ReplayWithOneExternalResult(t *testing.T) {
 
 	conn := &loopMockConnector{platform: "tiktok"}
 	pubSvc := NewService(ServiceConfig{
-		Clock: clock,
+		Clock:             clock,
+		ComplianceChecker: NewDefaultComplianceChecker(),
 	})
 	pubSvc.RegisterConnector(conn)
 

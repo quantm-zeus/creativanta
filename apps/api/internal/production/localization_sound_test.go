@@ -238,7 +238,9 @@ func TestAcceptanceTarget2_LanguageVoiceQualityRepair(t *testing.T) {
 		t.Fatalf("expected quality score 68.0, got %f", resp1.Msg.Record.QualityScore)
 	}
 
-	// 2. High-quality multi-sample
+	// 2. High-quality multi-sample (with its own character-bound consent record)
+	consentID2 := "consent-quality-002"
+	vcMgr.SetConsentStatus(consentID2, true)
 	resp2, err := vcMgr.Create(ctx, connect.NewRequest(&productionv1.VoiceCloneServiceCreateRequest{
 		Context: &commonv1.CommandContext{
 			WorkspaceId: &commonv1.UUID{Value: wsID},
@@ -246,7 +248,7 @@ func TestAcceptanceTarget2_LanguageVoiceQualityRepair(t *testing.T) {
 		CharacterId:      "char-studio",
 		Name:             "Studio Sample Voice",
 		SampleAudioUrls:  []string{"https://assets.creativanta.com/s1.mp3", "https://assets.creativanta.com/s2.mp3"},
-		ConsentRecordId:  consentID,
+		ConsentRecordId:  consentID2,
 		ConsentConfirmed: true,
 	}))
 	if err != nil {
@@ -574,5 +576,138 @@ func TestR4_VoiceClone_UnverifiedCrossTenantOrMismatchedConsentRejected(t *testi
 	}))
 	if err == nil || connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("expected GenerateVoiceover to fail with PermissionDenied after store consent revocation, got: %v", err)
+	}
+}
+
+func TestS6_F9_VoiceCloneConsentKindSubjectAndOwnerBinding(t *testing.T) {
+	ctx := context.Background()
+	svc, store := setupLocalizationService(t)
+	wsID := "01908700-0009-7000-8000-0000000000f9"
+	ctxManager := createLocalizationTestContext(wsID, "Manager")
+	initialBal := tenantdb.MustParseExactDecimal("500.00")
+	svc.SetWorkspaceBalance(wsID, initialBal)
+
+	vcMgr := svc.VoiceClone
+	vcMgr.SetWorkspaceTier(wsID, "pro")
+
+	// 1. Non-voice consent types (privacy, marketing, tos, analytics, ai_processing) in the SAME workspace MUST be rejected.
+	for _, wrongType := range []string{"privacy", "marketing", "tos", "analytics", "ai_processing", ""} {
+		cid := "consent-wrong-type-" + wrongType
+		_ = store.SaveConsentRecord(ctx, &ProductionConsentRecord{
+			ConsentID:   cid,
+			WorkspaceID: wsID,
+			CharacterID: "char-f9-a",
+			UserID:      "test-user-001",
+			ConsentType: wrongType,
+			Granted:     true,
+		})
+		_, err := vcMgr.Create(ctxManager, connect.NewRequest(&productionv1.VoiceCloneServiceCreateRequest{
+			Context:          &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: wsID}},
+			CharacterId:      "char-f9-a",
+			Name:             "Wrong Consent Type Clone",
+			SampleAudioUrls:  []string{"https://assets.creativanta.com/f9-sample1.mp3"},
+			ConsentRecordId:  cid,
+			ConsentConfirmed: true,
+		}))
+		if err == nil || connect.CodeOf(err) != connect.CodeFailedPrecondition {
+			t.Fatalf("F9 VIOLATION: expected consent type %q to be rejected with FailedPrecondition, got: %v", wrongType, err)
+		}
+	}
+
+	// 2. Valid voice_likeness consent for char-f9-a, but request omits character_id ("") -> MUST be rejected.
+	_ = store.SaveConsentRecord(ctx, &ProductionConsentRecord{
+		ConsentID:   "consent-f9-valid-char-a",
+		WorkspaceID: wsID,
+		CharacterID: "char-f9-a",
+		UserID:      "test-user-001",
+		ConsentType: "voice_likeness",
+		Granted:     true,
+	})
+	_, err := vcMgr.Create(ctxManager, connect.NewRequest(&productionv1.VoiceCloneServiceCreateRequest{
+		Context:          &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: wsID}},
+		CharacterId:      "",
+		Name:             "Empty Character Bypass Attempt",
+		SampleAudioUrls:  []string{"https://assets.creativanta.com/f9-other-sample.mp3"},
+		ConsentRecordId:  "consent-f9-valid-char-a",
+		ConsentConfirmed: true,
+	}))
+	if err == nil || connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("F9 VIOLATION: expected empty character_id to fail with FailedPrecondition, got: %v", err)
+	}
+
+	// 3. Consent record in store without a bound CharacterID -> MUST be rejected.
+	_ = store.SaveConsentRecord(ctx, &ProductionConsentRecord{
+		ConsentID:   "consent-f9-unbound-char",
+		WorkspaceID: wsID,
+		CharacterID: "",
+		UserID:      "test-user-001",
+		ConsentType: "voice_clone",
+		Granted:     true,
+	})
+	_, err = vcMgr.Create(ctxManager, connect.NewRequest(&productionv1.VoiceCloneServiceCreateRequest{
+		Context:          &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: wsID}},
+		CharacterId:      "char-f9-a",
+		Name:             "Unbound Consent Subject",
+		SampleAudioUrls:  []string{"https://assets.creativanta.com/f9-sample1.mp3"},
+		ConsentRecordId:  "consent-f9-unbound-char",
+		ConsentConfirmed: true,
+	}))
+	if err == nil || connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("F9 VIOLATION: expected unbound CharacterID in consent record to fail with FailedPrecondition, got: %v", err)
+	}
+
+	// 4. Consent record bound to a different voice owner UserID -> MUST be rejected.
+	_ = store.SaveConsentRecord(ctx, &ProductionConsentRecord{
+		ConsentID:   "consent-f9-wrong-owner",
+		WorkspaceID: wsID,
+		CharacterID: "char-f9-a",
+		UserID:      "user-different-voice-owner",
+		ConsentType: "voice_likeness",
+		Granted:     true,
+	})
+	_, err = vcMgr.Create(ctxManager, connect.NewRequest(&productionv1.VoiceCloneServiceCreateRequest{
+		Context:          &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: wsID}},
+		CharacterId:      "char-f9-a",
+		Name:             "Wrong Voice Owner Clone",
+		SampleAudioUrls:  []string{"https://assets.creativanta.com/f9-sample1.mp3"},
+		ConsentRecordId:  "consent-f9-wrong-owner",
+		ConsentConfirmed: true,
+	}))
+	if err == nil || connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("F9 VIOLATION: expected mismatched voice owner UserID to fail with FailedPrecondition, got: %v", err)
+	}
+
+	// Verify 0 credits deducted and 0 voice clones created after all rejected attempts.
+	if bal := svc.GetWorkspaceBalance(wsID); bal.Cmp(initialBal) != 0 {
+		t.Fatalf("F9 VIOLATION: expected balance %s after rejected attempts, got %s", initialBal.String(), bal.String())
+	}
+	if clones, total, _ := store.ListVoiceClones(ctx, wsID, "", 100, 0); total != 0 || len(clones) != 0 {
+		t.Fatalf("F9 VIOLATION: expected 0 voice clones stored after rejected attempts, got %d", total)
+	}
+
+	// 5. Valid voice_likeness consent with matching workspace, character, and owner succeeds,
+	//    but reusing that same consent ID with different sample audio URLs is rejected.
+	okResp, err := vcMgr.Create(ctxManager, connect.NewRequest(&productionv1.VoiceCloneServiceCreateRequest{
+		Context:          &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: wsID}},
+		CharacterId:      "char-f9-a",
+		Name:             "Valid Bound Clone",
+		SampleAudioUrls:  []string{"https://assets.creativanta.com/f9-sample1.mp3", "https://assets.creativanta.com/f9-sample2.mp3"},
+		ConsentRecordId:  "consent-f9-valid-char-a",
+		ConsentConfirmed: true,
+	}))
+	if err != nil || okResp.Msg.GetRecord().GetCloneStatus() != "ready" {
+		t.Fatalf("expected valid bound consent to succeed, got err=%v", err)
+	}
+
+	_, err = vcMgr.Create(ctxManager, connect.NewRequest(&productionv1.VoiceCloneServiceCreateRequest{
+		Context:          &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: wsID}},
+		CharacterId:      "char-f9-a",
+		Name:             "Swapped Audio Source Clone",
+		SampleAudioUrls:  []string{"https://assets.creativanta.com/unauthorized-third-party-voice.mp3"},
+		ConsentRecordId:  "consent-f9-valid-char-a",
+		ConsentConfirmed: true,
+	}))
+	if err == nil || connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("F9 VIOLATION: expected reusing consent with swapped sample audio source to fail with FailedPrecondition, got: %v", err)
 	}
 }
