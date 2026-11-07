@@ -317,16 +317,26 @@ func (s *Service) releaseReservation(workspaceID, jobID string) {
 	rec.UpdatedAt = time.Now().UTC()
 }
 
-func (s *Service) commitReservation(workspaceID, jobID string, actualCredits tenantdb.ExactDecimal) {
+var (
+	ErrReservationAlreadyReleased = errors.New("production: credit reservation already released; late completion quarantined")
+)
+
+func (s *Service) commitReservation(workspaceID, jobID string, actualCredits tenantdb.ExactDecimal) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	resID, ok := s.reservationsByJob[jobID]
 	if !ok {
-		return
+		return nil
 	}
 	rec, ok := s.reservations[resID]
-	if !ok || rec == nil || rec.Status == "released" || rec.Status == "committed" {
-		return
+	if !ok || rec == nil {
+		return nil
+	}
+	if rec.Status == "released" {
+		return ErrReservationAlreadyReleased
+	}
+	if rec.Status == "committed" {
+		return nil
 	}
 
 	charged := actualCredits
@@ -351,6 +361,7 @@ func (s *Service) commitReservation(workspaceID, jobID string, actualCredits ten
 	rec.ActualCredits = charged
 	rec.Status = "committed"
 	rec.UpdatedAt = time.Now().UTC()
+	return nil
 }
 
 // ReconcileJobOutcome resolves an in-flight/reconciling job after verifying external provider outcome.
@@ -387,11 +398,28 @@ func (s *Service) ReconcileJobOutcome(ctx context.Context, workspaceID, jobID, p
 		return nil
 
 	case "completed", "succeeded":
-		if err := s.store.SyncJobAndAsset(ctx, workspaceID, jobID, "completed", "generated", "", resultURL, actualCredits.String(), job.ActualCostUSD.String()); err != nil {
+		if resRec, hasRes := s.GetReservationByJob(jobID); hasRes && resRec.Status == "released" {
+			_ = s.store.SyncJobAndAsset(ctx, workspaceID, jobID, "cancelled", "cancelled", "Late provider completion after reservation release; output quarantined", "", "0", "0")
+			return ErrReservationAlreadyReleased
+		}
+		charged := actualCredits
+		if resRec, hasRes := s.GetReservationByJob(jobID); hasRes && charged.Cmp(resRec.ReservedCredits) > 0 {
+			charged = resRec.ReservedCredits
+		}
+		job.ActualCredits = charged
+		job.ErrorCode = ""
+		job.ErrorMessage = ""
+		job.CurrentStep = "Completed"
+		if resultURL != "" {
+			job.ResultURL = resultURL
+		}
+		if err := s.store.UpdateJob(ctx, job); err != nil {
 			return err
 		}
-		s.commitReservation(workspaceID, jobID, actualCredits)
-		return nil
+		if err := s.store.SyncJobAndAsset(ctx, workspaceID, jobID, "completed", "generated", "", resultURL, charged.String(), job.ActualCostUSD.String()); err != nil {
+			return err
+		}
+		return s.commitReservation(workspaceID, jobID, charged)
 
 	default:
 		return fmt.Errorf("%w: unsupported reconciliation outcome %q", ErrOutcomeUnknown, providerOutcome)
@@ -767,29 +795,45 @@ func (s *Service) Cancel(ctx context.Context, req *connect.Request[productionv1.
 		return nil, connect.NewError(connect.CodeFailedPrecondition, ErrCannotCancelCompletedJob)
 	}
 
-	// F07 / credit_accounting_contract.md §3:
+	// F07 / F3 / R05 / credit_accounting_contract.md §3:
 	// "Cancellation is a request until provider non-execution/cancellation is confirmed."
-	// Never release reserved credits or mark a job cancelled when provider outcome is unknown/reconciling!
+	// Never release reserved credits or mark a job cancelled when provider outcome is unknown/reconciling
+	// or while provider dispatch is still in-flight!
 	resRec, hasRes := s.GetReservationByJob(jobID)
 	outcomeUnknown := (hasRes && resRec.Status == "reconciling") ||
 		job.ErrorCode == "PROVIDER_OUTCOME_UNKNOWN" ||
 		strings.Contains(job.CurrentStep, "reconciling")
 
-	if !outcomeUnknown && strings.TrimSpace(job.ProviderJobID) != "" && s.router != nil {
-		// If job was dispatched to a provider, attempt provider cancellation/check before releasing credits
-		var targetProv VideoProvider
-		if s.router.primaryProvider != nil && (job.Provider == "" || strings.EqualFold(job.Provider, s.router.primaryProvider.Name())) {
-			targetProv = s.router.primaryProvider
-		} else if s.router.fallbackProvider != nil && strings.EqualFold(job.Provider, s.router.fallbackProvider.Name()) {
-			targetProv = s.router.fallbackProvider
-		}
-		if targetProv != nil {
-			if st, stErr := targetProv.CheckStatus(ctx, job.ProviderJobID); stErr != nil || (st != nil && strings.EqualFold(st.Status, "unknown")) {
+	if !outcomeUnknown && hasRes && resRec.Status == "in_flight" && strings.TrimSpace(job.ProviderJobID) == "" {
+		// Provider dispatch is currently in-flight and ProviderJobID has not yet been recorded;
+		// cannot confirm provider non-execution until dispatch settles or reconciles.
+		outcomeUnknown = true
+	}
+
+	if !outcomeUnknown && strings.TrimSpace(job.ProviderJobID) != "" {
+		if s.router == nil {
+			outcomeUnknown = true
+		} else {
+			// If job was dispatched to a provider, attempt provider cancellation/check before releasing credits
+			var targetProv VideoProvider
+			if s.router.primaryProvider != nil && (job.Provider == "" || strings.EqualFold(job.Provider, s.router.primaryProvider.Name())) {
+				targetProv = s.router.primaryProvider
+			} else if s.router.fallbackProvider != nil && strings.EqualFold(job.Provider, s.router.fallbackProvider.Name()) {
+				targetProv = s.router.fallbackProvider
+			}
+			if targetProv == nil {
 				outcomeUnknown = true
-			} else if st != nil && (strings.EqualFold(st.Status, "completed") || strings.EqualFold(st.Status, "succeeded")) {
+			} else if st, stErr := targetProv.CheckStatus(ctx, job.ProviderJobID); stErr != nil || st == nil || strings.EqualFold(st.Status, "unknown") {
+				outcomeUnknown = true
+			} else if strings.EqualFold(st.Status, "completed") || strings.EqualFold(st.Status, "succeeded") {
 				return nil, connect.NewError(connect.CodeFailedPrecondition, ErrCannotCancelCompletedJob)
-			} else if cErr := targetProv.Cancel(ctx, job.ProviderJobID); cErr != nil {
-				outcomeUnknown = true
+			} else if !strings.EqualFold(st.Status, "cancelled") && !strings.EqualFold(st.Status, "canceled") && !strings.EqualFold(st.Status, "failed") {
+				if cErr := targetProv.Cancel(ctx, job.ProviderJobID); cErr != nil {
+					outcomeUnknown = true
+				} else if postSt, postErr := targetProv.CheckStatus(ctx, job.ProviderJobID); postErr != nil || postSt == nil ||
+					(!strings.EqualFold(postSt.Status, "cancelled") && !strings.EqualFold(postSt.Status, "canceled") && !strings.EqualFold(postSt.Status, "failed")) {
+					outcomeUnknown = true
+				}
 			}
 		}
 	}
@@ -1020,11 +1064,23 @@ func (s *Service) Retry(ctx context.Context, req *connect.Request[productionv1.R
 		}), nil
 	}
 
+	if resRec, hasRes := s.GetReservationByJob(jobID); hasRes && resRec.Status == "released" {
+		_ = s.store.SyncJobAndAsset(ctx, wsID, jobID, "cancelled", "cancelled", "Late provider completion after reservation release; output quarantined", "", "0", "0")
+		return nil, connect.NewError(connect.CodeFailedPrecondition, ErrReservationAlreadyReleased)
+	}
+	if currJob, jErr := s.store.GetJob(ctx, wsID, jobID); jErr == nil && currJob != nil && currJob.Status == "cancelled" {
+		_ = s.store.SyncJobAndAsset(ctx, wsID, jobID, "cancelled", "cancelled", "Late provider completion after cancellation; output quarantined", "", "0", "0")
+		return nil, connect.NewError(connect.CodeFailedPrecondition, ErrReservationAlreadyReleased)
+	}
+
 	job.Provider = result.ActualProvider
 	job.Model = result.ActualModel
 	job.ProviderJobID = result.ProviderJobID
 	job.ActualCredits = result.CreditsDeducted
 	job.ActualCostUSD = result.CostUSD
+	job.ErrorCode = ""
+	job.ErrorMessage = ""
+	job.CurrentStep = "Completed"
 	if err := s.store.UpdateJob(ctx, job); err != nil {
 		s.setReservationStatus(jobID, "reconciling")
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to persist completed retry job metadata: %w", err))
@@ -1034,7 +1090,10 @@ func (s *Service) Retry(ctx context.Context, req *connect.Request[productionv1.R
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to sync completed retry job and asset: %w", err))
 	}
 	if reservationID != "" {
-		s.commitReservation(wsID, jobID, result.CreditsDeducted)
+		if cErr := s.commitReservation(wsID, jobID, result.CreditsDeducted); cErr != nil {
+			_ = s.store.SyncJobAndAsset(ctx, wsID, jobID, "cancelled", "cancelled", cErr.Error(), "", "0", "0")
+			return nil, connect.NewError(connect.CodeFailedPrecondition, cErr)
+		}
 	}
 	finalJob, getErr := s.store.GetJob(ctx, wsID, jobID)
 	if getErr != nil {
@@ -1405,7 +1464,12 @@ func (s *Service) Generate(ctx context.Context, req *connect.Request[productionv
 		job.Model = execResult.ActualModel
 		job.ProviderJobID = execResult.ProviderJobID
 		job.Status = "processing"
-		job.CurrentStep = "Provider rendering in progress"
+		if resRec, ok := s.GetReservationByJob(jobID); ok && resRec.CancelRequested {
+			job.CurrentStep = "cancel_requested_reconciling"
+			job.ErrorCode = "PROVIDER_OUTCOME_UNKNOWN"
+		} else {
+			job.CurrentStep = "Provider rendering in progress"
+		}
 		if err := s.store.UpdateJob(ctx, job); err != nil {
 			s.setReservationStatus(jobID, "reconciling")
 			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to update in-flight generation job: %w", err))
@@ -1427,6 +1491,15 @@ func (s *Service) Generate(ctx context.Context, req *connect.Request[productionv
 			Job:      toProtoGenerationJob(finalJob),
 			Asset:    toProtoAsset(finalAsset),
 		}), nil
+	}
+
+	if resRec, hasRes := s.GetReservationByJob(jobID); hasRes && resRec.Status == "released" {
+		_ = s.store.SyncJobAndAsset(ctx, wsID, jobID, "cancelled", "cancelled", "Late provider completion after reservation release; output quarantined", "", "0", "0")
+		return nil, connect.NewError(connect.CodeFailedPrecondition, ErrReservationAlreadyReleased)
+	}
+	if currJob, jErr := s.store.GetJob(ctx, wsID, jobID); jErr == nil && currJob != nil && currJob.Status == "cancelled" {
+		_ = s.store.SyncJobAndAsset(ctx, wsID, jobID, "cancelled", "cancelled", "Late provider completion after cancellation; output quarantined", "", "0", "0")
+		return nil, connect.NewError(connect.CodeFailedPrecondition, ErrReservationAlreadyReleased)
 	}
 
 	// RULE-M07-001: Record full lineage in asset
@@ -1477,6 +1550,9 @@ func (s *Service) Generate(ctx context.Context, req *connect.Request[productionv
 	job.ProviderJobID = execResult.ProviderJobID
 	job.ActualCredits = execResult.CreditsDeducted
 	job.ActualCostUSD = execResult.CostUSD
+	job.ErrorCode = ""
+	job.ErrorMessage = ""
+	job.CurrentStep = "Completed"
 	if err := s.store.UpdateJob(ctx, job); err != nil {
 		s.setReservationStatus(jobID, "reconciling")
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to update completed job metadata: %w", err))
@@ -1488,7 +1564,10 @@ func (s *Service) Generate(ctx context.Context, req *connect.Request[productionv
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to sync completed job and asset: %w", err))
 	}
 
-	s.commitReservation(wsID, jobID, execResult.CreditsDeducted)
+	if cErr := s.commitReservation(wsID, jobID, execResult.CreditsDeducted); cErr != nil {
+		_ = s.store.SyncJobAndAsset(ctx, wsID, jobID, "cancelled", "cancelled", cErr.Error(), "", "0", "0")
+		return nil, connect.NewError(connect.CodeFailedPrecondition, cErr)
+	}
 
 	finalJob, jErr := s.store.GetJob(ctx, wsID, jobID)
 	if jErr != nil {

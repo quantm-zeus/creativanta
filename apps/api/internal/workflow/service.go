@@ -52,16 +52,24 @@ func NewService(store Store, adapter WorkflowEngineAdapter) *Service {
 
 func (s *Service) SetCapabilityProvider(cp CapabilityStatusProvider) {
 	s.capProvider = cp
-	s.engine = NewExecutionEngine(s.store, cp, s.dispatcher)
-	s.engine.SetTierLimitChecker(s.tierChecker)
+	if s.engine != nil {
+		s.engine.SetCapabilityProvider(cp)
+	} else {
+		s.engine = NewExecutionEngine(s.store, cp, s.dispatcher)
+		s.engine.SetTierLimitChecker(s.tierChecker)
+	}
 	s.approvalMgr = s.engine.ApprovalManager()
 	s.preflight = NewPreflightEngine(cp)
 }
 
 func (s *Service) SetActionDispatcher(ad ActionDispatcher) {
 	s.dispatcher = ad
-	s.engine = NewExecutionEngine(s.store, s.capProvider, ad)
-	s.engine.SetTierLimitChecker(s.tierChecker)
+	if s.engine != nil {
+		s.engine.SetActionDispatcher(ad)
+	} else {
+		s.engine = NewExecutionEngine(s.store, s.capProvider, ad)
+		s.engine.SetTierLimitChecker(s.tierChecker)
+	}
 	s.approvalMgr = s.engine.ApprovalManager()
 }
 
@@ -69,6 +77,30 @@ func (s *Service) SetTierLimitChecker(tc TierLimitChecker) {
 	s.tierChecker = tc
 	if s.engine != nil {
 		s.engine.SetTierLimitChecker(tc)
+	}
+}
+
+func (s *Service) SetMembershipRoleResolver(resolver MembershipRoleResolver) {
+	if s.engine != nil {
+		s.engine.SetMembershipRoleResolver(resolver)
+	}
+}
+
+func (s *Service) SetMemberRole(workspaceID, userID, role string, active bool) {
+	if s.engine != nil {
+		s.engine.SetMemberRole(workspaceID, userID, role, active)
+	}
+}
+
+func (s *Service) RevokeMemberAccess(workspaceID, userID string) {
+	if s.engine != nil {
+		s.engine.SetMemberRole(workspaceID, userID, "", false)
+	}
+}
+
+func (s *Service) recordCallerRole(caller CallerContext) {
+	if s.engine != nil && strings.TrimSpace(caller.WorkspaceID) != "" && strings.TrimSpace(caller.UserID) != "" && strings.TrimSpace(caller.WorkspaceRole) != "" {
+		s.engine.RecordObservedMemberRole(caller.WorkspaceID, caller.UserID, caller.WorkspaceRole)
 	}
 }
 
@@ -294,6 +326,7 @@ func (s *Service) DeactivateWorkflow(ctx context.Context, caller CallerContext, 
 // ----------------------------------------------------------------------------
 
 func (s *Service) RunWorkflow(ctx context.Context, caller CallerContext, workflowID string, triggerContext map[string]any) (*WorkflowRun, error) {
+	s.recordCallerRole(caller)
 	if err := checkPerm(caller, "workflow:edit"); err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrUnauthorized, err)
 	}
@@ -395,6 +428,7 @@ func (s *Service) RunWorkflow(ctx context.Context, caller CallerContext, workflo
 }
 
 func (s *Service) GetRunDetail(ctx context.Context, caller CallerContext, runID string) (*WorkflowRun, []WorkflowRunStep, error) {
+	s.recordCallerRole(caller)
 	if err := checkPerm(caller, "workflow:read"); err != nil {
 		return nil, nil, fmt.Errorf("%w: %v", ErrUnauthorized, err)
 	}
@@ -410,6 +444,7 @@ func (s *Service) GetRunDetail(ctx context.Context, caller CallerContext, runID 
 }
 
 func (s *Service) GetRunLogs(ctx context.Context, caller CallerContext, runID string) ([]any, []WorkflowRunStep, error) {
+	s.recordCallerRole(caller)
 	if err := checkPerm(caller, "workflow:read"); err != nil {
 		return nil, nil, fmt.Errorf("%w: %v", ErrUnauthorized, err)
 	}
@@ -425,6 +460,7 @@ func (s *Service) GetRunLogs(ctx context.Context, caller CallerContext, runID st
 }
 
 func (s *Service) ListRuns(ctx context.Context, caller CallerContext, workflowID, status string, limit, offset int) ([]WorkflowRun, int, error) {
+	s.recordCallerRole(caller)
 	if err := checkPerm(caller, "workflow:read"); err != nil {
 		return nil, 0, fmt.Errorf("%w: %v", ErrUnauthorized, err)
 	}
@@ -566,6 +602,7 @@ func (s *Service) CancelRun(ctx context.Context, caller CallerContext, runID, re
 }
 
 func (s *Service) RetryRun(ctx context.Context, caller CallerContext, runID, repairContext string) (*WorkflowRun, error) {
+	s.recordCallerRole(caller)
 	if err := checkPerm(caller, "workflow:edit"); err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrUnauthorized, err)
 	}
@@ -594,7 +631,11 @@ func (s *Service) RetryRun(ctx context.Context, caller CallerContext, runID, rep
 	if s.engine != nil {
 		executedRun, err := s.engine.ResumeRun(ctx, caller.WorkspaceID, run.RunID, &ResumeSignal{
 			SignalType: "run_retried",
-			Payload:    map[string]any{"repair_context": repairContext},
+			Payload: map[string]any{
+				"repair_context":  repairContext,
+				"_caller_user_id": caller.UserID,
+				"_caller_role":    caller.WorkspaceRole,
+			},
 		})
 		if err != nil {
 			return executedRun, err
@@ -608,6 +649,7 @@ func (s *Service) RetryRun(ctx context.Context, caller CallerContext, runID, rep
 }
 
 func (s *Service) DismissRun(ctx context.Context, caller CallerContext, runID, reason string) error {
+	s.recordCallerRole(caller)
 	if err := checkPerm(caller, "workflow:edit"); err != nil {
 		return fmt.Errorf("%w: %v", ErrUnauthorized, err)
 	}
@@ -625,25 +667,49 @@ func (s *Service) DismissRun(ctx context.Context, caller CallerContext, runID, r
 }
 
 func (s *Service) SkipStep(ctx context.Context, caller CallerContext, runID, nodeID, reason string) (*WorkflowRunStep, error) {
+	s.recordCallerRole(caller)
 	if err := checkPerm(caller, "workflow:edit"); err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrUnauthorized, err)
 	}
+	run, err := s.store.GetWorkflowRun(ctx, caller.WorkspaceID, runID)
+	if err != nil {
+		return nil, err
+	}
+	if run.Status == WorkflowRunStatusSucceeded || run.Status == WorkflowRunStatusCancelled {
+		return nil, fmt.Errorf("%w: cannot skip step on terminal run %s", ErrInvalidRunState, run.Status)
+	}
+	if run.Status == WorkflowRunStatusRequiresManualIntervention && run.CurrentNode == nodeID {
+		if run.ResultSummary != nil && run.ResultSummary["failure_type"] == "ACTION_EFFECT_UNCERTAIN" {
+			return nil, fmt.Errorf("%w: step %s has an unresolved uncertain external effect and cannot be skipped without reconciliation", ErrUncertainStepEffect, nodeID)
+		}
+	}
+
 	steps, err := s.store.ListWorkflowRunSteps(ctx, caller.WorkspaceID, runID)
 	if err != nil {
 		return nil, err
 	}
 	now := time.Now().UTC()
+	var targetStep *WorkflowRunStep
 	for i := range steps {
 		st := &steps[i]
 		if st.NodeID == nodeID {
-			st.Status = "skipped"
-			st.CompletedAt = &now
-			st.UpdatedAt = now
-			if err := s.store.UpdateWorkflowRunStep(ctx, st); err != nil {
-				return nil, err
+			if st.Status == "running" || strings.Contains(st.OutputSnapshot, "uncertain_error") {
+				return nil, fmt.Errorf("%w: step %s is in uncertain running state and cannot be skipped without reconciliation", ErrUncertainStepEffect, nodeID)
 			}
-			return st, nil
+			if st.Status == "succeeded" {
+				return nil, fmt.Errorf("%w: step %s has already succeeded and cannot be skipped", ErrInvalidRunState, nodeID)
+			}
+			targetStep = st
 		}
+	}
+	if targetStep != nil {
+		targetStep.Status = "skipped"
+		targetStep.CompletedAt = &now
+		targetStep.UpdatedAt = now
+		if err := s.store.UpdateWorkflowRunStep(ctx, targetStep); err != nil {
+			return nil, err
+		}
+		return targetStep, nil
 	}
 	// If not found in steps yet, create skipped step
 	step := &WorkflowRunStep{
@@ -761,12 +827,21 @@ func (s *Service) ResumeRun(
 	runID string,
 	signal *ResumeSignal,
 ) (*WorkflowRun, error) {
+	s.recordCallerRole(caller)
 	if err := checkPerm(caller, "workflow:edit"); err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrUnauthorized, err)
 	}
 	if s.engine == nil {
 		return nil, fmt.Errorf("runtime engine not initialized")
 	}
+	if signal == nil {
+		signal = &ResumeSignal{SignalType: "manual_resume"}
+	}
+	if signal.Payload == nil {
+		signal.Payload = make(map[string]any)
+	}
+	signal.Payload["_caller_user_id"] = caller.UserID
+	signal.Payload["_caller_role"] = caller.WorkspaceRole
 	return s.engine.ResumeRun(ctx, caller.WorkspaceID, runID, signal)
 }
 
@@ -831,6 +906,7 @@ func (s *Service) Approve(
 	caller CallerContext,
 	requestID string,
 ) (*ApprovalRequest, *WorkflowRun, error) {
+	s.recordCallerRole(caller)
 	if s.approvalMgr == nil {
 		return nil, nil, fmt.Errorf("approval manager not initialized")
 	}

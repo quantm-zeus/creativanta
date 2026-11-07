@@ -51,6 +51,22 @@ func (s *Service) SetStepExecutor(executor StepExecutor) {
 	s.runtime.SetStepExecutor(executor)
 }
 
+func (s *Service) SetMembershipRoleResolver(resolver MembershipRoleResolver) {
+	s.runtime.SetMembershipRoleResolver(resolver)
+}
+
+func (s *Service) SetMemberRole(workspaceID, userID, role string, active bool) {
+	s.runtime.SetMemberRole(workspaceID, userID, role, active)
+}
+
+func (s *Service) RevokeMemberAccess(workspaceID, userID string) {
+	s.runtime.SetMemberRole(workspaceID, userID, "", false)
+}
+
+func (s *Service) recordCallerRole(caller CallerContext) {
+	s.runtime.RecordObservedMemberRole(caller.WorkspaceID, caller.UserID, caller.WorkspaceRole)
+}
+
 func verifyCallerPrincipal(ctx context.Context, caller CallerContext) error {
 	if strings.TrimSpace(caller.WorkspaceID) == "" {
 		return ErrCrossTenantDenied
@@ -101,6 +117,18 @@ func (s *Service) LaunchAgent(
 		agentType = AgentTypeGeneric
 	}
 
+	if strings.TrimSpace(budgetCeiling) != "" {
+		parsedCeiling, err := tenantdb.ParseExactDecimal(budgetCeiling)
+		if err != nil || parsedCeiling.IsNegative() {
+			return nil, nil, false, fmt.Errorf("%w: budget_ceiling must be a non-negative decimal", ErrInvalidBudgetCeiling)
+		}
+		if parsedCeiling.IsZero() {
+			budgetCeiling = ""
+		} else {
+			budgetCeiling = parsedCeiling.Fixed6String()
+		}
+	}
+
 	var steps []AgentStep
 	var estCredits string
 	var planSummary string
@@ -108,7 +136,7 @@ func (s *Service) LaunchAgent(
 	switch agentType {
 	case AgentTypeVideoAgent:
 		steps, estCredits, planSummary = s.planner.PlanVideoAgent(taskPrompt, params)
-		if budgetCeiling == "" || budgetCeiling == "0.000000" {
+		if budgetCeiling == "" {
 			budgetCeiling = estCredits
 		}
 	case AgentTypeCopilotAction:
@@ -117,12 +145,12 @@ func (s *Service) LaunchAgent(
 			includePublish = true
 		}
 		steps, estCredits, planSummary = s.planner.PlanCopilotAction(taskPrompt, includePublish)
-		if budgetCeiling == "" || budgetCeiling == "0.000000" {
+		if budgetCeiling == "" {
 			budgetCeiling = estCredits
 		}
 	default:
 		steps, estCredits, planSummary = s.planner.PlanGeneric(taskPrompt, budgetCeiling)
-		if budgetCeiling == "" || budgetCeiling == "0.000000" {
+		if budgetCeiling == "" {
 			budgetCeiling = estCredits
 		}
 	}
@@ -151,7 +179,9 @@ func (s *Service) LaunchAgent(
 		Steps:                  steps,
 		Outputs:                make([]AgentOutput, 0),
 		CreatedBy:              caller.UserID,
+		CreatedByRole:          caller.WorkspaceRole,
 	}
+	s.recordCallerRole(caller)
 
 	// Preflight checks
 	warnings, requiresApproval, err := s.runtime.PreflightPlan(ctx, caller, run, s.capabilities)
@@ -419,19 +449,19 @@ func (s *Service) ProvideInput(
 		return s.ExecuteRemainingSteps(ctx, caller, run.AgentRunID, 0)
 	}
 
-	// 3. Budget Ceiling Elevation (Target 2)
+	// 3. Budget Ceiling Elevation (Target 2 & F13)
 	if budgetCeilingIncrease != "" {
-		currCeiling, err := tenantdb.ParseExactDecimal(run.BudgetCeiling)
-		if err != nil {
-			currCeiling = tenantdb.MustParseExactDecimal("0.000000")
-		}
 		inc, err := tenantdb.ParseExactDecimal(budgetCeilingIncrease)
-		if err != nil {
-			return nil, fmt.Errorf("%w: %v", ErrInvalidBudgetCeiling, err)
+		if err != nil || !inc.IsPositive() {
+			return nil, fmt.Errorf("%w: budget_ceiling_increase must be a positive decimal", ErrInvalidBudgetCeiling)
+		}
+		currCeiling, err := tenantdb.ParseExactDecimal(run.BudgetCeiling)
+		if err != nil || currCeiling.IsNegative() {
+			return nil, fmt.Errorf("%w: current budget_ceiling %q is invalid", ErrInvalidBudgetCeiling, run.BudgetCeiling)
 		}
 		newCeiling, err := currCeiling.Add(inc)
-		if err != nil {
-			return nil, err
+		if err != nil || !newCeiling.IsPositive() {
+			return nil, fmt.Errorf("%w: invalid elevated budget ceiling", ErrInvalidBudgetCeiling)
 		}
 		run.BudgetCeiling = newCeiling.Fixed6String()
 
@@ -439,7 +469,7 @@ func (s *Service) ProvideInput(
 		if err != nil {
 			usedDec = tenantdb.MustParseExactDecimal("0.000000")
 		}
-		if !newCeiling.IsZero() && usedDec.Cmp(newCeiling) > 0 {
+		if usedDec.Cmp(newCeiling) > 0 {
 			// Still over budget ceiling even after increase: remain paused in StateWaitingContext
 			_ = s.store.UpdateRun(ctx, run)
 			return run, ErrBudgetCeilingExceeded

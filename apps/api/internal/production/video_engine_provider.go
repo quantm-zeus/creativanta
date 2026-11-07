@@ -192,8 +192,8 @@ func (p *VideoEngineProvider) Generate(ctx context.Context, req ProviderGenReque
 
 	renderRespBytes, readErr := io.ReadAll(io.LimitReader(renderResp.Body, 1<<20))
 	if renderResp.StatusCode != http.StatusAccepted && renderResp.StatusCode != http.StatusCreated && renderResp.StatusCode != http.StatusOK {
-		if renderResp.StatusCode == http.StatusBadGateway || renderResp.StatusCode == http.StatusGatewayTimeout {
-			return nil, fmt.Errorf("%w: video-engine: POST /v1/render-jobs returned ambiguous gateway status %d: %s", ErrOutcomeUnknown, renderResp.StatusCode, strings.TrimSpace(string(renderRespBytes)))
+		if renderResp.StatusCode >= http.StatusInternalServerError || renderResp.StatusCode == http.StatusRequestTimeout {
+			return nil, fmt.Errorf("%w: video-engine: POST /v1/render-jobs returned ambiguous server status %d: %s", ErrOutcomeUnknown, renderResp.StatusCode, strings.TrimSpace(string(renderRespBytes)))
 		}
 		return nil, fmt.Errorf("video-engine: POST /v1/render-jobs returned status %d: %s", renderResp.StatusCode, strings.TrimSpace(string(renderRespBytes)))
 	}
@@ -293,11 +293,24 @@ func (p *VideoEngineProvider) Cancel(ctx context.Context, providerJobID string) 
 
 	resp, err := p.client.Do(req)
 	if err != nil {
-		return err
+		return fmt.Errorf("%w: video-engine: cancel job %s transport error: %w", ErrOutcomeUnknown, providerJobID, err)
 	}
 	defer resp.Body.Close()
+	bodyBytes, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if resp.StatusCode >= 400 {
-		return fmt.Errorf("video-engine: cancel job %s returned status %d", providerJobID, resp.StatusCode)
+		return fmt.Errorf("%w: video-engine: cancel job %s returned status %d: %s", ErrOutcomeUnknown, providerJobID, resp.StatusCode, strings.TrimSpace(string(bodyBytes)))
+	}
+	if resp.StatusCode == http.StatusAccepted {
+		return fmt.Errorf("%w: video-engine: cancel job %s accepted (202) pending provider stop confirmation", ErrOutcomeUnknown, providerJobID)
+	}
+	if len(bytes.TrimSpace(bodyBytes)) > 0 {
+		var parsed cveJobResponse
+		if err := json.Unmarshal(bodyBytes, &parsed); err != nil {
+			return fmt.Errorf("%w: video-engine: decode cancel response for %s: %v", ErrOutcomeUnknown, providerJobID, err)
+		}
+		if strings.TrimSpace(parsed.Status) != "" && normalizeVideoEngineStatus(parsed.Status) != "cancelled" {
+			return fmt.Errorf("%w: video-engine: cancel job %s returned non-terminal status %q", ErrOutcomeUnknown, providerJobID, parsed.Status)
+		}
 	}
 	return nil
 }

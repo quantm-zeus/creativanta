@@ -231,6 +231,7 @@ type AgentRun struct {
 	Steps                  []AgentStep
 	Outputs                []AgentOutput
 	CreatedBy              string
+	CreatedByRole          string
 	StartedAt              *time.Time
 	CompletedAt            *time.Time
 	CreatedAt              time.Time

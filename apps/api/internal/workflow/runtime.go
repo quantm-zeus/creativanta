@@ -133,6 +133,11 @@ func (m *MockActionDispatcher) Reset() {
 	m.customErrors = make(map[string]error)
 }
 
+type memberMembershipState struct {
+	role   string
+	active bool
+}
+
 // ExecutionEngine executes workflow runs sequentially with capability-awareness,
 // approval pausing, wait suspension, DLQ capture, and idempotency guarantees.
 type ExecutionEngine struct {
@@ -143,6 +148,9 @@ type ExecutionEngine struct {
 	diagBuilder     *DiagnosticsBuilder
 	dispatcher      ActionDispatcher
 	tierChecker     TierLimitChecker
+	roleResolver    MembershipRoleResolver
+	membersMu       sync.RWMutex
+	memberStates    map[string]memberMembershipState
 	maxCascadeDepth int
 	runLocksMu      sync.Mutex
 	inFlightRuns    map[string]bool
@@ -166,6 +174,7 @@ func NewExecutionEngine(
 		dlqMgr:          dlqMgr,
 		diagBuilder:     diagBuilder,
 		dispatcher:      dispatcher,
+		memberStates:    make(map[string]memberMembershipState),
 		maxCascadeDepth: 5, // EC-M20-001
 		inFlightRuns:    make(map[string]bool),
 	}
@@ -176,8 +185,104 @@ func NewExecutionEngine(
 	return engine
 }
 
+func (e *ExecutionEngine) SetCapabilityProvider(cp CapabilityStatusProvider) {
+	if cp == nil {
+		cp = NewDefaultCapabilityProvider()
+	}
+	e.capProvider = cp
+}
+
+func (e *ExecutionEngine) SetActionDispatcher(ad ActionDispatcher) {
+	e.dispatcher = ad
+}
+
 func (e *ExecutionEngine) SetTierLimitChecker(tc TierLimitChecker) {
 	e.tierChecker = tc
+}
+
+func (e *ExecutionEngine) SetMembershipRoleResolver(resolver MembershipRoleResolver) {
+	e.membersMu.Lock()
+	defer e.membersMu.Unlock()
+	e.roleResolver = resolver
+}
+
+func (e *ExecutionEngine) SetMemberRole(workspaceID, userID, role string, active bool) {
+	ws := strings.TrimSpace(workspaceID)
+	uid := strings.TrimSpace(userID)
+	if ws == "" || uid == "" {
+		return
+	}
+	e.membersMu.Lock()
+	defer e.membersMu.Unlock()
+	if e.memberStates == nil {
+		e.memberStates = make(map[string]memberMembershipState)
+	}
+	e.memberStates[ws+":"+uid] = memberMembershipState{
+		role:   strings.TrimSpace(role),
+		active: active,
+	}
+}
+
+func (e *ExecutionEngine) RecordObservedMemberRole(workspaceID, userID, role string) {
+	ws := strings.TrimSpace(workspaceID)
+	uid := strings.TrimSpace(userID)
+	r := strings.TrimSpace(role)
+	if ws == "" || uid == "" || r == "" {
+		return
+	}
+	e.membersMu.Lock()
+	defer e.membersMu.Unlock()
+	if e.memberStates == nil {
+		e.memberStates = make(map[string]memberMembershipState)
+	}
+	key := ws + ":" + uid
+	if existing, ok := e.memberStates[key]; ok && !existing.active {
+		// Do not implicitly re-activate an explicitly revoked member without SetMemberRole.
+		return
+	}
+	active := !strings.EqualFold(r, "revoked") && !strings.EqualFold(r, "none") && !strings.EqualFold(r, "denied")
+	e.memberStates[key] = memberMembershipState{
+		role:   r,
+		active: active,
+	}
+}
+
+func (e *ExecutionEngine) resolveLiveActorRole(ctx context.Context, workspaceID, actorUserID, launchRole string) (string, bool, error) {
+	uid := strings.TrimSpace(actorUserID)
+	ws := strings.TrimSpace(workspaceID)
+	if uid == "" || ws == "" {
+		return "", false, fmt.Errorf("%w: workflow run is missing verified initiator identity", rbac.ErrPermissionDenied)
+	}
+
+	e.membersMu.RLock()
+	resolver := e.roleResolver
+	st, hasState := e.memberStates[ws+":"+uid]
+	e.membersMu.RUnlock()
+
+	if resolver != nil {
+		resolvedRole, active, err := resolver(ctx, ws, uid)
+		if err != nil {
+			return "", false, fmt.Errorf("%w: failed to verify initiator %s membership: %v", rbac.ErrPermissionDenied, uid, err)
+		}
+		trimmed := strings.TrimSpace(resolvedRole)
+		if !active || trimmed == "" || strings.EqualFold(trimmed, "revoked") || strings.EqualFold(trimmed, "none") || strings.EqualFold(trimmed, "denied") {
+			return "", false, fmt.Errorf("%w: initiator %s workspace membership is inactive or revoked", rbac.ErrPermissionDenied, uid)
+		}
+		return trimmed, true, nil
+	}
+
+	if hasState {
+		if !st.active || st.role == "" || strings.EqualFold(st.role, "revoked") || strings.EqualFold(st.role, "none") || strings.EqualFold(st.role, "denied") {
+			return "", false, fmt.Errorf("%w: initiator %s workspace access has been revoked", rbac.ErrPermissionDenied, uid)
+		}
+		return st.role, true, nil
+	}
+
+	trimmedLaunch := strings.TrimSpace(launchRole)
+	if trimmedLaunch == "" || strings.EqualFold(trimmedLaunch, "revoked") || strings.EqualFold(trimmedLaunch, "none") || strings.EqualFold(trimmedLaunch, "denied") {
+		return "", false, fmt.Errorf("%w: workflow run is missing valid initiator role", rbac.ErrPermissionDenied)
+	}
+	return trimmedLaunch, true, nil
 }
 
 func (e *ExecutionEngine) ApprovalManager() *ApprovalManager {
@@ -475,35 +580,39 @@ func (e *ExecutionEngine) runLoop(
 		return nil, err
 	}
 	completedSteps := make(map[string]*WorkflowRunStep)
+	skippedSteps := make(map[string]*WorkflowRunStep)
 	inFlightSteps := make(map[string]*WorkflowRunStep)
 	for i := range existingSteps {
 		st := &existingSteps[i]
 		if st.Status == "succeeded" {
 			completedSteps[st.NodeID] = st
-		} else if st.Status == "running" && st.NodeType == NodeTypeAction {
+		} else if st.NodeType == NodeTypeAction && (st.Status == "running" || strings.Contains(st.OutputSnapshot, "uncertain_error")) {
 			inFlightSteps[st.NodeID] = st
+		} else if st.Status == "skipped" {
+			skippedSteps[st.NodeID] = st
 		}
 	}
 
-	actorRole := run.InitiatedByRole
-	actorUserID := run.InitiatedByUserID
+	launchActorRole := strings.TrimSpace(run.InitiatedByRole)
+	actorUserID := strings.TrimSpace(run.InitiatedByUserID)
 	if run.TriggerEvent != nil {
-		if actorRole == "" {
+		if launchActorRole == "" {
 			if r, ok := run.TriggerEvent["_actor_role"].(string); ok {
-				actorRole = r
+				launchActorRole = strings.TrimSpace(r)
 			}
 		}
 		if actorUserID == "" {
 			if u, ok := run.TriggerEvent["_actor_user_id"].(string); ok {
-				actorUserID = u
+				actorUserID = strings.TrimSpace(u)
 			}
 		}
 	}
-	if actorRole == "" {
-		actorRole = "manager"
-	}
-	if actorUserID == "" {
-		actorUserID = "00000000-0000-4000-8000-000000000001"
+	if signal != nil && signal.Payload != nil {
+		if sigUID, ok := signal.Payload["_caller_user_id"].(string); ok && strings.TrimSpace(sigUID) != "" {
+			if sigRole, ok := signal.Payload["_caller_role"].(string); ok && strings.TrimSpace(sigRole) != "" {
+				e.RecordObservedMemberRole(workspaceID, sigUID, sigRole)
+			}
+		}
 	}
 
 	// Execution context
@@ -679,6 +788,21 @@ func (e *ExecutionEngine) runLoop(
 				inputJSON = cfg.InputJSON
 			}
 
+			// F10: Check uncertain-effect lock FIRST so neither SkipStep nor completedSteps can mask an unresolved in-flight step
+			if _, uncertain := inFlightSteps[node.NodeID]; uncertain {
+				run.Status = WorkflowRunStatusRequiresManualIntervention
+				run.UpdatedAt = now
+				if run.ResultSummary == nil {
+					run.ResultSummary = make(map[string]any)
+				}
+				run.ResultSummary["failure_type"] = "ACTION_EFFECT_UNCERTAIN"
+				run.ResultSummary["user_facing_explanation"] = fmt.Sprintf("Action step %s was interrupted in flight; manual reconciliation is required before replay.", node.NodeID)
+				if err := e.store.UpdateWorkflowRun(ctx, run); err != nil {
+					return nil, err
+				}
+				return run, ErrUncertainStepEffect
+			}
+
 			// Check: RESUME NEVER REPLAYS CONFIRMED EFFECT (Acceptance Target 3)
 			if completedStep, ok := completedSteps[node.NodeID]; ok && len(completedStep.SideEffectRefs) > 0 {
 				// Step was already executed with confirmed effects! Skip replaying.
@@ -697,19 +821,19 @@ func (e *ExecutionEngine) runLoop(
 				break
 			}
 
-			// If step is already in 'running' state from an interrupted prior attempt, do NOT blindly re-dispatch!
-			if _, uncertain := inFlightSteps[node.NodeID]; uncertain {
-				run.Status = WorkflowRunStatusRequiresManualIntervention
-				run.UpdatedAt = now
-				if run.ResultSummary == nil {
-					run.ResultSummary = make(map[string]any)
+			// F10: If a non-uncertain step was explicitly skipped, advance past it without executing the action
+			if _, alreadySkipped := skippedSteps[node.NodeID]; alreadySkipped {
+				for _, edge := range adj[node.NodeID] {
+					if edge.Branch == "" || edge.Branch == EdgeBranchSuccess {
+						nextNodeID = edge.ToNodeID
+						branchTaken = edge.Branch
+						break
+					}
 				}
-				run.ResultSummary["failure_type"] = "ACTION_EFFECT_UNCERTAIN"
-				run.ResultSummary["user_facing_explanation"] = fmt.Sprintf("Action step %s was interrupted in flight; manual reconciliation is required before replay.", node.NodeID)
-				if err := e.store.UpdateWorkflowRun(ctx, run); err != nil {
-					return nil, err
+				if nextNodeID == "" && len(adj[node.NodeID]) > 0 {
+					nextNodeID = adj[node.NodeID][0].ToNodeID
 				}
-				return run, ErrUncertainStepEffect
+				break
 			}
 
 			// 1. MANDATORY Capability Check (RULE-M20-002, AC-M20-003)
@@ -784,17 +908,31 @@ func (e *ExecutionEngine) runLoop(
 				return e.FailRunWithDiagnostics(ctx, workspaceID, runID, diag)
 			}
 
-			// 2. Delegated RBAC Permission Check at Action Effect Point (AI-09)
-			if permErr := checkDelegatedActionPermission(actorUserID, workspaceID, actorRole, rpcName); permErr != nil {
+			// 2. Delegated RBAC Permission & Live Membership Check at Action Effect Point (AI-09 & F11)
+			liveActorRole, activeMember, roleErr := e.resolveLiveActorRole(ctx, workspaceID, actorUserID, launchActorRole)
+			var permErr error
+			if roleErr != nil || !activeMember {
+				permErr = roleErr
+				if permErr == nil {
+					permErr = fmt.Errorf("%w: initiator %s membership is no longer active", rbac.ErrPermissionDenied, actorUserID)
+				}
+			} else {
+				permErr = checkDelegatedActionPermission(actorUserID, workspaceID, liveActorRole, rpcName)
+			}
+			if permErr != nil {
+				roleLabel := liveActorRole
+				if roleLabel == "" {
+					roleLabel = "revoked"
+				}
 				diag := e.diagBuilder.CreateRecord(
 					workspaceID,
 					runID,
 					"PERMISSION_DENIED",
 					node.NodeID,
 					NodeTypeAction,
-					fmt.Sprintf("Permission denied: role %q is not authorized to execute action %q.", actorRole, rpcName),
+					fmt.Sprintf("Permission denied: initiator role %q (launch role %q) is not authorized to execute action %q.", roleLabel, launchActorRole, rpcName),
 					permErr.Error(),
-					"Assign an authorized operator role or remove the privileged action from the workflow.",
+					"Verify initiator's active workspace membership and role or re-authorize the workflow with an eligible operator.",
 					hasFallbackBranch,
 				)
 				stepOrder := int16(len(existingSteps) + 1)
