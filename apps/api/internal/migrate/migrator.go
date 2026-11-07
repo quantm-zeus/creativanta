@@ -397,37 +397,67 @@ func Up(ctx context.Context, db DBRunner, dir string) ([]int64, error) {
 			continue
 		}
 
-		tx, err := db.Begin(ctx)
-		if err != nil {
-			return newlyApplied, fmt.Errorf("migrate: begin tx for %s: %w", m.Filename, err)
-		}
-
-		execErr := func() error {
-			for idx, stmt := range m.UpStatements {
-				if _, err := tx.Exec(ctx, stmt); err != nil {
-					return fmt.Errorf("migrate: %s statement #%d failed: %w", m.Filename, idx+1, err)
+		var lastErr error
+		for attempt := 0; attempt < 5; attempt++ {
+			if attempt > 0 {
+				select {
+				case <-ctx.Done():
+					return newlyApplied, ctx.Err()
+				case <-time.After(time.Duration(attempt*30) * time.Millisecond):
 				}
 			}
-			if _, err := tx.Exec(ctx, `
-				INSERT INTO goose_db_version (version_id, is_applied, checksum)
-				VALUES ($1, true, $2)
-			`, m.Version, m.Checksum); err != nil {
-				return fmt.Errorf("migrate: record version %d: %w", m.Version, err)
-			}
-			return nil
-		}()
 
-		if execErr != nil {
-			_ = tx.Rollback(ctx)
-			return newlyApplied, execErr
+			tx, err := db.Begin(ctx)
+			if err != nil {
+				return newlyApplied, fmt.Errorf("migrate: begin tx for %s: %w", m.Filename, err)
+			}
+
+			execErr := func() error {
+				for idx, stmt := range m.UpStatements {
+					if _, err := tx.Exec(ctx, stmt); err != nil {
+						return fmt.Errorf("migrate: %s statement #%d failed: %w", m.Filename, idx+1, err)
+					}
+				}
+				if _, err := tx.Exec(ctx, `
+					INSERT INTO goose_db_version (version_id, is_applied, checksum)
+					VALUES ($1, true, $2)
+				`, m.Version, m.Checksum); err != nil {
+					return fmt.Errorf("migrate: record version %d: %w", m.Version, err)
+				}
+				return nil
+			}()
+
+			if execErr != nil {
+				_ = tx.Rollback(ctx)
+				lastErr = execErr
+				if isTransientCatalogConcurrencyError(execErr) {
+					continue
+				}
+				return newlyApplied, execErr
+			}
+			if err := tx.Commit(ctx); err != nil {
+				return newlyApplied, fmt.Errorf("migrate: commit %s: %w", m.Filename, err)
+			}
+			lastErr = nil
+			break
 		}
-		if err := tx.Commit(ctx); err != nil {
-			return newlyApplied, fmt.Errorf("migrate: commit %s: %w", m.Filename, err)
+		if lastErr != nil {
+			return newlyApplied, lastErr
 		}
 		newlyApplied = append(newlyApplied, m.Version)
 	}
 
 	return newlyApplied, nil
+}
+
+func isTransientCatalogConcurrencyError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "tuple concurrently updated") ||
+		strings.Contains(msg, "SQLSTATE XX000") ||
+		strings.Contains(msg, "pg_authid_")
 }
 
 // Down rolls back the single latest applied migration when allowLocalRollback is true.
@@ -910,6 +940,17 @@ func ValidateCanonicalMigrationContract(m Migration) error {
 		}
 		requiredRLSTables = []string{
 			"workspace_acceptance_signoffs",
+		}
+	case 49:
+		requiredFragments = []requiredFragment{
+			{"user_self_clerk_bootstrap policy on users", "CREATE POLICY user_self_clerk_bootstrap ON users"},
+			{"composite tenant FK on orders -> connected_accounts", "fk_orders_connected_account_id_tenant"},
+			{"composite tenant FK on orders -> products", "fk_orders_product_id_tenant"},
+			{"composite tenant FK on orders -> offers", "fk_orders_offer_id_tenant"},
+			{"composite tenant FK on orders -> entities", "fk_orders_customer_entity_id_tenant"},
+			{"composite tenant FK on returns -> refunds", "fk_returns_refund_id_tenant"},
+			{"external refund identity unique index", "idx_refunds_external_identity"},
+			{"external return identity unique index", "idx_returns_external_identity"},
 		}
 	default:
 		return nil

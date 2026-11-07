@@ -474,6 +474,10 @@ func mountAdminAPIRoutes(mux *http.ServeMux, idStore *pgIdentityStore) {
 			writeJSONError(w, http.StatusForbidden, "permission_denied", "admin API requires verified VPN or loopback transport")
 			return
 		}
+		if ev, hasEv := internaladmin.VPNTransportEvidenceFromContext(r.Context()); hasEv && (!ev.Verified || !internaladmin.IsTailscaleOrLoopbackVPNPeerIP(ev.PeerIP)) {
+			writeJSONError(w, http.StatusForbidden, "permission_denied", "admin API requires verified VPN transport evidence")
+			return
+		}
 		token, err := extractBearerToken(r.Header.Get("Authorization"))
 		if err != nil {
 			writeJSONError(w, http.StatusUnauthorized, "unauthenticated", err.Error())
@@ -484,13 +488,14 @@ func mountAdminAPIRoutes(mux *http.ServeMux, idStore *pgIdentityStore) {
 			writeJSONError(w, http.StatusForbidden, "permission_denied", "workspace/user JWT tokens are forbidden on isolated admin API; MFA+VPN admin session required")
 			return
 		}
-		adminSess, err := idStore.VerifyAdminSession(r.Context(), token)
+		verifyCtx := internaladmin.WithTrustedVPNTransport(r.Context(), peerIP)
+		adminSess, err := idStore.VerifyAdminSession(verifyCtx, token)
 		if err != nil {
 			switch {
 			case errors.Is(err, identity.ErrNotConfigured):
 				writeJSONError(w, http.StatusServiceUnavailable, "unavailable", "admin session store not configured")
-			case errors.Is(err, internaladmin.ErrPrivilegedRoleBoundaryViolation):
-				writeJSONError(w, http.StatusForbidden, "permission_denied", "internal admin role required")
+			case errors.Is(err, internaladmin.ErrPrivilegedRoleBoundaryViolation), errors.Is(err, internaladmin.ErrVPNRequired):
+				writeJSONError(w, http.StatusForbidden, "permission_denied", "internal admin role and verified VPN transport required")
 			default:
 				writeJSONError(w, http.StatusUnauthorized, "unauthenticated", "invalid, revoked, or unverified admin session")
 			}
@@ -787,10 +792,14 @@ func (s *pgIdentityStore) ResolveMemberRole(ctx context.Context, workspaceID, us
 }
 
 // VerifyAdminSession validates an isolated internal admin session token against admin_sessions
-// and internal_admins under the admin_user database role, requiring VPN + MFA verification.
+// and internal_admins under the admin_user database role, requiring VPN + MFA verification
+// and bounding session age to at most 8 hours (AdminSessionTTL) from started_at with a non-NULL expired_at.
 func (s *pgIdentityStore) VerifyAdminSession(ctx context.Context, sessionToken string) (verifiedAdminSession, error) {
 	if s.pool == nil {
 		return verifiedAdminSession{}, identity.ErrNotConfigured
+	}
+	if ev, hasEv := internaladmin.VPNTransportEvidenceFromContext(ctx); hasEv && (!ev.Verified || !internaladmin.IsTailscaleOrLoopbackVPNPeerIP(ev.PeerIP)) {
+		return verifiedAdminSession{}, internaladmin.ErrVPNRequired
 	}
 	trimmed := strings.TrimSpace(sessionToken)
 	if len(trimmed) < 16 || strings.Count(trimmed, ".") == 2 {
@@ -810,15 +819,16 @@ func (s *pgIdentityStore) VerifyAdminSession(ctx context.Context, sessionToken s
 	}
 
 	var (
-		adminID     string
-		adminRole   string
-		sessionID   string
-		vpnVerified bool
-		mfaVerified bool
-		isRevoked   bool
-		isExpired   bool
-		adminStatus string
-		mfaEnabled  bool
+		adminID         string
+		adminRole       string
+		sessionID       string
+		vpnVerified     bool
+		mfaVerified     bool
+		isRevoked       bool
+		isExpiredOrUnbd bool
+		adminStatus     string
+		mfaEnabled      bool
+		hasPasswordHash bool
 	)
 	err = tx.QueryRow(ctx, `
 		SELECT
@@ -828,9 +838,17 @@ func (s *pgIdentityStore) VerifyAdminSession(ctx context.Context, sessionToken s
 			s.vpn_verified,
 			s.mfa_verified,
 			(s.revoked_at IS NOT NULL) AS is_revoked,
-			(s.expired_at IS NOT NULL AND s.expired_at <= NOW()) AS is_expired,
+			(
+				s.expired_at IS NULL
+				OR s.expired_at <= NOW()
+				OR s.expired_at <= s.started_at
+				OR s.expired_at > s.started_at + INTERVAL '8 hours'
+				OR s.started_at > NOW() + INTERVAL '1 minute'
+				OR s.started_at + INTERVAL '8 hours' <= NOW()
+			) AS is_expired_or_unbounded,
 			ia.status,
-			ia.mfa_enabled
+			ia.mfa_enabled,
+			(COALESCE(BTRIM(ia.password_hash), '') <> '') AS has_password_hash
 		FROM admin_sessions s
 		JOIN internal_admins ia ON ia.admin_id = s.admin_id
 		WHERE s.session_token_hash = $1
@@ -842,9 +860,10 @@ func (s *pgIdentityStore) VerifyAdminSession(ctx context.Context, sessionToken s
 		&vpnVerified,
 		&mfaVerified,
 		&isRevoked,
-		&isExpired,
+		&isExpiredOrUnbd,
 		&adminStatus,
 		&mfaEnabled,
+		&hasPasswordHash,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return verifiedAdminSession{}, identity.ErrUnauthorized
@@ -852,7 +871,7 @@ func (s *pgIdentityStore) VerifyAdminSession(ctx context.Context, sessionToken s
 	if err != nil {
 		return verifiedAdminSession{}, err
 	}
-	if isRevoked || isExpired || !vpnVerified || !mfaVerified {
+	if isRevoked || isExpiredOrUnbd || !vpnVerified || !mfaVerified || !hasPasswordHash {
 		return verifiedAdminSession{}, identity.ErrUnauthorized
 	}
 	if adminStatus != "active" || !mfaEnabled || !rbac.IsValidAdminRole(adminRole) {

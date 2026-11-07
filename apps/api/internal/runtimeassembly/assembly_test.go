@@ -1135,3 +1135,155 @@ func (p *runtimeSmokeProxyTarget) RollbackUpstream(_ context.Context, previousSl
 	p.rolledBackSlot = previousSlot
 	return nil
 }
+
+func TestAdminAPIWhoamiRejectsNullOrUnboundedExpiryAndStaleAge(t *testing.T) {
+	rtDB := setupDisposableRuntimeDB(t)
+	pool := rtDB.Pool
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	const (
+		tokNullExpiryFresh = "adm_sess_null_expiry_fresh_99990011"
+		tokNullExpiryStale = "adm_sess_null_expiry_stale_99990012"
+		tokStaleStartedAt  = "adm_sess_stale_started_at_99990013"
+		tokExcessiveTTL    = "adm_sess_excessive_ttl_99990014"
+		tokInvertedBounds  = "adm_sess_inverted_bounds_99990015"
+		tokPastExpiry      = "adm_sess_past_expiry_99990016"
+		tokValidBounded    = "adm_sess_valid_bounded_99990017"
+	)
+
+	seedSessionsSQL := fmt.Sprintf(`
+		INSERT INTO admin_sessions (
+			session_id, admin_id, ip_address, user_agent,
+			vpn_verified, mfa_verified, started_at, expired_at, revoked_at, session_token_hash
+		)
+		VALUES
+			('99990000-0000-4000-8000-000000000011'::uuid, '%s'::uuid, '127.0.0.1'::inet, 'BoundsTest', true, true, NOW() - INTERVAL '5 minutes', NULL, NULL, '%s'),
+			('99990000-0000-4000-8000-000000000012'::uuid, '%s'::uuid, '127.0.0.1'::inet, 'BoundsTest', true, true, NOW() - INTERVAL '48 hours', NULL, NULL, '%s'),
+			('99990000-0000-4000-8000-000000000013'::uuid, '%s'::uuid, '127.0.0.1'::inet, 'BoundsTest', true, true, NOW() - INTERVAL '9 hours', NOW() + INTERVAL '1 hour', NULL, '%s'),
+			('99990000-0000-4000-8000-000000000014'::uuid, '%s'::uuid, '127.0.0.1'::inet, 'BoundsTest', true, true, NOW() - INTERVAL '5 minutes', NOW() + INTERVAL '24 hours', NULL, '%s'),
+			('99990000-0000-4000-8000-000000000015'::uuid, '%s'::uuid, '127.0.0.1'::inet, 'BoundsTest', true, true, NOW() + INTERVAL '10 minutes', NOW() + INTERVAL '5 minutes', NULL, '%s'),
+			('99990000-0000-4000-8000-000000000016'::uuid, '%s'::uuid, '127.0.0.1'::inet, 'BoundsTest', true, true, NOW() - INTERVAL '2 hours', NOW() - INTERVAL '1 minute', NULL, '%s'),
+			('99990000-0000-4000-8000-000000000017'::uuid, '%s'::uuid, '127.0.0.1'::inet, 'BoundsTest', true, true, NOW() - INTERVAL '15 minutes', NOW() + INTERVAL '4 hours', NULL, '%s')
+		ON CONFLICT (session_id) DO NOTHING;
+	`,
+		testSysAdmin, internaladmin.HashSessionToken(tokNullExpiryFresh),
+		testSysAdmin, internaladmin.HashSessionToken(tokNullExpiryStale),
+		testSysAdmin, internaladmin.HashSessionToken(tokStaleStartedAt),
+		testSysAdmin, internaladmin.HashSessionToken(tokExcessiveTTL),
+		testSysAdmin, internaladmin.HashSessionToken(tokInvertedBounds),
+		testSysAdmin, internaladmin.HashSessionToken(tokPastExpiry),
+		testSysAdmin, internaladmin.HashSessionToken(tokValidBounded),
+	)
+	if _, err := pool.Exec(ctx, seedSessionsSQL); err != nil {
+		t.Fatalf("seed admin_sessions bounds fixtures failed: %v", err)
+	}
+
+	adminHandler, adminCleanup, err := runtimeassembly.NewHandlerFromConfig(ctx, runtimeassembly.Config{
+		Role:        bootstrap.RoleAdminAPI,
+		DatabaseURL: rtDB.AdminAPIDSN,
+	})
+	if err != nil {
+		t.Fatalf("NewHandlerFromConfig(admin-api): %v", err)
+	}
+	defer adminCleanup()
+
+	for _, tc := range []struct {
+		name  string
+		token string
+		want  int
+	}{
+		{"null expired_at (fresh started_at)", tokNullExpiryFresh, http.StatusUnauthorized},
+		{"null expired_at (48h old started_at)", tokNullExpiryStale, http.StatusUnauthorized},
+		{"started_at > 8h ago with future expired_at", tokStaleStartedAt, http.StatusUnauthorized},
+		{"expired_at > started_at + 8h", tokExcessiveTTL, http.StatusUnauthorized},
+		{"expired_at <= started_at", tokInvertedBounds, http.StatusUnauthorized},
+		{"expired_at in the past", tokPastExpiry, http.StatusUnauthorized},
+		{"valid bounded session (started 15m ago, expires in 4h)", tokValidBounded, http.StatusOK},
+	} {
+		req := httptest.NewRequest(http.MethodGet, "/admin/v1/whoami", nil)
+		req.RemoteAddr = "100.64.0.12:51234"
+		req.Header.Set("Authorization", "Bearer "+tc.token)
+		rec := httptest.NewRecorder()
+		adminHandler.ServeHTTP(rec, req)
+		if rec.Code != tc.want {
+			t.Fatalf("%s: expected HTTP %d from /admin/v1/whoami, got %d (body=%s)", tc.name, tc.want, rec.Code, rec.Body.String())
+		}
+	}
+
+	// Verify explicit non-VPN transport evidence in request context is rejected with 403 Forbidden even if RemoteAddr is loopback.
+	badVPNReq := httptest.NewRequest(http.MethodGet, "/admin/v1/whoami", nil)
+	badVPNReq.RemoteAddr = "127.0.0.1:51234"
+	badVPNReq = badVPNReq.WithContext(internaladmin.WithTrustedVPNTransport(badVPNReq.Context(), "203.0.113.77"))
+	badVPNReq.Header.Set("Authorization", "Bearer "+tokValidBounded)
+	badVPNRec := httptest.NewRecorder()
+	adminHandler.ServeHTTP(badVPNRec, badVPNReq)
+	if badVPNRec.Code != http.StatusForbidden {
+		t.Fatalf("expected 403 Forbidden for unverified VPN transport context on /admin/v1/whoami, got %d", badVPNRec.Code)
+	}
+
+	// Verify end-to-end HTTP router upgrade path from baseline v1..v48 -> v49 under least-privilege app_user RLS:
+	migrationsDir := filepath.Join("..", "..", "..", "..", "infra", "migrations")
+	rolledVer, err := migrate.Down(ctx, pool, migrationsDir, true)
+	if err != nil || rolledVer != 49 {
+		t.Fatalf("rollback v49 to simulate v1..v48 baseline failed: rolledVer=%d err=%v", rolledVer, err)
+	}
+
+	jwks := newTestJWKSProvider(t)
+	ownerAToken := jwks.signToken(t, "user_api_owner_a", "sess_upgrade_owner_a")
+	apiHandler, apiCleanup, err := runtimeassembly.NewHandlerFromConfig(ctx, runtimeassembly.Config{
+		Role:                 bootstrap.RoleAPI,
+		DatabaseURL:          rtDB.APIDSN,
+		ClerkIssuer:          jwks.issuer,
+		ClerkAudiences:       []string{"creativanta-api"},
+		ClerkAuthorizedParty: []string{"http://localhost:3000"},
+		ClerkSecretKey:       testClerkSecretKey,
+		ClerkSessionURL:      jwks.server.URL + "/v1/sessions/",
+		InsecureJWKSTLS:      true,
+	})
+	if err != nil {
+		t.Fatalf("NewHandlerFromConfig(api): %v", err)
+	}
+	defer apiCleanup()
+
+	// At v1..v48 baseline (before v49), /api/workspaces/discovery under app_user cannot resolve users by clerk_id.
+	preReq := httptest.NewRequest(http.MethodGet, "/api/workspaces/discovery", nil)
+	preReq.Header.Set("Authorization", "Bearer "+ownerAToken)
+	preRec := httptest.NewRecorder()
+	apiHandler.ServeHTTP(preRec, preReq)
+	var preBody struct {
+		Workspaces []struct {
+			ID string `json:"workspace_id"`
+		} `json:"workspaces"`
+	}
+	if err := json.NewDecoder(preRec.Body).Decode(&preBody); err != nil {
+		t.Fatalf("decode pre-v49 discovery response: %v", err)
+	}
+	if len(preBody.Workspaces) != 0 {
+		t.Fatalf("expected 0 discovered workspaces at v1..v48 baseline before v49 upgrade, got %+v", preBody.Workspaces)
+	}
+
+	// Apply forward-only migration v49 on the existing v1..v48 database.
+	appliedUpgrade, err := migrate.Up(ctx, pool, migrationsDir)
+	if err != nil || len(appliedUpgrade) != 1 || appliedUpgrade[0] != 49 {
+		t.Fatalf("expected migrate.Up to apply only v49 on v1..v48 baseline, got %v (err=%v)", appliedUpgrade, err)
+	}
+
+	// After v49 upgrade, /api/workspaces/discovery under app_user resolves user_api_owner_a and returns testWsA!
+	postReq := httptest.NewRequest(http.MethodGet, "/api/workspaces/discovery", nil)
+	postReq.Header.Set("Authorization", "Bearer "+ownerAToken)
+	postRec := httptest.NewRecorder()
+	apiHandler.ServeHTTP(postRec, postReq)
+	var postBody struct {
+		Workspaces []struct {
+			ID   string `json:"workspace_id"`
+			Role string `json:"role"`
+		} `json:"workspaces"`
+	}
+	if err := json.NewDecoder(postRec.Body).Decode(&postBody); err != nil {
+		t.Fatalf("decode post-v49 discovery response: %v", err)
+	}
+	if postRec.Code != http.StatusOK || len(postBody.Workspaces) != 1 || postBody.Workspaces[0].ID != testWsA || postBody.Workspaces[0].Role != "owner" {
+		t.Fatalf("expected post-v49 /api/workspaces/discovery to return workspace %s (owner), got code=%d body=%+v", testWsA, postRec.Code, postBody)
+	}
+}

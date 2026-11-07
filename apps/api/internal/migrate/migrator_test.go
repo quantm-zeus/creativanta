@@ -31,6 +31,10 @@ func TestLoadAndValidateCanonicalP004Migration(t *testing.T) {
 	if len(m.Checksum) != 64 {
 		t.Fatalf("expected 64-char sha256 checksum, got %q", m.Checksum)
 	}
+	const wantChecksumV1 = "b2f4c41ab41c013d19f260a450982229bc4ef7f159d4f334cf56c6706a28a1e6"
+	if m.Checksum != wantChecksumV1 {
+		t.Fatalf("expected immutable v1 checksum %s, got %s", wantChecksumV1, m.Checksum)
+	}
 	if len(m.UpStatements) < 200 {
 		t.Fatalf("expected >= 200 UpStatements, got %d", len(m.UpStatements))
 	}
@@ -92,6 +96,10 @@ func TestLoadAndValidateCanonicalP004Migration(t *testing.T) {
 	}
 	if len(m6.Checksum) != 64 {
 		t.Fatalf("expected 64-char sha256 checksum for v6, got %q", m6.Checksum)
+	}
+	const wantChecksumV6 = "d463a8f01946972a3f9c4243943a91452e0722b850478d7a998f842e0a1655f3"
+	if m6.Checksum != wantChecksumV6 {
+		t.Fatalf("expected immutable v6 checksum %s, got %s", wantChecksumV6, m6.Checksum)
 	}
 	if err := ValidateCanonicalMigrationContract(m6); err != nil {
 		t.Fatalf("ValidateCanonicalMigrationContract failed on canonical migration v6: %v", err)
@@ -554,8 +562,23 @@ func TestLoadAndValidateCanonicalP004Migration(t *testing.T) {
 	if len(m48.Checksum) != 64 {
 		t.Fatalf("expected 64-char sha256 checksum for v48, got %q", m48.Checksum)
 	}
+	const wantChecksumV48 = "b220691e9d89b6e0270f35c7edf522b8080610ea7d145b653fbe8fa5dc19cd5a"
+	if m48.Checksum != wantChecksumV48 {
+		t.Fatalf("expected immutable v48 checksum %s, got %s", wantChecksumV48, m48.Checksum)
+	}
 	if err := ValidateCanonicalMigrationContract(m48); err != nil {
 		t.Fatalf("ValidateCanonicalMigrationContract failed on canonical migration v48: %v", err)
+	}
+
+	m49 := migrations[48]
+	if m49.Version != 49 {
+		t.Fatalf("expected version 49, got %d", m49.Version)
+	}
+	if len(m49.Checksum) != 64 {
+		t.Fatalf("expected 64-char sha256 checksum for v49, got %q", m49.Checksum)
+	}
+	if err := ValidateCanonicalMigrationContract(m49); err != nil {
+		t.Fatalf("ValidateCanonicalMigrationContract failed on canonical migration v49: %v", err)
 	}
 }
 
@@ -716,8 +739,8 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Up failed: %v", err)
 	}
-	if len(applied) != 48 {
-		t.Fatalf("expected 48 applied migrations, got %d", len(applied))
+	if len(applied) != 49 {
+		t.Fatalf("expected 49 applied migrations, got %d", len(applied))
 	}
 	for i, v := range applied {
 		if v != int64(i+1) {
@@ -737,13 +760,13 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 		t.Fatalf("expected 0 newly applied on second Up, got %v", applied2)
 	}
 
-	// Status reports Applied = true for all 48 migrations.
+	// Status reports Applied = true for all 49 migrations.
 	statuses, err := Status(ctx, runner, dir)
 	if err != nil {
 		t.Fatalf("Status failed: %v", err)
 	}
-	if len(statuses) != 48 {
-		t.Fatalf("expected status for 48 migrations, got %d", len(statuses))
+	if len(statuses) != 49 {
+		t.Fatalf("expected status for 49 migrations, got %d", len(statuses))
 	}
 	for i, s := range statuses {
 		if !s.Applied {
@@ -756,7 +779,14 @@ func TestUpStatusDownTransactionalBehavior(t *testing.T) {
 		t.Fatalf("expected ErrRollbackForbidden when allowLocalRollback=false, got %v", err)
 	}
 
-	// Down with allowLocalRollback=true rolls back version 48, then 47, then 46, then 45...
+	// Down with allowLocalRollback=true rolls back version 49, then 48, then 47, then 46...
+	rolled49, err := Down(ctx, runner, dir, true)
+	if err != nil {
+		t.Fatalf("Down(allowLocalRollback=true) for v49 failed: %v", err)
+	}
+	if rolled49 != 49 {
+		t.Fatalf("expected rolled back version 49, got %d", rolled49)
+	}
 	rolled48, err := Down(ctx, runner, dir, true)
 	if err != nil {
 		t.Fatalf("Down(allowLocalRollback=true) for v48 failed: %v", err)
@@ -1141,8 +1171,11 @@ func TestPostgresLiveMigrationAndAppUserRLS(t *testing.T) {
 	if err != nil {
 		t.Fatalf("initial Up failed: %v", err)
 	}
-	if len(applied) != 48 {
-		t.Fatalf("expected 48 applied migrations, got %v", applied)
+	if len(applied) != 49 {
+		t.Fatalf("expected 49 applied migrations, got %v", applied)
+	}
+	if _, err := Down(ctx, adminPool, dir, true); err != nil {
+		t.Fatalf("Down rollback v49 failed: %v", err)
 	}
 	if _, err := Down(ctx, adminPool, dir, true); err != nil {
 		t.Fatalf("Down rollback v48 failed: %v", err)
@@ -2295,4 +2328,198 @@ func TestPostgresSeedTwiceIdempotency(t *testing.T) {
 	}
 
 	t.Log("Seed twice idempotency check PASSED successfully.")
+}
+
+func TestPostgresUpgradeFromBaselinePreservesChecksumsAndAppliesRemediation(t *testing.T) {
+	dsn := os.Getenv("CREATIVANTA_TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("CREATIVANTA_TEST_DATABASE_URL not set; live PostgreSQL baseline upgrade suite executes in CI")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	adminPool, err := pgxpool.New(ctx, dsn)
+	if err != nil {
+		t.Fatalf("connect adminPool: %v", err)
+	}
+	defer adminPool.Close()
+
+	_, _ = adminPool.Exec(ctx, `DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO CURRENT_USER; GRANT USAGE ON SCHEMA public TO PUBLIC;`)
+
+	migrationsDir := filepath.Join("..", "..", "..", "..", "infra", "migrations")
+	entries, err := os.ReadDir(migrationsDir)
+	if err != nil {
+		t.Fatalf("ReadDir(%q): %v", migrationsDir, err)
+	}
+
+	// Copy only baseline migrations 00001..00048 into a temporary directory.
+	baselineDir := t.TempDir()
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".sql") {
+			continue
+		}
+		if strings.HasPrefix(entry.Name(), "00049_") {
+			continue
+		}
+		raw, err := os.ReadFile(filepath.Join(migrationsDir, entry.Name()))
+		if err != nil {
+			t.Fatalf("read baseline migration %s: %v", entry.Name(), err)
+		}
+		if err := os.WriteFile(filepath.Join(baselineDir, entry.Name()), raw, 0o600); err != nil {
+			t.Fatalf("write baseline migration %s: %v", entry.Name(), err)
+		}
+	}
+
+	// 1. Migrate clean database to baseline v1..v48.
+	baseApplied, err := Up(ctx, adminPool, baselineDir)
+	if err != nil {
+		t.Fatalf("baseline Up(v1..v48) failed: %v", err)
+	}
+	if len(baseApplied) != 48 {
+		t.Fatalf("expected 48 baseline migrations applied, got %d (%v)", len(baseApplied), baseApplied)
+	}
+
+	// Verify recorded checksums in goose_db_version match immutable baseline artifacts.
+	for ver, wantCS := range map[int64]string{
+		1:  "b2f4c41ab41c013d19f260a450982229bc4ef7f159d4f334cf56c6706a28a1e6",
+		6:  "d463a8f01946972a3f9c4243943a91452e0722b850478d7a998f842e0a1655f3",
+		48: "b220691e9d89b6e0270f35c7edf522b8080610ea7d145b653fbe8fa5dc19cd5a",
+	} {
+		var gotCS string
+		if err := adminPool.QueryRow(ctx, `SELECT checksum FROM goose_db_version WHERE version_id = $1 AND is_applied = true ORDER BY id DESC LIMIT 1`, ver).Scan(&gotCS); err != nil {
+			t.Fatalf("query checksum for v%d: %v", ver, err)
+		}
+		if gotCS != wantCS {
+			t.Fatalf("v%d checksum mismatch: want %s, got %s", ver, wantCS, gotCS)
+		}
+	}
+
+	const (
+		userA   = "11111111-1111-4111-8111-111111111101"
+		userB   = "22222222-2222-4222-8222-222222222202"
+		wsA     = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa01"
+		wsB     = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbb02"
+		prodA   = "cccccccc-cccc-4ccc-8ccc-cccccccccc01"
+		orderB  = "dddddddd-dddd-4ddd-8ddd-dddddddddd01"
+		adminID = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeee01"
+		sessID  = "ffffffff-ffff-4fff-8fff-ffffffffff01"
+	)
+
+	seedBaselineSQL := `
+		INSERT INTO users (user_id, clerk_id, email, display_name, status)
+		VALUES
+			('11111111-1111-4111-8111-111111111101'::uuid, 'clerk_upgrade_user_a', 'upgrade_a@creativanta.test', 'Upgrade A', 'active'),
+			('22222222-2222-4222-8222-222222222202'::uuid, 'clerk_upgrade_user_b', 'upgrade_b@creativanta.test', 'Upgrade B', 'active');
+
+		INSERT INTO workspaces (workspace_id, name, slug, owner_user_id, subscription_tier, default_mode, enabled_modes, status)
+		VALUES
+			('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa01'::uuid, 'Upgrade WS A', 'upgrade-ws-a', '11111111-1111-4111-8111-111111111101'::uuid, 'pro', 'seller'::operator_mode, ARRAY['seller']::operator_mode[], 'active'),
+			('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbb02'::uuid, 'Upgrade WS B', 'upgrade-ws-b', '22222222-2222-4222-8222-222222222202'::uuid, 'free', 'creator'::operator_mode, ARRAY['creator']::operator_mode[], 'active');
+
+		INSERT INTO workspace_members (workspace_id, user_id, role, status)
+		VALUES
+			('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa01'::uuid, '11111111-1111-4111-8111-111111111101'::uuid, 'owner', 'active'),
+			('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbb02'::uuid, '22222222-2222-4222-8222-222222222202'::uuid, 'owner', 'active');
+
+		INSERT INTO products (product_id, workspace_id, product_type, title, currency, catalog_status)
+		VALUES
+			('cccccccc-cccc-4ccc-8ccc-cccccccccc01'::uuid, 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa01'::uuid, 'physical', 'WS A Product', 'VND', 'active');
+
+		INSERT INTO internal_admins (admin_id, email, display_name, password_hash, role, status, mfa_enabled)
+		VALUES
+			('eeeeeeee-eeee-4eee-8eee-eeeeeeeeee01'::uuid, 'admin_upgrade@creativanta.test', 'Upgrade Admin', '$2a$12$upgrade_hash', 'super_admin', 'active', true);
+
+		INSERT INTO admin_sessions (session_id, admin_id, ip_address, user_agent, vpn_verified, mfa_verified, started_at, expired_at, session_token_hash)
+		VALUES
+			('ffffffff-ffff-4fff-8fff-ffffffffff01'::uuid, 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeee01'::uuid, '127.0.0.1'::inet, 'UpgradeTest', true, true, NOW() - INTERVAL '1 hour', NULL, 'hash_legacy_null_expiry_0001');
+	`
+	if _, err := adminPool.Exec(ctx, seedBaselineSQL); err != nil {
+		t.Fatalf("seed baseline data failed: %v", err)
+	}
+
+	// 2. Verify that BEFORE v49, Clerk bootstrap under app_user (with only app.current_clerk_id set) sees 0 rows in users.
+	txPre, err := adminPool.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin txPre: %v", err)
+	}
+	if _, err := txPre.Exec(ctx, `SET LOCAL ROLE app_user; SELECT set_config('app.current_clerk_id', 'clerk_upgrade_user_a', true);`); err != nil {
+		_ = txPre.Rollback(ctx)
+		t.Fatalf("set role/config in txPre: %v", err)
+	}
+	var preBootstrapCount int
+	if err := txPre.QueryRow(ctx, `SELECT COUNT(*) FROM users WHERE clerk_id = 'clerk_upgrade_user_a'`).Scan(&preBootstrapCount); err != nil {
+		_ = txPre.Rollback(ctx)
+		t.Fatalf("query users in txPre: %v", err)
+	}
+	_ = txPre.Rollback(ctx)
+	if preBootstrapCount != 0 {
+		t.Fatalf("expected 0 users visible to app_user via app.current_clerk_id before v49, got %d", preBootstrapCount)
+	}
+
+	// 3. Negative preflight test: insert a cross-tenant order in WS B referencing WS A's product (allowed by baseline v6 single-column FK).
+	// Upgrading to v49 must fail closed in preflight and roll back cleanly.
+	if _, err := adminPool.Exec(ctx, `
+		INSERT INTO orders (order_id, workspace_id, product_id, source_platform, external_order_id, currency, amount, lifecycle_state)
+		VALUES ($1::uuid, $2::uuid, $3::uuid, 'shopify', 'ext_cross_tenant_1', 'VND', 100000, 'confirmed')
+	`, orderB, wsB, prodA); err != nil {
+		t.Fatalf("insert baseline cross-tenant order failed: %v", err)
+	}
+	if _, err := Up(ctx, adminPool, migrationsDir); err == nil || !strings.Contains(err.Error(), "migration 00049 preflight failed") {
+		t.Fatalf("expected Up(v49) to fail preflight on cross-tenant orders.product_id, got %v", err)
+	}
+
+	// Remove the invalid cross-tenant order row so the upgrade can proceed.
+	if _, err := adminPool.Exec(ctx, `DELETE FROM orders WHERE order_id = $1::uuid`, orderB); err != nil {
+		t.Fatalf("delete cross-tenant order failed: %v", err)
+	}
+
+	// 4. Run forward-only upgrade to v49!
+	upgraded, err := Up(ctx, adminPool, migrationsDir)
+	if err != nil {
+		t.Fatalf("upgrade Up(v1..v48 -> v49) failed: %v", err)
+	}
+	if len(upgraded) != 1 || upgraded[0] != 49 {
+		t.Fatalf("expected only migration 49 to be newly applied during upgrade, got %v", upgraded)
+	}
+
+	// 5. Verify post-upgrade invariants:
+	// 5a. Clerk bootstrap under app_user RLS now resolves the caller's own user_id and isolates other users.
+	txPost, err := adminPool.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin txPost: %v", err)
+	}
+	if _, err := txPost.Exec(ctx, `SET LOCAL ROLE app_user; SELECT set_config('app.current_clerk_id', 'clerk_upgrade_user_a', true);`); err != nil {
+		_ = txPost.Rollback(ctx)
+		t.Fatalf("set role/config in txPost: %v", err)
+	}
+	var resolvedUserID string
+	if err := txPost.QueryRow(ctx, `SELECT user_id::text FROM users WHERE clerk_id = 'clerk_upgrade_user_a'`).Scan(&resolvedUserID); err != nil || resolvedUserID != userA {
+		_ = txPost.Rollback(ctx)
+		t.Fatalf("expected Clerk bootstrap under app_user after v49 to resolve %s, got %q (err=%v)", userA, resolvedUserID, err)
+	}
+	var foreignUserCount int
+	if err := txPost.QueryRow(ctx, `SELECT COUNT(*) FROM users WHERE clerk_id = 'clerk_upgrade_user_b'`).Scan(&foreignUserCount); err != nil || foreignUserCount != 0 {
+		_ = txPost.Rollback(ctx)
+		t.Fatalf("expected Clerk bootstrap under app_user to isolate foreign user B, got count=%d err=%v", foreignUserCount, err)
+	}
+	_ = txPost.Rollback(ctx)
+
+	// 5b. Cross-tenant orders.product_id insert is now rejected by composite FK fk_orders_product_id_tenant.
+	if _, err := adminPool.Exec(ctx, `
+		INSERT INTO orders (order_id, workspace_id, product_id, source_platform, external_order_id, currency, amount, lifecycle_state)
+		VALUES ($1::uuid, $2::uuid, $3::uuid, 'shopify', 'ext_cross_tenant_2', 'VND', 100000, 'confirmed')
+	`, orderB, wsB, prodA); err == nil {
+		t.Fatalf("expected composite FK fk_orders_product_id_tenant to reject cross-tenant product_id after v49 upgrade")
+	}
+
+	// 5c. Legacy admin_sessions row with expired_at = NULL was backfilled to started_at + 8 hours.
+	var hasBackfilledExpiry bool
+	if err := adminPool.QueryRow(ctx, `
+		SELECT expired_at IS NOT NULL AND expired_at = started_at + INTERVAL '8 hours'
+		FROM admin_sessions
+		WHERE session_id = $1::uuid
+	`, sessID).Scan(&hasBackfilledExpiry); err != nil || !hasBackfilledExpiry {
+		t.Fatalf("expected legacy admin_sessions row %s to have expired_at backfilled to started_at + 8 hours, got %v (err=%v)", sessID, hasBackfilledExpiry, err)
+	}
 }
