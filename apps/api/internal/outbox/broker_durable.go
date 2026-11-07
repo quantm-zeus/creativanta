@@ -13,6 +13,7 @@ import (
 	"io"
 	"net"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -27,6 +28,34 @@ import (
 const brokerEntriesMetaKey = "_broker_entries"
 
 const fallbackSystemActorUUID = "ffffffff-ffff-4fff-8fff-ffffffffffff"
+
+// ErrInvalidEventPermissionPolicy is returned when an outbox event carries an unknown or
+// unmapped RBAC permission key. Unlike ErrLiveActorAuthorizationRevoked, policy configuration
+// errors must never cause ConsumerWorker to ACK or silently drop a message.
+var ErrInvalidEventPermissionPolicy = errors.New("outbox: invalid or unknown event permission policy")
+
+// ResolveCanonicalEventPermission normalizes event-specific permission tokens to canonical
+// workspace RBAC permission keys (docs/04_contracts/rbac_permission_matrix.md) and enforces
+// default required permissions for catalog and inventory domain events.
+func ResolveCanonicalEventPermission(eventType, requiredPerm string) string {
+	perm := strings.TrimSpace(requiredPerm)
+	switch perm {
+	case "inventory:adjust":
+		return "product:manage"
+	}
+	if perm != "" {
+		return perm
+	}
+	switch strings.TrimSpace(eventType) {
+	case "inventory.stock_moved",
+		"product.created",
+		"product.updated",
+		"product.catalog_status_changed":
+		return "product:manage"
+	default:
+		return ""
+	}
+}
 
 type envelopeAuthMeta struct {
 	ActorID      string `json:"actor_id"`
@@ -60,6 +89,7 @@ func populateEnvelopeAuthFields(msg *StreamMessage, metadata, payload json.RawMe
 			msg.ApprovalID = m.ApprovalID
 		}
 	}
+	msg.RequiredPerm = ResolveCanonicalEventPermission(msg.EventType, msg.RequiredPerm)
 }
 
 func stripBrokerMetadata(raw json.RawMessage) json.RawMessage {
@@ -592,6 +622,7 @@ func (b *PgStreamBroker) PendingCount(stream QueueName, groupName string) int {
 type RedisStreamBroker struct {
 	addr       string
 	serverName string
+	username   string
 	password   string
 	dbIndex    int
 	prefix     string
@@ -633,9 +664,14 @@ func NewRedisStreamBroker(redisURL, keyPrefix string) (*RedisStreamBroker, error
 			return nil, errors.New("outbox: invalid redis port")
 		}
 	}
-	var pw string
+	var user, pw string
 	if u.User != nil {
-		pw, _ = u.User.Password()
+		user = u.User.Username()
+		var hasPw bool
+		pw, hasPw = u.User.Password()
+		if user != "" && (!hasPw || pw == "") {
+			return nil, errors.New("outbox: redis URL username requires password")
+		}
 	}
 	dbIdx := 0
 	if p := strings.TrimPrefix(u.Path, "/"); p != "" {
@@ -651,6 +687,7 @@ func NewRedisStreamBroker(redisURL, keyPrefix string) (*RedisStreamBroker, error
 	return &RedisStreamBroker{
 		addr:       net.JoinHostPort(host, port),
 		serverName: host,
+		username:   user,
 		password:   pw,
 		dbIndex:    dbIdx,
 		prefix:     keyPrefix,
@@ -709,7 +746,11 @@ func (r *RedisStreamBroker) execCmd(ctx context.Context, args ...string) (any, e
 
 	br := bufio.NewReader(conn)
 	if r.password != "" {
-		if err := writeRESPArray(conn, []string{"AUTH", r.password}); err != nil {
+		authArgs := []string{"AUTH", r.password}
+		if r.username != "" {
+			authArgs = []string{"AUTH", r.username, r.password}
+		}
+		if err := writeRESPArray(conn, authArgs); err != nil {
 			return nil, errors.New("outbox: redis authentication write failed")
 		}
 		if _, err := readRESPValue(br); err != nil {
@@ -962,6 +1003,7 @@ func OpenSharedStreamBroker(ctx context.Context, db tenantdb.TxBeginner, setOutb
 // =============================================================================
 
 type queriesContextKey struct{}
+type txContextKey struct{}
 
 // WithQueries attaches a trusted *tenantdb.Queries to ctx inside PgConsumerInboxEngine.ExecuteAtomically.
 func WithQueries(ctx context.Context, q *tenantdb.Queries) context.Context {
@@ -975,6 +1017,34 @@ func QueriesFromContext(ctx context.Context) (*tenantdb.Queries, bool) {
 	}
 	q, ok := ctx.Value(queriesContextKey{}).(*tenantdb.Queries)
 	return q, ok
+}
+
+// WithTx attaches the active tenant-scoped pgx.Tx to ctx inside PgConsumerInboxEngine.ExecuteAtomically.
+func WithTx(ctx context.Context, tx pgx.Tx) context.Context {
+	return context.WithValue(ctx, txContextKey{}, tx)
+}
+
+// TxFromContext retrieves the active tenant-scoped pgx.Tx bound by PgConsumerInboxEngine.
+func TxFromContext(ctx context.Context) (pgx.Tx, bool) {
+	if ctx == nil {
+		return nil, false
+	}
+	tx, ok := ctx.Value(txContextKey{}).(pgx.Tx)
+	return tx, ok
+}
+
+type txCapturingBeginner struct {
+	base tenantdb.TxBeginner
+	tx   pgx.Tx
+}
+
+func (b *txCapturingBeginner) Begin(ctx context.Context) (pgx.Tx, error) {
+	tx, err := b.base.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	b.tx = tx
+	return tx, nil
 }
 
 // PgConsumerInboxEngine implements ConsumerInboxEngine using PostgreSQL tenantdb.WithTx,
@@ -1057,8 +1127,9 @@ func (e *PgConsumerInboxEngine) ExecuteAtomically(
 
 	var executed bool
 	var deduplicated bool
+	capBeginner := &txCapturingBeginner{base: e.db}
 
-	txErr := tenantdb.WithTx(ctx, e.db, tenantdb.Scope{
+	txErr := tenantdb.WithTx(ctx, capBeginner, tenantdb.Scope{
 		WorkspaceID:             msg.WorkspaceID,
 		UserID:                  userID,
 		RequireActiveMembership: requireMembership,
@@ -1073,7 +1144,7 @@ func (e *PgConsumerInboxEngine) ExecuteAtomically(
 			return nil
 		}
 
-		handlerCtx := WithQueries(txCtx, q)
+		handlerCtx := WithQueries(WithTx(txCtx, capBeginner.tx), q)
 		if err := handler(handlerCtx, msg); err != nil {
 			return err
 		}
@@ -1171,8 +1242,9 @@ func NewPgLiveAuthVerifier(db tenantdb.TxBeginner) *PgLiveAuthVerifier {
 }
 
 // VerifyActorAndApproval checks live PostgreSQL state before executing a queued message.
-// Transient database/network errors are returned directly (NOT wrapped as ErrLiveActorAuthorizationRevoked)
-// so the worker leaves the message in the PEL for retry instead of permanently dropping it.
+// Transient database/network errors and unknown permission policy errors are returned directly
+// (NOT wrapped as ErrLiveActorAuthorizationRevoked) so the worker leaves the message in the PEL
+// for retry instead of permanently dropping it.
 func (v *PgLiveAuthVerifier) VerifyActorAndApproval(
 	ctx context.Context,
 	workspaceID, actorID, requiredPerm, approvalID string,
@@ -1238,12 +1310,16 @@ func (v *PgLiveAuthVerifier) VerifyActorAndApproval(
 		if err != nil {
 			return fmt.Errorf("outbox: verify actor membership: %w", err)
 		}
-		if strings.TrimSpace(requiredPerm) != "" {
-			if err := rbac.CheckWorkspacePermission(requiredPerm, rbac.PolicyContext{
+		canonicalPerm := ResolveCanonicalEventPermission("", requiredPerm)
+		if canonicalPerm != "" {
+			if err := rbac.CheckWorkspacePermission(canonicalPerm, rbac.PolicyContext{
 				ActorUserID: actorID,
 				WorkspaceID: workspaceID,
 				Role:        role,
 			}); err != nil {
+				if errors.Is(err, rbac.ErrUnknownPermission) || errors.Is(err, rbac.ErrUnknownRole) {
+					return fmt.Errorf("%w: %v", ErrInvalidEventPermissionPolicy, err)
+				}
 				return fmt.Errorf("%w: %v", ErrLiveActorAuthorizationRevoked, err)
 			}
 		}
@@ -1279,14 +1355,83 @@ func (v *PgLiveAuthVerifier) VerifyActorAndApproval(
 }
 
 // =============================================================================
-// PostgreSQL Domain Action Handler for Worker Runtime (PgDomainActionHandler)
+// PostgreSQL Domain Action Handler & Durable Catalog Search Index
 // =============================================================================
 
-// ErrNoDomainExecutorRegistered is returned when a worker receives a message for a stream,
-// event type, or external provider that has no registered domain/connector executor.
-// The worker fails closed (rolling back consumer_inbox and leaving the message un-ACKed)
-// instead of fabricating a synthetic succeeded external_effects record.
-var ErrNoDomainExecutorRegistered = errors.New("outbox: no authorized domain or provider executor registered for message")
+var (
+	// ErrNoDomainExecutorRegistered is returned when a worker receives a message for a stream,
+	// event type, or external provider that has no registered domain/connector executor.
+	// The worker fails closed (rolling back consumer_inbox and leaving the message un-ACKed)
+	// instead of fabricating a synthetic succeeded external_effects record.
+	ErrNoDomainExecutorRegistered = errors.New("outbox: no authorized domain or provider executor registered for message")
+
+	// ErrSearchIndexTargetNotFound is returned when a catalog search indexing event references
+	// a product that does not exist (or is soft-deleted / in another workspace) under tenant RLS.
+	ErrSearchIndexTargetNotFound = errors.New("outbox: catalog search index target product not found in workspace")
+
+	// ErrSearchIndexVerificationFailed is returned when read-after-write verification of a
+	// catalog search document fails in PostgreSQL or the configured SearchIndexBackend.
+	ErrSearchIndexVerificationFailed = errors.New("outbox: catalog search index read-after-write verification failed")
+
+	// ErrSearchDocumentNotIndexed is returned when querying a product's search document before
+	// the search_indexing worker has indexed it.
+	ErrSearchDocumentNotIndexed = errors.New("outbox: product search document not indexed")
+
+	// ErrInventoryMovementNotFound is returned when an inventory.stock_moved event references
+	// a missing SKU or lacks a committed stock_movements ledger row in the workspace.
+	ErrInventoryMovementNotFound = errors.New("outbox: inventory stock movement or SKU not found in workspace")
+)
+
+// CatalogSearchDocument is the canonical tenant-isolated searchable product document
+// persisted and verified by the search_indexing worker (docs/05_system/cache_search_strategy.md §2.1).
+type CatalogSearchDocument struct {
+	DocumentID       string    `json:"document_id"`
+	WorkspaceID      string    `json:"workspace_id"`
+	ProductID        string    `json:"product_id"`
+	Title            string    `json:"title"`
+	Description      string    `json:"description"`
+	Category         string    `json:"category"`
+	ProductType      string    `json:"product_type"`
+	CatalogStatus    string    `json:"catalog_status"`
+	BasePrice        string    `json:"base_price"`
+	Currency         string    `json:"currency"`
+	InventoryEnabled bool      `json:"inventory_enabled"`
+	SKUCount         int       `json:"sku_count"`
+	SKUCodes         []string  `json:"sku_codes"`
+	TotalStock       int64     `json:"total_stock"`
+	ReservedStock    int64     `json:"reserved_stock"`
+	AvailableStock   int64     `json:"available_stock"`
+	LowStockSKUCount int       `json:"low_stock_sku_count"`
+	InStock          bool      `json:"in_stock"`
+	SearchTokens     []string  `json:"search_tokens"`
+	SearchableText   string    `json:"searchable_text"`
+	LastEventID      string    `json:"last_event_id"`
+	LastEventType    string    `json:"last_event_type"`
+	DocumentVersion  string    `json:"document_version"`
+	ProductCreatedAt time.Time `json:"product_created_at"`
+	ProductUpdatedAt time.Time `json:"product_updated_at"`
+	IndexedAt        time.Time `json:"indexed_at"`
+}
+
+// CatalogSearchQuery specifies filter, full-text query, and sort criteria for querying
+// the durable catalog search index under tenant RLS.
+type CatalogSearchQuery struct {
+	Query         string
+	CatalogStatus string
+	ProductType   string
+	Category      string
+	InStockOnly   bool
+	SortBy        string
+	Limit         int
+}
+
+// SearchIndexBackend abstracts an optional external search engine adapter (e.g. Meilisearch)
+// that receives canonical CatalogSearchDocument upserts and supports read-after-write verification.
+type SearchIndexBackend interface {
+	ProviderName() string
+	UpsertProductDocument(ctx context.Context, doc CatalogSearchDocument) (providerRequestID string, err error)
+	GetProductDocument(ctx context.Context, workspaceID, productID string) (*CatalogSearchDocument, error)
+}
 
 // DomainActionResult holds the verified outcome returned by an authorized DomainEffectExecutor.
 type DomainActionResult struct {
@@ -1313,10 +1458,12 @@ type PgDomainActionHandler struct {
 	mu                  sync.RWMutex
 	streamEventExecs    map[string]DomainEffectExecutor
 	externalProviderMap map[string]DomainEffectExecutor
+	searchBackend       SearchIndexBackend
 }
 
-// NewPgDomainActionHandler creates a PgDomainActionHandler with the internal catalog search
-// indexing executor registered for QueueSearchIndexing product catalog events.
+// NewPgDomainActionHandler creates a PgDomainActionHandler with the durable catalog search
+// indexing executor registered for QueueSearchIndexing product catalog events and the
+// inventory stock movement executor registered for QueueAnalyticsEvents.
 func NewPgDomainActionHandler() *PgDomainActionHandler {
 	h := &PgDomainActionHandler{
 		streamEventExecs:    make(map[string]DomainEffectExecutor),
@@ -1327,9 +1474,31 @@ func NewPgDomainActionHandler() *PgDomainActionHandler {
 		"product.updated",
 		"product.catalog_status_changed",
 	} {
-		h.RegisterExecutor(QueueSearchIndexing, evType, executeCatalogSearchIndexing)
+		h.RegisterExecutor(QueueSearchIndexing, evType, h.executeCatalogSearchIndexing)
 	}
+	h.RegisterExecutor(QueueAnalyticsEvents, "inventory.stock_moved", h.executeInventoryStockMoved)
+	h.RegisterExecutor(QueueSearchIndexing, "inventory.stock_moved", h.executeInventoryStockMoved)
 	return h
+}
+
+// SetSearchIndexBackend configures an optional external SearchIndexBackend that receives
+// product document upserts and read-after-write verification alongside PostgreSQL.
+func (h *PgDomainActionHandler) SetSearchIndexBackend(backend SearchIndexBackend) {
+	if h == nil {
+		return
+	}
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.searchBackend = backend
+}
+
+func (h *PgDomainActionHandler) getSearchBackend() SearchIndexBackend {
+	if h == nil {
+		return nil
+	}
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return h.searchBackend
 }
 
 // RegisterExecutor registers an authorized internal domain executor for (stream, eventType).
@@ -1377,16 +1546,425 @@ func (h *PgDomainActionHandler) resolveExecutor(stream QueueName, eventType, pro
 	return h.streamEventExecs[key]
 }
 
-func executeCatalogSearchIndexing(ctx context.Context, q *tenantdb.Queries, msg StreamMessage) (DomainActionResult, error) {
+func buildSearchTokens(parts ...string) ([]string, string) {
+	seen := make(map[string]struct{})
+	var ordered []string
+	var rawBuilder strings.Builder
+	for _, p := range parts {
+		trimmed := strings.TrimSpace(p)
+		if trimmed == "" {
+			continue
+		}
+		if rawBuilder.Len() > 0 {
+			rawBuilder.WriteByte(' ')
+		}
+		rawBuilder.WriteString(strings.ToLower(trimmed))
+		fields := strings.FieldsFunc(strings.ToLower(trimmed), func(r rune) bool {
+			return r == ' ' || r == '\t' || r == '\n' || r == '\r' || r == ',' || r == ';' || r == '.' || r == ':' || r == '/' || r == '\\'
+		})
+		for _, tok := range fields {
+			if tok == "" {
+				continue
+			}
+			if _, exists := seen[tok]; !exists {
+				seen[tok] = struct{}{}
+				ordered = append(ordered, tok)
+			}
+		}
+	}
+	return ordered, rawBuilder.String()
+}
+
+func (h *PgDomainActionHandler) syncProductSearchIndexTx(
+	ctx context.Context,
+	tx pgx.Tx,
+	workspaceID, productID, eventID, eventType string,
+) (CatalogSearchDocument, string, error) {
+	if tx == nil {
+		return CatalogSearchDocument{}, "", errors.New("outbox: syncProductSearchIndexTx requires active pgx.Tx")
+	}
+	if !tenantdb.IsValidNonZeroUUID(workspaceID) || !tenantdb.IsValidNonZeroUUID(productID) {
+		return CatalogSearchDocument{}, "", tenantdb.ErrInvalidTenantScope
+	}
+
+	var doc CatalogSearchDocument
+	err := tx.QueryRow(ctx, `
+		SELECT
+			product_id::text,
+			workspace_id::text,
+			product_type,
+			title,
+			COALESCE(description, ''),
+			COALESCE(category, ''),
+			COALESCE(base_price::numeric(18,6)::text, '0.000000'),
+			COALESCE(currency, 'VND'),
+			catalog_status,
+			COALESCE(inventory_enabled, false),
+			created_at,
+			updated_at
+		FROM products
+		WHERE workspace_id = $1::uuid
+		  AND product_id = $2::uuid
+		  AND deleted_at IS NULL
+		FOR UPDATE
+	`, workspaceID, productID).Scan(
+		&doc.ProductID,
+		&doc.WorkspaceID,
+		&doc.ProductType,
+		&doc.Title,
+		&doc.Description,
+		&doc.Category,
+		&doc.BasePrice,
+		&doc.Currency,
+		&doc.CatalogStatus,
+		&doc.InventoryEnabled,
+		&doc.ProductCreatedAt,
+		&doc.ProductUpdatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return CatalogSearchDocument{}, "", fmt.Errorf("%w: product_id=%s workspace_id=%s", ErrSearchIndexTargetNotFound, productID, workspaceID)
+		}
+		return CatalogSearchDocument{}, "", fmt.Errorf("outbox: load product for search index: %w", err)
+	}
+	if strings.TrimSpace(doc.Title) == "" {
+		return CatalogSearchDocument{}, "", fmt.Errorf("%w: product %s has empty title", ErrSearchIndexVerificationFailed, productID)
+	}
+
+	rows, err := tx.Query(ctx, `
+		SELECT
+			sku_code,
+			COALESCE(stock_quantity, 0),
+			COALESCE(stock_reserved, 0),
+			COALESCE(low_stock_threshold, 5),
+			COALESCE(is_active, true)
+		FROM product_skus
+		WHERE workspace_id = $1::uuid
+		  AND product_id = $2::uuid
+		  AND deleted_at IS NULL
+		ORDER BY created_at ASC, sku_id ASC
+	`, workspaceID, productID)
+	if err != nil {
+		return CatalogSearchDocument{}, "", fmt.Errorf("outbox: query product_skus for search index: %w", err)
+	}
+	skuCodes := make([]string, 0)
+	var totalStock, reservedStock int64
+	var activeSKUs, lowStockSKUs int
+	for rows.Next() {
+		var skuCode string
+		var stockQty, stockRes, lowThreshold int64
+		var isActive bool
+		if scanErr := rows.Scan(&skuCode, &stockQty, &stockRes, &lowThreshold, &isActive); scanErr != nil {
+			rows.Close()
+			return CatalogSearchDocument{}, "", fmt.Errorf("outbox: scan product_sku for search index: %w", scanErr)
+		}
+		if !isActive {
+			continue
+		}
+		activeSKUs++
+		skuCodes = append(skuCodes, skuCode)
+		totalStock += stockQty
+		reservedStock += stockRes
+		avail := stockQty - stockRes
+		if avail <= lowThreshold {
+			lowStockSKUs++
+		}
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return CatalogSearchDocument{}, "", fmt.Errorf("outbox: iterate product_skus for search index: %w", err)
+	}
+	rows.Close()
+
+	availableStock := totalStock - reservedStock
+	inStock := !doc.InventoryEnabled || availableStock > 0
+	tokenParts := append([]string{doc.Title, doc.Description, doc.Category, doc.ProductType}, skuCodes...)
+	tokens, searchableText := buildSearchTokens(tokenParts...)
+
+	doc.DocumentID = doc.ProductID
+	doc.SKUCount = activeSKUs
+	doc.SKUCodes = skuCodes
+	doc.TotalStock = totalStock
+	doc.ReservedStock = reservedStock
+	doc.AvailableStock = availableStock
+	doc.LowStockSKUCount = lowStockSKUs
+	doc.InStock = inStock
+	doc.SearchTokens = tokens
+	doc.SearchableText = searchableText
+	doc.LastEventID = eventID
+	doc.LastEventType = eventType
+	doc.ProductCreatedAt = doc.ProductCreatedAt.UTC()
+	doc.ProductUpdatedAt = doc.ProductUpdatedAt.UTC()
+	doc.IndexedAt = time.Now().UTC().Truncate(time.Microsecond)
+
+	versionSum := sha256.Sum256([]byte(fmt.Sprintf(
+		"%s|%s|%s|%s|%s|%s|%s|%s|%t|%d|%d|%d|%s|%s",
+		doc.WorkspaceID,
+		doc.ProductID,
+		doc.Title,
+		doc.Description,
+		doc.Category,
+		doc.ProductType,
+		doc.CatalogStatus,
+		doc.BasePrice,
+		doc.InventoryEnabled,
+		doc.SKUCount,
+		doc.TotalStock,
+		doc.ReservedStock,
+		strings.Join(doc.SKUCodes, ","),
+		doc.LastEventID,
+	)))
+	doc.DocumentVersion = hex.EncodeToString(versionSum[:16])
+
+	docBytes, err := json.Marshal(doc)
+	if err != nil {
+		return CatalogSearchDocument{}, "", fmt.Errorf("outbox: marshal search document: %w", err)
+	}
+
+	// Persist the canonical search document inside products.metadata['search_index'] without
+	// modifying products.updated_at (preserving optimistic concurrency tokens on products).
+	tag, err := tx.Exec(ctx, `
+		UPDATE products
+		SET metadata = jsonb_set(COALESCE(metadata, '{}'::jsonb), '{search_index}', $1::jsonb, true)
+		WHERE workspace_id = $2::uuid
+		  AND product_id = $3::uuid
+		  AND deleted_at IS NULL
+	`, docBytes, workspaceID, productID)
+	if err != nil {
+		return CatalogSearchDocument{}, "", fmt.Errorf("outbox: persist catalog search document: %w", err)
+	}
+	if tag.RowsAffected() != 1 {
+		return CatalogSearchDocument{}, "", fmt.Errorf("%w: update affected %d rows for product %s", ErrSearchIndexVerificationFailed, tag.RowsAffected(), productID)
+	}
+
+	// Read-after-write verification from PostgreSQL inside the tenant RLS transaction.
+	verifiedDoc, err := getIndexedProductDocumentTx(ctx, tx, workspaceID, productID)
+	if err != nil {
+		return CatalogSearchDocument{}, "", fmt.Errorf("%w: %v", ErrSearchIndexVerificationFailed, err)
+	}
+	if verifiedDoc.ProductID != doc.ProductID ||
+		verifiedDoc.WorkspaceID != doc.WorkspaceID ||
+		verifiedDoc.Title != doc.Title ||
+		verifiedDoc.CatalogStatus != doc.CatalogStatus ||
+		verifiedDoc.DocumentVersion != doc.DocumentVersion ||
+		verifiedDoc.LastEventID != doc.LastEventID {
+		return CatalogSearchDocument{}, "", fmt.Errorf(
+			"%w: readback mismatch got=%+v want=%+v",
+			ErrSearchIndexVerificationFailed,
+			verifiedDoc,
+			doc,
+		)
+	}
+
+	providerReqID := fmt.Sprintf("search_idx_%s_%s", productID[:8], doc.DocumentVersion[:16])
+
+	// If an external SearchIndexBackend (e.g. Meilisearch adapter) is configured, upsert and
+	// verify read-after-write on the backend before allowing the transaction to succeed.
+	if backend := h.getSearchBackend(); backend != nil {
+		extReqID, err := backend.UpsertProductDocument(ctx, doc)
+		if err != nil {
+			return CatalogSearchDocument{}, "", fmt.Errorf("%w: external backend (%s) upsert failed: %v", ErrSearchIndexVerificationFailed, backend.ProviderName(), err)
+		}
+		if strings.TrimSpace(extReqID) == "" {
+			return CatalogSearchDocument{}, "", fmt.Errorf("%w: external backend (%s) returned empty provider_request_id", ErrSearchIndexVerificationFailed, backend.ProviderName())
+		}
+		extDoc, err := backend.GetProductDocument(ctx, workspaceID, productID)
+		if err != nil || extDoc == nil {
+			return CatalogSearchDocument{}, "", fmt.Errorf("%w: external backend (%s) read-after-write failed: %v", ErrSearchIndexVerificationFailed, backend.ProviderName(), err)
+		}
+		if extDoc.ProductID != doc.ProductID ||
+			extDoc.WorkspaceID != doc.WorkspaceID ||
+			extDoc.Title != doc.Title ||
+			extDoc.CatalogStatus != doc.CatalogStatus ||
+			extDoc.DocumentVersion != doc.DocumentVersion {
+			return CatalogSearchDocument{}, "", fmt.Errorf("%w: external backend (%s) document mismatch", ErrSearchIndexVerificationFailed, backend.ProviderName())
+		}
+		providerReqID = strings.TrimSpace(extReqID)
+	}
+
+	return doc, providerReqID, nil
+}
+
+func getIndexedProductDocumentTx(ctx context.Context, tx pgx.Tx, workspaceID, productID string) (*CatalogSearchDocument, error) {
+	var rawDoc []byte
+	err := tx.QueryRow(ctx, `
+		SELECT metadata->'search_index'
+		FROM products
+		WHERE workspace_id = $1::uuid
+		  AND product_id = $2::uuid
+		  AND deleted_at IS NULL
+	`, workspaceID, productID).Scan(&rawDoc)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrSearchIndexTargetNotFound
+		}
+		return nil, err
+	}
+	if len(rawDoc) == 0 || string(rawDoc) == "null" {
+		return nil, ErrSearchDocumentNotIndexed
+	}
+	var doc CatalogSearchDocument
+	if err := json.Unmarshal(rawDoc, &doc); err != nil {
+		return nil, fmt.Errorf("outbox: unmarshal indexed search document: %w", err)
+	}
+	if doc.ProductID == "" || doc.WorkspaceID != workspaceID {
+		return nil, ErrSearchDocumentNotIndexed
+	}
+	return &doc, nil
+}
+
+// GetCatalogSearchDocument retrieves the indexed CatalogSearchDocument for (workspaceID, productID)
+// under PostgreSQL tenant RLS (ROLE app_user, app.current_tenant_id = workspaceID).
+// Returns ErrSearchDocumentNotIndexed if the product has not been indexed by the worker yet.
+func GetCatalogSearchDocument(ctx context.Context, db tenantdb.TxBeginner, workspaceID, productID string) (*CatalogSearchDocument, error) {
+	if db == nil {
+		return nil, errors.New("outbox: database beginner is nil")
+	}
+	if !tenantdb.IsValidNonZeroUUID(workspaceID) || !tenantdb.IsValidNonZeroUUID(productID) {
+		return nil, tenantdb.ErrInvalidTenantScope
+	}
+	tx, err := appUserRoleBeginner{db: db}.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	if _, err := tx.Exec(ctx, `SELECT set_config('app.current_tenant_id', $1, true)`, workspaceID); err != nil {
+		return nil, err
+	}
+	return getIndexedProductDocumentTx(ctx, tx, workspaceID, productID)
+}
+
+// SearchCatalogProducts queries the durable catalog search index for workspaceID under PostgreSQL
+// tenant RLS (ROLE app_user, app.current_tenant_id = workspaceID), applying full-text/token search,
+// filterable attributes (catalog_status, product_type, category, in_stock), and sorting.
+func SearchCatalogProducts(ctx context.Context, db tenantdb.TxBeginner, workspaceID string, query CatalogSearchQuery) ([]CatalogSearchDocument, error) {
+	if db == nil {
+		return nil, errors.New("outbox: database beginner is nil")
+	}
+	if !tenantdb.IsValidNonZeroUUID(workspaceID) {
+		return nil, tenantdb.ErrInvalidTenantScope
+	}
+	tx, err := appUserRoleBeginner{db: db}.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	if _, err := tx.Exec(ctx, `SELECT set_config('app.current_tenant_id', $1, true)`, workspaceID); err != nil {
+		return nil, err
+	}
+
+	rows, err := tx.Query(ctx, `
+		SELECT metadata->'search_index'
+		FROM products
+		WHERE workspace_id = $1::uuid
+		  AND deleted_at IS NULL
+		  AND metadata ? 'search_index'
+	`, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	qTokens, _ := buildSearchTokens(query.Query)
+	wantStatus := strings.ToLower(strings.TrimSpace(query.CatalogStatus))
+	wantType := strings.ToLower(strings.TrimSpace(query.ProductType))
+	wantCategory := strings.ToLower(strings.TrimSpace(query.Category))
+
+	var results []CatalogSearchDocument
+	for rows.Next() {
+		var rawDoc []byte
+		if err := rows.Scan(&rawDoc); err != nil {
+			return nil, err
+		}
+		if len(rawDoc) == 0 || string(rawDoc) == "null" {
+			continue
+		}
+		var doc CatalogSearchDocument
+		if err := json.Unmarshal(rawDoc, &doc); err != nil {
+			continue
+		}
+		if doc.WorkspaceID != workspaceID || doc.ProductID == "" {
+			continue
+		}
+		if wantStatus != "" && strings.ToLower(doc.CatalogStatus) != wantStatus {
+			continue
+		}
+		if wantType != "" && strings.ToLower(doc.ProductType) != wantType {
+			continue
+		}
+		if wantCategory != "" && strings.ToLower(doc.Category) != wantCategory {
+			continue
+		}
+		if query.InStockOnly && !doc.InStock {
+			continue
+		}
+		if len(qTokens) > 0 {
+			haystack := strings.ToLower(doc.SearchableText)
+			matchedAll := true
+			for _, qt := range qTokens {
+				if !strings.Contains(haystack, qt) {
+					matchedAll = false
+					break
+				}
+			}
+			if !matchedAll {
+				continue
+			}
+		}
+		results = append(results, doc)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	sort.Slice(results, func(i, j int) bool {
+		switch strings.ToLower(strings.TrimSpace(query.SortBy)) {
+		case "created_at_asc":
+			if !results[i].ProductCreatedAt.Equal(results[j].ProductCreatedAt) {
+				return results[i].ProductCreatedAt.Before(results[j].ProductCreatedAt)
+			}
+			return results[i].ProductID < results[j].ProductID
+		case "base_price_asc":
+			di, errI := tenantdb.ParseExactDecimal(results[i].BasePrice)
+			dj, errJ := tenantdb.ParseExactDecimal(results[j].BasePrice)
+			if errI == nil && errJ == nil {
+				if cmp := di.Cmp(dj); cmp != 0 {
+					return cmp < 0
+				}
+			}
+			return results[i].ProductID < results[j].ProductID
+		case "base_price_desc":
+			di, errI := tenantdb.ParseExactDecimal(results[i].BasePrice)
+			dj, errJ := tenantdb.ParseExactDecimal(results[j].BasePrice)
+			if errI == nil && errJ == nil {
+				if cmp := di.Cmp(dj); cmp != 0 {
+					return cmp > 0
+				}
+			}
+			return results[i].ProductID < results[j].ProductID
+		default:
+			if !results[i].ProductCreatedAt.Equal(results[j].ProductCreatedAt) {
+				return results[i].ProductCreatedAt.After(results[j].ProductCreatedAt)
+			}
+			return results[i].ProductID < results[j].ProductID
+		}
+	})
+
+	if query.Limit > 0 && len(results) > query.Limit {
+		results = results[:query.Limit]
+	}
+	return results, nil
+}
+
+func (h *PgDomainActionHandler) executeCatalogSearchIndexing(ctx context.Context, q *tenantdb.Queries, msg StreamMessage) (DomainActionResult, error) {
 	if !tenantdb.IsValidNonZeroUUID(msg.WorkspaceID) {
 		return DomainActionResult{}, tenantdb.ErrInvalidTenantScope
 	}
-	aggID := msg.AggregateID
-	if !tenantdb.IsValidNonZeroUUID(aggID) {
-		aggID = msg.EventID
-	}
-	if !tenantdb.IsValidNonZeroUUID(aggID) {
-		return DomainActionResult{}, tenantdb.ErrInvalidTenantScope
+	tx, ok := TxFromContext(ctx)
+	if !ok || tx == nil {
+		return DomainActionResult{}, errors.New("outbox: executeCatalogSearchIndexing requires active pgx.Tx in context")
 	}
 
 	var payloadMap map[string]any
@@ -1401,6 +1979,18 @@ func executeCatalogSearchIndexing(ctx context.Context, q *tenantdb.Queries, msg 
 		}
 	}
 
+	productID := strings.TrimSpace(msg.AggregateID)
+	if payloadProdID, ok := payloadMap["product_id"].(string); ok && strings.TrimSpace(payloadProdID) != "" {
+		payloadProdID = strings.TrimSpace(payloadProdID)
+		if productID != "" && productID != payloadProdID {
+			return DomainActionResult{}, fmt.Errorf("outbox: product_id payload %q mismatches aggregate_id %q", payloadProdID, productID)
+		}
+		productID = payloadProdID
+	}
+	if !tenantdb.IsValidNonZeroUUID(productID) {
+		return DomainActionResult{}, tenantdb.ErrInvalidTenantScope
+	}
+
 	wsRow, err := q.GetWorkspace(ctx, msg.WorkspaceID)
 	if err != nil {
 		return DomainActionResult{}, fmt.Errorf("outbox: search indexing verify workspace under RLS: %w", err)
@@ -1409,17 +1999,197 @@ func executeCatalogSearchIndexing(ctx context.Context, q *tenantdb.Queries, msg 
 		return DomainActionResult{}, ErrLiveActorAuthorizationRevoked
 	}
 
-	digest := sha256.Sum256([]byte(fmt.Sprintf("%s:%s:%s:%s", msg.WorkspaceID, aggID, msg.EventType, string(msg.Payload))))
-	digestHex := hex.EncodeToString(digest[:8])
-	reqID := fmt.Sprintf("search_idx_%s_%s", aggID[:8], digestHex)
+	doc, reqID, err := h.syncProductSearchIndexTx(ctx, tx, msg.WorkspaceID, productID, msg.EventID, msg.EventType)
+	if err != nil {
+		return DomainActionResult{}, err
+	}
 
 	resBytes, err := json.Marshal(map[string]any{
-		"event_id":       msg.EventID,
-		"event_type":     msg.EventType,
-		"workspace_id":   msg.WorkspaceID,
-		"aggregate_id":   aggID,
-		"index_document": digestHex,
-		"processed_at":   time.Now().UTC().Format(time.RFC3339Nano),
+		"event_id":            msg.EventID,
+		"event_type":          msg.EventType,
+		"workspace_id":        msg.WorkspaceID,
+		"aggregate_id":        productID,
+		"product_id":          doc.ProductID,
+		"provider_request_id": reqID,
+		"index_document":      doc.DocumentVersion,
+		"document":            doc,
+		"verified":            true,
+		"processed_at":        doc.IndexedAt.Format(time.RFC3339Nano),
+	})
+	if err != nil {
+		return DomainActionResult{}, err
+	}
+	return DomainActionResult{
+		ProviderRequestID: reqID,
+		ResultPayload:     resBytes,
+	}, nil
+}
+
+type inventoryStockMovedPayload struct {
+	WorkspaceID  string `json:"workspace_id"`
+	SkuID        string `json:"sku_id"`
+	MovementID   string `json:"movement_id"`
+	LocationID   string `json:"location_id"`
+	MovementType string `json:"movement_type"`
+	Delta        *int64 `json:"delta"`
+	Quantity     *int64 `json:"quantity"`
+	NewQuantity  *int64 `json:"new_quantity"`
+	Reason       string `json:"reason"`
+}
+
+func (h *PgDomainActionHandler) executeInventoryStockMoved(ctx context.Context, q *tenantdb.Queries, msg StreamMessage) (DomainActionResult, error) {
+	if !tenantdb.IsValidNonZeroUUID(msg.WorkspaceID) {
+		return DomainActionResult{}, tenantdb.ErrInvalidTenantScope
+	}
+	tx, ok := TxFromContext(ctx)
+	if !ok || tx == nil {
+		return DomainActionResult{}, errors.New("outbox: executeInventoryStockMoved requires active pgx.Tx in context")
+	}
+
+	var p inventoryStockMovedPayload
+	if len(msg.Payload) > 0 {
+		if err := json.Unmarshal(msg.Payload, &p); err != nil {
+			return DomainActionResult{}, fmt.Errorf("outbox: invalid inventory.stock_moved payload JSON: %w", err)
+		}
+	}
+	if strings.TrimSpace(p.WorkspaceID) != "" && strings.TrimSpace(p.WorkspaceID) != msg.WorkspaceID {
+		return DomainActionResult{}, tenantdb.ErrScopeMismatch
+	}
+
+	skuID := strings.TrimSpace(p.SkuID)
+	if skuID == "" {
+		skuID = strings.TrimSpace(msg.AggregateID)
+	}
+	if !tenantdb.IsValidNonZeroUUID(skuID) {
+		return DomainActionResult{}, fmt.Errorf("%w: invalid sku_id %q", ErrInventoryMovementNotFound, skuID)
+	}
+	if strings.TrimSpace(msg.AggregateID) != "" && strings.TrimSpace(msg.AggregateID) != skuID {
+		return DomainActionResult{}, fmt.Errorf("outbox: inventory.stock_moved sku_id %q mismatches aggregate_id %q", skuID, msg.AggregateID)
+	}
+
+	var delta int64
+	switch {
+	case p.Delta != nil:
+		delta = *p.Delta
+	case p.Quantity != nil:
+		delta = *p.Quantity
+	}
+	if delta == 0 {
+		return DomainActionResult{}, fmt.Errorf("outbox: inventory.stock_moved requires non-zero delta or quantity")
+	}
+
+	wsRow, err := q.GetWorkspace(ctx, msg.WorkspaceID)
+	if err != nil {
+		return DomainActionResult{}, fmt.Errorf("outbox: inventory.stock_moved verify workspace under RLS: %w", err)
+	}
+	if wsRow.Status != "active" {
+		return DomainActionResult{}, ErrLiveActorAuthorizationRevoked
+	}
+
+	var (
+		productID         string
+		skuCode           string
+		stockQuantity     int64
+		stockReserved     int64
+		lowStockThreshold int64
+	)
+	err = tx.QueryRow(ctx, `
+		SELECT
+			ps.product_id::text,
+			ps.sku_code,
+			COALESCE(ps.stock_quantity, 0),
+			COALESCE(ps.stock_reserved, 0),
+			COALESCE(ps.low_stock_threshold, 5)
+		FROM product_skus ps
+		JOIN products pr ON pr.workspace_id = ps.workspace_id AND pr.product_id = ps.product_id
+		WHERE ps.workspace_id = $1::uuid
+		  AND ps.sku_id = $2::uuid
+		  AND ps.deleted_at IS NULL
+		  AND pr.deleted_at IS NULL
+		FOR UPDATE OF ps
+	`, msg.WorkspaceID, skuID).Scan(
+		&productID,
+		&skuCode,
+		&stockQuantity,
+		&stockReserved,
+		&lowStockThreshold,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return DomainActionResult{}, fmt.Errorf("%w: sku_id=%s workspace_id=%s", ErrInventoryMovementNotFound, skuID, msg.WorkspaceID)
+		}
+		return DomainActionResult{}, fmt.Errorf("outbox: verify sku in product_skus: %w", err)
+	}
+
+	var (
+		movementID   string
+		locationID   string
+		movementType string
+		ledgerQty    int64
+		ledgerReason string
+	)
+	wantMovementID := strings.TrimSpace(p.MovementID)
+	if wantMovementID != "" && !tenantdb.IsValidNonZeroUUID(wantMovementID) {
+		return DomainActionResult{}, fmt.Errorf("%w: invalid movement_id %q", ErrInventoryMovementNotFound, wantMovementID)
+	}
+	err = tx.QueryRow(ctx, `
+		SELECT
+			movement_id::text,
+			location_id::text,
+			movement_type,
+			quantity,
+			COALESCE(reason, '')
+		FROM stock_movements
+		WHERE workspace_id = $1::uuid
+		  AND sku_id = $2::uuid
+		  AND ($3 = '' OR movement_id = NULLIF($3, '')::uuid)
+		ORDER BY created_at DESC, movement_id DESC
+		LIMIT 1
+	`, msg.WorkspaceID, skuID, wantMovementID).Scan(
+		&movementID,
+		&locationID,
+		&movementType,
+		&ledgerQty,
+		&ledgerReason,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return DomainActionResult{}, fmt.Errorf("%w: no committed stock_movements ledger row for sku_id=%s workspace_id=%s", ErrInventoryMovementNotFound, skuID, msg.WorkspaceID)
+		}
+		return DomainActionResult{}, fmt.Errorf("outbox: verify stock_movements ledger row: %w", err)
+	}
+
+	// Synchronize and verify the parent product's durable catalog search index projection
+	// so SKU stock changes are immediately reflected in catalog search results.
+	doc, _, err := h.syncProductSearchIndexTx(ctx, tx, msg.WorkspaceID, productID, msg.EventID, msg.EventType)
+	if err != nil {
+		return DomainActionResult{}, err
+	}
+
+	availableQty := stockQuantity - stockReserved
+	lowStockAlert := availableQty <= lowStockThreshold
+	reqID := fmt.Sprintf("stock_move_%s_%s", movementID[:8], msg.EventID[:8])
+
+	resBytes, err := json.Marshal(map[string]any{
+		"event_id":             msg.EventID,
+		"event_type":           msg.EventType,
+		"workspace_id":         msg.WorkspaceID,
+		"product_id":           productID,
+		"sku_id":               skuID,
+		"sku_code":             skuCode,
+		"movement_id":          movementID,
+		"location_id":          locationID,
+		"movement_type":        movementType,
+		"delta":                delta,
+		"ledger_quantity":      ledgerQty,
+		"reason":               nonEmpty(strings.TrimSpace(p.Reason), ledgerReason),
+		"stock_quantity":       stockQuantity,
+		"stock_reserved":       stockReserved,
+		"available_quantity":   availableQty,
+		"low_stock_alert":      lowStockAlert,
+		"search_index_version": doc.DocumentVersion,
+		"search_index_synced":  true,
+		"processed_at":         time.Now().UTC().Format(time.RFC3339Nano),
 	})
 	if err != nil {
 		return DomainActionResult{}, err
