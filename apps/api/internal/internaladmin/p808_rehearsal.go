@@ -14,7 +14,9 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -238,39 +240,49 @@ func VerifyBackupArtifactChecksum(snapPath, sidecarPath string) error {
 
 // BackupRestoreRehearsalRecord mirrors the canonical backup_restore_rehearsals table (migration 00046).
 type BackupRestoreRehearsalRecord struct {
-	RehearsalID                 string
-	Environment                 string
-	ExecutionMode               string // RehearsalModeSimulationOnly or RehearsalModeDisposableTargetVerified
-	IsSimulation                bool
-	OperationalRestorePerformed bool
-	TargetDatabaseURI           string
-	MeasuredRestoreDurationMs   int64
-	BackupArtifactURI           string
-	BackupSHA256                string
-	RestoredSHA256              string
-	ChecksumVerified            bool
-	RPOSeconds                  int32
-	RTOSeconds                  int32
-	WorkspacesRestored          int
-	PostingsRestored            int
-	EvidenceObjectsRestored     int
-	AuditEntriesRestored        int
-	LedgerBalanced              bool
-	AuditSequenceContinuous     bool
-	SmokePassed                 bool
-	SmokeFailureCode            string
-	RollbackTriggered           bool
-	PreviousSlotDigest          string
-	CandidateSlotDigest         string
-	ActiveSlotAfterRehearsal    string
-	ExecutedByAdminID           string
-	ExecutedAt                  time.Time
+	RehearsalID                   string
+	Environment                   string
+	ExecutionMode                 string // RehearsalModeSimulationOnly or RehearsalModeDisposableTargetVerified
+	IsSimulation                  bool
+	OperationalRestorePerformed   bool
+	TargetDatabaseURI             string
+	RestoredSchemaName            string
+	PersistentSchemaVerified      bool
+	RLSIsolationVerified          bool
+	PostCommitSmokeVerified       bool
+	ProductionDRGateApproved      bool
+	ProductionReleaseGateApproved bool
+	MeasuredRestoreDurationMs     int64
+	BackupArtifactURI             string
+	BackupSHA256                  string
+	RestoredSHA256                string
+	ChecksumVerified              bool
+	RPOSeconds                    int32
+	RTOSeconds                    int32
+	WorkspacesRestored            int
+	PostingsRestored              int
+	EvidenceObjectsRestored       int
+	AuditEntriesRestored          int
+	LedgerBalanced                bool
+	AuditSequenceContinuous       bool
+	SmokePassed                   bool
+	SmokeFailureCode              string
+	RollbackTriggered             bool
+	PreviousSlotDigest            string
+	CandidateSlotDigest           string
+	ActiveSlotAfterRehearsal      string
+	ExecutedByAdminID             string
+	ExecutedAt                    time.Time
 }
 
 // DisposableRestoreOutcome captures measured counts and smoke results from a disposable DB target restore.
 type DisposableRestoreOutcome struct {
 	TargetDatabaseURI                  string
+	RestoredSchemaName                 string
 	OperationalPostgresRestoreVerified bool
+	PersistentSchemaVerified           bool
+	RLSIsolationVerified               bool
+	PostCommitSmokeVerified            bool
 	WorkspacesRestored                 int
 	PostingsRestored                   int
 	EvidenceObjectsRestored            int
@@ -297,15 +309,44 @@ type FileBackedDisposableDBTarget struct {
 	CorruptCount int
 }
 
-// PostgresDisposableDBTarget restores a DatabaseSnapshot into isolated disposable PostgreSQL tables inside a transaction,
-// queries back restored row counts, per-workspace/currency/operation double-entry ledger balances, credit lot totals,
-// and audit sequence continuity via SQL against PostgreSQL, and runs a post-restore SQL smoke probe.
+// PostgresDisposableDBTarget restores a DatabaseSnapshot into an isolated persistent PostgreSQL schema,
+// commits the restored schema and tables, and then verifies on post-commit transactions that:
+//  1. All restored tables persist in pg_catalog with relpersistence='p' and row counts match.
+//  2. SQL double-entry financial ledger balances, AI credit lot sums, and audit sequence continuity hold.
+//  3. Row-Level Security (ENABLE + FORCE RLS) is enforced under a non-superuser NOBYPASSRLS role.
+//  4. Post-commit tenant-scoped smoke probes succeed against the committed tables.
+//
+// If TargetSchema is empty, starts with "pg_temp", or TempFixtureOnly is true, the target runs as a
+// temporary simulation fixture (OperationalPostgresRestoreVerified=false) and is rejected for
+// production/staging operational restore claims.
 type PostgresDisposableDBTarget struct {
-	Pool         *pgxpool.Pool
-	TargetSchema string
-	FailOnWrite  bool
-	FailOnSmoke  bool
-	CorruptCount int
+	Pool                  *pgxpool.Pool
+	TargetSchema          string
+	TempFixtureOnly       bool
+	FailOnWrite           bool
+	FailOnSmoke           bool
+	CorruptCount          int
+	PostRestoreSmokeProbe func(ctx context.Context, pool *pgxpool.Pool, schema string) error
+}
+
+var validPostgresSchemaIdent = regexp.MustCompile(`^[a-z_][a-z0-9_]{0,62}$`)
+
+func isReservedOrTempPostgresSchema(schema string) bool {
+	s := strings.ToLower(strings.TrimSpace(schema))
+	return s == "" || s == "public" || s == "pg_catalog" || s == "information_schema" || strings.HasPrefix(s, "pg_temp") || strings.HasPrefix(s, "pg_toast")
+}
+
+// Cleanup drops the isolated persistent rehearsal schema created by RestoreAndVerifySnapshot.
+func (t *PostgresDisposableDBTarget) Cleanup(ctx context.Context) error {
+	if t == nil || t.Pool == nil {
+		return nil
+	}
+	schema := strings.ToLower(strings.TrimSpace(t.TargetSchema))
+	if isReservedOrTempPostgresSchema(schema) || !validPostgresSchemaIdent.MatchString(schema) {
+		return nil
+	}
+	_, err := t.Pool.Exec(ctx, fmt.Sprintf("DROP SCHEMA IF EXISTS %s CASCADE", schema))
+	return err
 }
 
 func verifyRestoredFinancialPostingsBalance(workspaces []WorkspaceSnapshot, postings []FinancialPostingSnapshot) (int64, int64, error) {
@@ -489,8 +530,15 @@ func (t *FileBackedDisposableDBTarget) RestoreAndVerifySnapshot(ctx context.Cont
 	}, nil
 }
 
-// RestoreAndVerifySnapshot restores snap into isolated disposable PostgreSQL tables inside a transaction,
-// queries back restored row counts and double-entry financial ledger balances via SQL, and runs a post-restore SQL smoke probe.
+// RestoreAndVerifySnapshot restores snap into an isolated persistent PostgreSQL schema, commits the restore transaction,
+// and then verifies on post-commit transactions that:
+//  1. All restored tables persist in pg_catalog with relpersistence='p' and row counts match.
+//  2. SQL double-entry financial ledger balances, AI credit lot sums, and audit sequence continuity hold.
+//  3. Row-Level Security (ENABLE + FORCE RLS) is enforced under a non-superuser NOBYPASSRLS role.
+//  4. Post-commit tenant-scoped smoke probes succeed against the committed tables.
+//
+// If TargetSchema is empty, reserved/pg_temp, or TempFixtureOnly is true, the target executes only as a
+// temporary simulation fixture (OperationalPostgresRestoreVerified=false).
 func (t *PostgresDisposableDBTarget) RestoreAndVerifySnapshot(ctx context.Context, snap DatabaseSnapshot) (DisposableRestoreOutcome, error) {
 	if err := ctx.Err(); err != nil {
 		return DisposableRestoreOutcome{}, err
@@ -502,68 +550,133 @@ func (t *PostgresDisposableDBTarget) RestoreAndVerifySnapshot(ctx context.Contex
 		return DisposableRestoreOutcome{}, fmt.Errorf("%w: disposable postgres target write failed", ErrRestoreIntegrityFailed)
 	}
 
-	tx, err := t.Pool.Begin(ctx)
+	rawSchema := strings.ToLower(strings.TrimSpace(t.TargetSchema))
+	isTempFixture := t.TempFixtureOnly || rawSchema == "" || strings.HasPrefix(rawSchema, "pg_temp")
+	if !isTempFixture {
+		if isReservedOrTempPostgresSchema(rawSchema) || !validPostgresSchemaIdent.MatchString(rawSchema) {
+			return DisposableRestoreOutcome{}, fmt.Errorf("%w: invalid disposable postgres target schema %q", ErrRestoreIntegrityFailed, t.TargetSchema)
+		}
+	}
+
+	if isTempFixture {
+		wsCount := len(snap.Workspaces) - t.CorruptCount
+		if wsCount < 0 {
+			wsCount = 0
+		}
+		debitMicro, creditMicro, err := verifyRestoredFinancialPostingsBalance(snap.Workspaces, snap.FinancialPostings)
+		if err != nil {
+			return DisposableRestoreOutcome{}, err
+		}
+		smokePassed := !t.FailOnSmoke
+		smokeCode := "SIMULATION_TEMP_TABLE_FIXTURE_ONLY"
+		if !smokePassed {
+			smokeCode = "DISPOSABLE_SMOKE_PROBE_FAILED"
+		}
+		return DisposableRestoreOutcome{
+			TargetDatabaseURI:                  "postgres://disposable-rehearsal/pg_temp",
+			RestoredSchemaName:                 "pg_temp",
+			OperationalPostgresRestoreVerified: false,
+			PersistentSchemaVerified:           false,
+			RLSIsolationVerified:               false,
+			PostCommitSmokeVerified:            false,
+			WorkspacesRestored:                 wsCount,
+			PostingsRestored:                   len(snap.FinancialPostings),
+			EvidenceObjectsRestored:            len(snap.EvidenceObjects),
+			AuditEntriesRestored:               len(snap.AuditEntries),
+			ObservedDebitMicro:                 debitMicro,
+			ObservedCreditMicro:                creditMicro,
+			SmokeProbePassed:                   smokePassed,
+			SmokeFailureCode:                   smokeCode,
+		}, nil
+	}
+
+	// Transaction 1: Materialize isolated persistent schema, tables, RLS policies, and snapshot rows, then COMMIT.
+	tx1, err := t.Pool.Begin(ctx)
 	if err != nil {
 		return DisposableRestoreOutcome{}, fmt.Errorf("%w: begin disposable postgres restore tx: %v", ErrRestoreIntegrityFailed, err)
 	}
-	defer func() { _ = tx.Rollback(ctx) }()
+	defer func() { _ = tx1.Rollback(ctx) }()
 
-	ddl := `
-CREATE TEMP TABLE rehearsal_workspaces (
+	ddl := fmt.Sprintf(`
+DROP SCHEMA IF EXISTS %[1]s CASCADE;
+CREATE SCHEMA %[1]s;
+
+CREATE TABLE %[1]s.workspaces (
 	workspace_id TEXT PRIMARY KEY,
 	name TEXT NOT NULL,
 	slug TEXT NOT NULL,
 	owner_user_id TEXT NOT NULL,
 	ai_credits_remaining BIGINT NOT NULL,
 	status TEXT NOT NULL
-) ON COMMIT DROP;
+);
 
-CREATE TEMP TABLE rehearsal_financial_postings (
+CREATE TABLE %[1]s.financial_postings (
 	posting_id TEXT PRIMARY KEY,
-	workspace_id TEXT NOT NULL REFERENCES rehearsal_workspaces(workspace_id),
+	workspace_id TEXT NOT NULL REFERENCES %[1]s.workspaces(workspace_id),
 	account_code TEXT NOT NULL,
 	direction TEXT NOT NULL CHECK (direction IN ('debit', 'credit')),
 	amount_micro BIGINT NOT NULL CHECK (amount_micro > 0),
 	currency TEXT NOT NULL,
 	idempotency_key TEXT NOT NULL,
 	created_at TIMESTAMPTZ NOT NULL
-) ON COMMIT DROP;
+);
 
-CREATE TEMP TABLE rehearsal_ai_credit_lots (
+CREATE TABLE %[1]s.ai_credit_lots (
 	lot_id TEXT PRIMARY KEY,
-	workspace_id TEXT NOT NULL REFERENCES rehearsal_workspaces(workspace_id),
+	workspace_id TEXT NOT NULL REFERENCES %[1]s.workspaces(workspace_id),
 	initial_credits BIGINT NOT NULL CHECK (initial_credits >= 0),
 	remaining_credits BIGINT NOT NULL CHECK (remaining_credits >= 0 AND remaining_credits <= initial_credits),
 	lot_type TEXT NOT NULL,
 	expires_at TIMESTAMPTZ NOT NULL
-) ON COMMIT DROP;
+);
 
-CREATE TEMP TABLE rehearsal_evidence_objects (
+CREATE TABLE %[1]s.evidence_objects (
 	evidence_id TEXT PRIMARY KEY,
-	workspace_id TEXT NOT NULL REFERENCES rehearsal_workspaces(workspace_id),
+	workspace_id TEXT NOT NULL REFERENCES %[1]s.workspaces(workspace_id),
 	category TEXT NOT NULL,
 	content_sha256 TEXT NOT NULL CHECK (char_length(content_sha256) = 64),
 	storage_uri TEXT NOT NULL,
 	retention_lock TIMESTAMPTZ NOT NULL
-) ON COMMIT DROP;
+);
 
-CREATE TEMP TABLE rehearsal_audit_entries (
+CREATE TABLE %[1]s.internal_audit_logs (
 	audit_id TEXT PRIMARY KEY,
 	sequence_number BIGINT NOT NULL UNIQUE,
 	entry_hash TEXT NOT NULL,
 	admin_id TEXT NOT NULL,
 	action TEXT NOT NULL,
 	created_at TIMESTAMPTZ NOT NULL
-) ON COMMIT DROP;
-`
-	if _, err := tx.Exec(ctx, ddl); err != nil {
-		return DisposableRestoreOutcome{}, fmt.Errorf("%w: create disposable postgres tables: %v", ErrRestoreIntegrityFailed, err)
+);
+
+ALTER TABLE %[1]s.workspaces ENABLE ROW LEVEL SECURITY;
+ALTER TABLE %[1]s.workspaces FORCE ROW LEVEL SECURITY;
+CREATE POLICY workspace_tenant_isolation ON %[1]s.workspaces
+	USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), ''));
+
+ALTER TABLE %[1]s.financial_postings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE %[1]s.financial_postings FORCE ROW LEVEL SECURITY;
+CREATE POLICY financial_postings_tenant_isolation ON %[1]s.financial_postings
+	USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), ''));
+
+ALTER TABLE %[1]s.ai_credit_lots ENABLE ROW LEVEL SECURITY;
+ALTER TABLE %[1]s.ai_credit_lots FORCE ROW LEVEL SECURITY;
+CREATE POLICY ai_credit_lots_tenant_isolation ON %[1]s.ai_credit_lots
+	USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), ''));
+
+ALTER TABLE %[1]s.evidence_objects ENABLE ROW LEVEL SECURITY;
+ALTER TABLE %[1]s.evidence_objects FORCE ROW LEVEL SECURITY;
+CREATE POLICY evidence_objects_tenant_isolation ON %[1]s.evidence_objects
+	USING (workspace_id = NULLIF(current_setting('app.current_tenant_id', true), ''));
+`, rawSchema)
+
+	if _, err := tx1.Exec(ctx, ddl); err != nil {
+		return DisposableRestoreOutcome{}, fmt.Errorf("%w: create persistent disposable postgres schema %s: %v", ErrRestoreIntegrityFailed, rawSchema, err)
 	}
 
 	for _, ws := range snap.Workspaces {
-		if _, err := tx.Exec(ctx, `
-INSERT INTO rehearsal_workspaces (workspace_id, name, slug, owner_user_id, ai_credits_remaining, status)
-VALUES ($1, $2, $3, $4, $5, $6)`,
+		if _, err := tx1.Exec(ctx, fmt.Sprintf(`
+INSERT INTO %s.workspaces (workspace_id, name, slug, owner_user_id, ai_credits_remaining, status)
+VALUES ($1, $2, $3, $4, $5, $6)`, rawSchema),
 			ws.WorkspaceID, ws.Name, ws.Slug, ws.OwnerUserID, ws.AICreditsRemaining, ws.Status,
 		); err != nil {
 			return DisposableRestoreOutcome{}, fmt.Errorf("%w: insert workspace %s: %v", ErrRestoreIntegrityFailed, ws.WorkspaceID, err)
@@ -571,9 +684,9 @@ VALUES ($1, $2, $3, $4, $5, $6)`,
 	}
 
 	for _, p := range snap.FinancialPostings {
-		if _, err := tx.Exec(ctx, `
-INSERT INTO rehearsal_financial_postings (posting_id, workspace_id, account_code, direction, amount_micro, currency, idempotency_key, created_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+		if _, err := tx1.Exec(ctx, fmt.Sprintf(`
+INSERT INTO %s.financial_postings (posting_id, workspace_id, account_code, direction, amount_micro, currency, idempotency_key, created_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, rawSchema),
 			p.PostingID, p.WorkspaceID, p.AccountCode, strings.ToLower(strings.TrimSpace(p.Direction)), p.AmountMicro, strings.ToUpper(strings.TrimSpace(p.Currency)), strings.TrimSpace(p.IdempotencyKey), p.CreatedAt,
 		); err != nil {
 			return DisposableRestoreOutcome{}, fmt.Errorf("%w: insert financial posting %s: %v", ErrRestoreIntegrityFailed, p.PostingID, err)
@@ -581,9 +694,9 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
 	}
 
 	for _, lot := range snap.AICreditLots {
-		if _, err := tx.Exec(ctx, `
-INSERT INTO rehearsal_ai_credit_lots (lot_id, workspace_id, initial_credits, remaining_credits, lot_type, expires_at)
-VALUES ($1, $2, $3, $4, $5, $6)`,
+		if _, err := tx1.Exec(ctx, fmt.Sprintf(`
+INSERT INTO %s.ai_credit_lots (lot_id, workspace_id, initial_credits, remaining_credits, lot_type, expires_at)
+VALUES ($1, $2, $3, $4, $5, $6)`, rawSchema),
 			lot.LotID, lot.WorkspaceID, lot.InitialCredits, lot.RemainingCredits, lot.LotType, lot.ExpiresAt,
 		); err != nil {
 			return DisposableRestoreOutcome{}, fmt.Errorf("%w: insert ai credit lot %s: %v", ErrRestoreIntegrityFailed, lot.LotID, err)
@@ -591,9 +704,9 @@ VALUES ($1, $2, $3, $4, $5, $6)`,
 	}
 
 	for _, ev := range snap.EvidenceObjects {
-		if _, err := tx.Exec(ctx, `
-INSERT INTO rehearsal_evidence_objects (evidence_id, workspace_id, category, content_sha256, storage_uri, retention_lock)
-VALUES ($1, $2, $3, $4, $5, $6)`,
+		if _, err := tx1.Exec(ctx, fmt.Sprintf(`
+INSERT INTO %s.evidence_objects (evidence_id, workspace_id, category, content_sha256, storage_uri, retention_lock)
+VALUES ($1, $2, $3, $4, $5, $6)`, rawSchema),
 			ev.EvidenceID, ev.WorkspaceID, ev.Category, strings.TrimSpace(ev.ContentSHA256), ev.StorageURI, ev.RetentionLock,
 		); err != nil {
 			return DisposableRestoreOutcome{}, fmt.Errorf("%w: insert evidence object %s: %v", ErrRestoreIntegrityFailed, ev.EvidenceID, err)
@@ -601,53 +714,81 @@ VALUES ($1, $2, $3, $4, $5, $6)`,
 	}
 
 	for _, au := range snap.AuditEntries {
-		if _, err := tx.Exec(ctx, `
-INSERT INTO rehearsal_audit_entries (audit_id, sequence_number, entry_hash, admin_id, action, created_at)
-VALUES ($1, $2, $3, $4, $5, $6)`,
+		if _, err := tx1.Exec(ctx, fmt.Sprintf(`
+INSERT INTO %s.internal_audit_logs (audit_id, sequence_number, entry_hash, admin_id, action, created_at)
+VALUES ($1, $2, $3, $4, $5, $6)`, rawSchema),
 			au.AuditID, au.SequenceNumber, au.EntryHash, au.AdminID, au.Action, au.CreatedAt,
 		); err != nil {
 			return DisposableRestoreOutcome{}, fmt.Errorf("%w: insert audit entry %s: %v", ErrRestoreIntegrityFailed, au.AuditID, err)
 		}
 	}
 
-	// Read back restored rows from PostgreSQL via SQL queries.
-	wsRows, err := tx.Query(ctx, `SELECT workspace_id, name, slug, owner_user_id, ai_credits_remaining, status FROM rehearsal_workspaces ORDER BY workspace_id`)
+	if err := tx1.Commit(ctx); err != nil {
+		return DisposableRestoreOutcome{}, fmt.Errorf("%w: commit disposable postgres restore tx: %v", ErrRestoreIntegrityFailed, err)
+	}
+
+	// Transaction 2: On a NEW post-commit transaction, verify that all 5 tables survived commit with relpersistence='p',
+	// that the 4 tenant tables enforce RLS (relrowsecurity && relforcerowsecurity), and that SQL ledger/credit/audit invariants hold.
+	tx2, err := t.Pool.Begin(ctx)
 	if err != nil {
-		return DisposableRestoreOutcome{}, fmt.Errorf("%w: query restored workspaces: %v", ErrRestoreIntegrityFailed, err)
+		return DisposableRestoreOutcome{}, fmt.Errorf("%w: begin post-commit verification tx: %v", ErrRestoreIntegrityFailed, err)
+	}
+	defer func() { _ = tx2.Rollback(ctx) }()
+
+	var permanentTableCount, forcedRLSTableCount int
+	if err := tx2.QueryRow(ctx, `
+SELECT
+	COUNT(*) FILTER (WHERE c.relpersistence = 'p'),
+	COUNT(*) FILTER (WHERE c.relpersistence = 'p' AND c.relrowsecurity AND c.relforcerowsecurity)
+FROM pg_catalog.pg_class c
+JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = $1
+  AND c.relkind = 'r'
+  AND c.relname IN ('workspaces', 'financial_postings', 'ai_credit_lots', 'evidence_objects', 'internal_audit_logs')
+`, rawSchema).Scan(&permanentTableCount, &forcedRLSTableCount); err != nil {
+		return DisposableRestoreOutcome{}, fmt.Errorf("%w: verify persistent tables in pg_catalog: %v", ErrRestoreIntegrityFailed, err)
+	}
+	if permanentTableCount != 5 || forcedRLSTableCount != 4 {
+		return DisposableRestoreOutcome{}, fmt.Errorf("%w: expected 5 permanent tables and 4 FORCE RLS tables in schema %s, got permanent=%d rls=%d",
+			ErrRestoreIntegrityFailed, rawSchema, permanentTableCount, forcedRLSTableCount)
+	}
+
+	wsRows, err := tx2.Query(ctx, fmt.Sprintf(`SELECT workspace_id, name, slug, owner_user_id, ai_credits_remaining, status FROM %s.workspaces ORDER BY workspace_id`, rawSchema))
+	if err != nil {
+		return DisposableRestoreOutcome{}, fmt.Errorf("%w: query post-commit restored workspaces: %v", ErrRestoreIntegrityFailed, err)
 	}
 	var ws []WorkspaceSnapshot
 	for wsRows.Next() {
 		var item WorkspaceSnapshot
 		if err := wsRows.Scan(&item.WorkspaceID, &item.Name, &item.Slug, &item.OwnerUserID, &item.AICreditsRemaining, &item.Status); err != nil {
 			wsRows.Close()
-			return DisposableRestoreOutcome{}, fmt.Errorf("%w: scan restored workspace: %v", ErrRestoreIntegrityFailed, err)
+			return DisposableRestoreOutcome{}, fmt.Errorf("%w: scan post-commit restored workspace: %v", ErrRestoreIntegrityFailed, err)
 		}
 		ws = append(ws, item)
 	}
 	wsRows.Close()
 
-	postingRows, err := tx.Query(ctx, `SELECT posting_id, workspace_id, account_code, direction, amount_micro, currency, idempotency_key, created_at FROM rehearsal_financial_postings ORDER BY posting_id`)
+	postingRows, err := tx2.Query(ctx, fmt.Sprintf(`SELECT posting_id, workspace_id, account_code, direction, amount_micro, currency, idempotency_key, created_at FROM %s.financial_postings ORDER BY posting_id`, rawSchema))
 	if err != nil {
-		return DisposableRestoreOutcome{}, fmt.Errorf("%w: query restored financial postings: %v", ErrRestoreIntegrityFailed, err)
+		return DisposableRestoreOutcome{}, fmt.Errorf("%w: query post-commit restored financial postings: %v", ErrRestoreIntegrityFailed, err)
 	}
 	var postings []FinancialPostingSnapshot
 	for postingRows.Next() {
 		var item FinancialPostingSnapshot
 		if err := postingRows.Scan(&item.PostingID, &item.WorkspaceID, &item.AccountCode, &item.Direction, &item.AmountMicro, &item.Currency, &item.IdempotencyKey, &item.CreatedAt); err != nil {
 			postingRows.Close()
-			return DisposableRestoreOutcome{}, fmt.Errorf("%w: scan restored financial posting: %v", ErrRestoreIntegrityFailed, err)
+			return DisposableRestoreOutcome{}, fmt.Errorf("%w: scan post-commit restored financial posting: %v", ErrRestoreIntegrityFailed, err)
 		}
 		postings = append(postings, item)
 	}
 	postingRows.Close()
 
-	// Verify SQL-level per-workspace/currency and per-operation double-entry ledger balance directly in PostgreSQL.
 	var imbalancedGroupCount int
-	if err := tx.QueryRow(ctx, `
+	if err := tx2.QueryRow(ctx, fmt.Sprintf(`
 SELECT (
 	SELECT COUNT(*) FROM (
 		SELECT workspace_id, currency
-		FROM rehearsal_financial_postings
+		FROM %[1]s.financial_postings
 		GROUP BY workspace_id, currency
 		HAVING COALESCE(SUM(CASE WHEN direction = 'debit' THEN amount_micro ELSE 0 END), 0)
 		    <> COALESCE(SUM(CASE WHEN direction = 'credit' THEN amount_micro ELSE 0 END), 0)
@@ -655,16 +796,24 @@ SELECT (
 ) + (
 	SELECT COUNT(*) FROM (
 		SELECT workspace_id, currency, idempotency_key
-		FROM rehearsal_financial_postings
+		FROM %[1]s.financial_postings
 		GROUP BY workspace_id, currency, idempotency_key
 		HAVING COALESCE(SUM(CASE WHEN direction = 'debit' THEN amount_micro ELSE 0 END), 0)
 		    <> COALESCE(SUM(CASE WHEN direction = 'credit' THEN amount_micro ELSE 0 END), 0)
 	) op_imbalance
-)`).Scan(&imbalancedGroupCount); err != nil {
-		return DisposableRestoreOutcome{}, fmt.Errorf("%w: query postgres ledger balance: %v", ErrRestoreIntegrityFailed, err)
+) + (
+	SELECT COUNT(*) FROM %[1]s.workspaces w
+	LEFT JOIN (
+		SELECT workspace_id, COALESCE(SUM(remaining_credits), 0) AS lot_sum
+		FROM %[1]s.ai_credit_lots
+		GROUP BY workspace_id
+	) l ON l.workspace_id = w.workspace_id
+	WHERE COALESCE(l.lot_sum, 0) <> w.ai_credits_remaining
+)`, rawSchema)).Scan(&imbalancedGroupCount); err != nil {
+		return DisposableRestoreOutcome{}, fmt.Errorf("%w: query postgres post-commit ledger/credit balance: %v", ErrRestoreIntegrityFailed, err)
 	}
 	if imbalancedGroupCount > 0 {
-		return DisposableRestoreOutcome{}, fmt.Errorf("%w: postgres SQL double-entry ledger imbalance across %d groups", ErrRestoreIntegrityFailed, imbalancedGroupCount)
+		return DisposableRestoreOutcome{}, fmt.Errorf("%w: postgres SQL post-commit ledger/credit imbalance across %d groups", ErrRestoreIntegrityFailed, imbalancedGroupCount)
 	}
 
 	debitMicro, creditMicro, err := verifyRestoredFinancialPostingsBalance(ws, postings)
@@ -673,42 +822,146 @@ SELECT (
 	}
 
 	var evidenceCount, auditCount int
-	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM rehearsal_evidence_objects`).Scan(&evidenceCount); err != nil {
-		return DisposableRestoreOutcome{}, fmt.Errorf("%w: count restored evidence objects: %v", ErrRestoreIntegrityFailed, err)
+	if err := tx2.QueryRow(ctx, fmt.Sprintf(`SELECT COUNT(*) FROM %s.evidence_objects`, rawSchema)).Scan(&evidenceCount); err != nil {
+		return DisposableRestoreOutcome{}, fmt.Errorf("%w: count post-commit restored evidence objects: %v", ErrRestoreIntegrityFailed, err)
 	}
-	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM rehearsal_audit_entries`).Scan(&auditCount); err != nil {
-		return DisposableRestoreOutcome{}, fmt.Errorf("%w: count restored audit entries: %v", ErrRestoreIntegrityFailed, err)
+	var minSeq, maxSeq int64
+	if err := tx2.QueryRow(ctx, fmt.Sprintf(`SELECT COUNT(*), COALESCE(MIN(sequence_number), 0), COALESCE(MAX(sequence_number), 0) FROM %s.internal_audit_logs`, rawSchema)).Scan(&auditCount, &minSeq, &maxSeq); err != nil {
+		return DisposableRestoreOutcome{}, fmt.Errorf("%w: count post-commit restored audit entries: %v", ErrRestoreIntegrityFailed, err)
+	}
+	if auditCount > 0 && (minSeq != 1 || maxSeq != int64(auditCount)) {
+		return DisposableRestoreOutcome{}, fmt.Errorf("%w: post-commit audit sequence discontinuity (count=%d min=%d max=%d)", ErrAuditSequenceIntegrityViolation, auditCount, minSeq, maxSeq)
 	}
 
-	if err := tx.Commit(ctx); err != nil {
-		return DisposableRestoreOutcome{}, fmt.Errorf("%w: commit disposable postgres restore tx: %v", ErrRestoreIntegrityFailed, err)
+	if err := tx2.Commit(ctx); err != nil {
+		return DisposableRestoreOutcome{}, fmt.Errorf("%w: commit post-commit verification tx: %v", ErrRestoreIntegrityFailed, err)
 	}
 
+	// Transaction 3: Post-commit non-superuser RLS isolation & tenant business smoke probe.
 	wsCount := len(ws) - t.CorruptCount
 	if wsCount < 0 {
 		wsCount = 0
 	}
-	smokePassed := !t.FailOnSmoke
-	smokeCode := "OK"
-	if !smokePassed {
-		smokeCode = "DISPOSABLE_SMOKE_PROBE_FAILED"
+	if t.FailOnSmoke {
+		return DisposableRestoreOutcome{
+			TargetDatabaseURI:                  "postgres://disposable-rehearsal/" + rawSchema,
+			RestoredSchemaName:                 rawSchema,
+			OperationalPostgresRestoreVerified: false,
+			PersistentSchemaVerified:           true,
+			RLSIsolationVerified:               false,
+			PostCommitSmokeVerified:            false,
+			WorkspacesRestored:                 wsCount,
+			PostingsRestored:                   len(postings),
+			EvidenceObjectsRestored:            evidenceCount,
+			AuditEntriesRestored:               auditCount,
+			ObservedDebitMicro:                 debitMicro,
+			ObservedCreditMicro:                creditMicro,
+			SmokeProbePassed:                   false,
+			SmokeFailureCode:                   "DISPOSABLE_SMOKE_PROBE_FAILED",
+		}, nil
 	}
-	schema := strings.TrimSpace(t.TargetSchema)
-	if schema == "" {
-		schema = "pg_temp_disposable_rehearsal"
+
+	tx3, err := t.Pool.Begin(ctx)
+	if err != nil {
+		return DisposableRestoreOutcome{}, fmt.Errorf("%w: begin post-commit RLS smoke tx: %v", ErrRestoreIntegrityFailed, err)
+	}
+	defer func() { _ = tx3.Rollback(ctx) }()
+
+	rlsSetupSQL := fmt.Sprintf(`
+DO $$
+BEGIN
+	IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'rehearsal_p808_rls_probe') THEN
+		CREATE ROLE rehearsal_p808_rls_probe NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS;
+	END IF;
+END
+$$;
+GRANT USAGE ON SCHEMA %[1]s TO rehearsal_p808_rls_probe;
+GRANT SELECT ON ALL TABLES IN SCHEMA %[1]s TO rehearsal_p808_rls_probe;
+`, rawSchema)
+	if _, err := tx3.Exec(ctx, rlsSetupSQL); err != nil {
+		return DisposableRestoreOutcome{}, fmt.Errorf("%w: configure non-superuser RLS probe role: %v", ErrRestoreIntegrityFailed, err)
+	}
+	if _, err := tx3.Exec(ctx, `SET LOCAL ROLE rehearsal_p808_rls_probe`); err != nil {
+		return DisposableRestoreOutcome{}, fmt.Errorf("%w: assume rehearsal_p808_rls_probe role: %v", ErrRestoreIntegrityFailed, err)
+	}
+	if _, err := tx3.Exec(ctx, `SELECT set_config('app.current_tenant_id', '', true)`); err != nil {
+		return DisposableRestoreOutcome{}, fmt.Errorf("%w: clear tenant context for RLS negative probe: %v", ErrRestoreIntegrityFailed, err)
+	}
+
+	var leakedWorkspaces, leakedPostings int
+	if err := tx3.QueryRow(ctx, fmt.Sprintf(`
+SELECT
+	(SELECT COUNT(*) FROM %[1]s.workspaces),
+	(SELECT COUNT(*) FROM %[1]s.financial_postings)
+`, rawSchema)).Scan(&leakedWorkspaces, &leakedPostings); err != nil {
+		return DisposableRestoreOutcome{}, fmt.Errorf("%w: execute negative RLS probe on %s: %v", ErrRestoreIntegrityFailed, rawSchema, err)
+	}
+	if leakedWorkspaces != 0 || leakedPostings != 0 {
+		return DisposableRestoreOutcome{}, fmt.Errorf("%w: RLS isolation failure on %s: empty tenant context saw %d workspaces and %d postings",
+			ErrRestoreIntegrityFailed, rawSchema, leakedWorkspaces, leakedPostings)
+	}
+
+	primaryWS := snap.Workspaces[0]
+	if _, err := tx3.Exec(ctx, `SELECT set_config('app.current_tenant_id', $1, true)`, primaryWS.WorkspaceID); err != nil {
+		return DisposableRestoreOutcome{}, fmt.Errorf("%w: set tenant context for RLS positive smoke probe: %v", ErrRestoreIntegrityFailed, err)
+	}
+	var visibleWSCount, crossTenantPostings int
+	var observedCredits int64
+	if err := tx3.QueryRow(ctx, fmt.Sprintf(`
+SELECT
+	(SELECT COUNT(*) FROM %[1]s.workspaces),
+	COALESCE((SELECT ai_credits_remaining FROM %[1]s.workspaces WHERE workspace_id = $1), -1),
+	(SELECT COUNT(*) FROM %[1]s.financial_postings WHERE workspace_id <> $1)
+`, rawSchema), primaryWS.WorkspaceID).Scan(&visibleWSCount, &observedCredits, &crossTenantPostings); err != nil {
+		return DisposableRestoreOutcome{}, fmt.Errorf("%w: execute positive RLS smoke probe on %s: %v", ErrRestoreIntegrityFailed, rawSchema, err)
+	}
+	if visibleWSCount != 1 || observedCredits != primaryWS.AICreditsRemaining || crossTenantPostings != 0 {
+		return DisposableRestoreOutcome{}, fmt.Errorf("%w: post-commit tenant smoke probe failed (visibleWS=%d credits=%d/%d crossTenantPostings=%d)",
+			ErrRestoreIntegrityFailed, visibleWSCount, observedCredits, primaryWS.AICreditsRemaining, crossTenantPostings)
+	}
+	if _, err := tx3.Exec(ctx, `RESET ROLE`); err != nil {
+		return DisposableRestoreOutcome{}, fmt.Errorf("%w: reset role after RLS smoke probe: %v", ErrRestoreIntegrityFailed, err)
+	}
+	if err := tx3.Commit(ctx); err != nil {
+		return DisposableRestoreOutcome{}, fmt.Errorf("%w: commit post-commit RLS smoke tx: %v", ErrRestoreIntegrityFailed, err)
+	}
+
+	if t.PostRestoreSmokeProbe != nil {
+		if err := t.PostRestoreSmokeProbe(ctx, t.Pool, rawSchema); err != nil {
+			return DisposableRestoreOutcome{
+				TargetDatabaseURI:                  "postgres://disposable-rehearsal/" + rawSchema,
+				RestoredSchemaName:                 rawSchema,
+				OperationalPostgresRestoreVerified: false,
+				PersistentSchemaVerified:           true,
+				RLSIsolationVerified:               true,
+				PostCommitSmokeVerified:            false,
+				WorkspacesRestored:                 wsCount,
+				PostingsRestored:                   len(postings),
+				EvidenceObjectsRestored:            evidenceCount,
+				AuditEntriesRestored:               auditCount,
+				ObservedDebitMicro:                 debitMicro,
+				ObservedCreditMicro:                creditMicro,
+				SmokeProbePassed:                   false,
+				SmokeFailureCode:                   "DISPOSABLE_SMOKE_PROBE_FAILED",
+			}, nil
+		}
 	}
 
 	return DisposableRestoreOutcome{
-		TargetDatabaseURI:                  "postgres://disposable-rehearsal/" + schema,
+		TargetDatabaseURI:                  "postgres://disposable-rehearsal/" + rawSchema,
+		RestoredSchemaName:                 rawSchema,
 		OperationalPostgresRestoreVerified: true,
+		PersistentSchemaVerified:           true,
+		RLSIsolationVerified:               true,
+		PostCommitSmokeVerified:            true,
 		WorkspacesRestored:                 wsCount,
 		PostingsRestored:                   len(postings),
 		EvidenceObjectsRestored:            evidenceCount,
 		AuditEntriesRestored:               auditCount,
 		ObservedDebitMicro:                 debitMicro,
 		ObservedCreditMicro:                creditMicro,
-		SmokeProbePassed:                   smokePassed,
-		SmokeFailureCode:                   smokeCode,
+		SmokeProbePassed:                   true,
+		SmokeFailureCode:                   "OK",
 	}, nil
 }
 
@@ -850,6 +1103,10 @@ func (s *Service) executeRestoreRehearsalInternal(
 	isSimulation := true
 	operationalPerformed := false
 	targetURI := ""
+	restoredSchemaName := ""
+	persistentSchemaVerified := false
+	rlsIsolationVerified := false
+	postCommitSmokeVerified := false
 	smokePassed := false
 	smokeFailureCode := "SIMULATION_ONLY_NO_DISPOSABLE_DB"
 	workspacesRestored := len(restored.Workspaces)
@@ -874,15 +1131,25 @@ func (s *Service) executeRestoreRehearsalInternal(
 		if !outcome.SmokeProbePassed {
 			return nil, fmt.Errorf("%w: disposable target post-restore smoke failed (%s)", ErrRestoreIntegrityFailed, outcome.SmokeFailureCode)
 		}
-		if !outcome.OperationalPostgresRestoreVerified && (envLower == "production" || envLower == "staging") {
-			return nil, fmt.Errorf("%w: snapshot environment %q requires a verified PostgreSQL restore target, not a file/simulation fixture (%s)", ErrOperationalTargetRequired, restored.Environment, outcome.TargetDatabaseURI)
+		operationalVerified := outcome.OperationalPostgresRestoreVerified &&
+			outcome.PersistentSchemaVerified &&
+			outcome.RLSIsolationVerified &&
+			outcome.PostCommitSmokeVerified &&
+			strings.HasPrefix(strings.ToLower(strings.TrimSpace(outcome.TargetDatabaseURI)), "postgres") &&
+			!isReservedOrTempPostgresSchema(outcome.RestoredSchemaName)
+		if !operationalVerified && (envLower == "production" || envLower == "staging") {
+			return nil, fmt.Errorf("%w: snapshot environment %q requires a verified persistent PostgreSQL restore target with RLS and post-commit smoke, not a file/temporary simulation fixture (%s)", ErrOperationalTargetRequired, restored.Environment, outcome.TargetDatabaseURI)
 		}
 		targetURI = outcome.TargetDatabaseURI
+		restoredSchemaName = outcome.RestoredSchemaName
+		persistentSchemaVerified = outcome.PersistentSchemaVerified
+		rlsIsolationVerified = outcome.RLSIsolationVerified
+		postCommitSmokeVerified = outcome.PostCommitSmokeVerified
 		workspacesRestored = outcome.WorkspacesRestored
 		postingsRestored = outcome.PostingsRestored
 		evidencesRestored = outcome.EvidenceObjectsRestored
 		auditsRestored = outcome.AuditEntriesRestored
-		if outcome.OperationalPostgresRestoreVerified {
+		if operationalVerified {
 			executionMode = RehearsalModeDisposableTargetVerified
 			isSimulation = false
 			operationalPerformed = true
@@ -893,7 +1160,11 @@ func (s *Service) executeRestoreRehearsalInternal(
 			isSimulation = true
 			operationalPerformed = false
 			smokePassed = false
-			smokeFailureCode = "SIMULATION_FILE_TARGET_ONLY"
+			if outcome.SmokeFailureCode != "" && outcome.SmokeFailureCode != "OK" {
+				smokeFailureCode = outcome.SmokeFailureCode
+			} else {
+				smokeFailureCode = "SIMULATION_FILE_TARGET_ONLY"
+			}
 		}
 	}
 
@@ -914,33 +1185,39 @@ func (s *Service) executeRestoreRehearsalInternal(
 	defer s.mu.Unlock()
 
 	rec := &BackupRestoreRehearsalRecord{
-		RehearsalID:                 s.IDGenerator(),
-		Environment:                 restored.Environment,
-		ExecutionMode:               executionMode,
-		IsSimulation:                isSimulation,
-		OperationalRestorePerformed: operationalPerformed,
-		TargetDatabaseURI:           targetURI,
-		MeasuredRestoreDurationMs:   elapsedMs,
-		BackupArtifactURI:           artifact.SnapshotPath,
-		BackupSHA256:                artifact.SHA256Digest,
-		RestoredSHA256:              restoredDigest,
-		ChecksumVerified:            true,
-		RPOSeconds:                  rpoSeconds,
-		RTOSeconds:                  measuredRTO,
-		WorkspacesRestored:          workspacesRestored,
-		PostingsRestored:            postingsRestored,
-		EvidenceObjectsRestored:     evidencesRestored,
-		AuditEntriesRestored:        auditsRestored,
-		LedgerBalanced:              true,
-		AuditSequenceContinuous:     true,
-		SmokePassed:                 smokePassed,
-		SmokeFailureCode:            smokeFailureCode,
-		RollbackTriggered:           false,
-		PreviousSlotDigest:          s.activeSlotDigest,
-		CandidateSlotDigest:         s.activeSlotDigest,
-		ActiveSlotAfterRehearsal:    s.activeSlot,
-		ExecutedByAdminID:           adminID,
-		ExecutedAt:                  now,
+		RehearsalID:                   s.IDGenerator(),
+		Environment:                   restored.Environment,
+		ExecutionMode:                 executionMode,
+		IsSimulation:                  isSimulation,
+		OperationalRestorePerformed:   operationalPerformed,
+		TargetDatabaseURI:             targetURI,
+		RestoredSchemaName:            restoredSchemaName,
+		PersistentSchemaVerified:      persistentSchemaVerified,
+		RLSIsolationVerified:          rlsIsolationVerified,
+		PostCommitSmokeVerified:       postCommitSmokeVerified,
+		ProductionDRGateApproved:      false,
+		ProductionReleaseGateApproved: false,
+		MeasuredRestoreDurationMs:     elapsedMs,
+		BackupArtifactURI:             artifact.SnapshotPath,
+		BackupSHA256:                  artifact.SHA256Digest,
+		RestoredSHA256:                restoredDigest,
+		ChecksumVerified:              true,
+		RPOSeconds:                    rpoSeconds,
+		RTOSeconds:                    measuredRTO,
+		WorkspacesRestored:            workspacesRestored,
+		PostingsRestored:              postingsRestored,
+		EvidenceObjectsRestored:       evidencesRestored,
+		AuditEntriesRestored:          auditsRestored,
+		LedgerBalanced:                true,
+		AuditSequenceContinuous:       true,
+		SmokePassed:                   smokePassed,
+		SmokeFailureCode:              smokeFailureCode,
+		RollbackTriggered:             false,
+		PreviousSlotDigest:            s.activeSlotDigest,
+		CandidateSlotDigest:           s.activeSlotDigest,
+		ActiveSlotAfterRehearsal:      s.activeSlot,
+		ExecutedByAdminID:             adminID,
+		ExecutedAt:                    now,
 	}
 	s.restoreRehearsals[rec.RehearsalID] = rec
 	auditReason := "Simulated point-in-time backup snapshot validation (SIMULATION_ONLY: no disposable DB or live smoke target touched)"
@@ -952,6 +1229,11 @@ func (s *Service) executeRestoreRehearsalInternal(
 		"is_simulation":                 rec.IsSimulation,
 		"operational_restore_performed": rec.OperationalRestorePerformed,
 		"target_database_uri":           rec.TargetDatabaseURI,
+		"restored_schema_name":          rec.RestoredSchemaName,
+		"persistent_schema_verified":    rec.PersistentSchemaVerified,
+		"rls_isolation_verified":        rec.RLSIsolationVerified,
+		"post_commit_smoke_verified":    rec.PostCommitSmokeVerified,
+		"production_dr_gate_approved":   rec.ProductionDRGateApproved,
 		"measured_restore_duration_ms":  rec.MeasuredRestoreDurationMs,
 		"backup_sha256":                 rec.BackupSHA256,
 		"restored_sha256":               rec.RestoredSHA256,
@@ -967,24 +1249,26 @@ func (s *Service) executeRestoreRehearsalInternal(
 // CandidateSlotProbeInput describes the health, readiness, and authenticated business smoke observations
 // for a Blue/Green candidate deployment slot (ci_cd_pipeline.md §4, §5).
 type CandidateSlotProbeInput struct {
-	CandidateSlot               string // "blue" or "green"
-	CandidateImageDigest        string // e.g. "sha256:..."
-	HealthzHTTPStatus           int
-	HealthzStatusField          string // must be "ok"
-	ReadyzHTTPStatus            int
-	ReadyzStatusField           string // must be "ready"
-	DatabaseReady               bool
-	RedisReady                  bool
-	NATSReady                   bool
-	SmokeAuthValid              bool
-	SmokeWorkspaceID            string
-	SmokeExpectedWorkspaceID    string
-	SmokeResponseValidJSON      bool
-	SmokeExpectedNetProfitMicro int64
-	SmokeObservedNetProfitMicro int64
-	SmokeExpectedCreditsBalance int64
-	SmokeObservedCreditsBalance int64
-	SmokeAuditSequenceIntact    bool
+	CandidateSlot                    string // "blue" or "green"
+	CandidateImageDigest             string // e.g. "sha256:..."
+	HealthzHTTPStatus                int
+	HealthzStatusField               string // must be "ok"
+	ReadyzHTTPStatus                 int
+	ReadyzStatusField                string // must be "ready"
+	DatabaseReady                    bool
+	RedisReady                       bool
+	NATSReady                        bool
+	SmokeAuthValid                   bool
+	SmokeWorkspaceID                 string
+	SmokeExpectedWorkspaceID         string
+	SmokeResponseValidJSON           bool
+	SmokeExpectedNetProfitMicro      int64
+	SmokeObservedNetProfitMicro      int64
+	SmokeExpectedCreditsBalance      int64
+	SmokeObservedCreditsBalance      int64
+	SmokeAuditSequenceIntact         bool
+	LiveDiagnosticsUnavailableReason string
+	LiveSmokeMetricsUnobservedReason string
 }
 
 // ReleaseSmokeVerdict captures the outcome of a Blue/Green candidate slot deployment and smoke gate.
@@ -1022,8 +1306,25 @@ func (s *Service) ExecuteBlueGreenReleaseSmokeRehearsal(
 	return s.evaluateBlueGreenProbe(ctx, adminID, probe, nil, 0)
 }
 
+func parseJSONExactInt64(raw json.RawMessage) (int64, bool) {
+	trimmed := strings.TrimSpace(string(raw))
+	if trimmed == "" || trimmed == "null" {
+		return 0, false
+	}
+	if strings.HasPrefix(trimmed, `"`) && strings.HasSuffix(trimmed, `"`) && len(trimmed) >= 2 {
+		trimmed = strings.TrimSpace(trimmed[1 : len(trimmed)-1])
+	}
+	v, err := strconv.ParseInt(trimmed, 10, 64)
+	if err != nil {
+		return 0, false
+	}
+	return v, true
+}
+
 // ExecuteLiveBlueGreenReleaseSmokeRehearsal probes a live disposable candidate HTTP server (/healthz, /readyz, and either /smoke or real API routes),
 // measures real HTTP probe duration, and switches a disposable proxy upstream only when all checks pass.
+// Expected values (expectedNetProfitMicro, expectedCreditsBalance) are NEVER copied into observed fields;
+// every observed metric must be returned by the candidate HTTP server or the rehearsal fails closed and rolls back.
 func (s *Service) ExecuteLiveBlueGreenReleaseSmokeRehearsal(
 	ctx context.Context,
 	adminID string,
@@ -1093,31 +1394,47 @@ func (s *Service) ExecuteLiveBlueGreenReleaseSmokeRehearsal(
 		}
 	}
 
-	// 3. Probe authenticated business smoke (/smoke harness or real cmd/api routes when /smoke returns 404).
+	// 3. Probe authenticated business smoke (/smoke harness or real cmd/api ConnectRPC routes when /smoke returns 404).
 	smokeStatus := 0
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+"/smoke", nil)
-	if err == nil {
-		if strings.TrimSpace(authToken) != "" {
-			req.Header.Set("Authorization", "Bearer "+authToken)
+	unauthSmokeRejected := false
+	if unauthSmokeReq, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+"/smoke", nil); err == nil {
+		if unauthSmokeResp, err := client.Do(unauthSmokeReq); err == nil {
+			_ = unauthSmokeResp.Body.Close()
+			if unauthSmokeResp.StatusCode == http.StatusNotFound {
+				smokeStatus = http.StatusNotFound
+			} else if unauthSmokeResp.StatusCode == http.StatusUnauthorized || unauthSmokeResp.StatusCode == http.StatusForbidden {
+				unauthSmokeRejected = true
+			}
 		}
-		if resp, err := client.Do(req); err == nil {
-			smokeStatus = resp.StatusCode
-			rawBody, _ := io.ReadAll(resp.Body)
-			_ = resp.Body.Close()
-			if resp.StatusCode == http.StatusOK {
-				probe.SmokeAuthValid = true
-				var body struct {
-					WorkspaceID         string `json:"workspace_id"`
-					NetProfitMicro      int64  `json:"net_profit_micro"`
-					CreditsBalance      int64  `json:"credits_balance"`
-					AuditSequenceIntact bool   `json:"audit_sequence_intact"`
-				}
-				if err := json.Unmarshal(rawBody, &body); err == nil {
-					probe.SmokeResponseValidJSON = true
-					probe.SmokeWorkspaceID = body.WorkspaceID
-					probe.SmokeObservedNetProfitMicro = body.NetProfitMicro
-					probe.SmokeObservedCreditsBalance = body.CreditsBalance
-					probe.SmokeAuditSequenceIntact = body.AuditSequenceIntact
+	}
+
+	if smokeStatus != http.StatusNotFound && unauthSmokeRejected && strings.TrimSpace(authToken) != "" {
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+"/smoke", nil)
+		if err == nil {
+			req.Header.Set("Authorization", "Bearer "+authToken)
+			if resp, err := client.Do(req); err == nil {
+				smokeStatus = resp.StatusCode
+				rawBody, _ := io.ReadAll(resp.Body)
+				_ = resp.Body.Close()
+				if resp.StatusCode == http.StatusOK {
+					probe.SmokeAuthValid = true
+					var body struct {
+						WorkspaceID         string `json:"workspace_id"`
+						NetProfitMicro      *int64 `json:"net_profit_micro"`
+						CreditsBalance      *int64 `json:"credits_balance"`
+						AuditSequenceIntact *bool  `json:"audit_sequence_intact"`
+					}
+					if err := json.Unmarshal(rawBody, &body); err == nil {
+						if body.NetProfitMicro != nil && body.CreditsBalance != nil && body.AuditSequenceIntact != nil {
+							probe.SmokeResponseValidJSON = true
+							probe.SmokeWorkspaceID = body.WorkspaceID
+							probe.SmokeObservedNetProfitMicro = *body.NetProfitMicro
+							probe.SmokeObservedCreditsBalance = *body.CreditsBalance
+							probe.SmokeAuditSequenceIntact = *body.AuditSequenceIntact
+						} else {
+							probe.LiveSmokeMetricsUnobservedReason = "/smoke response omitted required net_profit_micro, credits_balance, or audit_sequence_intact fields"
+						}
+					}
 				}
 			}
 		}
@@ -1159,15 +1476,21 @@ func (s *Service) ExecuteLiveBlueGreenReleaseSmokeRehearsal(
 									matchedWS = ws.WorkspaceID
 								}
 							}
-							// (c) Probe tenant-scoped ConnectRPC DiagnosticsService/GetOverview against real DB/RLS.
 							if matchedWS != "" {
-								diagReq, err := http.NewRequestWithContext(
+								probe.SmokeWorkspaceID = matchedWS
+								probe.SmokeResponseValidJSON = true
+
+								// (c) Probe tenant-scoped ConnectRPC DiagnosticsService/GetOverview and reject empty in-memory diagnostics.
+								diagOK := false
+								diagReqPayload, _ := json.Marshal(map[string]any{
+									"workspaceId": map[string]string{"value": matchedWS},
+								})
+								if diagReq, err := http.NewRequestWithContext(
 									ctx,
 									http.MethodPost,
 									baseURL+"/creativanta.admin.v1.DiagnosticsService/GetOverview",
-									bytes.NewReader([]byte(`{}`)),
-								)
-								if err == nil {
+									bytes.NewReader(diagReqPayload),
+								); err == nil {
 									diagReq.Header.Set("Content-Type", "application/json")
 									diagReq.Header.Set("Authorization", "Bearer "+authToken)
 									diagReq.Header.Set("x-workspace-id", matchedWS)
@@ -1179,14 +1502,185 @@ func (s *Service) ExecuteLiveBlueGreenReleaseSmokeRehearsal(
 												WorkspaceID struct {
 													Value string `json:"value"`
 												} `json:"workspaceId"`
+												OverallStatus               string `json:"overallStatus"`
+												OverallState                string `json:"overallState"`
+												TotalCategoriesCount        int32  `json:"totalCategoriesCount"`
+												HealthyCategoriesCount      int32  `json:"healthyCategoriesCount"`
+												CriticalIssuesCount         int32  `json:"criticalIssuesCount"`
+												ActiveIssuesCount           int32  `json:"activeIssuesCount"`
+												UnknownExternalEffectsCount int32  `json:"unknownExternalEffectsCount"`
+												PendingDlqCount             int32  `json:"pendingDlqCount"`
 											}
-											if err := json.Unmarshal(rawDiag, &diagBody); err == nil && diagBody.WorkspaceID.Value == matchedWS {
-												probe.SmokeResponseValidJSON = true
-												probe.SmokeWorkspaceID = matchedWS
-												probe.SmokeObservedNetProfitMicro = expectedNetProfitMicro
-												probe.SmokeObservedCreditsBalance = expectedCreditsBalance
-												probe.SmokeAuditSequenceIntact = !s.auditReadOnlyLocked
+											if err := json.Unmarshal(rawDiag, &diagBody); err == nil {
+												statusStr := strings.ToUpper(strings.TrimSpace(diagBody.OverallStatus))
+												if statusStr == "" {
+													statusStr = strings.ToUpper(strings.TrimSpace(diagBody.OverallState))
+												}
+												healthyStatus := statusStr == "DIAGNOSTIC_HEALTH_STATUS_HEALTHY" || statusStr == "DIAGNOSTIC_HEALTH_STATE_HEALTHY"
+												if diagBody.WorkspaceID.Value == matchedWS &&
+													healthyStatus &&
+													diagBody.TotalCategoriesCount > 0 &&
+													diagBody.HealthyCategoriesCount == diagBody.TotalCategoriesCount &&
+													diagBody.CriticalIssuesCount == 0 &&
+													diagBody.ActiveIssuesCount == 0 &&
+													diagBody.UnknownExternalEffectsCount == 0 &&
+													diagBody.PendingDlqCount == 0 {
+													diagOK = true
+												} else {
+													probe.LiveDiagnosticsUnavailableReason = fmt.Sprintf(
+														"DiagnosticsService/GetOverview non-operational or unhealthy (status=%q totalCategories=%d healthyCategories=%d critical=%d active=%d unknownEffects=%d dlq=%d)",
+														statusStr, diagBody.TotalCategoriesCount, diagBody.HealthyCategoriesCount,
+														diagBody.CriticalIssuesCount, diagBody.ActiveIssuesCount,
+														diagBody.UnknownExternalEffectsCount, diagBody.PendingDlqCount,
+													)
+												}
+											} else {
+												probe.SmokeResponseValidJSON = false
 											}
+										} else {
+											probe.LiveDiagnosticsUnavailableReason = fmt.Sprintf("DiagnosticsService/GetOverview returned HTTP %d", diagResp.StatusCode)
+										}
+									} else {
+										probe.LiveDiagnosticsUnavailableReason = fmt.Sprintf("DiagnosticsService/GetOverview request failed: %v", err)
+									}
+								}
+
+								// (d) Probe ProfitService/GetSummary to observe actual candidate net profit in integer micro-units.
+								profitObserved := false
+								if diagOK {
+									profitReqPayload, _ := json.Marshal(map[string]any{
+										"workspaceId": matchedWS,
+										"scopeType":   "workspace",
+										"scopeId":     matchedWS,
+									})
+									if profitReq, err := http.NewRequestWithContext(
+										ctx,
+										http.MethodPost,
+										baseURL+"/creativanta.finance.v1.ProfitService/GetSummary",
+										bytes.NewReader(profitReqPayload),
+									); err == nil {
+										profitReq.Header.Set("Content-Type", "application/json")
+										profitReq.Header.Set("Authorization", "Bearer "+authToken)
+										profitReq.Header.Set("x-workspace-id", matchedWS)
+										if profitResp, err := client.Do(profitReq); err == nil {
+											rawProfit, _ := io.ReadAll(profitResp.Body)
+											_ = profitResp.Body.Close()
+											if profitResp.StatusCode == http.StatusOK {
+												var profitBody struct {
+													Snapshot *struct {
+														WorkspaceID                    string `json:"workspaceId"`
+														IsIncomplete                   bool   `json:"isIncomplete"`
+														UnknownRequiredComponentsCount int32  `json:"unknownRequiredComponentsCount"`
+														NetProfit                      *struct {
+															CurrencyCode string `json:"currencyCode"`
+															Amount       string `json:"amount"`
+														} `json:"netProfit"`
+													} `json:"snapshot"`
+												}
+												if err := json.Unmarshal(rawProfit, &profitBody); err == nil && profitBody.Snapshot != nil {
+													if profitBody.Snapshot.WorkspaceID == matchedWS &&
+														!profitBody.Snapshot.IsIncomplete &&
+														profitBody.Snapshot.UnknownRequiredComponentsCount == 0 &&
+														profitBody.Snapshot.NetProfit != nil {
+														if dec, err := tenantdb.ParseExactDecimal(strings.TrimSpace(profitBody.Snapshot.NetProfit.Amount)); err == nil {
+															num := dec.ToPgNumeric()
+															if num.Valid && num.Int != nil && num.Int.IsInt64() {
+																probe.SmokeObservedNetProfitMicro = num.Int.Int64()
+																profitObserved = true
+															}
+														}
+													}
+												}
+											}
+											if !profitObserved && probe.LiveSmokeMetricsUnobservedReason == "" {
+												probe.LiveSmokeMetricsUnobservedReason = fmt.Sprintf("ProfitService/GetSummary did not return complete exact net_profit on candidate (HTTP %d)", profitResp.StatusCode)
+											}
+										} else if probe.LiveSmokeMetricsUnobservedReason == "" {
+											probe.LiveSmokeMetricsUnobservedReason = fmt.Sprintf("ProfitService/GetSummary request failed: %v", err)
+										}
+									}
+								}
+
+								// (e) Probe AdminBillingService/GetCreditBalance to observe actual candidate AI credit balance.
+								creditsObserved := false
+								if diagOK && profitObserved {
+									creditReqPayload, _ := json.Marshal(map[string]any{
+										"workspaceId": map[string]string{"value": matchedWS},
+									})
+									if creditReq, err := http.NewRequestWithContext(
+										ctx,
+										http.MethodPost,
+										baseURL+"/creativanta.admin.v1.AdminBillingService/GetCreditBalance",
+										bytes.NewReader(creditReqPayload),
+									); err == nil {
+										creditReq.Header.Set("Content-Type", "application/json")
+										creditReq.Header.Set("Authorization", "Bearer "+authToken)
+										creditReq.Header.Set("x-workspace-id", matchedWS)
+										if creditResp, err := client.Do(creditReq); err == nil {
+											rawCredit, _ := io.ReadAll(creditResp.Body)
+											_ = creditResp.Body.Close()
+											if creditResp.StatusCode == http.StatusOK {
+												var creditBody struct {
+													Balance *struct {
+														WorkspaceID *struct {
+															Value string `json:"value"`
+														} `json:"workspaceId"`
+														TotalRemaining json.RawMessage `json:"totalRemaining"`
+													} `json:"balance"`
+												}
+												if err := json.Unmarshal(rawCredit, &creditBody); err == nil && creditBody.Balance != nil {
+													wsMatch := creditBody.Balance.WorkspaceID == nil || creditBody.Balance.WorkspaceID.Value == "" || creditBody.Balance.WorkspaceID.Value == matchedWS
+													if totalRem, ok := parseJSONExactInt64(creditBody.Balance.TotalRemaining); ok && wsMatch {
+														probe.SmokeObservedCreditsBalance = totalRem
+														creditsObserved = true
+													}
+												}
+											}
+											if !creditsObserved && probe.LiveSmokeMetricsUnobservedReason == "" {
+												probe.LiveSmokeMetricsUnobservedReason = fmt.Sprintf("AdminBillingService/GetCreditBalance did not return observed credit balance on candidate (HTTP %d)", creditResp.StatusCode)
+											}
+										} else if probe.LiveSmokeMetricsUnobservedReason == "" {
+											probe.LiveSmokeMetricsUnobservedReason = fmt.Sprintf("AdminBillingService/GetCreditBalance request failed: %v", err)
+										}
+									}
+								}
+
+								// (f) Probe SystemConfigService/GetDashboard to observe actual candidate audit sequence and maintenance state.
+								if diagOK && profitObserved && creditsObserved {
+									if sysReq, err := http.NewRequestWithContext(
+										ctx,
+										http.MethodPost,
+										baseURL+"/creativanta.admin.v1.SystemConfigService/GetDashboard",
+										bytes.NewReader([]byte(`{}`)),
+									); err == nil {
+										sysReq.Header.Set("Content-Type", "application/json")
+										sysReq.Header.Set("Authorization", "Bearer "+authToken)
+										sysReq.Header.Set("x-workspace-id", matchedWS)
+										if sysResp, err := client.Do(sysReq); err == nil {
+											rawSys, _ := io.ReadAll(sysResp.Body)
+											_ = sysResp.Body.Close()
+											auditObserved := false
+											if sysResp.StatusCode == http.StatusOK {
+												var sysBody struct {
+													MaintenanceMode         bool            `json:"maintenanceMode"`
+													ActiveKillSwitchesCount int32           `json:"activeKillSwitchesCount"`
+													AuditLogEntriesCount    json.RawMessage `json:"auditLogEntriesCount"`
+													AuditSequenceIntact     *bool           `json:"auditSequenceIntact"`
+												}
+												if err := json.Unmarshal(rawSys, &sysBody); err == nil {
+													auditCount, hasCount := parseJSONExactInt64(sysBody.AuditLogEntriesCount)
+													seqIntact := sysBody.AuditSequenceIntact == nil || *sysBody.AuditSequenceIntact
+													if !sysBody.MaintenanceMode && sysBody.ActiveKillSwitchesCount == 0 && hasCount && auditCount > 0 && seqIntact {
+														probe.SmokeAuditSequenceIntact = true
+														auditObserved = true
+													}
+												}
+											}
+											if !auditObserved && probe.LiveSmokeMetricsUnobservedReason == "" {
+												probe.LiveSmokeMetricsUnobservedReason = fmt.Sprintf("SystemConfigService/GetDashboard did not confirm intact non-empty audit sequence on candidate (HTTP %d)", sysResp.StatusCode)
+											}
+										} else if probe.LiveSmokeMetricsUnobservedReason == "" {
+											probe.LiveSmokeMetricsUnobservedReason = fmt.Sprintf("SystemConfigService/GetDashboard request failed: %v", err)
 										}
 									}
 								}
@@ -1288,6 +1782,12 @@ func (s *Service) evaluateBlueGreenProbe(
 	}
 	if strings.TrimSpace(probe.SmokeExpectedWorkspaceID) != "" && probe.SmokeWorkspaceID != strings.TrimSpace(probe.SmokeExpectedWorkspaceID) {
 		return failAndRollback("SMOKE_WORKSPACE_MISMATCH", fmt.Sprintf("expected smoke workspace_id %q, observed %q", probe.SmokeExpectedWorkspaceID, probe.SmokeWorkspaceID))
+	}
+	if strings.TrimSpace(probe.LiveDiagnosticsUnavailableReason) != "" {
+		return failAndRollback("SMOKE_DIAGNOSTICS_UNHEALTHY", probe.LiveDiagnosticsUnavailableReason)
+	}
+	if strings.TrimSpace(probe.LiveSmokeMetricsUnobservedReason) != "" {
+		return failAndRollback("SMOKE_METRICS_UNOBSERVED", probe.LiveSmokeMetricsUnobservedReason)
 	}
 	if probe.SmokeObservedNetProfitMicro != probe.SmokeExpectedNetProfitMicro {
 		return failAndRollback("SMOKE_PROFIT_LEDGER_MISMATCH", fmt.Sprintf("expected net profit %d micro-units, observed %d", probe.SmokeExpectedNetProfitMicro, probe.SmokeObservedNetProfitMicro))

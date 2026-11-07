@@ -3,11 +3,16 @@ package internaladmin_test
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"strings"
 	"testing"
 	"time"
@@ -506,7 +511,28 @@ func TestP808AcceptanceTarget1_RealRestoreAndFailingSmoke(t *testing.T) {
 				return
 			}
 			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(`{"workspaceId":{"value":"` + wsA + `"},"overallState":"DIAGNOSTIC_HEALTH_STATE_HEALTHY"}`))
+			_, _ = w.Write([]byte(`{"workspaceId":{"value":"` + wsA + `"},"overallStatus":"DIAGNOSTIC_HEALTH_STATUS_HEALTHY","totalCategoriesCount":4,"healthyCategoriesCount":4,"criticalIssuesCount":0,"activeIssuesCount":0,"unknownExternalEffectsCount":0,"pendingDlqCount":0}`))
+		case "/creativanta.finance.v1.ProfitService/GetSummary":
+			if r.Header.Get("Authorization") != "Bearer valid-real-api-token" || r.Header.Get("x-workspace-id") != wsA {
+				w.WriteHeader(http.StatusForbidden)
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"snapshot":{"workspaceId":"` + wsA + `","isIncomplete":false,"unknownRequiredComponentsCount":0,"netProfit":{"currencyCode":"VND","amount":"15000.00"}}}`))
+		case "/creativanta.admin.v1.AdminBillingService/GetCreditBalance":
+			if r.Header.Get("Authorization") != "Bearer valid-real-api-token" || r.Header.Get("x-workspace-id") != wsA {
+				w.WriteHeader(http.StatusForbidden)
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"balance":{"workspaceId":{"value":"` + wsA + `"},"totalRemaining":"2420"}}`))
+		case "/creativanta.admin.v1.SystemConfigService/GetDashboard":
+			if r.Header.Get("Authorization") != "Bearer valid-real-api-token" || r.Header.Get("x-workspace-id") != wsA {
+				w.WriteHeader(http.StatusForbidden)
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"maintenanceMode":false,"activeKillSwitchesCount":0,"auditLogEntriesCount":"2","auditSequenceIntact":true}`))
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -1167,25 +1193,513 @@ func (m *mockDisposableProxyTarget) RollbackUpstream(_ context.Context, previous
 
 func openOptionalPostgresForRehearsalTest(t *testing.T) *pgxpool.Pool {
 	t.Helper()
-	dsn := strings.TrimSpace(os.Getenv("CREATIVANTA_TEST_DATABASE_URL"))
-	if dsn == "" {
-		dsn = strings.TrimSpace(os.Getenv("CREATIVANTA_TEST_POSTGRES_DSN"))
+	candidates := []string{
+		strings.TrimSpace(os.Getenv("CREATIVANTA_TEST_DATABASE_URL")),
+		strings.TrimSpace(os.Getenv("CREATIVANTA_TEST_POSTGRES_DSN")),
+		strings.TrimSpace(os.Getenv("DATABASE_URL")),
+		"postgres://postgres:postgres@127.0.0.1:5432/postgres?sslmode=disable",
 	}
-	if dsn == "" {
-		dsn = "postgres://postgres:postgres@127.0.0.1:5432/postgres?sslmode=disable"
+	for _, dsn := range candidates {
+		if dsn == "" {
+			continue
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		pool, err := pgxpool.New(ctx, dsn)
+		if err != nil {
+			cancel()
+			continue
+		}
+		if err := pool.Ping(ctx); err != nil {
+			pool.Close()
+			cancel()
+			continue
+		}
+		cancel()
+		t.Cleanup(func() {
+			pool.Close()
+		})
+		return pool
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-	pool, err := pgxpool.New(ctx, dsn)
+
+	if conn, err := net.DialTimeout("tcp", "127.0.0.1:15432", 1*time.Second); err == nil {
+		_ = conn.Close()
+		var randBytes [4]byte
+		_, _ = rand.Read(randBytes[:])
+		suffix := hex.EncodeToString(randBytes[:])
+		roleName := "creativanta_p808_role_" + suffix
+		dbName := "creativanta_p808_db_" + suffix
+		rolePass := "tmp_pw_" + suffix
+
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		createCmd := exec.CommandContext(ctx, "docker", "exec", "creativanta-p0-postgres-1",
+			"psql", "-U", "creativanta_dev", "-d", "creativanta_dev", "-v", "ON_ERROR_STOP=1",
+			"-c", fmt.Sprintf("CREATE ROLE %s WITH LOGIN SUPERUSER PASSWORD '%s';", roleName, rolePass),
+			"-c", fmt.Sprintf("CREATE DATABASE %s OWNER %s;", dbName, roleName),
+		)
+		if err := createCmd.Run(); err == nil {
+			dsn := fmt.Sprintf("postgres://%s:%s@127.0.0.1:15432/%s?sslmode=disable", roleName, rolePass, dbName)
+			pool, err := pgxpool.New(ctx, dsn)
+			if err == nil && pool.Ping(ctx) == nil {
+				t.Cleanup(func() {
+					pool.Close()
+					cleanCtx, cleanCancel := context.WithTimeout(context.Background(), 10*time.Second)
+					defer cleanCancel()
+					_ = exec.CommandContext(cleanCtx, "docker", "exec", "creativanta-p0-postgres-1",
+						"psql", "-U", "creativanta_dev", "-d", "creativanta_dev",
+						"-c", fmt.Sprintf("DROP DATABASE IF EXISTS %s WITH (FORCE);", dbName),
+						"-c", fmt.Sprintf("DROP ROLE IF EXISTS %s;", roleName),
+					).Run()
+				})
+				return pool
+			}
+			if pool != nil {
+				pool.Close()
+			}
+		}
+	}
+	return nil
+}
+
+func TestP808SecondPassRegression_ReleaseF3_NeverCopiesExpectedToObserved(t *testing.T) {
+	reg, err := rbac.LoadCanonicalBindings(repoRoot(t))
 	if err != nil {
-		return nil
+		t.Fatalf("LoadCanonicalBindings: %v", err)
 	}
-	if err := pool.Ping(ctx); err != nil {
-		pool.Close()
-		return nil
+	svc := internaladmin.NewService(reg)
+	const (
+		superAdminID = "90000000-0000-4000-8000-000000000001"
+		wsA          = "22222222-2222-4222-8222-222222222201"
+		greenDigest  = "sha256:f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3"
+	)
+	if err := svc.RegisterAdmin(internaladmin.InternalAdminRecord{
+		AdminID:      superAdminID,
+		Email:        "super-f3@internal.creativanta.vn",
+		FullName:     "Super Admin F3",
+		PasswordHash: internaladmin.HashAdminPassword("Super-Restore-2026!"),
+		AdminRole:    rbac.AdminRoleSuper,
+		MFASecret:    "JBSWY3DPEHPK3PXP",
+		MFAEnabled:   true,
+		Status:       "active",
+	}); err != nil {
+		t.Fatalf("RegisterAdmin: %v", err)
+	}
+
+	// Case 1: Candidate server only serves /healthz, /readyz, /api/workspaces/discovery, and DiagnosticsService/GetOverview,
+	// while ProfitService/GetSummary, AdminBillingService/GetCreditBalance, and SystemConfigService/GetDashboard are unmounted (404).
+	// Previously (Release F3), ExecuteLiveBlueGreenReleaseSmokeRehearsal copied expectedNetProfitMicro and expectedCreditsBalance
+	// into SmokeObservedNetProfitMicro and SmokeObservedCreditsBalance, creating a false release pass!
+	unmountedFinanceServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/healthz":
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"status":"alive","role":"api"}`))
+		case "/readyz":
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"status":"ready","role":"api"}`))
+		case "/api/workspaces/discovery":
+			if r.Header.Get("Authorization") != "Bearer valid-smoke-token" {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"workspaces":[{"workspace_id":"` + wsA + `","name":"Primary"}]}`))
+		case "/creativanta.admin.v1.DiagnosticsService/GetOverview":
+			if r.Header.Get("Authorization") != "Bearer valid-smoke-token" {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"workspaceId":{"value":"` + wsA + `"},"overallStatus":"DIAGNOSTIC_HEALTH_STATUS_HEALTHY","totalCategoriesCount":4,"healthyCategoriesCount":4}`))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer unmountedFinanceServer.Close()
+
+	proxy := &mockDisposableProxyTarget{}
+	verdict, err := svc.ExecuteLiveBlueGreenReleaseSmokeRehearsal(
+		context.Background(),
+		superAdminID,
+		"green",
+		greenDigest,
+		unmountedFinanceServer.URL,
+		"valid-smoke-token",
+		wsA,
+		15000000000,
+		2420,
+		proxy,
+	)
+	if !errors.Is(err, internaladmin.ErrReleaseSmokeFailed) || verdict.FailureCode != "SMOKE_METRICS_UNOBSERVED" {
+		t.Fatalf("Release F3 regression: expected ErrReleaseSmokeFailed [SMOKE_METRICS_UNOBSERVED] when finance/billing/audit endpoints are unmounted, got err=%v verdict=%+v", err, verdict)
+	}
+	if verdict.CandidatePromoted || !verdict.RollbackTriggered || verdict.ProxyUpstreamSwitched || proxy.switchedSlot != "" {
+		t.Fatalf("Release F3 regression: unmounted finance/billing endpoints must fail closed and trigger rollback, got verdict=%+v proxy=%+v", verdict, proxy)
+	}
+
+	// Case 2: Empty in-memory diagnostics (totalCategoriesCount == 0) or non-zero unknownExternalEffectsCount
+	// must fail closed with SMOKE_DIAGNOSTICS_UNHEALTHY.
+	var (
+		diagPayload   = `{"workspaceId":{"value":"` + wsA + `"},"overallStatus":"DIAGNOSTIC_HEALTH_STATUS_HEALTHY","totalCategoriesCount":0,"healthyCategoriesCount":0}`
+		profitPayload = `{"snapshot":{"workspaceId":"` + wsA + `","isIncomplete":false,"unknownRequiredComponentsCount":0,"netProfit":{"currencyCode":"VND","amount":"15000.00"}}}`
+		creditPayload = `{"balance":{"workspaceId":{"value":"` + wsA + `"},"totalRemaining":"2420"}}`
+		sysPayload    = `{"maintenanceMode":false,"activeKillSwitchesCount":0,"auditLogEntriesCount":"2","auditSequenceIntact":true}`
+	)
+	configurableSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/healthz":
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"status":"alive","role":"api"}`))
+		case "/readyz":
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"status":"ready","role":"api"}`))
+		case "/api/workspaces/discovery":
+			if r.Header.Get("Authorization") != "Bearer valid-smoke-token" {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"workspaces":[{"workspace_id":"` + wsA + `","name":"Primary"}]}`))
+		case "/creativanta.admin.v1.DiagnosticsService/GetOverview":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(diagPayload))
+		case "/creativanta.finance.v1.ProfitService/GetSummary":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(profitPayload))
+		case "/creativanta.admin.v1.AdminBillingService/GetCreditBalance":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(creditPayload))
+		case "/creativanta.admin.v1.SystemConfigService/GetDashboard":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(sysPayload))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer configurableSrv.Close()
+
+	verdict, err = svc.ExecuteLiveBlueGreenReleaseSmokeRehearsal(
+		context.Background(),
+		superAdminID,
+		"green",
+		greenDigest,
+		configurableSrv.URL,
+		"valid-smoke-token",
+		wsA,
+		15000000000,
+		2420,
+		proxy,
+	)
+	if !errors.Is(err, internaladmin.ErrReleaseSmokeFailed) || verdict.FailureCode != "SMOKE_DIAGNOSTICS_UNHEALTHY" || verdict.CandidatePromoted {
+		t.Fatalf("expected SMOKE_DIAGNOSTICS_UNHEALTHY on empty in-memory diagnostics (totalCategories=0), got err=%v verdict=%+v", err, verdict)
+	}
+
+	// Restore healthy diagnostics, then test mismatched observed profit ("50.00" vs expected 15000000000 micro-units).
+	diagPayload = `{"workspaceId":{"value":"` + wsA + `"},"overallStatus":"DIAGNOSTIC_HEALTH_STATUS_HEALTHY","totalCategoriesCount":4,"healthyCategoriesCount":4}`
+	profitPayload = `{"snapshot":{"workspaceId":"` + wsA + `","isIncomplete":false,"unknownRequiredComponentsCount":0,"netProfit":{"currencyCode":"VND","amount":"50.00"}}}`
+	verdict, err = svc.ExecuteLiveBlueGreenReleaseSmokeRehearsal(
+		context.Background(),
+		superAdminID,
+		"green",
+		greenDigest,
+		configurableSrv.URL,
+		"valid-smoke-token",
+		wsA,
+		15000000000,
+		2420,
+		proxy,
+	)
+	if !errors.Is(err, internaladmin.ErrReleaseSmokeFailed) || verdict.FailureCode != "SMOKE_PROFIT_LEDGER_MISMATCH" || verdict.CandidatePromoted {
+		t.Fatalf("expected SMOKE_PROFIT_LEDGER_MISMATCH on mismatched observed profit, got err=%v verdict=%+v", err, verdict)
+	}
+
+	// Restore matching profit, then test mismatched observed credits ("2000" vs expected 2420).
+	profitPayload = `{"snapshot":{"workspaceId":"` + wsA + `","isIncomplete":false,"unknownRequiredComponentsCount":0,"netProfit":{"currencyCode":"VND","amount":"15000.00"}}}`
+	creditPayload = `{"balance":{"workspaceId":{"value":"` + wsA + `"},"totalRemaining":"2000"}}`
+	verdict, err = svc.ExecuteLiveBlueGreenReleaseSmokeRehearsal(
+		context.Background(),
+		superAdminID,
+		"green",
+		greenDigest,
+		configurableSrv.URL,
+		"valid-smoke-token",
+		wsA,
+		15000000000,
+		2420,
+		proxy,
+	)
+	if !errors.Is(err, internaladmin.ErrReleaseSmokeFailed) || verdict.FailureCode != "SMOKE_CREDITS_BALANCE_MISMATCH" || verdict.CandidatePromoted {
+		t.Fatalf("expected SMOKE_CREDITS_BALANCE_MISMATCH on mismatched observed credit balance, got err=%v verdict=%+v", err, verdict)
+	}
+
+	// Restore matching credits, then test broken audit sequence on SystemConfigService/GetDashboard.
+	creditPayload = `{"balance":{"workspaceId":{"value":"` + wsA + `"},"totalRemaining":"2420"}}`
+	sysPayload = `{"maintenanceMode":false,"activeKillSwitchesCount":0,"auditLogEntriesCount":"2","auditSequenceIntact":false}`
+	verdict, err = svc.ExecuteLiveBlueGreenReleaseSmokeRehearsal(
+		context.Background(),
+		superAdminID,
+		"green",
+		greenDigest,
+		configurableSrv.URL,
+		"valid-smoke-token",
+		wsA,
+		15000000000,
+		2420,
+		proxy,
+	)
+	if !errors.Is(err, internaladmin.ErrReleaseSmokeFailed) || verdict.FailureCode != "SMOKE_METRICS_UNOBSERVED" || verdict.CandidatePromoted {
+		t.Fatalf("expected SMOKE_METRICS_UNOBSERVED when candidate auditSequenceIntact=false, got err=%v verdict=%+v", err, verdict)
+	}
+
+	// Case 3: /smoke endpoint that fails to reject unauthenticated requests (returns 200 OK without Bearer token)
+	// or omits net_profit_micro / credits_balance in JSON must fail closed.
+	unprotectedSmokeSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/healthz":
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"status":"ok"}`))
+		case "/readyz":
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"status":"ready"}`))
+		case "/smoke":
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"workspace_id":"` + wsA + `","net_profit_micro":15000000000,"credits_balance":2420,"audit_sequence_intact":true}`))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer unprotectedSmokeSrv.Close()
+
+	verdict, err = svc.ExecuteLiveBlueGreenReleaseSmokeRehearsal(
+		context.Background(),
+		superAdminID,
+		"green",
+		greenDigest,
+		unprotectedSmokeSrv.URL,
+		"valid-smoke-token",
+		wsA,
+		15000000000,
+		2420,
+		proxy,
+	)
+	if !errors.Is(err, internaladmin.ErrReleaseSmokeFailed) || verdict.FailureCode != "SMOKE_AUTH_UNAUTHORIZED" || verdict.CandidatePromoted {
+		t.Fatalf("expected SMOKE_AUTH_UNAUTHORIZED when /smoke accepts unauthenticated requests, got err=%v verdict=%+v", err, verdict)
+	}
+}
+
+func TestP808SecondPassRegression_ReleaseF4DataF9_DeletedTempFixtureRejected(t *testing.T) {
+	pool := openOptionalPostgresForRehearsalTest(t)
+	if pool == nil {
+		t.Skip("PostgreSQL not available for Release F4 / Data F9 test")
+	}
+	reg, err := rbac.LoadCanonicalBindings(repoRoot(t))
+	if err != nil {
+		t.Fatalf("LoadCanonicalBindings: %v", err)
+	}
+	svc := internaladmin.NewService(reg)
+	now := time.Date(2026, 11, 4, 21, 0, 0, 0, time.UTC)
+	svc.Now = func() time.Time { return now }
+	const (
+		superAdminID = "90000000-0000-4000-8000-000000000001"
+		wsA          = "22222222-2222-4222-8222-222222222201"
+		wsB          = "22222222-2222-4222-8222-222222222202"
+		ownerA       = "11111111-1111-4111-8111-111111111101"
+		ownerB       = "11111111-1111-4111-8111-111111111102"
+	)
+	if err := svc.RegisterAdmin(internaladmin.InternalAdminRecord{
+		AdminID:      superAdminID,
+		Email:        "super-f4@internal.creativanta.vn",
+		FullName:     "Super Admin F4",
+		PasswordHash: internaladmin.HashAdminPassword("Super-Restore-2026!"),
+		AdminRole:    rbac.AdminRoleSuper,
+		MFASecret:    "JBSWY3DPEHPK3PXP",
+		MFAEnabled:   true,
+		Status:       "active",
+	}); err != nil {
+		t.Fatalf("RegisterAdmin: %v", err)
+	}
+
+	prodSnap := internaladmin.DatabaseSnapshot{
+		SnapshotID:     "20261104T210000Z-p808-f4",
+		Environment:    "production",
+		CreatedAt:      now,
+		WALPositionLSN: "0/18B4F28",
+		Workspaces: []internaladmin.WorkspaceSnapshot{
+			{
+				WorkspaceID:        wsA,
+				Name:               "Creator Studio Alpha",
+				Slug:               "creator-studio-alpha",
+				OwnerUserID:        ownerA,
+				AICreditsRemaining: 2420,
+				Status:             "active",
+			},
+			{
+				WorkspaceID:        wsB,
+				Name:               "Brand Commerce Beta",
+				Slug:               "brand-commerce-beta",
+				OwnerUserID:        ownerB,
+				AICreditsRemaining: 5000,
+				Status:             "active",
+			},
+		},
+		FinancialPostings: []internaladmin.FinancialPostingSnapshot{
+			{
+				PostingID:      "30000000-0000-4000-8000-000000000001",
+				WorkspaceID:    wsA,
+				AccountCode:    "1100_CASH_CLEARING",
+				Direction:      "debit",
+				AmountMicro:    15000000000,
+				Currency:       "VND",
+				IdempotencyKey: "idem-post-1",
+				CreatedAt:      now.Add(-10 * time.Minute),
+			},
+			{
+				PostingID:      "30000000-0000-4000-8000-000000000002",
+				WorkspaceID:    wsA,
+				AccountCode:    "4000_MERCHANT_REVENUE",
+				Direction:      "credit",
+				AmountMicro:    15000000000,
+				Currency:       "VND",
+				IdempotencyKey: "idem-post-1",
+				CreatedAt:      now.Add(-10 * time.Minute),
+			},
+		},
+		AICreditLots: []internaladmin.AICreditLotSnapshot{
+			{
+				LotID:            "40000000-0000-4000-8000-000000000001",
+				WorkspaceID:      wsA,
+				InitialCredits:   3000,
+				RemainingCredits: 2420,
+				LotType:          "subscription_monthly",
+				ExpiresAt:        now.Add(20 * 24 * time.Hour),
+			},
+			{
+				LotID:            "40000000-0000-4000-8000-000000000002",
+				WorkspaceID:      wsB,
+				InitialCredits:   5000,
+				RemainingCredits: 5000,
+				LotType:          "topup_pack",
+				ExpiresAt:        now.Add(90 * 24 * time.Hour),
+			},
+		},
+		EvidenceObjects: []internaladmin.EvidenceObjectSnapshot{
+			{
+				EvidenceID:    "50000000-0000-4000-8000-000000000001",
+				WorkspaceID:   wsA,
+				Category:      "dispute_receipt",
+				ContentSHA256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+				StorageURI:    "s3://creativanta-evidence/wsA/ev1.pdf",
+				RetentionLock: now.Add(365 * 24 * time.Hour),
+			},
+		},
+		AuditEntries: []internaladmin.AuditSequenceEntrySnapshot{
+			{
+				AuditID:        "60000000-0000-4000-8000-000000000001",
+				SequenceNumber: 1,
+				EntryHash:      "a111111111111111111111111111111111111111111111111111111111111111",
+				AdminID:        superAdminID,
+				Action:         "admin.login",
+				CreatedAt:      now.Add(-30 * time.Minute),
+			},
+		},
+	}
+	prodArtifact, err := internaladmin.CreateVerifiedBackupSnapshot(t.TempDir(), prodSnap)
+	if err != nil {
+		t.Fatalf("CreateVerifiedBackupSnapshot: %v", err)
+	}
+
+	// 1. Temporary fixtures (empty TargetSchema, pg_temp*, or TempFixtureOnly=true) MUST be rejected with ErrOperationalTargetRequired
+	// for production and staging snapshots.
+	for _, tc := range []struct {
+		name   string
+		target *internaladmin.PostgresDisposableDBTarget
+	}{
+		{
+			name:   "empty_schema",
+			target: &internaladmin.PostgresDisposableDBTarget{Pool: pool},
+		},
+		{
+			name:   "pg_temp_schema",
+			target: &internaladmin.PostgresDisposableDBTarget{Pool: pool, TargetSchema: "pg_temp"},
+		},
+		{
+			name:   "temp_fixture_only_flag",
+			target: &internaladmin.PostgresDisposableDBTarget{Pool: pool, TargetSchema: "rehearsal_p808_temp_flag", TempFixtureOnly: true},
+		},
+	} {
+		if rec, err := svc.ExecuteDisposableRestoreRehearsal(context.Background(), superAdminID, prodArtifact, 0, tc.target); !errors.Is(err, internaladmin.ErrOperationalTargetRequired) {
+			t.Fatalf("Release F4 / Data F9 regression [%s]: expected ErrOperationalTargetRequired, got err=%v rec=%+v", tc.name, err, rec)
+		}
+	}
+
+	// 2. Reserved or invalid schema names ("public", "pg_catalog", SQL injection attempt) must fail closed with ErrRestoreIntegrityFailed.
+	for _, invalidSchema := range []string{"public", "pg_catalog", "information_schema", "rehearsal; DROP SCHEMA public"} {
+		if _, err := svc.ExecuteDisposableRestoreRehearsal(context.Background(), superAdminID, prodArtifact, 0, &internaladmin.PostgresDisposableDBTarget{
+			Pool:         pool,
+			TargetSchema: invalidSchema,
+		}); !errors.Is(err, internaladmin.ErrRestoreIntegrityFailed) {
+			t.Fatalf("expected ErrRestoreIntegrityFailed for invalid/reserved schema %q, got %v", invalidSchema, err)
+		}
+	}
+
+	// 3. Persistent TargetSchema ("rehearsal_p808_verify") materializes permanent tables with FORCE RLS,
+	// commits them, verifies them on post-commit transactions, and keeps them queryable after ExecuteDisposableRestoreRehearsal returns!
+	persistentTarget := &internaladmin.PostgresDisposableDBTarget{
+		Pool:         pool,
+		TargetSchema: "rehearsal_p808_verify",
 	}
 	t.Cleanup(func() {
-		pool.Close()
+		_ = persistentTarget.Cleanup(context.Background())
 	})
-	return pool
+
+	rec, err := svc.ExecuteDisposableRestoreRehearsal(context.Background(), superAdminID, prodArtifact, 0, persistentTarget)
+	if err != nil {
+		t.Fatalf("ExecuteDisposableRestoreRehearsal with persistent schema failed: %v", err)
+	}
+	if rec.ExecutionMode != internaladmin.RehearsalModeDisposableTargetVerified ||
+		rec.IsSimulation ||
+		!rec.OperationalRestorePerformed ||
+		!rec.PersistentSchemaVerified ||
+		!rec.RLSIsolationVerified ||
+		!rec.PostCommitSmokeVerified ||
+		!rec.SmokePassed ||
+		rec.RestoredSchemaName != "rehearsal_p808_verify" {
+		t.Fatalf("expected verified persistent restore record, got %+v", rec)
+	}
+	if rec.ProductionDRGateApproved || rec.ProductionReleaseGateApproved {
+		t.Fatalf("external production DR/release gates must remain explicitly unapproved, got %+v", rec)
+	}
+
+	// 4. Independent post-restore verification on a brand-new transaction AFTER ExecuteDisposableRestoreRehearsal returned:
+	// Prove that the restored tables were NOT dropped on commit and that RLS is enforced!
+	verifyTx, err := pool.Begin(context.Background())
+	if err != nil {
+		t.Fatalf("begin independent post-restore verification tx: %v", err)
+	}
+	defer func() { _ = verifyTx.Rollback(context.Background()) }()
+
+	if _, err := verifyTx.Exec(context.Background(), `SET LOCAL ROLE rehearsal_p808_rls_probe`); err != nil {
+		t.Fatalf("assume non-superuser role on post-restore schema: %v", err)
+	}
+	if _, err := verifyTx.Exec(context.Background(), `SELECT set_config('app.current_tenant_id', '', true)`); err != nil {
+		t.Fatalf("clear tenant context: %v", err)
+	}
+	var emptyTenantWSCount int
+	if err := verifyTx.QueryRow(context.Background(), `SELECT COUNT(*) FROM rehearsal_p808_verify.workspaces`).Scan(&emptyTenantWSCount); err != nil {
+		t.Fatalf("query workspaces with empty tenant context after restore: %v", err)
+	}
+	if emptyTenantWSCount != 0 {
+		t.Fatalf("expected 0 visible workspaces with empty tenant context under RLS, got %d", emptyTenantWSCount)
+	}
+
+	if _, err := verifyTx.Exec(context.Background(), `SELECT set_config('app.current_tenant_id', $1, true)`, wsA); err != nil {
+		t.Fatalf("set tenant context to wsA: %v", err)
+	}
+	var wsAVisibleCount int
+	if err := verifyTx.QueryRow(context.Background(), `SELECT COUNT(*) FROM rehearsal_p808_verify.workspaces`).Scan(&wsAVisibleCount); err != nil {
+		t.Fatalf("query workspaces with wsA tenant context after restore: %v", err)
+	}
+	if wsAVisibleCount != 1 {
+		t.Fatalf("expected exactly 1 visible workspace for wsA (out of 2 restored workspaces), got %d", wsAVisibleCount)
+	}
 }
