@@ -56,15 +56,17 @@ func (s *Service) SetMembershipRoleResolver(resolver MembershipRoleResolver) {
 }
 
 func (s *Service) SetMemberRole(workspaceID, userID, role string, active bool) {
+	if mut, ok := s.store.(WorkspaceMembershipMutator); ok && mut != nil {
+		mut.SetMemberRole(workspaceID, userID, role, active)
+	}
 	s.runtime.SetMemberRole(workspaceID, userID, role, active)
 }
 
 func (s *Service) RevokeMemberAccess(workspaceID, userID string) {
+	if mut, ok := s.store.(WorkspaceMembershipMutator); ok && mut != nil {
+		mut.RevokeMemberAccess(workspaceID, userID)
+	}
 	s.runtime.SetMemberRole(workspaceID, userID, "", false)
-}
-
-func (s *Service) recordCallerRole(caller CallerContext) {
-	s.runtime.RecordObservedMemberRole(caller.WorkspaceID, caller.UserID, caller.WorkspaceRole)
 }
 
 func verifyCallerPrincipal(ctx context.Context, caller CallerContext) error {
@@ -181,7 +183,6 @@ func (s *Service) LaunchAgent(
 		CreatedBy:              caller.UserID,
 		CreatedByRole:          caller.WorkspaceRole,
 	}
-	s.recordCallerRole(caller)
 
 	// Preflight checks
 	warnings, requiresApproval, err := s.runtime.PreflightPlan(ctx, caller, run, s.capabilities)

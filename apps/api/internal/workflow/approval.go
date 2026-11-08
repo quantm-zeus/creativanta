@@ -91,8 +91,10 @@ func (am *ApprovalManager) CreateApprovalRequest(
 
 	rpcName := ""
 	inputJSON := "{}"
+	actionNodeID := ""
 	var budgetQuote float64 = 1.0
 	if actionNode != nil {
+		actionNodeID = strings.TrimSpace(actionNode.NodeID)
 		if actionNode.ActionConfig != nil {
 			rpcName = actionNode.ActionConfig.RPCName
 			inputJSON = actionNode.ActionConfig.InputJSON
@@ -122,6 +124,7 @@ func (am *ApprovalManager) CreateApprovalRequest(
 	reasonMeta := map[string]any{
 		"workflow_id":        wf.WorkflowID,
 		"node_id":            node.NodeID,
+		"action_node_id":     actionNodeID,
 		"workflow_version":   wf.Version,
 		"action_hash":        actionHash,
 		"target_objects":     targetObjects,
@@ -146,6 +149,7 @@ func (am *ApprovalManager) CreateApprovalRequest(
 		ExpiresAt:         &expiresAt,
 		WorkflowID:        wf.WorkflowID,
 		NodeID:            node.NodeID,
+		ActionNodeID:      actionNodeID,
 		WorkflowVersion:   wf.Version,
 		ActionHash:        actionHash,
 		TargetObjects:     targetObjects,
@@ -180,6 +184,21 @@ func hydrateApprovalMetadata(req *ApprovalRequest) {
 	if req.NodeID == "" {
 		if v, ok := meta["node_id"].(string); ok {
 			req.NodeID = v
+		}
+	}
+	if req.ActionNodeID == "" {
+		if v, ok := meta["action_node_id"].(string); ok {
+			req.ActionNodeID = strings.TrimSpace(v)
+		}
+	}
+	if req.ConsumedByNodeID == "" {
+		if v, ok := meta["consumed_by_node_id"].(string); ok {
+			req.ConsumedByNodeID = strings.TrimSpace(v)
+		}
+	}
+	if req.ConsumedByStepID == "" {
+		if v, ok := meta["consumed_by_step_id"].(string); ok {
+			req.ConsumedByStepID = strings.TrimSpace(v)
 		}
 	}
 	if req.WorkflowVersion == 0 {
@@ -246,6 +265,9 @@ func syncApprovalMetadataToReason(req *ApprovalRequest) {
 	}
 	meta["workflow_id"] = req.WorkflowID
 	meta["node_id"] = req.NodeID
+	meta["action_node_id"] = req.ActionNodeID
+	meta["consumed_by_node_id"] = req.ConsumedByNodeID
+	meta["consumed_by_step_id"] = req.ConsumedByStepID
 	meta["workflow_version"] = req.WorkflowVersion
 	meta["action_hash"] = req.ActionHash
 	meta["target_objects"] = req.TargetObjects
@@ -400,10 +422,12 @@ func (am *ApprovalManager) Approve(
 
 	// Check if the next action node configuration or target objects changed
 	currentActionHash := req.ActionHash
+	var matchedDownstreamActionNodeID string
 	for _, edge := range wf.ActionChain.Edges {
 		if edge.FromNodeID == req.NodeID {
 			for _, n := range wf.ActionChain.Nodes {
 				if n.NodeID == edge.ToNodeID && n.NodeType == NodeTypeAction {
+					matchedDownstreamActionNodeID = strings.TrimSpace(n.NodeID)
 					cfg := n.ActionConfig
 					if cfg == nil {
 						cfg = parseActionConfigFromMap(n.Config)
@@ -422,7 +446,7 @@ func (am *ApprovalManager) Approve(
 		}
 	}
 
-	if currentActionHash != req.ActionHash {
+	if (strings.TrimSpace(req.ActionNodeID) != "" && matchedDownstreamActionNodeID != strings.TrimSpace(req.ActionNodeID)) || currentActionHash != req.ActionHash {
 		req.Status = "cancelled"
 		req.RejectionReason = "Action configuration, target objects, or inputs modified after approval requested"
 		req.UpdatedAt = now

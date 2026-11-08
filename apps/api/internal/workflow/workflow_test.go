@@ -1453,6 +1453,8 @@ func TestP702_Resume_NeverReplaysConfirmedEffect(t *testing.T) {
 		WorkspaceID:   "ws-resume-1",
 		WorkspaceRole: "manager",
 	}
+	store.SetMemberRole(editor.WorkspaceID, editor.UserID, editor.WorkspaceRole, true)
+	store.SetMemberRole(manager.WorkspaceID, manager.UserID, manager.WorkspaceRole, true)
 
 	// Graph: Trigger -> Action1 (ReserveStock) -> ApprovalGate -> Action2 (Publish) -> Terminal
 	graph := workflow.WorkflowGraph{
@@ -2279,6 +2281,9 @@ func TestAI11_ApproverAllowlist_Quorum_And_DuplicateVotePrevention(t *testing.T)
 	mgr1 := workflow.CallerContext{UserID: "usr-mgr-1", WorkspaceID: wsID, WorkspaceRole: "manager"}
 	mgr2 := workflow.CallerContext{UserID: "usr-mgr-2", WorkspaceID: wsID, WorkspaceRole: "manager"}
 	mgrOutsider := workflow.CallerContext{UserID: "usr-mgr-outsider", WorkspaceID: wsID, WorkspaceRole: "manager"}
+	store.SetMemberRole(wsID, editor.UserID, editor.WorkspaceRole, true)
+	store.SetMemberRole(wsID, mgr1.UserID, mgr1.WorkspaceRole, true)
+	store.SetMemberRole(wsID, mgr2.UserID, mgr2.WorkspaceRole, true)
 
 	graph := workflow.WorkflowGraph{
 		SchemaVersion: 1,
@@ -2880,5 +2885,213 @@ func TestS5_F11_WorkflowRechecksInitiatorLiveRoleAndMembershipOnResumeAndApprova
 	if dispatcher.GetDispatchedCount(deleteRPC) != 0 {
 		t.Fatalf("F11 CRITICAL VIOLATION: DeleteProduct executed after initiator tenant access was revoked! count=%d",
 			dispatcher.GetDispatchedCount(deleteRPC))
+	}
+}
+
+func TestR3_WorkflowLiveMembership_FailsClosedWithoutResolverAndHonorsAuthoritativeStore(t *testing.T) {
+	ctx := context.Background()
+	deleteRPC := "creativanta.commerce.v1.ProductService/DeleteProduct"
+
+	buildPrivilegedApprovalGraph := func(approverID string) workflow.WorkflowGraph {
+		return workflow.WorkflowGraph{
+			SchemaVersion: 1,
+			Nodes: []workflow.WorkflowNode{
+				{NodeID: "trig", NodeType: workflow.NodeTypeTrigger, TriggerConfig: &workflow.TriggerConfig{Type: workflow.TriggerTypeManual}},
+				{
+					NodeID:   "appr",
+					NodeType: workflow.NodeTypeApproval,
+					ApprovalConfig: &workflow.ApprovalConfig{
+						ApproverIDs:              []string{approverID},
+						RequiredApprovals:        1,
+						ExpiresAtDurationSeconds: 3600,
+					},
+				},
+				{
+					NodeID:   "act_del",
+					NodeType: workflow.NodeTypeAction,
+					ActionConfig: &workflow.ActionConfig{
+						RPCName:   deleteRPC,
+						InputJSON: `{"id":"prod-r3-1"}`,
+					},
+				},
+				{NodeID: "term", NodeType: workflow.NodeTypeTerminal, TerminalConfig: &workflow.TerminalConfig{Outcome: "succeeded"}},
+			},
+			Edges: []workflow.WorkflowEdge{
+				{FromNodeID: "trig", ToNodeID: "appr"},
+				{FromNodeID: "appr", ToNodeID: "act_del", Branch: workflow.EdgeBranchSuccess},
+				{FromNodeID: "act_del", ToNodeID: "term"},
+			},
+		}
+	}
+
+	// Subtest 1: No authoritative membership resolver or store record -> cross-actor Approve MUST fail closed (no fallback to launch/observed role).
+	{
+		store := workflow.NewMemoryStore()
+		dispatcher := workflow.NewMockActionDispatcher()
+		svc := workflow.NewService(store, nil)
+		svc.SetActionDispatcher(dispatcher)
+
+		wsID := "22222222-2222-4222-8222-222222222301"
+		admin := workflow.CallerContext{UserID: "usr-admin-r3-a", WorkspaceID: wsID, WorkspaceRole: "admin"}
+		manager := workflow.CallerContext{UserID: "usr-mgr-r3-a", WorkspaceID: wsID, WorkspaceRole: "manager"}
+
+		graph := buildPrivilegedApprovalGraph(manager.UserID)
+		wf, err := svc.CreateWorkflow(ctx, admin, "R3 Unverified Membership Flow", "Desc", "custom", *graph.Nodes[0].TriggerConfig, graph, nil)
+		if err != nil {
+			t.Fatalf("CreateWorkflow: %v", err)
+		}
+		_, _ = svc.ActivateWorkflow(ctx, manager, wf.WorkflowID)
+
+		run, err := svc.RunWorkflow(ctx, admin, wf.WorkflowID, nil)
+		if err != nil || run.Status != workflow.WorkflowRunStatusWaitingApproval {
+			t.Fatalf("expected waiting_approval, got run=%+v err=%v", run, err)
+		}
+
+		pending, _ := svc.ApprovalManager().FindPendingApprovalsByRun(ctx, wsID, run.RunID)
+		if len(pending) != 1 {
+			t.Fatalf("expected 1 pending approval, got %d", len(pending))
+		}
+		_, resumed, err := svc.Approve(ctx, manager, pending[0].RequestID)
+		if err != nil {
+			t.Fatalf("Approve: %v", err)
+		}
+		if resumed == nil || resumed.Status != workflow.WorkflowRunStatusFailed || resumed.ResultSummary["failure_type"] != "PERMISSION_DENIED" {
+			t.Fatalf("R3 VIOLATION: expected cross-actor Approve without authoritative membership to fail closed with PERMISSION_DENIED, got %+v", resumed)
+		}
+		if dispatcher.GetDispatchedCount(deleteRPC) != 0 {
+			t.Fatalf("R3 VIOLATION: privileged action dispatched without authoritative membership verification!")
+		}
+	}
+
+	// Subtest 2: Authoritative store membership changed directly (without calling svc.SetMemberRole) -> Approve MUST block privileged action.
+	{
+		store := workflow.NewMemoryStore()
+		dispatcher := workflow.NewMockActionDispatcher()
+		svc := workflow.NewService(store, nil)
+		svc.SetActionDispatcher(dispatcher)
+
+		wsID := "22222222-2222-4222-8222-222222222302"
+		admin := workflow.CallerContext{UserID: "usr-admin-r3-b", WorkspaceID: wsID, WorkspaceRole: "admin"}
+		manager := workflow.CallerContext{UserID: "usr-mgr-r3-b", WorkspaceID: wsID, WorkspaceRole: "manager"}
+
+		// Seed authoritative membership in store
+		store.SetMemberRole(wsID, admin.UserID, "admin", true)
+		store.SetMemberRole(wsID, manager.UserID, "manager", true)
+
+		graph := buildPrivilegedApprovalGraph(manager.UserID)
+		wf, err := svc.CreateWorkflow(ctx, admin, "R3 Store Mutation Flow", "Desc", "custom", *graph.Nodes[0].TriggerConfig, graph, nil)
+		if err != nil {
+			t.Fatalf("CreateWorkflow: %v", err)
+		}
+		_, _ = svc.ActivateWorkflow(ctx, manager, wf.WorkflowID)
+
+		run1, err := svc.RunWorkflow(ctx, admin, wf.WorkflowID, nil)
+		if err != nil || run1.Status != workflow.WorkflowRunStatusWaitingApproval {
+			t.Fatalf("expected waiting_approval, got run=%+v err=%v", run1, err)
+		}
+
+		// Mutate membership in the authoritative store directly (do NOT call svc.SetMemberRole)
+		store.SetMemberRole(wsID, admin.UserID, "editor", true)
+
+		pending1, _ := svc.ApprovalManager().FindPendingApprovalsByRun(ctx, wsID, run1.RunID)
+		_, resumed1, err := svc.Approve(ctx, manager, pending1[0].RequestID)
+		if err != nil {
+			t.Fatalf("Approve run1: %v", err)
+		}
+		if resumed1 == nil || resumed1.Status != workflow.WorkflowRunStatusFailed || resumed1.ResultSummary["failure_type"] != "PERMISSION_DENIED" {
+			t.Fatalf("R3 VIOLATION: expected store demotion (without svc.SetMemberRole) to block privileged action, got %+v", resumed1)
+		}
+		if dispatcher.GetDispatchedCount(deleteRPC) != 0 {
+			t.Fatalf("R3 VIOLATION: privileged action dispatched after authoritative store demotion!")
+		}
+	}
+}
+
+func TestR5_ApprovalSingleUsePerActionNode_BlocksSecondIdenticalSensitiveAction(t *testing.T) {
+	ctx := context.Background()
+	store := workflow.NewMemoryStore()
+	dispatcher := workflow.NewMockActionDispatcher()
+	svc := workflow.NewService(store, nil)
+	svc.SetActionDispatcher(dispatcher)
+
+	wsID := "22222222-2222-4222-8222-222222222505"
+	editor := workflow.CallerContext{UserID: "usr-editor-r5", WorkspaceID: wsID, WorkspaceRole: "editor"}
+	manager := workflow.CallerContext{UserID: "usr-mgr-r5", WorkspaceID: wsID, WorkspaceRole: "manager"}
+	store.SetMemberRole(wsID, editor.UserID, "editor", true)
+	store.SetMemberRole(wsID, manager.UserID, "manager", true)
+
+	publishRPC := "creativanta.publish.v1.PublishService/Publish"
+	sameInput := `{"platform":"tiktok","title":"Identical Sensitive Payload"}`
+
+	// Graph: trig -> appr -> act_a -> act_b -> term
+	// Both act_a and act_b invoke the exact same sensitive RPC with the exact same InputJSON,
+	// but only act_a is gated by appr; act_b has no dedicated approval gate.
+	graph := workflow.WorkflowGraph{
+		SchemaVersion: 1,
+		Nodes: []workflow.WorkflowNode{
+			{NodeID: "trig", NodeType: workflow.NodeTypeTrigger, TriggerConfig: &workflow.TriggerConfig{Type: workflow.TriggerTypeManual}},
+			{
+				NodeID:   "appr",
+				NodeType: workflow.NodeTypeApproval,
+				ApprovalConfig: &workflow.ApprovalConfig{
+					ApproverIDs:              []string{manager.UserID},
+					RequiredApprovals:        1,
+					ExpiresAtDurationSeconds: 3600,
+				},
+			},
+			{
+				NodeID:   "act_a",
+				NodeType: workflow.NodeTypeAction,
+				ActionConfig: &workflow.ActionConfig{
+					RPCName:   publishRPC,
+					InputJSON: sameInput,
+				},
+			},
+			{
+				NodeID:   "act_b",
+				NodeType: workflow.NodeTypeAction,
+				ActionConfig: &workflow.ActionConfig{
+					RPCName:   publishRPC,
+					InputJSON: sameInput,
+				},
+			},
+			{NodeID: "term", NodeType: workflow.NodeTypeTerminal, TerminalConfig: &workflow.TerminalConfig{Outcome: "succeeded"}},
+		},
+		Edges: []workflow.WorkflowEdge{
+			{FromNodeID: "trig", ToNodeID: "appr"},
+			{FromNodeID: "appr", ToNodeID: "act_a", Branch: workflow.EdgeBranchSuccess},
+			{FromNodeID: "act_a", ToNodeID: "act_b"},
+			{FromNodeID: "act_b", ToNodeID: "term"},
+		},
+	}
+
+	wf, err := svc.CreateWorkflow(ctx, editor, "R5 Single Approval Reuse Prevention", "Desc", "custom", *graph.Nodes[0].TriggerConfig, graph, nil)
+	if err != nil {
+		t.Fatalf("CreateWorkflow: %v", err)
+	}
+	_, _ = svc.ActivateWorkflow(ctx, manager, wf.WorkflowID)
+
+	run, err := svc.RunWorkflow(ctx, editor, wf.WorkflowID, nil)
+	if err != nil || run.Status != workflow.WorkflowRunStatusWaitingApproval {
+		t.Fatalf("expected waiting_approval at appr, got run=%+v err=%v", run, err)
+	}
+
+	pending, _ := svc.ApprovalManager().FindPendingApprovalsByRun(ctx, wsID, run.RunID)
+	if len(pending) != 1 {
+		t.Fatalf("expected 1 pending approval, got %d", len(pending))
+	}
+
+	_, resumed, err := svc.Approve(ctx, manager, pending[0].RequestID)
+	if err != nil {
+		t.Fatalf("Approve: %v", err)
+	}
+	if resumed == nil || resumed.Status != workflow.WorkflowRunStatusFailed {
+		t.Fatalf("R5 VIOLATION: expected run to fail at second unapproved sensitive action node act_b, got %+v", resumed)
+	}
+	if resumed.ResultSummary["failure_type"] != "APPROVAL_REQUIRED" {
+		t.Fatalf("R5 VIOLATION: expected failure_type APPROVAL_REQUIRED on act_b, got %+v", resumed.ResultSummary)
+	}
+	if count := dispatcher.GetDispatchedCount(publishRPC); count != 1 {
+		t.Fatalf("R5 CRITICAL VIOLATION: expected exactly 1 dispatch (for act_a only), got %d dispatches!", count)
 	}
 }

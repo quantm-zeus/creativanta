@@ -11,14 +11,15 @@ import (
 
 // ProviderGenRequest holds the normalized request payload dispatched to AI providers.
 type ProviderGenRequest struct {
-	Prompt           string
-	DurationSeconds  int
-	AspectRatio      string
-	PipelineStrategy string
-	BYOKApiKey       string // User's own key if provided
-	ReferenceURL     string
-	ImageURLs        []string
-	IdempotencyKey   string
+	Prompt             string
+	DurationSeconds    int
+	AspectRatio        string
+	PipelineStrategy   string
+	BYOKApiKey         string // User's own key if provided
+	ReferenceURL       string
+	ImageURLs          []string
+	IdempotencyKey     string
+	OnProviderAccepted func(providerName, providerJobID string)
 }
 
 // ProviderGenResponse is the initial submission acknowledgement from the provider.

@@ -87,20 +87,20 @@ func (s *Service) SetMembershipRoleResolver(resolver MembershipRoleResolver) {
 }
 
 func (s *Service) SetMemberRole(workspaceID, userID, role string, active bool) {
+	if mut, ok := s.store.(WorkspaceMembershipMutator); ok && mut != nil {
+		mut.SetMemberRole(workspaceID, userID, role, active)
+	}
 	if s.engine != nil {
 		s.engine.SetMemberRole(workspaceID, userID, role, active)
 	}
 }
 
 func (s *Service) RevokeMemberAccess(workspaceID, userID string) {
+	if mut, ok := s.store.(WorkspaceMembershipMutator); ok && mut != nil {
+		mut.RevokeMemberAccess(workspaceID, userID)
+	}
 	if s.engine != nil {
 		s.engine.SetMemberRole(workspaceID, userID, "", false)
-	}
-}
-
-func (s *Service) recordCallerRole(caller CallerContext) {
-	if s.engine != nil && strings.TrimSpace(caller.WorkspaceID) != "" && strings.TrimSpace(caller.UserID) != "" && strings.TrimSpace(caller.WorkspaceRole) != "" {
-		s.engine.RecordObservedMemberRole(caller.WorkspaceID, caller.UserID, caller.WorkspaceRole)
 	}
 }
 
@@ -326,7 +326,6 @@ func (s *Service) DeactivateWorkflow(ctx context.Context, caller CallerContext, 
 // ----------------------------------------------------------------------------
 
 func (s *Service) RunWorkflow(ctx context.Context, caller CallerContext, workflowID string, triggerContext map[string]any) (*WorkflowRun, error) {
-	s.recordCallerRole(caller)
 	if err := checkPerm(caller, "workflow:edit"); err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrUnauthorized, err)
 	}
@@ -415,7 +414,7 @@ func (s *Service) RunWorkflow(ctx context.Context, caller CallerContext, workflo
 	}
 
 	if s.engine != nil {
-		executedRun, err := s.engine.ExecuteRun(ctx, caller.WorkspaceID, run.RunID)
+		executedRun, err := s.engine.ExecuteRun(withLiveRequestCaller(ctx, caller), caller.WorkspaceID, run.RunID)
 		if err != nil {
 			return executedRun, err
 		}
@@ -428,7 +427,6 @@ func (s *Service) RunWorkflow(ctx context.Context, caller CallerContext, workflo
 }
 
 func (s *Service) GetRunDetail(ctx context.Context, caller CallerContext, runID string) (*WorkflowRun, []WorkflowRunStep, error) {
-	s.recordCallerRole(caller)
 	if err := checkPerm(caller, "workflow:read"); err != nil {
 		return nil, nil, fmt.Errorf("%w: %v", ErrUnauthorized, err)
 	}
@@ -444,7 +442,6 @@ func (s *Service) GetRunDetail(ctx context.Context, caller CallerContext, runID 
 }
 
 func (s *Service) GetRunLogs(ctx context.Context, caller CallerContext, runID string) ([]any, []WorkflowRunStep, error) {
-	s.recordCallerRole(caller)
 	if err := checkPerm(caller, "workflow:read"); err != nil {
 		return nil, nil, fmt.Errorf("%w: %v", ErrUnauthorized, err)
 	}
@@ -460,7 +457,6 @@ func (s *Service) GetRunLogs(ctx context.Context, caller CallerContext, runID st
 }
 
 func (s *Service) ListRuns(ctx context.Context, caller CallerContext, workflowID, status string, limit, offset int) ([]WorkflowRun, int, error) {
-	s.recordCallerRole(caller)
 	if err := checkPerm(caller, "workflow:read"); err != nil {
 		return nil, 0, fmt.Errorf("%w: %v", ErrUnauthorized, err)
 	}
@@ -602,7 +598,6 @@ func (s *Service) CancelRun(ctx context.Context, caller CallerContext, runID, re
 }
 
 func (s *Service) RetryRun(ctx context.Context, caller CallerContext, runID, repairContext string) (*WorkflowRun, error) {
-	s.recordCallerRole(caller)
 	if err := checkPerm(caller, "workflow:edit"); err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrUnauthorized, err)
 	}
@@ -649,7 +644,6 @@ func (s *Service) RetryRun(ctx context.Context, caller CallerContext, runID, rep
 }
 
 func (s *Service) DismissRun(ctx context.Context, caller CallerContext, runID, reason string) error {
-	s.recordCallerRole(caller)
 	if err := checkPerm(caller, "workflow:edit"); err != nil {
 		return fmt.Errorf("%w: %v", ErrUnauthorized, err)
 	}
@@ -667,7 +661,6 @@ func (s *Service) DismissRun(ctx context.Context, caller CallerContext, runID, r
 }
 
 func (s *Service) SkipStep(ctx context.Context, caller CallerContext, runID, nodeID, reason string) (*WorkflowRunStep, error) {
-	s.recordCallerRole(caller)
 	if err := checkPerm(caller, "workflow:edit"); err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrUnauthorized, err)
 	}
@@ -827,7 +820,6 @@ func (s *Service) ResumeRun(
 	runID string,
 	signal *ResumeSignal,
 ) (*WorkflowRun, error) {
-	s.recordCallerRole(caller)
 	if err := checkPerm(caller, "workflow:edit"); err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrUnauthorized, err)
 	}
@@ -906,7 +898,6 @@ func (s *Service) Approve(
 	caller CallerContext,
 	requestID string,
 ) (*ApprovalRequest, *WorkflowRun, error) {
-	s.recordCallerRole(caller)
 	if s.approvalMgr == nil {
 		return nil, nil, fmt.Errorf("approval manager not initialized")
 	}

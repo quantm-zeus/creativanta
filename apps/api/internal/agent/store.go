@@ -2,9 +2,21 @@ package agent
 
 import (
 	"context"
+	"strings"
 	"sync"
 	"time"
 )
+
+// WorkspaceMembershipStore provides authoritative live membership resolution for a workspace member.
+type WorkspaceMembershipStore interface {
+	ResolveWorkspaceMemberRole(ctx context.Context, workspaceID, userID string) (role string, active bool, found bool, err error)
+}
+
+// WorkspaceMembershipMutator allows tests and administrative reconciliation to update workspace membership in a store.
+type WorkspaceMembershipMutator interface {
+	SetMemberRole(workspaceID, userID, role string, active bool)
+	RevokeMemberAccess(workspaceID, userID string)
+}
 
 // Store defines persistence operations for agent runs, steps, outputs, and audit records.
 type Store interface {
@@ -29,6 +41,7 @@ type MemStore struct {
 	diagnostics map[string][]DiagnosticsRecord // runID -> []DiagnosticsRecord
 	audits      map[string][]AuditRecord       // runID -> []AuditRecord
 	events      []DomainEvent
+	members     map[string]agentMemberState // workspaceID:userID -> agentMemberState
 }
 
 func NewMemStore() *MemStore {
@@ -38,10 +51,49 @@ func NewMemStore() *MemStore {
 		diagnostics: make(map[string][]DiagnosticsRecord),
 		audits:      make(map[string][]AuditRecord),
 		events:      make([]DomainEvent, 0),
+		members:     make(map[string]agentMemberState),
 	}
 }
 
 var _ Store = (*MemStore)(nil)
+var _ WorkspaceMembershipStore = (*MemStore)(nil)
+var _ WorkspaceMembershipMutator = (*MemStore)(nil)
+
+func (s *MemStore) SetMemberRole(workspaceID, userID, role string, active bool) {
+	ws := strings.TrimSpace(workspaceID)
+	uid := strings.TrimSpace(userID)
+	if ws == "" || uid == "" {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.members == nil {
+		s.members = make(map[string]agentMemberState)
+	}
+	s.members[ws+":"+uid] = agentMemberState{
+		role:   strings.TrimSpace(role),
+		active: active,
+	}
+}
+
+func (s *MemStore) RevokeMemberAccess(workspaceID, userID string) {
+	s.SetMemberRole(workspaceID, userID, "", false)
+}
+
+func (s *MemStore) ResolveWorkspaceMemberRole(ctx context.Context, workspaceID, userID string) (string, bool, bool, error) {
+	ws := strings.TrimSpace(workspaceID)
+	uid := strings.TrimSpace(userID)
+	if ws == "" || uid == "" {
+		return "", false, false, nil
+	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	st, ok := s.members[ws+":"+uid]
+	if !ok {
+		return "", false, false, nil
+	}
+	return st.role, st.active, true, nil
+}
 
 func (s *MemStore) CreateRun(ctx context.Context, run *AgentRun) error {
 	s.mu.Lock()

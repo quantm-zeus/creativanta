@@ -212,6 +212,9 @@ func (e *ExecutionEngine) SetMemberRole(workspaceID, userID, role string, active
 	if ws == "" || uid == "" {
 		return
 	}
+	if mut, ok := e.store.(WorkspaceMembershipMutator); ok && mut != nil {
+		mut.SetMemberRole(ws, uid, strings.TrimSpace(role), active)
+	}
 	e.membersMu.Lock()
 	defer e.membersMu.Unlock()
 	if e.memberStates == nil {
@@ -223,31 +226,32 @@ func (e *ExecutionEngine) SetMemberRole(workspaceID, userID, role string, active
 	}
 }
 
-func (e *ExecutionEngine) RecordObservedMemberRole(workspaceID, userID, role string) {
-	ws := strings.TrimSpace(workspaceID)
-	uid := strings.TrimSpace(userID)
-	r := strings.TrimSpace(role)
-	if ws == "" || uid == "" || r == "" {
-		return
+type liveRequestCallerKey struct{}
+
+func withLiveRequestCaller(ctx context.Context, caller CallerContext) context.Context {
+	if ctx == nil {
+		return ctx
 	}
-	e.membersMu.Lock()
-	defer e.membersMu.Unlock()
-	if e.memberStates == nil {
-		e.memberStates = make(map[string]memberMembershipState)
-	}
-	key := ws + ":" + uid
-	if existing, ok := e.memberStates[key]; ok && !existing.active {
-		// Do not implicitly re-activate an explicitly revoked member without SetMemberRole.
-		return
-	}
-	active := !strings.EqualFold(r, "revoked") && !strings.EqualFold(r, "none") && !strings.EqualFold(r, "denied")
-	e.memberStates[key] = memberMembershipState{
-		role:   r,
-		active: active,
-	}
+	return context.WithValue(ctx, liveRequestCallerKey{}, caller)
 }
 
-func (e *ExecutionEngine) resolveLiveActorRole(ctx context.Context, workspaceID, actorUserID, launchRole string) (string, bool, error) {
+func liveRequestCallerFromContext(ctx context.Context) (CallerContext, bool) {
+	if ctx == nil {
+		return CallerContext{}, false
+	}
+	caller, ok := ctx.Value(liveRequestCallerKey{}).(CallerContext)
+	return caller, ok
+}
+
+func isInactiveOrRevokedRole(role string, active bool) bool {
+	trimmed := strings.TrimSpace(role)
+	return !active || trimmed == "" || strings.EqualFold(trimmed, "revoked") || strings.EqualFold(trimmed, "none") || strings.EqualFold(trimmed, "denied")
+}
+
+// resolveLiveActorRole resolves the initiator's current active workspace role from an authoritative
+// membership source (configured MembershipRoleResolver or WorkspaceMembershipStore). It never falls
+// back to a launch-time role snapshot or unverified observed cache on resumed/cross-actor execution (R3).
+func (e *ExecutionEngine) resolveLiveActorRole(ctx context.Context, workspaceID, actorUserID string, isResumed bool) (string, bool, error) {
 	uid := strings.TrimSpace(actorUserID)
 	ws := strings.TrimSpace(workspaceID)
 	if uid == "" || ws == "" {
@@ -264,25 +268,44 @@ func (e *ExecutionEngine) resolveLiveActorRole(ctx context.Context, workspaceID,
 		if err != nil {
 			return "", false, fmt.Errorf("%w: failed to verify initiator %s membership: %v", rbac.ErrPermissionDenied, uid, err)
 		}
-		trimmed := strings.TrimSpace(resolvedRole)
-		if !active || trimmed == "" || strings.EqualFold(trimmed, "revoked") || strings.EqualFold(trimmed, "none") || strings.EqualFold(trimmed, "denied") {
+		if isInactiveOrRevokedRole(resolvedRole, active) {
 			return "", false, fmt.Errorf("%w: initiator %s workspace membership is inactive or revoked", rbac.ErrPermissionDenied, uid)
 		}
-		return trimmed, true, nil
+		return strings.TrimSpace(resolvedRole), true, nil
+	}
+
+	if memStore, ok := e.store.(WorkspaceMembershipStore); ok && memStore != nil {
+		storeRole, active, found, err := memStore.ResolveWorkspaceMemberRole(ctx, ws, uid)
+		if err != nil {
+			return "", false, fmt.Errorf("%w: failed to query authoritative workspace membership for %s: %v", rbac.ErrPermissionDenied, uid, err)
+		}
+		if found {
+			if isInactiveOrRevokedRole(storeRole, active) {
+				return "", false, fmt.Errorf("%w: initiator %s workspace membership is inactive or revoked", rbac.ErrPermissionDenied, uid)
+			}
+			return strings.TrimSpace(storeRole), true, nil
+		}
 	}
 
 	if hasState {
-		if !st.active || st.role == "" || strings.EqualFold(st.role, "revoked") || strings.EqualFold(st.role, "none") || strings.EqualFold(st.role, "denied") {
+		if isInactiveOrRevokedRole(st.role, st.active) {
 			return "", false, fmt.Errorf("%w: initiator %s workspace access has been revoked", rbac.ErrPermissionDenied, uid)
 		}
-		return st.role, true, nil
+		return strings.TrimSpace(st.role), true, nil
 	}
 
-	trimmedLaunch := strings.TrimSpace(launchRole)
-	if trimmedLaunch == "" || strings.EqualFold(trimmedLaunch, "revoked") || strings.EqualFold(trimmedLaunch, "none") || strings.EqualFold(trimmedLaunch, "denied") {
-		return "", false, fmt.Errorf("%w: workflow run is missing valid initiator role", rbac.ErrPermissionDenied)
+	if !isResumed {
+		if liveCaller, ok := liveRequestCallerFromContext(ctx); ok &&
+			strings.TrimSpace(liveCaller.WorkspaceID) == ws &&
+			strings.TrimSpace(liveCaller.UserID) == uid {
+			if isInactiveOrRevokedRole(liveCaller.WorkspaceRole, true) {
+				return "", false, fmt.Errorf("%w: initiator %s role is invalid or revoked", rbac.ErrPermissionDenied, uid)
+			}
+			return strings.TrimSpace(liveCaller.WorkspaceRole), true, nil
+		}
 	}
-	return trimmedLaunch, true, nil
+
+	return "", false, fmt.Errorf("%w: authoritative workspace membership required to verify live role for initiator %s in workspace %s", rbac.ErrPermissionDenied, uid, ws)
 }
 
 func (e *ExecutionEngine) ApprovalManager() *ApprovalManager {
@@ -461,9 +484,14 @@ func (e *ExecutionEngine) hasValidApprovedRequestForAction(
 	ctx context.Context,
 	workspaceID string,
 	wf *Workflow,
-	runID, rpcName, inputJSON string,
+	runID, actionNodeID, stepID, rpcName, inputJSON string,
 	now time.Time,
+	consume bool,
 ) (bool, error) {
+	targetActionNodeID := strings.TrimSpace(actionNodeID)
+	if targetActionNodeID == "" {
+		return false, nil
+	}
 	approvals, _, err := e.store.ListApprovalRequests(ctx, workspaceID, ApprovalFilter{
 		RunID:  runID,
 		Status: "approved",
@@ -488,8 +516,27 @@ func (e *ExecutionEngine) hasValidApprovedRequestForAction(
 		if req.ExpiresAt != nil && now.After(*req.ExpiresAt) {
 			continue
 		}
+		// R5: Approval request must be bound to this specific target actionNodeID and not already consumed.
+		if strings.TrimSpace(req.ActionNodeID) == "" || strings.TrimSpace(req.ActionNodeID) != targetActionNodeID {
+			continue
+		}
+		if strings.TrimSpace(req.ConsumedByNodeID) != "" && strings.TrimSpace(req.ConsumedByNodeID) != targetActionNodeID {
+			continue
+		}
+		if strings.TrimSpace(req.ConsumedByStepID) != "" && strings.TrimSpace(stepID) != "" && strings.TrimSpace(req.ConsumedByStepID) != strings.TrimSpace(stepID) {
+			continue
+		}
 		expectedHash := ComputeActionHash(wf.Version, req.NodeID, rpcName, inputJSON, req.TargetObjects, budgetQuote)
-		if req.ActionHash == expectedHash {
+		if req.ActionHash != "" && req.ActionHash == expectedHash {
+			if consume {
+				req.ConsumedByNodeID = targetActionNodeID
+				req.ConsumedByStepID = strings.TrimSpace(stepID)
+				req.UpdatedAt = now
+				syncApprovalMetadataToReason(req)
+				if err := e.store.UpdateApprovalRequest(ctx, req); err != nil {
+					return false, err
+				}
+			}
 			return true, nil
 		}
 	}
@@ -607,13 +654,7 @@ func (e *ExecutionEngine) runLoop(
 			}
 		}
 	}
-	if signal != nil && signal.Payload != nil {
-		if sigUID, ok := signal.Payload["_caller_user_id"].(string); ok && strings.TrimSpace(sigUID) != "" {
-			if sigRole, ok := signal.Payload["_caller_role"].(string); ok && strings.TrimSpace(sigRole) != "" {
-				e.RecordObservedMemberRole(workspaceID, sigUID, sigRole)
-			}
-		}
-	}
+	isResumedExecution := signal != nil || len(existingSteps) > 0
 
 	// Execution context
 	currentContext := make(map[string]any)
@@ -908,8 +949,8 @@ func (e *ExecutionEngine) runLoop(
 				return e.FailRunWithDiagnostics(ctx, workspaceID, runID, diag)
 			}
 
-			// 2. Delegated RBAC Permission & Live Membership Check at Action Effect Point (AI-09 & F11)
-			liveActorRole, activeMember, roleErr := e.resolveLiveActorRole(ctx, workspaceID, actorUserID, launchActorRole)
+			// 2. Delegated RBAC Permission & Live Membership Check at Action Effect Point (AI-09, F11, R3)
+			liveActorRole, activeMember, roleErr := e.resolveLiveActorRole(ctx, workspaceID, actorUserID, isResumedExecution)
 			var permErr error
 			if roleErr != nil || !activeMember {
 				permErr = roleErr
@@ -961,9 +1002,11 @@ func (e *ExecutionEngine) runLoop(
 				return e.FailRunWithDiagnostics(ctx, workspaceID, runID, diag)
 			}
 
-			// 3. Mandatory Approval Verification for Sensitive Actions at Effect Point (AI-09)
+			stepID := newUUID()
+
+			// 3. Mandatory Approval Verification for Sensitive Actions at Effect Point (AI-09, R5)
 			if IsSensitiveAction(rpcName) {
-				approvedOK, err := e.hasValidApprovedRequestForAction(ctx, workspaceID, wf, runID, rpcName, inputJSON, now)
+				approvedOK, err := e.hasValidApprovedRequestForAction(ctx, workspaceID, wf, runID, node.NodeID, stepID, rpcName, inputJSON, now, false)
 				if err != nil {
 					return nil, err
 				}
@@ -981,7 +1024,7 @@ func (e *ExecutionEngine) runLoop(
 					)
 					stepOrder := int16(len(existingSteps) + 1)
 					step := &WorkflowRunStep{
-						StepID:         newUUID(),
+						StepID:         stepID,
 						WorkspaceID:    workspaceID,
 						RunID:          runID,
 						NodeID:         node.NodeID,
@@ -1010,7 +1053,7 @@ func (e *ExecutionEngine) runLoop(
 			if e.dispatcher == nil {
 				stepOrder := int16(len(existingSteps) + 1)
 				step := &WorkflowRunStep{
-					StepID:         newUUID(),
+					StepID:         stepID,
 					WorkspaceID:    workspaceID,
 					RunID:          runID,
 					NodeID:         node.NodeID,
@@ -1036,8 +1079,18 @@ func (e *ExecutionEngine) runLoop(
 				return e.FailRunWithDiagnostics(ctx, workspaceID, runID, diag)
 			}
 
+			// Consume bound approval one-to-one with this action node/step before dispatch (R5)
+			if IsSensitiveAction(rpcName) {
+				consumedOK, err := e.hasValidApprovedRequestForAction(ctx, workspaceID, wf, runID, node.NodeID, stepID, rpcName, inputJSON, now, true)
+				if err != nil {
+					return nil, err
+				}
+				if !consumedOK {
+					return nil, ErrApprovalRequiredForSensitiveAction
+				}
+			}
+
 			// 5. Persist pre-dispatch running step BEFORE external dispatch (AI-10 / R09)
-			stepID := newUUID()
 			stepOrder := int16(len(existingSteps) + 1)
 			runningStep := &WorkflowRunStep{
 				StepID:        stepID,

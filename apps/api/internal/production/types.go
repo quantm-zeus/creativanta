@@ -109,18 +109,21 @@ type CreditQuote struct {
 
 // CreditReservationRecord tracks an atomic credit reservation hold for a generation job.
 type CreditReservationRecord struct {
-	ReservationID   string                `json:"reservation_id"`
-	WorkspaceID     string                `json:"workspace_id"`
-	JobID           string                `json:"job_id"`
-	QuoteID         string                `json:"quote_id"`
-	IdempotencyKey  string                `json:"idempotency_key"`
-	RequestHash     string                `json:"request_hash"`
-	ReservedCredits tenantdb.ExactDecimal `json:"reserved_credits"`
-	ActualCredits   tenantdb.ExactDecimal `json:"actual_credits"`
-	Status          string                `json:"status"` // reserved, in_flight, reconciling, committed, released
-	CancelRequested bool                  `json:"cancel_requested"`
-	CreatedAt       time.Time             `json:"created_at"`
-	UpdatedAt       time.Time             `json:"updated_at"`
+	ReservationID    string                `json:"reservation_id"`
+	WorkspaceID      string                `json:"workspace_id"`
+	JobID            string                `json:"job_id"`
+	QuoteID          string                `json:"quote_id"`
+	IdempotencyKey   string                `json:"idempotency_key"`
+	RequestHash      string                `json:"request_hash"`
+	Provider         string                `json:"provider,omitempty"`
+	ProviderJobID    string                `json:"provider_job_id,omitempty"`
+	ReservedCredits  tenantdb.ExactDecimal `json:"reserved_credits"`
+	ActualCredits    tenantdb.ExactDecimal `json:"actual_credits"`
+	Status           string                `json:"status"` // reserved, in_flight, reconciling, committed, released
+	DispatchInFlight bool                  `json:"dispatch_in_flight"`
+	CancelRequested  bool                  `json:"cancel_requested"`
+	CreatedAt        time.Time             `json:"created_at"`
+	UpdatedAt        time.Time             `json:"updated_at"`
 }
 
 // LineageRecord holds provenance info for assets per RULE-M07-001.

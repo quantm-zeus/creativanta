@@ -17,11 +17,41 @@ import (
 	"github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb"
 )
 
+// VoiceCloneProvider abstracts external voice cloning and synthesis execution (e.g., ElevenLabs).
+type VoiceCloneProvider interface {
+	CloneVoice(ctx context.Context, workspaceID, characterID, voiceName string, sampleAudioURLs []string, repairApplied bool) (providerName string, providerVoiceID string, err error)
+	SynthesizeSpeech(ctx context.Context, workspaceID, providerVoiceID, text, language string) (audioURL string, durationSeconds float64, err error)
+}
+
+type mockVoiceCloneProvider struct{}
+
+// NewMockVoiceCloneProvider returns an explicit test-only VoiceCloneProvider.
+// Production services do NOT wire this by default (R8 fail-closed contract).
+func NewMockVoiceCloneProvider() VoiceCloneProvider {
+	return &mockVoiceCloneProvider{}
+}
+
+func (p *mockVoiceCloneProvider) CloneVoice(_ context.Context, _ string, characterID, _ string, _ []string, _ bool) (string, string, error) {
+	suffix := characterID
+	if len(suffix) > 8 {
+		suffix = suffix[:8]
+	}
+	if suffix == "" {
+		suffix = fmt.Sprintf("%08d", time.Now().UnixNano()%100000000)
+	}
+	return "elevenlabs", "el_voice_" + suffix, nil
+}
+
+func (p *mockVoiceCloneProvider) SynthesizeSpeech(_ context.Context, _ string, providerVoiceID, _ string, _ string) (string, float64, error) {
+	return fmt.Sprintf("https://cdn.creativanta.com/audio/voiceover_%s_%d.mp3", providerVoiceID, time.Now().UnixNano()), 15.5, nil
+}
+
 // VoiceCloneManager handles voice cloning, likeness consent gating, tier gating, and quality repair.
 type VoiceCloneManager struct {
 	mu               sync.RWMutex
 	store            Store
 	service          *Service
+	provider         VoiceCloneProvider
 	workspaceTiers   map[string]string // workspaceID -> tier ("free", "starter", "pro", "business", "enterprise")
 	consentStatus    map[string]bool   // consentRecordID -> isValid
 	consentWorkspace map[string]string // consentRecordID -> workspaceID
@@ -38,6 +68,19 @@ func NewVoiceCloneManager(store Store, svc *Service) *VoiceCloneManager {
 		consentStatus:    make(map[string]bool),
 		consentWorkspace: make(map[string]string),
 	}
+}
+
+// SetProvider configures the external voice clone provider.
+func (m *VoiceCloneManager) SetProvider(p VoiceCloneProvider) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.provider = p
+}
+
+func (m *VoiceCloneManager) getProvider() VoiceCloneProvider {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.provider
 }
 
 // SetWorkspaceTier overrides the subscription tier for a workspace (default: "pro" in tests).
@@ -263,6 +306,25 @@ func (m *VoiceCloneManager) Create(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("at least one sample audio URL is required"))
 	}
 
+	// 5. Fail-closed provider execution BEFORE persisting record or deducting credits (R8)
+	vcProvider := m.getProvider()
+	if vcProvider == nil {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, ErrProviderNotConfigured)
+	}
+	providerName, providerVoiceID, provErr := vcProvider.CloneVoice(ctx, wsID, msg.CharacterId, msg.Name, msg.SampleAudioUrls, repairApplied)
+	if provErr != nil {
+		if errors.Is(provErr, ErrProviderNotConfigured) {
+			return nil, connect.NewError(connect.CodeFailedPrecondition, provErr)
+		}
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("voice clone provider execution failed: %w", provErr))
+	}
+	if strings.TrimSpace(providerVoiceID) == "" {
+		return nil, connect.NewError(connect.CodeInternal, errors.New("voice clone provider returned empty provider_voice_id"))
+	}
+	if strings.TrimSpace(providerName) == "" {
+		providerName = "elevenlabs"
+	}
+
 	cloneID := fmt.Sprintf("01908700-%04d-7000-8000-%012d", time.Now().UnixNano()%10000, time.Now().UnixNano()%1000000000000)
 	now := time.Now().UTC()
 
@@ -270,8 +332,8 @@ func (m *VoiceCloneManager) Create(
 		VoiceCloneID:    cloneID,
 		WorkspaceID:     wsID,
 		CharacterID:     msg.CharacterId,
-		Provider:        "elevenlabs",
-		ProviderVoiceID: "el_voice_" + cloneID[:8],
+		Provider:        providerName,
+		ProviderVoiceID: providerVoiceID,
 		VoiceName:       msg.Name,
 		SampleAudioURLs: msg.SampleAudioUrls,
 		CloneStatus:     "ready",
@@ -286,7 +348,7 @@ func (m *VoiceCloneManager) Create(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	// Deduct reserved credits
+	// Deduct reserved credits only after provider execution and durable persistence succeed (R8)
 	m.service.deductCredits(wsID, requiredCredits)
 
 	res := &productionv1.VoiceCloneServiceCreateResponse{
@@ -478,13 +540,38 @@ func (m *VoiceCloneManager) GenerateVoiceover(
 		return nil, connect.NewError(connect.CodePermissionDenied, ErrConsentRevoked)
 	}
 
+	if strings.TrimSpace(msg.Text) == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("voiceover text is required"))
+	}
+
 	cost := tenantdb.MustParseExactDecimal("3")
 	bal := m.service.GetWorkspaceBalance(wsID)
 	if bal.Cmp(cost) < 0 {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, ErrInsufficientCredits)
 	}
 
-	m.service.deductCredits(wsID, cost)
+	// Fail-closed provider execution BEFORE creating asset or deducting credits (R8)
+	vcProvider := m.getProvider()
+	if vcProvider == nil {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, ErrProviderNotConfigured)
+	}
+	audioURL, durSec, synthErr := vcProvider.SynthesizeSpeech(ctx, wsID, rec.ProviderVoiceID, msg.Text, msg.Language)
+	if synthErr != nil {
+		if errors.Is(synthErr, ErrProviderNotConfigured) {
+			return nil, connect.NewError(connect.CodeFailedPrecondition, synthErr)
+		}
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("voiceover synthesis failed: %w", synthErr))
+	}
+	if strings.TrimSpace(audioURL) == "" {
+		return nil, connect.NewError(connect.CodeInternal, errors.New("voiceover provider returned empty audio URL"))
+	}
+	if durSec <= 0 {
+		durSec = 15.5
+	}
+	durDec, decErr := tenantdb.ParseExactDecimal(fmt.Sprintf("%.2f", durSec))
+	if decErr != nil {
+		durDec = tenantdb.MustParseExactDecimal("15.5")
+	}
 
 	assetID := fmt.Sprintf("asset-voiceover-%d", time.Now().UnixNano())
 	now := time.Now().UTC()
@@ -496,8 +583,8 @@ func (m *VoiceCloneManager) GenerateVoiceover(
 		SourceGenerationMode:  "ai_generated",
 		SourceProvider:        rec.Provider,
 		SourceModel:           "eleven_multilingual_v2",
-		FileURL:               "https://cdn.creativanta.com/audio/voiceover_" + assetID + ".mp3",
-		DurationSeconds:       tenantdb.MustParseExactDecimal("15.5"),
+		FileURL:               audioURL,
+		DurationSeconds:       durDec,
 		GenerationState:       "generated",
 		QualityState:          "approved",
 		GenerationCostCredits: cost,
@@ -505,12 +592,16 @@ func (m *VoiceCloneManager) GenerateVoiceover(
 		CreatedAt:             now,
 		UpdatedAt:             now,
 	}
-	_ = m.store.CreateAsset(ctx, asset)
+	if err := m.store.CreateAsset(ctx, asset); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to persist voiceover asset: %w", err))
+	}
+
+	m.service.deductCredits(wsID, cost)
 
 	return connect.NewResponse(&productionv1.VoiceCloneServiceGenerateVoiceoverResponse{
 		AssetId:         assetID,
 		AudioUrl:        asset.FileURL,
-		DurationSeconds: 15.5,
+		DurationSeconds: durSec,
 		CreditsUsed:     cost.String(),
 	}), nil
 }

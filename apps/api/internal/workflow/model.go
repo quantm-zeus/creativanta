@@ -283,9 +283,12 @@ type ApprovalRequest struct {
 	CreatedAt       time.Time  `json:"created_at"`
 	UpdatedAt       time.Time  `json:"updated_at"`
 
-	// Workflow binding metadata (enforces ActionHash / Target / Version binding)
+	// Workflow binding metadata (enforces ActionHash / Target / Version / ActionNode / Consumption binding)
 	WorkflowID        string   `json:"workflow_id,omitempty"`
 	NodeID            string   `json:"node_id,omitempty"`
+	ActionNodeID      string   `json:"action_node_id,omitempty"`
+	ConsumedByNodeID  string   `json:"consumed_by_node_id,omitempty"`
+	ConsumedByStepID  string   `json:"consumed_by_step_id,omitempty"`
 	WorkflowVersion   int32    `json:"workflow_version,omitempty"`
 	ActionHash        string   `json:"action_hash,omitempty"`
 	TargetObjects     []string `json:"target_objects,omitempty"`

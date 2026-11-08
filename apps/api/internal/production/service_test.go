@@ -33,10 +33,11 @@ func setupTestService(t *testing.T) (*Service, Store, *MockVeoProvider, *MockKli
 	pp := NewPostProductionExecutor(limits)
 
 	svc := NewService(ServiceConfig{
-		Store:            store,
-		PrimaryProvider:  veo,
-		FallbackProvider: kling,
-		PostProdExecutor: pp,
+		Store:              store,
+		PrimaryProvider:    veo,
+		FallbackProvider:   kling,
+		VoiceCloneProvider: NewMockVoiceCloneProvider(),
+		PostProdExecutor:   pp,
 		InitialBalances: map[string]tenantdb.ExactDecimal{
 			"ws-test-01": tenantdb.MustParseExactDecimal("100"),
 			"ws-test-02": tenantdb.MustParseExactDecimal("10"), // Low balance
@@ -1623,5 +1624,111 @@ func TestS5_F4_VideoEngineRenderJobs500_TreatedAsUnknownOutcomeNoFallbackOrRefun
 	}
 	if bal := svc.GetWorkspaceBalance(wsID); bal.Cmp(tenantdb.MustParseExactDecimal("20")) != 0 {
 		t.Fatalf("F4 VIOLATION: expected 80 credits to remain held in reconciling (balance 20) on HTTP 500, got %s", bal.String())
+	}
+}
+
+type blockingCheckStatusProvider struct {
+	inCheckStatus chan struct{}
+	releaseCheck  chan struct{}
+}
+
+func (p *blockingCheckStatusProvider) Name() string { return "veo" }
+func (p *blockingCheckStatusProvider) CostRatePerSecondUSD() tenantdb.ExactDecimal {
+	return tenantdb.MustParseExactDecimal("0.08")
+}
+func (p *blockingCheckStatusProvider) Generate(_ context.Context, _ ProviderGenRequest) (*ProviderGenResponse, error) {
+	return &ProviderGenResponse{
+		ProviderJobID: "veo-accepted-checkstatus-barrier-001",
+		InitialStatus: "processing",
+		EstimatedCost: tenantdb.MustParseExactDecimal("1.20"),
+	}, nil
+}
+func (p *blockingCheckStatusProvider) CheckStatus(_ context.Context, providerJobID string) (*ProviderGenStatus, error) {
+	select {
+	case p.inCheckStatus <- struct{}{}:
+	default:
+	}
+	<-p.releaseCheck
+	return &ProviderGenStatus{
+		ProviderJobID: providerJobID,
+		Status:        "processing",
+		ProgressPct:   45,
+		DurationSecs:  tenantdb.MustParseExactDecimal("15"),
+		Resolution:    "1080x1920",
+		CostUSD:       tenantdb.MustParseExactDecimal("1.20"),
+	}, nil
+}
+func (p *blockingCheckStatusProvider) Cancel(_ context.Context, _ string) error {
+	return nil
+}
+
+func TestR05_CancelDuringCheckStatusAfterProviderAcceptance_HoldsCreditsAndPersistsProviderJobID(t *testing.T) {
+	ctx := contextWithRole("Editor", "user-r05-barrier")
+	wsID := "ws-r05-checkstatus-barrier"
+	store := NewMemoryStore()
+	prov := &blockingCheckStatusProvider{
+		inCheckStatus: make(chan struct{}, 1),
+		releaseCheck:  make(chan struct{}),
+	}
+	svc := NewService(ServiceConfig{
+		Store:           store,
+		PrimaryProvider: prov,
+		InitialBalances: map[string]tenantdb.ExactDecimal{
+			wsID: tenantdb.MustParseExactDecimal("100"),
+		},
+	})
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		_, _ = svc.Generate(ctx, connect.NewRequest(&productionv1.GenerateRequest{
+			Context: &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: wsID}},
+			Title:   "R05 CheckStatus Barrier Video",
+			Prompt:  "Cancel arrives after provider Generate accepted job while CheckStatus is in flight",
+		}))
+	}()
+
+	<-prov.inCheckStatus
+	jobs, err := store.ListActiveJobs(ctx, wsID)
+	if err != nil || len(jobs) != 1 {
+		t.Fatalf("expected 1 active job, got %d (err=%v)", len(jobs), err)
+	}
+	jobID := jobs[0].JobID
+	if jobs[0].ProviderJobID != "veo-accepted-checkstatus-barrier-001" {
+		t.Fatalf("expected ProviderJobID persisted immediately via OnProviderAccepted before CheckStatus finished, got %q", jobs[0].ProviderJobID)
+	}
+
+	// Cancel arrives while ExecuteRoutedJob is still in flight inside CheckStatus:
+	// Must NOT refund credits prematurely even though ProviderJobID is already set!
+	_, cancelErr := svc.Cancel(ctx, connect.NewRequest(&productionv1.CancelRequest{
+		Context: &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: wsID}},
+		JobId:   jobID,
+	}))
+	if cancelErr == nil || !errors.Is(cancelErr, ErrOutcomeUnknown) {
+		t.Fatalf("R05 VIOLATION: expected Cancel during in-flight CheckStatus to hold credits with ErrOutcomeUnknown, got: %v", cancelErr)
+	}
+	if bal := svc.GetWorkspaceBalance(wsID); bal.Cmp(tenantdb.MustParseExactDecimal("20")) != 0 {
+		t.Fatalf("R05 VIOLATION: credits refunded prematurely while CheckStatus was in flight! balance=%s", bal.String())
+	}
+
+	close(prov.releaseCheck)
+	wg.Wait()
+
+	// Also verify ReconcileJobOutcome late completion quarantine clears any ResultURL/FileURL when reservation was already released
+	if err := svc.ReconcileJobOutcome(ctx, wsID, jobID, "cancelled", tenantdb.ZeroDecimal(), ""); err != nil {
+		t.Fatalf("ReconcileJobOutcome(cancelled) failed: %v", err)
+	}
+	if bal := svc.GetWorkspaceBalance(wsID); bal.Cmp(tenantdb.MustParseExactDecimal("100")) != 0 {
+		t.Fatalf("expected balance 100 after reconciliation confirmed cancellation, got %s", bal.String())
+	}
+	lateErr := svc.ReconcileJobOutcome(ctx, wsID, jobID, "completed", tenantdb.MustParseExactDecimal("80"), "https://cdn.creativanta.com/generated/late-leak.mp4")
+	if !errors.Is(lateErr, ErrReservationAlreadyReleased) {
+		t.Fatalf("expected late completion after release to fail with ErrReservationAlreadyReleased, got: %v", lateErr)
+	}
+	quarantinedJob, _ := store.GetJob(ctx, wsID, jobID)
+	quarantinedAsset, _ := store.GetAsset(ctx, wsID, quarantinedJob.AssetID)
+	if quarantinedJob.ResultURL != "" || (quarantinedAsset != nil && quarantinedAsset.FileURL != "") {
+		t.Fatalf("R05 VIOLATION: late completion leaked ResultURL=%q or FileURL=%q after reservation release!", quarantinedJob.ResultURL, quarantinedAsset.FileURL)
 	}
 }

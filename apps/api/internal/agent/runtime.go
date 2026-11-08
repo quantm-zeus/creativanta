@@ -52,6 +52,9 @@ func (r *Runtime) SetMemberRole(workspaceID, userID, role string, active bool) {
 	if ws == "" || uid == "" {
 		return
 	}
+	if mut, ok := r.store.(WorkspaceMembershipMutator); ok && mut != nil {
+		mut.SetMemberRole(ws, uid, strings.TrimSpace(role), active)
+	}
 	r.membersMu.Lock()
 	defer r.membersMu.Unlock()
 	if r.memberStates == nil {
@@ -63,34 +66,19 @@ func (r *Runtime) SetMemberRole(workspaceID, userID, role string, active bool) {
 	}
 }
 
-func (r *Runtime) RecordObservedMemberRole(workspaceID, userID, role string) {
-	ws := strings.TrimSpace(workspaceID)
-	uid := strings.TrimSpace(userID)
-	rl := strings.TrimSpace(role)
-	if ws == "" || uid == "" || rl == "" {
-		return
-	}
-	r.membersMu.Lock()
-	defer r.membersMu.Unlock()
-	if r.memberStates == nil {
-		r.memberStates = make(map[string]agentMemberState)
-	}
-	key := ws + ":" + uid
-	if existing, ok := r.memberStates[key]; ok && !existing.active {
-		return
-	}
-	active := !strings.EqualFold(rl, "revoked") && !strings.EqualFold(rl, "none") && !strings.EqualFold(rl, "denied")
-	r.memberStates[key] = agentMemberState{
-		role:   rl,
-		active: active,
-	}
+func isInactiveOrRevokedAgentRole(role string, active bool) bool {
+	trimmed := strings.TrimSpace(role)
+	return !active || trimmed == "" || strings.EqualFold(trimmed, "revoked") || strings.EqualFold(trimmed, "none") || strings.EqualFold(trimmed, "denied")
 }
 
-func (r *Runtime) resolveInitiatorRole(ctx context.Context, workspaceID, createdBy, launchRole string) (string, bool, error) {
+// resolveInitiatorRole resolves the initiator's current active workspace role from an authoritative
+// membership source (configured MembershipRoleResolver or WorkspaceMembershipStore). It never falls
+// back to a launch-time role snapshot or unverified observed cache on cross-actor/resumed execution (R3).
+func (r *Runtime) resolveInitiatorRole(ctx context.Context, workspaceID, createdBy string, liveCaller CallerContext) (string, bool, error) {
 	ws := strings.TrimSpace(workspaceID)
 	uid := strings.TrimSpace(createdBy)
 	if ws == "" || uid == "" {
-		return strings.TrimSpace(launchRole), true, nil
+		return "", false, fmt.Errorf("%w: agent run is missing verified initiator identity", ErrPermissionDenied)
 	}
 	r.membersMu.RLock()
 	resolver := r.roleResolver
@@ -102,21 +90,40 @@ func (r *Runtime) resolveInitiatorRole(ctx context.Context, workspaceID, created
 		if err != nil {
 			return "", false, fmt.Errorf("%w: failed to verify initiator %s membership: %v", ErrPermissionDenied, uid, err)
 		}
-		trimmed := strings.TrimSpace(role)
-		if !active || trimmed == "" || strings.EqualFold(trimmed, "revoked") || strings.EqualFold(trimmed, "none") || strings.EqualFold(trimmed, "denied") {
+		if isInactiveOrRevokedAgentRole(role, active) {
 			return "", false, fmt.Errorf("%w: initiator %s workspace membership is inactive or revoked", ErrPermissionDenied, uid)
 		}
-		return trimmed, true, nil
+		return strings.TrimSpace(role), true, nil
+	}
+
+	if memStore, ok := r.store.(WorkspaceMembershipStore); ok && memStore != nil {
+		storeRole, active, found, err := memStore.ResolveWorkspaceMemberRole(ctx, ws, uid)
+		if err != nil {
+			return "", false, fmt.Errorf("%w: failed to query authoritative workspace membership for %s: %v", ErrPermissionDenied, uid, err)
+		}
+		if found {
+			if isInactiveOrRevokedAgentRole(storeRole, active) {
+				return "", false, fmt.Errorf("%w: initiator %s workspace membership is inactive or revoked", ErrPermissionDenied, uid)
+			}
+			return strings.TrimSpace(storeRole), true, nil
+		}
 	}
 
 	if hasState {
-		if !st.active || st.role == "" || strings.EqualFold(st.role, "revoked") || strings.EqualFold(st.role, "none") || strings.EqualFold(st.role, "denied") {
+		if isInactiveOrRevokedAgentRole(st.role, st.active) {
 			return "", false, fmt.Errorf("%w: initiator %s workspace access has been revoked", ErrPermissionDenied, uid)
 		}
-		return st.role, true, nil
+		return strings.TrimSpace(st.role), true, nil
 	}
 
-	return strings.TrimSpace(launchRole), true, nil
+	if strings.TrimSpace(liveCaller.WorkspaceID) == ws && strings.TrimSpace(liveCaller.UserID) == uid {
+		if isInactiveOrRevokedAgentRole(liveCaller.WorkspaceRole, true) {
+			return "", false, fmt.Errorf("%w: initiator %s role is invalid or revoked", ErrPermissionDenied, uid)
+		}
+		return strings.TrimSpace(liveCaller.WorkspaceRole), true, nil
+	}
+
+	return "", false, fmt.Errorf("%w: authoritative workspace membership required to verify live role for initiator %s in workspace %s", ErrPermissionDenied, uid, ws)
 }
 
 // SetStepExecutor configures the concrete step executor for the runtime.
@@ -279,28 +286,26 @@ func (r *Runtime) ExecuteNextStep(ctx context.Context, caller CallerContext, run
 	currentStep.Status = StepStatusExecuting
 
 	// ------------------------------------------------------------------------
-	// Acceptance Target 1 & F11: Every step checks live delegated permissions
+	// Acceptance Target 1, F11, R3: Every step checks live delegated permissions
 	// ------------------------------------------------------------------------
 	effectiveRole := caller.WorkspaceRole
 	if strings.TrimSpace(run.CreatedBy) != "" {
-		initRole, active, roleErr := r.resolveInitiatorRole(ctx, run.WorkspaceID, run.CreatedBy, run.CreatedByRole)
-		if roleErr != nil || !active || (initRole != "" && !CheckPermission(initRole, "agent:execute")) {
+		initRole, active, roleErr := r.resolveInitiatorRole(ctx, run.WorkspaceID, run.CreatedBy, caller)
+		if roleErr != nil || !active || initRole == "" || !CheckPermission(initRole, "agent:execute") {
 			currentStep.Status = StepStatusFailed
 			currentStep.CompletedAt = &now
 			currentStep.ObservedOutcome = fmt.Sprintf("Permission denied: initiator [%s] workspace access was revoked or downgraded [%s]",
 				run.CreatedBy, initRole)
 			return r.HandlePartialFailure(ctx, caller, run, stepIndex, ErrPermissionDenied, caller.UserID)
 		}
-		if initRole != "" && currentStep.RequiredPermission != "" && !CheckPermission(initRole, currentStep.RequiredPermission) {
+		if currentStep.RequiredPermission != "" && !CheckPermission(initRole, currentStep.RequiredPermission) {
 			currentStep.Status = StepStatusFailed
 			currentStep.CompletedAt = &now
 			currentStep.ObservedOutcome = fmt.Sprintf("Permission denied: initiator role [%s] lacks delegated permission [%s]",
 				initRole, currentStep.RequiredPermission)
 			return r.HandlePartialFailure(ctx, caller, run, stepIndex, ErrPermissionDenied, caller.UserID)
 		}
-		if caller.UserID == run.CreatedBy && initRole != "" {
-			effectiveRole = initRole
-		}
+		effectiveRole = initRole
 	}
 	if currentStep.RequiredPermission != "" && !CheckPermission(effectiveRole, currentStep.RequiredPermission) {
 		currentStep.Status = StepStatusFailed
