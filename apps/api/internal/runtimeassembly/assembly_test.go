@@ -1225,6 +1225,28 @@ func TestAdminAPIWhoamiRejectsNullOrUnboundedExpiryAndStaleAge(t *testing.T) {
 		t.Fatalf("expected 403 Forbidden for unverified VPN transport context on /admin/v1/whoami, got %d", badVPNRec.Code)
 	}
 
+	// Verify external non-VPN client requests arriving through a loopback reverse proxy (X-Forwarded-For / X-Real-IP / Forwarded)
+	// are rejected with 403 Forbidden rather than treated as VPN-verified via the loopback proxy hop.
+	for _, hdr := range []struct {
+		key string
+		val string
+	}{
+		{"X-Forwarded-For", "203.0.113.77"},
+		{"X-Forwarded-For", "203.0.113.77, 127.0.0.1"},
+		{"X-Real-IP", "198.51.100.42"},
+		{"Forwarded", "for=203.0.113.77;proto=https"},
+	} {
+		proxyReq := httptest.NewRequest(http.MethodGet, "/admin/v1/whoami", nil)
+		proxyReq.RemoteAddr = "127.0.0.1:51234"
+		proxyReq.Header.Set(hdr.key, hdr.val)
+		proxyReq.Header.Set("Authorization", "Bearer "+tokValidBounded)
+		proxyRec := httptest.NewRecorder()
+		adminHandler.ServeHTTP(proxyRec, proxyReq)
+		if proxyRec.Code != http.StatusForbidden {
+			t.Fatalf("expected 403 Forbidden when loopback proxy forwards non-VPN %s=%q, got %d (body=%s)", hdr.key, hdr.val, proxyRec.Code, proxyRec.Body.String())
+		}
+	}
+
 	// Verify end-to-end HTTP router upgrade path from baseline v1..v48 -> v49 under least-privilege app_user RLS:
 	migrationsDir := filepath.Join("..", "..", "..", "..", "infra", "migrations")
 	rolledVer, err := migrate.Down(ctx, pool, migrationsDir, true)
@@ -1288,5 +1310,30 @@ func TestAdminAPIWhoamiRejectsNullOrUnboundedExpiryAndStaleAge(t *testing.T) {
 	}
 	if postRec.Code != http.StatusOK || len(postBody.Workspaces) != 1 || postBody.Workspaces[0].ID != testWsA || postBody.Workspaces[0].Role != "owner" {
 		t.Fatalf("expected post-v49 /api/workspaces/discovery to return workspace %s (owner), got code=%d body=%+v", testWsA, postRec.Code, postBody)
+	}
+
+	// Verify 4837954 historical checksum lineage upgrade on the mounted router:
+	// Simulate a database at v1..v48 carrying the exact 4837954 checksums and 4837954 schema objects, then upgrade to v49.
+	if _, err := pool.Exec(ctx, `DELETE FROM goose_db_version WHERE version_id = 49`); err != nil {
+		t.Fatalf("delete v49 from goose_db_version failed: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO goose_db_version (version_id, is_applied, checksum)
+		VALUES
+			(1, true, $1),
+			(6, true, $2)
+	`, migrate.HistoricalV1Checksum4837954, migrate.HistoricalV6Checksum4837954); err != nil {
+		t.Fatalf("simulate 4837954 goose_db_version state failed: %v", err)
+	}
+	appliedFrom4837954, err := migrate.Up(ctx, pool, migrationsDir)
+	if err != nil || len(appliedFrom4837954) != 1 || appliedFrom4837954[0] != 49 {
+		t.Fatalf("expected migrate.Up from 4837954 lineage to apply v49 cleanly, got %v (err=%v)", appliedFrom4837954, err)
+	}
+	post4837954Req := httptest.NewRequest(http.MethodGet, "/api/workspaces/discovery", nil)
+	post4837954Req.Header.Set("Authorization", "Bearer "+ownerAToken)
+	post4837954Rec := httptest.NewRecorder()
+	apiHandler.ServeHTTP(post4837954Rec, post4837954Req)
+	if post4837954Rec.Code != http.StatusOK {
+		t.Fatalf("expected post-4837954-upgrade /api/workspaces/discovery to return 200 OK, got %d (%s)", post4837954Rec.Code, post4837954Rec.Body.String())
 	}
 }

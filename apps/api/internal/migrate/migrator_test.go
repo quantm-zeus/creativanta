@@ -2523,3 +2523,348 @@ func TestPostgresUpgradeFromBaselinePreservesChecksumsAndAppliesRemediation(t *t
 		t.Fatalf("expected legacy admin_sessions row %s to have expired_at backfilled to started_at + 8 hours, got %v (err=%v)", sessID, hasBackfilledExpiry, err)
 	}
 }
+
+func buildHistorical4837954BundleDir(t *testing.T, migrationsDir string) string {
+	t.Helper()
+	entries, err := os.ReadDir(migrationsDir)
+	if err != nil {
+		t.Fatalf("ReadDir(%q): %v", migrationsDir, err)
+	}
+
+	bundleDir := t.TempDir()
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".sql") {
+			continue
+		}
+		if strings.HasPrefix(entry.Name(), "00049_") {
+			continue
+		}
+		rawBytes, err := os.ReadFile(filepath.Join(migrationsDir, entry.Name()))
+		if err != nil {
+			t.Fatalf("read migration %s: %v", entry.Name(), err)
+		}
+		raw := string(rawBytes)
+
+		switch {
+		case strings.HasPrefix(entry.Name(), "00001_"):
+			target := "CREATE POLICY user_self ON users\n" +
+				"  USING (user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid)\n" +
+				"  WITH CHECK (user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid);\n"
+			replacement := target + "\n" +
+				"CREATE POLICY user_self_clerk_bootstrap ON users FOR SELECT TO app_user\n" +
+				"  USING (\n" +
+				"    NULLIF(current_setting('app.current_clerk_id', true), '') IS NOT NULL\n" +
+				"    AND (\n" +
+				"      clerk_id = NULLIF(current_setting('app.current_clerk_id', true), '')\n" +
+				"      OR external_auth_id = NULLIF(current_setting('app.current_clerk_id', true), '')\n" +
+				"    )\n" +
+				"  );\n"
+			raw = strings.Replace(raw, target, replacement, 1)
+		case strings.HasPrefix(entry.Name(), "00006_"):
+			raw = strings.Replace(raw, "  connected_account_id    UUID REFERENCES connected_accounts(connected_account_id),\n", "  connected_account_id    UUID,\n", 1)
+			raw = strings.Replace(raw, "  product_id              UUID REFERENCES products(product_id),\n  offer_id                UUID REFERENCES offers(offer_id),\n", "  product_id              UUID,\n  offer_id                UUID,\n", 1)
+			raw = strings.Replace(raw, "  customer_entity_id      UUID REFERENCES entities(entity_id),\n", "  customer_entity_id      UUID,\n", 1)
+			raw = strings.Replace(
+				raw,
+				"  CONSTRAINT uq_orders_tenant_pk UNIQUE (workspace_id, order_id),\n",
+				"  CONSTRAINT uq_orders_tenant_pk UNIQUE (workspace_id, order_id),\n"+
+					"  CONSTRAINT fk_orders_connected_account_id_tenant FOREIGN KEY (workspace_id, connected_account_id) REFERENCES connected_accounts(workspace_id, connected_account_id),\n"+
+					"  CONSTRAINT fk_orders_product_id_tenant FOREIGN KEY (workspace_id, product_id) REFERENCES products(workspace_id, product_id),\n"+
+					"  CONSTRAINT fk_orders_offer_id_tenant FOREIGN KEY (workspace_id, offer_id) REFERENCES offers(workspace_id, offer_id),\n"+
+					"  CONSTRAINT fk_orders_customer_entity_id_tenant FOREIGN KEY (workspace_id, customer_entity_id) REFERENCES entities(workspace_id, entity_id),\n",
+				1,
+			)
+			raw = strings.Replace(
+				raw,
+				"CREATE INDEX IF NOT EXISTS idx_refunds_order ON refunds(workspace_id, order_id);\n",
+				"CREATE INDEX IF NOT EXISTS idx_refunds_order ON refunds(workspace_id, order_id);\n"+
+					"CREATE UNIQUE INDEX IF NOT EXISTS idx_refunds_external_identity\n"+
+					"  ON refunds(workspace_id, order_id, source_platform, external_refund_id)\n"+
+					"  WHERE external_refund_id IS NOT NULL AND deleted_at IS NULL;\n",
+				1,
+			)
+			raw = strings.Replace(raw, "  refund_id           UUID REFERENCES refunds(refund_id),\n", "  refund_id           UUID,\n", 1)
+			raw = strings.Replace(
+				raw,
+				"  lifecycle_state     VARCHAR(20) NOT NULL DEFAULT 'initiated',\n",
+				"  lifecycle_state     VARCHAR(20) NOT NULL DEFAULT 'initiated',\n"+
+					"  source_platform     VARCHAR(50),\n"+
+					"  external_return_id  VARCHAR(255),\n",
+				1,
+			)
+			raw = strings.Replace(
+				raw,
+				"  CONSTRAINT fk_returns_order_id_tenant FOREIGN KEY (workspace_id, order_id) REFERENCES orders(workspace_id, order_id) ON DELETE CASCADE,\n",
+				"  CONSTRAINT fk_returns_order_id_tenant FOREIGN KEY (workspace_id, order_id) REFERENCES orders(workspace_id, order_id) ON DELETE CASCADE,\n"+
+					"  CONSTRAINT fk_returns_refund_id_tenant FOREIGN KEY (workspace_id, refund_id) REFERENCES refunds(workspace_id, refund_id),\n",
+				1,
+			)
+			raw = strings.Replace(
+				raw,
+				"CREATE INDEX IF NOT EXISTS idx_returns_order ON returns(workspace_id, order_id);\n",
+				"CREATE INDEX IF NOT EXISTS idx_returns_order ON returns(workspace_id, order_id);\n"+
+					"CREATE UNIQUE INDEX IF NOT EXISTS idx_returns_external_identity\n"+
+					"  ON returns(workspace_id, order_id, source_platform, external_return_id)\n"+
+					"  WHERE external_return_id IS NOT NULL AND deleted_at IS NULL;\n",
+				1,
+			)
+		}
+
+		if err := os.WriteFile(filepath.Join(bundleDir, entry.Name()), []byte(raw), 0o600); err != nil {
+			t.Fatalf("write historical 4837954 migration %s: %v", entry.Name(), err)
+		}
+	}
+
+	migs, err := LoadDir(bundleDir)
+	if err != nil {
+		t.Fatalf("LoadDir(4837954 bundle) failed: %v", err)
+	}
+	if len(migs) != 48 {
+		t.Fatalf("expected 48 migrations in 4837954 bundle, got %d", len(migs))
+	}
+	if migs[0].Checksum != "87595883069286733567722b6f16de46da25216f8e6be429e23c3c8e12f28bc7" {
+		t.Fatalf("expected 4837954 v1 checksum 87595883..., got %s", migs[0].Checksum)
+	}
+	if migs[5].Checksum != "8696ef9664e392fcd78544242e14b7e6f78e0953414679801c923e73aa36929e" {
+		t.Fatalf("expected 4837954 v6 checksum 8696ef96..., got %s", migs[5].Checksum)
+	}
+	return bundleDir
+}
+
+func TestEmptyMigrationBundleFailsClosed(t *testing.T) {
+	emptyDir := t.TempDir()
+	if err := os.Mkdir(filepath.Join(emptyDir, "subdir"), 0o755); err != nil {
+		t.Fatalf("mkdir subdir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(emptyDir, "README.md"), []byte("not sql"), 0o600); err != nil {
+		t.Fatalf("write non-sql file: %v", err)
+	}
+
+	if _, err := LoadDir(emptyDir); err == nil {
+		t.Fatalf("expected LoadDir on empty migration bundle to fail closed, got nil")
+	}
+	runner := &fakeRunner{}
+	if _, err := Up(context.Background(), runner, emptyDir); err == nil {
+		t.Fatalf("expected Up on empty migration bundle to fail closed, got nil")
+	}
+	if _, err := Status(context.Background(), runner, emptyDir); err == nil {
+		t.Fatalf("expected Status on empty migration bundle to fail closed, got nil")
+	}
+}
+
+func TestPostgresUpgradeFromHistorical4837954LineageAndTamperDenial(t *testing.T) {
+	dsn := os.Getenv("CREATIVANTA_TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("CREATIVANTA_TEST_DATABASE_URL not set; live PostgreSQL 4837954 lineage upgrade suite executes in CI")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	adminPool, err := pgxpool.New(ctx, dsn)
+	if err != nil {
+		t.Fatalf("connect adminPool: %v", err)
+	}
+	defer adminPool.Close()
+
+	_, _ = adminPool.Exec(ctx, `DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO CURRENT_USER; GRANT USAGE ON SCHEMA public TO PUBLIC;`)
+
+	migrationsDir := filepath.Join("..", "..", "..", "..", "infra", "migrations")
+	bundle4837954Dir := buildHistorical4837954BundleDir(t, migrationsDir)
+
+	// 1. Apply the historical 4837954 bundle (v1..v48) to a clean database.
+	applied48, err := Up(ctx, adminPool, bundle4837954Dir)
+	if err != nil {
+		t.Fatalf("Up(4837954 bundle v1..v48) failed: %v", err)
+	}
+	if len(applied48) != 48 {
+		t.Fatalf("expected 48 migrations applied from 4837954 bundle, got %d", len(applied48))
+	}
+
+	// Seed tenant, product, order, and legacy unbounded admin session data on the 4837954 database.
+	const (
+		userA   = "11111111-1111-4111-8111-111111111201"
+		userB   = "22222222-2222-4222-8222-222222222203"
+		wsA     = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa11"
+		wsB     = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbb12"
+		prodA   = "cccccccc-cccc-4ccc-8ccc-cccccccccc11"
+		orderA  = "dddddddd-dddd-4ddd-8ddd-dddddddddd11"
+		orderB  = "dddddddd-dddd-4ddd-8ddd-dddddddddd12"
+		adminID = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeee11"
+		sessID  = "ffffffff-ffff-4fff-8fff-ffffffffff11"
+	)
+	seedSQL := `
+		INSERT INTO users (user_id, clerk_id, email, display_name, status)
+		VALUES
+			('11111111-1111-4111-8111-111111111201'::uuid, 'clerk_4837954_user_a', 'u4837954_a@creativanta.test', 'User 4837954 A', 'active'),
+			('22222222-2222-4222-8222-222222222203'::uuid, 'clerk_4837954_user_b', 'u4837954_b@creativanta.test', 'User 4837954 B', 'active');
+
+		INSERT INTO workspaces (workspace_id, name, slug, owner_user_id, subscription_tier, default_mode, enabled_modes, status)
+		VALUES
+			('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa11'::uuid, 'WS 4837954 A', 'ws-4837954-a', '11111111-1111-4111-8111-111111111201'::uuid, 'pro', 'seller'::operator_mode, ARRAY['seller']::operator_mode[], 'active'),
+			('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbb12'::uuid, 'WS 4837954 B', 'ws-4837954-b', '22222222-2222-4222-8222-222222222203'::uuid, 'free', 'creator'::operator_mode, ARRAY['creator']::operator_mode[], 'active');
+
+		INSERT INTO workspace_members (workspace_id, user_id, role, status)
+		VALUES
+			('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa11'::uuid, '11111111-1111-4111-8111-111111111201'::uuid, 'owner', 'active'),
+			('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbb12'::uuid, '22222222-2222-4222-8222-222222222203'::uuid, 'owner', 'active');
+
+		INSERT INTO products (product_id, workspace_id, product_type, title, currency, catalog_status)
+		VALUES
+			('cccccccc-cccc-4ccc-8ccc-cccccccccc11'::uuid, 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa11'::uuid, 'physical', '4837954 Product A', 'VND', 'active');
+
+		INSERT INTO orders (order_id, workspace_id, product_id, source_platform, external_order_id, currency, amount, lifecycle_state)
+		VALUES
+			('dddddddd-dddd-4ddd-8ddd-dddddddddd11'::uuid, 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa11'::uuid, 'cccccccc-cccc-4ccc-8ccc-cccccccccc11'::uuid, 'shopify', 'ext_4837954_valid_1', 'VND', 250000, 'confirmed');
+
+		INSERT INTO internal_admins (admin_id, email, display_name, password_hash, role, status, mfa_enabled)
+		VALUES
+			('eeeeeeee-eeee-4eee-8eee-eeeeeeeeee11'::uuid, 'admin_4837954@creativanta.test', 'Admin 4837954', '$2a$12$hash4837954', 'super_admin', 'active', true);
+
+		INSERT INTO admin_sessions (session_id, admin_id, ip_address, user_agent, vpn_verified, mfa_verified, started_at, expired_at, session_token_hash)
+		VALUES
+			('ffffffff-ffff-4fff-8fff-ffffffffff11'::uuid, 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeee11'::uuid, '127.0.0.1'::inet, 'Upgrade4837954Test', true, true, NOW() - INTERVAL '30 minutes', NULL, 'hash_4837954_null_expiry_0001');
+	`
+	if _, err := adminPool.Exec(ctx, seedSQL); err != nil {
+		t.Fatalf("seed 4837954 data failed: %v", err)
+	}
+
+	// 2. Negative check: attempting to run a 70c2b71-only bundle (without migration 00049) against a 4837954 database MUST fail closed with ErrChecksumMismatch.
+	baselineNo49Dir := t.TempDir()
+	entries, err := os.ReadDir(migrationsDir)
+	if err != nil {
+		t.Fatalf("ReadDir(%q): %v", migrationsDir, err)
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".sql") || strings.HasPrefix(entry.Name(), "00049_") {
+			continue
+		}
+		b, err := os.ReadFile(filepath.Join(migrationsDir, entry.Name()))
+		if err != nil {
+			t.Fatalf("read %s: %v", entry.Name(), err)
+		}
+		if err := os.WriteFile(filepath.Join(baselineNo49Dir, entry.Name()), b, 0o600); err != nil {
+			t.Fatalf("write %s: %v", entry.Name(), err)
+		}
+	}
+	if _, err := Up(ctx, adminPool, baselineNo49Dir); !errors.Is(err, ErrChecksumMismatch) {
+		t.Fatalf("expected Up without migration 00049 on 4837954 DB to fail closed with ErrChecksumMismatch, got %v", err)
+	}
+
+	// 3. Negative check: if the 4837954 schema object (user_self_clerk_bootstrap policy) is missing while checksum claims 4837954, Up MUST fail closed with ErrChecksumMismatch.
+	if _, err := adminPool.Exec(ctx, `DROP POLICY user_self_clerk_bootstrap ON users`); err != nil {
+		t.Fatalf("drop policy user_self_clerk_bootstrap: %v", err)
+	}
+	if _, err := Up(ctx, adminPool, migrationsDir); !errors.Is(err, ErrChecksumMismatch) {
+		t.Fatalf("expected Up to fail with ErrChecksumMismatch when 4837954 schema policy is missing, got %v", err)
+	}
+	// Restore the 4837954 policy so the DB genuinely matches 4837954 schema state.
+	if _, err := adminPool.Exec(ctx, `
+		CREATE POLICY user_self_clerk_bootstrap ON users FOR SELECT TO app_user
+		  USING (
+		    NULLIF(current_setting('app.current_clerk_id', true), '') IS NOT NULL
+		    AND (
+		      clerk_id = NULLIF(current_setting('app.current_clerk_id', true), '')
+		      OR external_auth_id = NULLIF(current_setting('app.current_clerk_id', true), '')
+		    )
+		  )
+	`); err != nil {
+		t.Fatalf("restore policy user_self_clerk_bootstrap: %v", err)
+	}
+
+	// 3b. Negative check: if a 4837954 v6 composite tenant FK (fk_orders_product_id_tenant) is missing while checksum claims 4837954, Up and Status MUST fail closed with ErrChecksumMismatch.
+	if _, err := adminPool.Exec(ctx, `ALTER TABLE orders DROP CONSTRAINT fk_orders_product_id_tenant`); err != nil {
+		t.Fatalf("drop constraint fk_orders_product_id_tenant: %v", err)
+	}
+	if _, err := Status(ctx, adminPool, migrationsDir); !errors.Is(err, ErrChecksumMismatch) {
+		t.Fatalf("expected Status to fail with ErrChecksumMismatch when 4837954 v6 composite FK is missing, got %v", err)
+	}
+	if _, err := Up(ctx, adminPool, migrationsDir); !errors.Is(err, ErrChecksumMismatch) {
+		t.Fatalf("expected Up to fail with ErrChecksumMismatch when 4837954 v6 composite FK is missing, got %v", err)
+	}
+	if _, err := adminPool.Exec(ctx, `
+		ALTER TABLE orders
+		ADD CONSTRAINT fk_orders_product_id_tenant
+		FOREIGN KEY (workspace_id, product_id) REFERENCES products(workspace_id, product_id)
+	`); err != nil {
+		t.Fatalf("restore constraint fk_orders_product_id_tenant: %v", err)
+	}
+
+	// 4. Status and Up from 4837954 -> HEAD (with 00049) must succeed, preserve data, and append reconciled checksums without deleting 4837954 audit history.
+	statusesBefore, err := Status(ctx, adminPool, migrationsDir)
+	if err != nil {
+		t.Fatalf("Status(4837954 DB against HEAD) failed: %v", err)
+	}
+	if len(statusesBefore) != 49 || !statusesBefore[0].Applied || !statusesBefore[5].Applied || statusesBefore[48].Applied {
+		t.Fatalf("unexpected pre-upgrade status on 4837954 DB: v1=%+v v6=%+v v49=%+v", statusesBefore[0], statusesBefore[5], statusesBefore[48])
+	}
+
+	upgraded, err := Up(ctx, adminPool, migrationsDir)
+	if err != nil {
+		t.Fatalf("upgrade Up(4837954 -> HEAD v49) failed: %v", err)
+	}
+	if len(upgraded) != 1 || upgraded[0] != 49 {
+		t.Fatalf("expected only migration 49 newly applied when upgrading from 4837954, got %v", upgraded)
+	}
+
+	// 5. Verify both historical 4837954 checksums and reconciled canonical checksums are recorded in goose_db_version (append-only audit history preserved).
+	for _, tc := range []struct {
+		ver         int64
+		histCS      string
+		canonicalCS string
+	}{
+		{1, "87595883069286733567722b6f16de46da25216f8e6be429e23c3c8e12f28bc7", "b2f4c41ab41c013d19f260a450982229bc4ef7f159d4f334cf56c6706a28a1e6"},
+		{6, "8696ef9664e392fcd78544242e14b7e6f78e0953414679801c923e73aa36929e", "d463a8f01946972a3f9c4243943a91452e0722b850478d7a998f842e0a1655f3"},
+	} {
+		var latestCS string
+		if err := adminPool.QueryRow(ctx, `SELECT checksum FROM goose_db_version WHERE version_id = $1 AND is_applied = true ORDER BY id DESC LIMIT 1`, tc.ver).Scan(&latestCS); err != nil {
+			t.Fatalf("query latest checksum for v%d: %v", tc.ver, err)
+		}
+		if latestCS != tc.canonicalCS {
+			t.Fatalf("expected latest reconciled v%d checksum %s, got %s", tc.ver, tc.canonicalCS, latestCS)
+		}
+		var histCount int
+		if err := adminPool.QueryRow(ctx, `SELECT COUNT(*) FROM goose_db_version WHERE version_id = $1 AND is_applied = true AND checksum = $2`, tc.ver, tc.histCS).Scan(&histCount); err != nil || histCount != 1 {
+			t.Fatalf("expected historical 4837954 checksum row for v%d to be preserved in goose_db_version, got count=%d err=%v", tc.ver, histCount, err)
+		}
+	}
+
+	// 6. Verify seeded order data survived, cross-tenant FK is enforced, Clerk bootstrap works under app_user, and legacy NULL admin_sessions.expired_at was backfilled.
+	var orderCount int
+	if err := adminPool.QueryRow(ctx, `SELECT COUNT(*) FROM orders WHERE order_id = $1::uuid AND workspace_id = $2::uuid`, orderA, wsA).Scan(&orderCount); err != nil || orderCount != 1 {
+		t.Fatalf("expected seeded order %s to survive 4837954 -> HEAD upgrade, got count=%d err=%v", orderA, orderCount, err)
+	}
+	if _, err := adminPool.Exec(ctx, `
+		INSERT INTO orders (order_id, workspace_id, product_id, source_platform, external_order_id, currency, amount, lifecycle_state)
+		VALUES ($1::uuid, $2::uuid, $3::uuid, 'shopify', 'ext_4837954_cross_tenant', 'VND', 100000, 'confirmed')
+	`, orderB, wsB, prodA); err == nil {
+		t.Fatalf("expected composite FK fk_orders_product_id_tenant to reject cross-tenant order after 4837954 -> HEAD upgrade")
+	}
+	var backfilled bool
+	if err := adminPool.QueryRow(ctx, `
+		SELECT expired_at IS NOT NULL AND expired_at = started_at + INTERVAL '8 hours'
+		FROM admin_sessions WHERE session_id = $1::uuid
+	`, sessID).Scan(&backfilled); err != nil || !backfilled {
+		t.Fatalf("expected admin_sessions row %s to have expired_at backfilled after 4837954 -> HEAD upgrade, got %v (err=%v)", sessID, backfilled, err)
+	}
+
+	txPost, err := adminPool.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin txPost: %v", err)
+	}
+	if _, err := txPost.Exec(ctx, `SET LOCAL ROLE app_user; SELECT set_config('app.current_clerk_id', 'clerk_4837954_user_a', true);`); err != nil {
+		_ = txPost.Rollback(ctx)
+		t.Fatalf("set role/config in txPost: %v", err)
+	}
+	var resolvedUserID string
+	if err := txPost.QueryRow(ctx, `SELECT user_id::text FROM users WHERE clerk_id = 'clerk_4837954_user_a'`).Scan(&resolvedUserID); err != nil || resolvedUserID != userA {
+		_ = txPost.Rollback(ctx)
+		t.Fatalf("expected Clerk bootstrap under app_user after 4837954 -> HEAD upgrade to resolve %s, got %q (err=%v)", userA, resolvedUserID, err)
+	}
+	var foreignCount int
+	if err := txPost.QueryRow(ctx, `SELECT COUNT(*) FROM users WHERE clerk_id = 'clerk_4837954_user_b'`).Scan(&foreignCount); err != nil || foreignCount != 0 {
+		_ = txPost.Rollback(ctx)
+		t.Fatalf("expected Clerk bootstrap under app_user to isolate user B after 4837954 -> HEAD upgrade, got %d (err=%v)", foreignCount, err)
+	}
+	_ = txPost.Rollback(ctx)
+}

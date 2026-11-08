@@ -33,6 +33,20 @@ var (
 	ErrRollbackForbidden = errors.New("migrate: rollback is forbidden in staging/production; forward-only migrations required")
 	// ErrContractViolation indicates a migration file violates canonical P0-04 schema/RLS/grant rules.
 	ErrContractViolation = errors.New("migrate: canonical schema contract violation")
+	// ErrEmptyMigrationBundle indicates a migration directory contains zero SQL migration files.
+	ErrEmptyMigrationBundle = errors.New("migrate: migration bundle contains no SQL migration files")
+)
+
+const (
+	// CanonicalV1Checksum70c2b71 is the immutable SHA-256 of 00001_p0_04_tenant_schema_rls_and_grants.sql at 70c2b71 and HEAD.
+	CanonicalV1Checksum70c2b71 = "b2f4c41ab41c013d19f260a450982229bc4ef7f159d4f334cf56c6706a28a1e6"
+	// HistoricalV1Checksum4837954 is the SHA-256 of 00001_p0_04_tenant_schema_rls_and_grants.sql in staging commit 4837954 (b83e778).
+	HistoricalV1Checksum4837954 = "87595883069286733567722b6f16de46da25216f8e6be429e23c3c8e12f28bc7"
+
+	// CanonicalV6Checksum70c2b71 is the immutable SHA-256 of 00006_p1_02_orders_inventory_reservations_refunds.sql at 70c2b71 and HEAD.
+	CanonicalV6Checksum70c2b71 = "d463a8f01946972a3f9c4243943a91452e0722b850478d7a998f842e0a1655f3"
+	// HistoricalV6Checksum4837954 is the SHA-256 of 00006_p1_02_orders_inventory_reservations_refunds.sql in staging commit 4837954 (73ed222).
+	HistoricalV6Checksum4837954 = "8696ef9664e392fcd78544242e14b7e6f78e0953414679801c923e73aa36929e"
 )
 
 var filenamePattern = regexp.MustCompile(`^([0-9]+)_([a-z0-9_]+)\.sql$`)
@@ -97,6 +111,10 @@ func LoadDir(dir string) ([]Migration, error) {
 		}
 		seenVersions[m.Version] = m.Filename
 		migrations = append(migrations, m)
+	}
+
+	if len(migrations) == 0 {
+		return nil, fmt.Errorf("%w in %q", ErrEmptyMigrationBundle, dir)
 	}
 
 	sort.Slice(migrations, func(i, j int) bool {
@@ -336,6 +354,131 @@ func loadAppliedMap(ctx context.Context, db DBRunner) (map[int64]AppliedRecord, 
 	return state, nil
 }
 
+func hasForwardRemediation00049(migrations []Migration) bool {
+	for _, m := range migrations {
+		if m.Version == 49 {
+			return true
+		}
+	}
+	return false
+}
+
+// verifyHistorical4837954ChecksumAndSchema checks whether a checksum difference on an already-applied
+// migration corresponds to the exact known staging 4837954 lineage (v1=87595883..., v6=8696ef96...)
+// being upgraded to a bundle containing forward remediation 00049, and verifies against PostgreSQL
+// catalog metadata that the expected 4837954 schema objects actually exist in the database.
+func verifyHistorical4837954ChecksumAndSchema(ctx context.Context, db DBRunner, m Migration, recordedChecksum string, hasVersion49 bool) error {
+	mismatchErr := fmt.Errorf("%w: version %d (%s) recorded=%s current=%s",
+		ErrChecksumMismatch, m.Version, m.Filename, recordedChecksum, m.Checksum)
+	if !hasVersion49 {
+		return mismatchErr
+	}
+
+	var verifySQL string
+	switch m.Version {
+	case 1:
+		if recordedChecksum != HistoricalV1Checksum4837954 || m.Checksum != CanonicalV1Checksum70c2b71 {
+			return mismatchErr
+		}
+		verifySQL = `
+			SELECT (
+				EXISTS (
+					SELECT 1
+					FROM pg_class c
+					JOIN pg_namespace n ON n.oid = c.relnamespace
+					WHERE n.nspname = 'public'
+					  AND c.relname = 'users'
+					  AND c.relrowsecurity = true
+					  AND c.relforcerowsecurity = true
+				)
+				AND EXISTS (
+					SELECT 1
+					FROM pg_roles
+					WHERE rolname = 'app_user'
+					  AND rolbypassrls = false
+				)
+				AND EXISTS (
+					SELECT 1
+					FROM pg_policies
+					WHERE schemaname = 'public'
+					  AND tablename = 'users'
+					  AND policyname = 'user_self_clerk_bootstrap'
+					  AND cmd = 'SELECT'
+					  AND qual LIKE '%app.current_clerk_id%'
+				)
+			)
+		`
+	case 6:
+		if recordedChecksum != HistoricalV6Checksum4837954 || m.Checksum != CanonicalV6Checksum70c2b71 {
+			return mismatchErr
+		}
+		verifySQL = `
+			SELECT (
+				(
+					SELECT COUNT(*)
+					FROM pg_constraint con
+					JOIN pg_class rel ON rel.oid = con.conrelid
+					JOIN pg_namespace nsp ON nsp.oid = rel.relnamespace
+					WHERE nsp.nspname = 'public'
+					  AND rel.relname = 'orders'
+					  AND con.contype = 'f'
+					  AND array_length(con.conkey, 1) = 2
+					  AND con.conname IN (
+						'fk_orders_connected_account_id_tenant',
+						'fk_orders_product_id_tenant',
+						'fk_orders_offer_id_tenant',
+						'fk_orders_customer_entity_id_tenant'
+					  )
+				) = 4
+				AND EXISTS (
+					SELECT 1
+					FROM pg_constraint con
+					JOIN pg_class rel ON rel.oid = con.conrelid
+					JOIN pg_namespace nsp ON nsp.oid = rel.relnamespace
+					WHERE nsp.nspname = 'public'
+					  AND rel.relname = 'returns'
+					  AND con.contype = 'f'
+					  AND array_length(con.conkey, 1) = 2
+					  AND con.conname = 'fk_returns_refund_id_tenant'
+				)
+				AND (
+					SELECT COUNT(*)
+					FROM information_schema.columns
+					WHERE table_schema = 'public'
+					  AND table_name = 'returns'
+					  AND column_name IN ('source_platform', 'external_return_id')
+				) = 2
+				AND (
+					SELECT COUNT(*)
+					FROM pg_indexes
+					WHERE schemaname = 'public'
+					  AND indexname IN ('idx_refunds_external_identity', 'idx_returns_external_identity')
+				) = 2
+			)
+		`
+	default:
+		return mismatchErr
+	}
+
+	rows, err := db.Query(ctx, verifySQL)
+	if err != nil {
+		return mismatchErr
+	}
+	defer rows.Close()
+
+	var schemaVerified bool
+	if !rows.Next() {
+		return mismatchErr
+	}
+	if err := rows.Scan(&schemaVerified); err != nil || !schemaVerified {
+		return mismatchErr
+	}
+	if err := rows.Err(); err != nil {
+		return mismatchErr
+	}
+	return nil
+}
+
 // Status returns the ordered migration statuses for all migration files in dir.
 func Status(ctx context.Context, db DBRunner, dir string) ([]MigrationStatus, error) {
 	migrations, err := LoadDir(dir)
@@ -346,6 +489,7 @@ func Status(ctx context.Context, db DBRunner, dir string) ([]MigrationStatus, er
 	if err != nil {
 		return nil, err
 	}
+	hasV49 := hasForwardRemediation00049(migrations)
 
 	statuses := make([]MigrationStatus, 0, len(migrations))
 	for _, m := range migrations {
@@ -357,8 +501,9 @@ func Status(ctx context.Context, db DBRunner, dir string) ([]MigrationStatus, er
 		}
 		if rec, ok := applied[m.Version]; ok {
 			if rec.Checksum != "" && rec.Checksum != m.Checksum {
-				return nil, fmt.Errorf("%w: version %d (%s) recorded=%s current=%s",
-					ErrChecksumMismatch, m.Version, m.Filename, rec.Checksum, m.Checksum)
+				if err := verifyHistorical4837954ChecksumAndSchema(ctx, db, m, rec.Checksum, hasV49); err != nil {
+					return nil, err
+				}
 			}
 			t := rec.AppliedAt
 			st.Applied = true
@@ -386,13 +531,17 @@ func Up(ctx context.Context, db DBRunner, dir string) ([]int64, error) {
 	if err != nil {
 		return nil, err
 	}
+	hasV49 := hasForwardRemediation00049(migrations)
 
 	var newlyApplied []int64
+	var pendingChecksumReconciliations []Migration
 	for _, m := range migrations {
 		if rec, ok := applied[m.Version]; ok {
 			if rec.Checksum != "" && rec.Checksum != m.Checksum {
-				return newlyApplied, fmt.Errorf("%w: version %d (%s) recorded=%s current=%s",
-					ErrChecksumMismatch, m.Version, m.Filename, rec.Checksum, m.Checksum)
+				if err := verifyHistorical4837954ChecksumAndSchema(ctx, db, m, rec.Checksum, hasV49); err != nil {
+					return newlyApplied, err
+				}
+				pendingChecksumReconciliations = append(pendingChecksumReconciliations, m)
 			}
 			continue
 		}
@@ -418,6 +567,16 @@ func Up(ctx context.Context, db DBRunner, dir string) ([]int64, error) {
 						return fmt.Errorf("migrate: %s statement #%d failed: %w", m.Filename, idx+1, err)
 					}
 				}
+				if m.Version == 49 && len(pendingChecksumReconciliations) > 0 {
+					for _, rm := range pendingChecksumReconciliations {
+						if _, err := tx.Exec(ctx, `
+							INSERT INTO goose_db_version (version_id, is_applied, checksum)
+							VALUES ($1, true, $2)
+						`, rm.Version, rm.Checksum); err != nil {
+							return fmt.Errorf("migrate: reconcile version %d checksum: %w", rm.Version, err)
+						}
+					}
+				}
 				if _, err := tx.Exec(ctx, `
 					INSERT INTO goose_db_version (version_id, is_applied, checksum)
 					VALUES ($1, true, $2)
@@ -438,6 +597,9 @@ func Up(ctx context.Context, db DBRunner, dir string) ([]int64, error) {
 			if err := tx.Commit(ctx); err != nil {
 				return newlyApplied, fmt.Errorf("migrate: commit %s: %w", m.Filename, err)
 			}
+			if m.Version == 49 {
+				pendingChecksumReconciliations = nil
+			}
 			lastErr = nil
 			break
 		}
@@ -445,6 +607,25 @@ func Up(ctx context.Context, db DBRunner, dir string) ([]int64, error) {
 			return newlyApplied, lastErr
 		}
 		newlyApplied = append(newlyApplied, m.Version)
+	}
+
+	if len(pendingChecksumReconciliations) > 0 {
+		tx, err := db.Begin(ctx)
+		if err != nil {
+			return newlyApplied, fmt.Errorf("migrate: begin checksum reconciliation tx: %w", err)
+		}
+		for _, rm := range pendingChecksumReconciliations {
+			if _, err := tx.Exec(ctx, `
+				INSERT INTO goose_db_version (version_id, is_applied, checksum)
+				VALUES ($1, true, $2)
+			`, rm.Version, rm.Checksum); err != nil {
+				_ = tx.Rollback(ctx)
+				return newlyApplied, fmt.Errorf("migrate: reconcile version %d checksum: %w", rm.Version, err)
+			}
+		}
+		if err := tx.Commit(ctx); err != nil {
+			return newlyApplied, fmt.Errorf("migrate: commit checksum reconciliation: %w", err)
+		}
 	}
 
 	return newlyApplied, nil
