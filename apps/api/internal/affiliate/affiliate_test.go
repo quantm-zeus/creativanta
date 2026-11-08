@@ -1273,3 +1273,233 @@ func TestR10_ExecutePayoutBatchMidwayFailureIsRetryableIdempotently(t *testing.T
 		t.Fatalf("expected settlement AllocatedAmount=400000 (allocated once), got %s", settleAfter.AllocatedAmount.String())
 	}
 }
+
+// Billing R08:
+//  1. When a partial refund occurs AFTER CreatePayoutBatch (while batch is PayoutPending), the commission
+//     is reduced and unbound from the stale pending batch so executing the stale batch fails closed while
+//     a new batch with the reduced amount can be created and executed without deadlock.
+//  2. When a full/partial refund occurs interleaved with ExecutePayoutBatch (after Attempt 1 provisionally
+//     marked comm1 as CommissionPaidOut and failed on comm2, before payout reached PayoutCompleted),
+//     comm1 is still clawed back, surviving comm2 is rolled back to CommissionConfirmed (not stuck in
+//     CommissionPaidOut), and tentative settlement allocation is released.
+func TestR08_PartialRefundAfterBatchCreationAndRefundInterleavedWithExecution(t *testing.T) {
+	ctx := context.Background()
+	baseStore := NewMemoryStore()
+	fStore := &failingAffiliateStore{Store: baseStore}
+	sink := &mockSink{}
+	now := time.Date(2026, 11, 4, 12, 0, 0, 0, time.UTC)
+	svc := NewService(fStore, nil, sink, func() time.Time { return now })
+
+	wsID := "019086a1-7c3e-7000-8000-000000000010"
+	creatorID := newUUID()
+	prodID := newUUID()
+
+	link, err := svc.CreateLink(ctx, &AffiliateLink{
+		WorkspaceID:    wsID,
+		ProductID:      &prodID,
+		Platform:       "tiktok",
+		OriginalURL:    "https://shop.tiktok.com/product/r08-interleaved",
+		CommissionRate: mustDecimal(t, "10.00"),
+	})
+	if err != nil {
+		t.Fatalf("CreateLink: %v", err)
+	}
+
+	// --- Scenario 1: Partial refund after CreatePayoutBatch ---
+	if err := svc.RegisterVerifiedOrder(ctx, &VerifiedOrder{
+		OrderID:        "ord-r08-partial-batch",
+		WorkspaceID:    wsID,
+		GrossAmount:    mustDecimal(t, "1000000.000000"),
+		RefundedAmount: tenantdb.ZeroDecimal(),
+		Currency:       "VND",
+		LifecycleState: "completed",
+	}); err != nil {
+		t.Fatalf("RegisterVerifiedOrder: %v", err)
+	}
+	commP, err := svc.CalculateCommission(ctx, wsID, link.AffiliateLinkID, "ord-r08-partial-batch", &creatorID, mustDecimal(t, "1000000.000000"), "VND", 15)
+	if err != nil {
+		t.Fatalf("CalculateCommission: %v", err)
+	}
+	now = now.Add(16 * 24 * time.Hour)
+	if _, err := svc.ConfirmCommission(ctx, wsID, commP.CommissionID); err != nil {
+		t.Fatalf("ConfirmCommission: %v", err)
+	}
+	staleBatch, err := svc.CreatePayoutBatch(ctx, wsID, creatorID, []string{commP.CommissionID})
+	if err != nil {
+		t.Fatalf("CreatePayoutBatch staleBatch: %v", err)
+	}
+
+	// Partial refund of 300,000 arrives while staleBatch (100,000) is pending
+	if err := svc.RegisterVerifiedOrder(ctx, &VerifiedOrder{
+		OrderID:        "ord-r08-partial-batch",
+		WorkspaceID:    wsID,
+		GrossAmount:    mustDecimal(t, "1000000.000000"),
+		RefundedAmount: mustDecimal(t, "300000.000000"),
+		Currency:       "VND",
+		LifecycleState: "partially_refunded",
+	}); err != nil {
+		t.Fatalf("RegisterVerifiedOrder partial refund: %v", err)
+	}
+
+	// Creator must be able to create a new payout batch for the reduced 70,000 commission immediately
+	// without being deadlocked by staleBatch!
+	adjustedBatch, err := svc.CreatePayoutBatch(ctx, wsID, creatorID, []string{commP.CommissionID})
+	if err != nil {
+		t.Fatalf("R08 violation: expected CreatePayoutBatch to succeed for adjusted commission after partial refund invalidated pending batch, got %v", err)
+	}
+	if adjustedBatch.TotalAmount.Cmp(mustDecimal(t, "70000.000000")) != 0 {
+		t.Fatalf("expected adjustedBatch TotalAmount=70000, got %s", adjustedBatch.TotalAmount.String())
+	}
+
+	// Executing the old staleBatch must fail closed
+	_ = svc.RegisterVerifiedSettlement(ctx, &VerifiedSettlement{
+		SettlementID:       "settle-stale-100k",
+		WorkspaceID:        wsID,
+		CreatorEntityID:    creatorID,
+		NetAmount:          mustDecimal(t, "100000.000000"),
+		Currency:           "VND",
+		VerificationStatus: "verified",
+	})
+	if _, err := svc.ExecutePayoutBatch(ctx, wsID, staleBatch.PayoutID, "settle-stale-100k"); !errors.Is(err, ErrInvalidPayoutBatch) && !errors.Is(err, ErrOrderIneligible) {
+		t.Fatalf("R08 violation: expected staleBatch execution to fail closed, got %v", err)
+	}
+
+	// Executing the new adjustedBatch (70,000) with a 70,000 settlement must succeed
+	_ = svc.RegisterVerifiedSettlement(ctx, &VerifiedSettlement{
+		SettlementID:       "settle-valid-70k",
+		WorkspaceID:        wsID,
+		CreatorEntityID:    creatorID,
+		NetAmount:          mustDecimal(t, "70000.000000"),
+		Currency:           "VND",
+		VerificationStatus: "verified",
+	})
+	if _, err := svc.ExecutePayoutBatch(ctx, wsID, adjustedBatch.PayoutID, "settle-valid-70k"); err != nil {
+		t.Fatalf("ExecutePayoutBatch on adjustedBatch failed: %v", err)
+	}
+
+	// --- Scenario 2: Refund interleaved with ExecutePayoutBatch mid-flight failure ---
+	for _, id := range []string{"ord-r08-int-1", "ord-r08-int-2"} {
+		_ = svc.RegisterVerifiedOrder(ctx, &VerifiedOrder{
+			OrderID:        id,
+			WorkspaceID:    wsID,
+			GrossAmount:    mustDecimal(t, "1000000.000000"),
+			RefundedAmount: tenantdb.ZeroDecimal(),
+			Currency:       "VND",
+			LifecycleState: "completed",
+		})
+	}
+	c1, err := svc.CalculateCommission(ctx, wsID, link.AffiliateLinkID, "ord-r08-int-1", &creatorID, mustDecimal(t, "1000000.000000"), "VND", 15)
+	if err != nil {
+		t.Fatalf("CalculateCommission c1: %v", err)
+	}
+	c2, err := svc.CalculateCommission(ctx, wsID, link.AffiliateLinkID, "ord-r08-int-2", &creatorID, mustDecimal(t, "1000000.000000"), "VND", 15)
+	if err != nil {
+		t.Fatalf("CalculateCommission c2: %v", err)
+	}
+	now = now.Add(16 * 24 * time.Hour)
+	_, _ = svc.ConfirmCommission(ctx, wsID, c1.CommissionID)
+	_, _ = svc.ConfirmCommission(ctx, wsID, c2.CommissionID)
+
+	batchInt, err := svc.CreatePayoutBatch(ctx, wsID, creatorID, []string{c1.CommissionID, c2.CommissionID})
+	if err != nil {
+		t.Fatalf("CreatePayoutBatch batchInt: %v", err)
+	}
+	_ = svc.RegisterVerifiedSettlement(ctx, &VerifiedSettlement{
+		SettlementID:       "settle-int-200k",
+		WorkspaceID:        wsID,
+		CreatorEntityID:    creatorID,
+		NetAmount:          mustDecimal(t, "200000.000000"),
+		Currency:           "VND",
+		VerificationStatus: "verified",
+	})
+
+	// Attempt 1 of ExecutePayoutBatch fails on the 2nd commission update (after c1 was provisionally marked paid_out)
+	fStore.updateCommCalls = 0
+	fStore.failUpdateCommCount = 2
+	if _, err := svc.ExecutePayoutBatch(ctx, wsID, batchInt.PayoutID, "settle-int-200k"); err == nil {
+		t.Fatalf("expected ExecutePayoutBatch Attempt 1 to fail on 2nd UpdateCommission")
+	}
+	fStore.failUpdateCommCount = 0
+
+	// Now ord-r08-int-1 (whose commission c1 was provisionally marked paid_out!) is refunded before Attempt 2!
+	if err := svc.RegisterVerifiedOrder(ctx, &VerifiedOrder{
+		OrderID:        "ord-r08-int-1",
+		WorkspaceID:    wsID,
+		GrossAmount:    mustDecimal(t, "1000000.000000"),
+		RefundedAmount: mustDecimal(t, "1000000.000000"),
+		Currency:       "VND",
+		LifecycleState: "refunded",
+	}); err != nil {
+		t.Fatalf("RegisterVerifiedOrder refund ord-r08-int-1: %v", err)
+	}
+
+	// Attempt 2 of ExecutePayoutBatch MUST fail closed because c1's order was refunded before batch completion!
+	if _, err := svc.ExecutePayoutBatch(ctx, wsID, batchInt.PayoutID, "settle-int-200k"); !errors.Is(err, ErrInvalidPayoutBatch) && !errors.Is(err, ErrOrderIneligible) {
+		t.Fatalf("R08 violation: expected ExecutePayoutBatch retry to fail closed when c1 was refunded mid-execution, got %v", err)
+	}
+
+	// Verify c1 is clawed_back, c2 is rolled back to confirmed with PayoutID == nil, and settlement is released
+	c1After, _ := baseStore.GetCommission(ctx, wsID, c1.CommissionID)
+	if c1After.Status != CommissionClawedBack {
+		t.Fatalf("R08 violation: expected c1 status clawed_back, got %s", c1After.Status)
+	}
+	c2After, _ := baseStore.GetCommission(ctx, wsID, c2.CommissionID)
+	if c2After.Status != CommissionConfirmed || c2After.PayoutID != nil {
+		t.Fatalf("R08/R10 violation: expected surviving c2 status=confirmed and PayoutID=nil, got status=%s payoutID=%v", c2After.Status, c2After.PayoutID)
+	}
+}
+
+// Billing R10 extra coverage: If CreatePayoutBatch fails mid-way while binding commissions,
+// previously bound commissions must be rolled back so retrying CreatePayoutBatch succeeds.
+func TestR10_CreatePayoutBatchPartialFailureRollsBackCommissionBindings(t *testing.T) {
+	ctx := context.Background()
+	baseStore := NewMemoryStore()
+	fStore := &failingAffiliateStore{Store: baseStore}
+	now := time.Date(2026, 11, 4, 12, 0, 0, 0, time.UTC)
+	svc := NewService(fStore, nil, nil, func() time.Time { return now })
+
+	wsID := "019086a1-7c3e-7000-8000-000000000010"
+	creatorID := newUUID()
+
+	c1 := &AffiliateCommission{
+		CommissionID:     newUUID(),
+		WorkspaceID:      wsID,
+		AffiliateLinkID:  newUUID(),
+		OrderID:          "ord-r10-create-1",
+		CreatorEntityID:  &creatorID,
+		CommissionAmount: mustDecimal(t, "100000.000000"),
+		Currency:         "VND",
+		Status:           CommissionConfirmed,
+		HoldUntil:        now.Add(-24 * time.Hour),
+	}
+	c2 := &AffiliateCommission{
+		CommissionID:     newUUID(),
+		WorkspaceID:      wsID,
+		AffiliateLinkID:  newUUID(),
+		OrderID:          "ord-r10-create-2",
+		CreatorEntityID:  &creatorID,
+		CommissionAmount: mustDecimal(t, "200000.000000"),
+		Currency:         "VND",
+		Status:           CommissionConfirmed,
+		HoldUntil:        now.Add(-24 * time.Hour),
+	}
+	_ = baseStore.CreateCommission(ctx, c1)
+	_ = baseStore.CreateCommission(ctx, c2)
+
+	// Fail on 2nd UpdateCommission during CreatePayoutBatch
+	fStore.updateCommCalls = 0
+	fStore.failUpdateCommCount = 2
+	if _, err := svc.CreatePayoutBatch(ctx, wsID, creatorID, []string{c1.CommissionID, c2.CommissionID}); err == nil {
+		t.Fatalf("expected CreatePayoutBatch to fail when 2nd UpdateCommission fails")
+	}
+
+	// Retry with healthy store -> must succeed (c1 must not be stuck with a dangling PayoutID)
+	fStore.failUpdateCommCount = 0
+	batch, err := svc.CreatePayoutBatch(ctx, wsID, creatorID, []string{c1.CommissionID, c2.CommissionID})
+	if err != nil {
+		t.Fatalf("R10 violation: retry of CreatePayoutBatch failed after partial failure: %v", err)
+	}
+	if batch.TotalAmount.Cmp(mustDecimal(t, "300000.000000")) != 0 {
+		t.Fatalf("expected batch TotalAmount=300000, got %s", batch.TotalAmount.String())
+	}
+}

@@ -624,6 +624,53 @@ func (s *Service) ListLedgerPostings(wsID, commissionID string) []*LedgerPosting
 // order/refund record in the store (Billing R08).
 // - Full refund or cancelled/ineligible order -> transitions commission to clawed_back, reverses ledger, returns ErrOrderIneligible.
 // - Partial refund -> reduces commission proportionally to post-refund eligible order amount, records partial clawback & ledger adjustment.
+func (s *Service) isCommissionPayoutFinalized(ctx context.Context, wsID string, comm *AffiliateCommission) bool {
+	if comm == nil || comm.Status != CommissionPaidOut {
+		return false
+	}
+	if comm.PayoutID == nil || strings.TrimSpace(*comm.PayoutID) == "" {
+		return true
+	}
+	payout, err := s.store.GetPayout(ctx, wsID, strings.TrimSpace(*comm.PayoutID))
+	if err != nil || payout == nil {
+		return true
+	}
+	return payout.Status == PayoutCompleted
+}
+
+func (s *Service) invalidatePendingPayoutBatchForCommission(ctx context.Context, wsID string, comm *AffiliateCommission, now time.Time) {
+	if comm == nil || comm.PayoutID == nil || strings.TrimSpace(*comm.PayoutID) == "" {
+		return
+	}
+	payoutID := strings.TrimSpace(*comm.PayoutID)
+	payout, err := s.store.GetPayout(ctx, wsID, payoutID)
+	if err != nil || payout == nil {
+		return
+	}
+	if payout.Status == PayoutPending {
+		payout.Status = PayoutFailed
+		payout.UpdatedAt = now
+		_ = s.store.UpdatePayout(ctx, payout)
+		comm.PayoutID = nil
+		for _, cid := range payout.CommissionIDs {
+			if cid == comm.CommissionID {
+				continue
+			}
+			if other, gErr := s.store.GetCommission(ctx, wsID, cid); gErr == nil && other != nil {
+				if other.PayoutID != nil && strings.TrimSpace(*other.PayoutID) == payoutID {
+					other.PayoutID = nil
+					if other.Status == CommissionPaidOut {
+						other.Status = CommissionConfirmed
+						other.PaidOutAt = nil
+					}
+					other.UpdatedAt = now
+					_ = s.store.UpdateCommission(ctx, other)
+				}
+			}
+		}
+	}
+}
+
 func (s *Service) reconcileCommissionWithVerifiedOrderLocked(ctx context.Context, wsID string, comm *AffiliateCommission) (*AffiliateCommission, error) {
 	if comm == nil || strings.TrimSpace(comm.OrderID) == "" {
 		return comm, nil
@@ -644,8 +691,10 @@ func (s *Service) reconcileCommissionWithVerifiedOrderLocked(ctx context.Context
 		ord.RefundedAmount.IsNegative() ||
 		eligibleAmount.Cmp(tenantdb.ZeroDecimal()) <= 0
 
+	payoutFinalized := s.isCommissionPayoutFinalized(ctx, wsID, comm)
+
 	if orderIneligible {
-		if comm.Status != CommissionClawedBack && comm.Status != CommissionPaidOut {
+		if comm.Status != CommissionClawedBack && !payoutFinalized {
 			clawDelta := comm.CommissionAmount
 			totalClaw := clawDelta
 			if comm.ClawbackAmount != nil {
@@ -653,7 +702,9 @@ func (s *Service) reconcileCommissionWithVerifiedOrderLocked(ctx context.Context
 					totalClaw = sum
 				}
 			}
+			s.invalidatePendingPayoutBatchForCommission(ctx, wsID, comm, now)
 			comm.Status = CommissionClawedBack
+			comm.PaidOutAt = nil
 			comm.ClawbackReason = "order_refunded"
 			comm.ClawbackAmount = &totalClaw
 			comm.ClawedBackAt = &now
@@ -673,7 +724,7 @@ func (s *Service) reconcileCommissionWithVerifiedOrderLocked(ctx context.Context
 
 	// Partial refund handling: if eligibleAmount < comm.OrderAmount (or order has positive RefundedAmount),
 	// recompute the canonical post-refund commission obligation.
-	if ord.RefundedAmount.Cmp(tenantdb.ZeroDecimal()) > 0 && (comm.OrderAmount.IsZero() || eligibleAmount.Cmp(comm.OrderAmount) < 0) {
+	if !payoutFinalized && ord.RefundedAmount.Cmp(tenantdb.ZeroDecimal()) > 0 && (comm.OrderAmount.IsZero() || eligibleAmount.Cmp(comm.OrderAmount) < 0) {
 		var newCommAmt tenantdb.ExactDecimal
 		hasNewComm := false
 		if link, linkErr := s.store.GetLink(ctx, wsID, comm.AffiliateLinkID); linkErr == nil && link != nil && link.CommissionRate.Cmp(tenantdb.ZeroDecimal()) > 0 {
@@ -696,6 +747,11 @@ func (s *Service) reconcileCommissionWithVerifiedOrderLocked(ctx context.Context
 				if sum, addErr := comm.ClawbackAmount.Add(clawDelta); addErr == nil {
 					totalClaw = sum
 				}
+			}
+			s.invalidatePendingPayoutBatchForCommission(ctx, wsID, comm, now)
+			if comm.Status == CommissionPaidOut {
+				comm.Status = CommissionConfirmed
+				comm.PaidOutAt = nil
 			}
 			comm.OrderAmount = eligibleAmount
 			comm.CommissionAmount = newCommAmt
@@ -1057,16 +1113,27 @@ func (s *Service) CreatePayoutBatch(ctx context.Context, wsID, creatorID string,
 		UpdatedAt:       now,
 	}
 
-	// Bind each commission to this payout batch so it cannot be reused in another batch
+	// Bind each commission to this payout batch so it cannot be reused in another batch;
+	// roll back bindings if any update or batch creation fails (Billing R10).
+	var boundComms []*AffiliateCommission
+	rollbackBindings := func() {
+		for _, bc := range boundComms {
+			bc.PayoutID = nil
+			_ = s.store.UpdateCommission(ctx, bc)
+		}
+	}
 	for _, comm := range comms {
 		comm.PayoutID = &payoutID
 		comm.UpdatedAt = now
 		if err := s.store.UpdateCommission(ctx, comm); err != nil {
+			rollbackBindings()
 			return nil, err
 		}
+		boundComms = append(boundComms, comm)
 	}
 
 	if err := s.store.CreatePayout(ctx, payout); err != nil {
+		rollbackBindings()
 		return nil, err
 	}
 	return payout, nil
@@ -1093,6 +1160,9 @@ func (s *Service) ExecutePayoutBatch(ctx context.Context, wsID, payoutID, settle
 	}
 	if payout.Status == PayoutCompleted {
 		return nil, ErrPayoutAlreadyExecuted
+	}
+	if payout.Status != PayoutPending && payout.Status != PayoutProcessing {
+		return nil, fmt.Errorf("%w (%w): payout %s is in status %s", ErrInvalidPayoutBatch, ErrOrderIneligible, payoutID, payout.Status)
 	}
 	if len(payout.CommissionIDs) == 0 {
 		return nil, ErrInvalidPayoutBatch
@@ -1151,10 +1221,23 @@ func (s *Service) ExecutePayoutBatch(ctx context.Context, wsID, payoutID, settle
 		}
 	}
 
-	invalidateBatchBindings := func(loaded []*AffiliateCommission) {
-		for _, c := range loaded {
-			if c != nil && c.PayoutID != nil && *c.PayoutID == payout.PayoutID && c.Status != CommissionPaidOut {
+	invalidateBatchBindings := func(_ []*AffiliateCommission) {
+		for _, cid := range payout.CommissionIDs {
+			c, gErr := s.store.GetCommission(ctx, wsID, cid)
+			if gErr != nil || c == nil {
+				continue
+			}
+			changed := false
+			if c.PayoutID != nil && strings.TrimSpace(*c.PayoutID) == payout.PayoutID {
 				c.PayoutID = nil
+				changed = true
+			}
+			if c.Status == CommissionPaidOut {
+				c.Status = CommissionConfirmed
+				c.PaidOutAt = nil
+				changed = true
+			}
+			if changed {
 				c.UpdatedAt = now
 				_ = s.store.UpdateCommission(ctx, c)
 			}

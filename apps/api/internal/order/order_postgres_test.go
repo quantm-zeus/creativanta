@@ -395,6 +395,36 @@ func TestPostgresLiveOrderStore(t *testing.T) {
 	if err := store.CreateReturn(ctx, retOnCancelled); !errors.Is(err, order.ErrInvalidReturnTransition) {
 		t.Fatalf("expected ErrInvalidReturnTransition on cancelled order in PostgresStore, got %v", err)
 	}
+
+	// Verify PostgresStore rejects physical return on unfulfilled created order (Billing N02)
+	createdOrdID := "33333333-3333-3333-3333-333333333336"
+	createdOrd := &order.Order{
+		OrderID:        createdOrdID,
+		WorkspaceID:    wsID,
+		SourceClass:    order.SourceClassOfficial,
+		Amount:         tenantdb.MustParseExactDecimal("225000.000000"),
+		Currency:       "VND",
+		LifecycleState: order.StateCreated,
+		OrderedAt:      time.Now().UTC(),
+		Items: []order.OrderItem{
+			{Sku: "PG-SKU-1", Quantity: 1, UnitPrice: tenantdb.MustParseExactDecimal("225000.000000"), Total: tenantdb.MustParseExactDecimal("225000.000000")},
+		},
+	}
+	if err := store.CreateOrder(ctx, createdOrd); err != nil {
+		t.Fatalf("create created order: %v", err)
+	}
+	retOnCreated := &order.Return{
+		WorkspaceID:      wsID,
+		OrderID:          createdOrdID,
+		ReturnType:       "full",
+		Items:            []order.ReturnItem{{Sku: "PG-SKU-1", Quantity: 1}},
+		LifecycleState:   order.ReturnInitiated,
+		SourcePlatform:   "tiktok",
+		ExternalReturnID: "pg-ext-ret-created",
+	}
+	if err := store.CreateReturn(ctx, retOnCreated); !errors.Is(err, order.ErrInvalidReturnTransition) {
+		t.Fatalf("expected ErrInvalidReturnTransition on unfulfilled created order in PostgresStore, got %v", err)
+	}
 }
 
 // Data #17: Orders and returns must enforce composite same-tenant foreign keys in PostgreSQL

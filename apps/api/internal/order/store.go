@@ -609,8 +609,20 @@ func (m *MemoryStore) RevertRefundApproval(_ context.Context, workspaceID, refun
 	return nil
 }
 
+func isOrderEligibleForPhysicalReturn(o *Order) bool {
+	if o == nil {
+		return false
+	}
+	switch o.LifecycleState {
+	case StateConfirmed, StateFulfilled, StateCompleted, StatePartiallyRefunded, StateRefunded, StateReturned:
+		return true
+	default:
+		return false
+	}
+}
+
 func validateAndAccumulateReturnItems(o *Order, existingReturns []*Return, ret *Return) error {
-	if o.LifecycleState == StateCreated || o.LifecycleState == StateCancelled {
+	if !isOrderEligibleForPhysicalReturn(o) {
 		return fmt.Errorf("%w: cannot create physical return for order in state %s", ErrInvalidReturnTransition, o.LifecycleState)
 	}
 	orderedQty := make(map[string]int32, len(o.Items))
@@ -1788,14 +1800,26 @@ func (s *PostgresStore) ApproveRefundAtomic(ctx context.Context, workspaceID, re
 			newOrderState = StatePartiallyRefunded
 		}
 
+		if o.Metadata == nil {
+			o.Metadata = make(map[string]any)
+		}
+		o.Metadata["refunded_amount"] = newRefunded.Fixed6String()
+		if prevState == StateConfirmed {
+			o.Metadata["unfulfilled_refund"] = "true"
+		}
+		metaBytes, mErr := json.Marshal(o.Metadata)
+		if mErr != nil {
+			metaBytes = []byte("{}")
+		}
+
 		const updOrderQ = `
 			UPDATE orders
 			SET lifecycle_state = $1,
-			    metadata = jsonb_set(COALESCE(metadata, '{}'::jsonb), '{refunded_amount}', to_jsonb($2::text)),
+			    metadata = $2::jsonb,
 			    updated_at = NOW()
 			WHERE workspace_id = $3 AND order_id = $4 AND deleted_at IS NULL;
 		`
-		if _, err := tx.Exec(txCtx, updOrderQ, string(newOrderState), newRefunded.Fixed6String(), workspaceID, o.OrderID); err != nil {
+		if _, err := tx.Exec(txCtx, updOrderQ, string(newOrderState), metaBytes, workspaceID, o.OrderID); err != nil {
 			return err
 		}
 

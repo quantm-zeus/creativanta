@@ -200,19 +200,60 @@ func (s *Service) recordOrderPosting(ctx context.Context, o *Order) error {
 	})
 }
 
+func (s *Service) resolveInventoryStore() inventory.Store {
+	if s.inventory == nil {
+		return nil
+	}
+	if sp, ok := s.inventory.(inventoryStoreProvider); ok {
+		return sp.Store()
+	}
+	return nil
+}
+
+func (s *Service) resolveOrderLocationID(ctx context.Context, o *Order, defaultLocationID string) string {
+	if loc := strings.TrimSpace(defaultLocationID); loc != "" {
+		return loc
+	}
+	if o != nil && o.Metadata != nil {
+		if loc, ok := o.Metadata["default_location_id"].(string); ok && strings.TrimSpace(loc) != "" {
+			return strings.TrimSpace(loc)
+		}
+	}
+	if invStore := s.resolveInventoryStore(); invStore != nil && o != nil {
+		if resList, err := invStore.ListReservationsByOrder(ctx, o.WorkspaceID, o.OrderID); err == nil {
+			for _, r := range resList {
+				if strings.TrimSpace(r.LocationID) != "" {
+					return strings.TrimSpace(r.LocationID)
+				}
+			}
+		}
+		if defLoc, err := invStore.GetDefaultLocation(ctx, o.WorkspaceID); err == nil && defLoc != nil && strings.TrimSpace(defLoc.LocationID) != "" {
+			return strings.TrimSpace(defLoc.LocationID)
+		}
+		if bals, _, err := invStore.ListBalances(ctx, o.WorkspaceID, "", 50, 0); err == nil {
+			for _, it := range o.Items {
+				for _, b := range bals {
+					if b.SkuID == it.Sku && strings.TrimSpace(b.LocationID) != "" {
+						return strings.TrimSpace(b.LocationID)
+					}
+				}
+			}
+		}
+	}
+	return "00000000-0000-0000-0000-000000000001"
+}
+
 func (s *Service) buildReservationItems(ctx context.Context, o *Order, defaultLocationID string) ([]inventory.ReservationItem, error) {
 	if s.inventory == nil || o == nil {
 		return nil, nil
 	}
+	resolvedLocID := s.resolveOrderLocationID(ctx, o, defaultLocationID)
 	var reservationItems []inventory.ReservationItem
 	for _, item := range o.Items {
 		if item.Sku == "" || item.Quantity <= 0 {
 			continue
 		}
-		locID := defaultLocationID
-		if locID == "" {
-			locID = "00000000-0000-0000-0000-000000000001" // standard fallback
-		}
+		locID := resolvedLocID
 		shouldDeduct, err := s.inventory.ShouldDeductStockForImportedOrder(ctx, o.WorkspaceID, item.Sku, locID, o.OrderedAt)
 		if err != nil {
 			return nil, fmt.Errorf("evaluate stock deduction for sku %s: %w", item.Sku, err)
@@ -438,6 +479,12 @@ func (s *Service) IngestOrder(ctx context.Context, o *Order, defaultLocationID s
 	}
 
 	targetState := o.LifecycleState
+	if strings.TrimSpace(defaultLocationID) != "" {
+		if o.Metadata == nil {
+			o.Metadata = make(map[string]any)
+		}
+		o.Metadata["default_location_id"] = strings.TrimSpace(defaultLocationID)
+	}
 
 	// 2. Inventory evaluation: check if items should deduct stock
 	reservationItems, err := s.buildReservationItems(ctx, o, defaultLocationID)
@@ -461,7 +508,8 @@ func (s *Service) IngestOrder(ctx context.Context, o *Order, defaultLocationID s
 				_ = s.store.DeleteOrder(ctx, o.WorkspaceID, o.OrderID)
 				return nil, false, fmt.Errorf("reserve stock: %w", err)
 			}
-		} else if targetState == StateConfirmed || targetState == StateFulfilled || targetState == StateCompleted {
+		} else if targetState == StateConfirmed || targetState == StateFulfilled || targetState == StateCompleted ||
+			targetState == StatePartiallyRefunded || targetState == StateRefunded || targetState == StateReturned {
 			// Pre-confirmed/completed order (e.g. historical paid order after baseline): reserve then fulfill immediately
 			const holdTTL = 5 * time.Minute
 			_, err := s.inventory.ReserveStock(ctx, o.WorkspaceID, o.OrderID, reservationItems, holdTTL)
@@ -639,12 +687,9 @@ func (s *Service) ConfirmOrder(ctx context.Context, workspaceID, orderID string)
 		return nil, fmt.Errorf("%w: cannot transition from %s to %s", ErrInvalidOrderTransition, o.LifecycleState, StateConfirmed)
 	}
 
-	// Fulfill reservation in inventory ledger
-	if s.inventory != nil {
-		_, err := s.inventory.FulfillReservation(ctx, workspaceID, orderID)
-		if err != nil && !errors.Is(err, inventory.ErrReservationNotFound) {
-			return nil, fmt.Errorf("fulfill inventory reservation: %w", err)
-		}
+	// Fulfill reservation in inventory ledger (re-reserving if an earlier crash skipped reservation)
+	if err := s.ensureOrderStockEffects(ctx, o, StateConfirmed, ""); err != nil {
+		return nil, err
 	}
 
 	if err := s.store.UpdateOrderStatus(ctx, workspaceID, orderID, StateConfirmed, nil); err != nil {
@@ -904,6 +949,81 @@ func (s *Service) ApproveRefund(ctx context.Context, workspaceID, refundID strin
 	return r, o, nil
 }
 
+// validateOrderInventoryEligibleForReturn ensures that when inventory is wired and a SKU balance is initialized,
+// a physical return can only be created or received if the order actually deducted stock via a sale movement
+// (without pre-fulfillment cancellation compensation) and cumulative returned quantity does not exceed the
+// canonical fulfilled sale deduction, preventing unfulfilled or pre-baseline historical orders from fabricating
+// inventory stock (Billing N02).
+func (s *Service) validateOrderInventoryEligibleForReturn(ctx context.Context, o *Order, returnID string, items []ReturnItem, locationID string) error {
+	if o == nil {
+		return ErrOrderNotFound
+	}
+	if !isOrderEligibleForPhysicalReturn(o) {
+		return fmt.Errorf("%w: cannot process physical return for order in state %s", ErrInvalidReturnTransition, o.LifecycleState)
+	}
+	invStore := s.resolveInventoryStore()
+	if invStore == nil {
+		return nil
+	}
+
+	cumRetQty := make(map[string]int32)
+	alreadyIncluded := false
+	if existingReturns, err := s.store.ListReturnsByOrder(ctx, o.WorkspaceID, o.OrderID); err == nil {
+		for _, ex := range existingReturns {
+			if ex == nil || ex.DeletedAt != nil || ex.LifecycleState == ReturnRejected {
+				continue
+			}
+			if returnID != "" && ex.ReturnID == returnID {
+				alreadyIncluded = true
+			}
+			for _, it := range ex.Items {
+				if it.Sku != "" && it.Quantity > 0 {
+					cumRetQty[it.Sku] += it.Quantity
+				}
+			}
+		}
+	}
+	if !alreadyIncluded {
+		for _, it := range items {
+			if it.Sku != "" && it.Quantity > 0 {
+				cumRetQty[it.Sku] += it.Quantity
+			}
+		}
+	}
+
+	locID := s.resolveOrderLocationID(ctx, o, locationID)
+	for _, item := range items {
+		if item.Sku == "" || item.Quantity <= 0 {
+			continue
+		}
+		if _, err := invStore.GetBalance(ctx, o.WorkspaceID, item.Sku, locID); err != nil {
+			if errors.Is(err, inventory.ErrSkuNotInitialized) {
+				continue
+			}
+			return err
+		}
+		compMovKey := fmt.Sprintf("mov_cancel_comp_%s_%s_%s", o.OrderID, item.Sku, locID)
+		if compMov, err := invStore.FindMovementByKey(ctx, o.WorkspaceID, compMovKey); err != nil {
+			return err
+		} else if compMov != nil {
+			return fmt.Errorf("%w: order %s was cancelled before fulfillment for sku %s", ErrInvalidReturnTransition, o.OrderID, item.Sku)
+		}
+		saleMovKey := fmt.Sprintf("mov_sale_%s_%s_%s", o.OrderID, item.Sku, locID)
+		saleMov, err := invStore.FindMovementByKey(ctx, o.WorkspaceID, saleMovKey)
+		if err != nil {
+			return err
+		}
+		if saleMov == nil || saleMov.Quantity >= 0 {
+			return fmt.Errorf("%w: order %s has no recorded sale stock deduction for sku %s", ErrInvalidReturnTransition, o.OrderID, item.Sku)
+		}
+		fulfilledQty := -saleMov.Quantity
+		if cumRetQty[item.Sku] > fulfilledQty {
+			return fmt.Errorf("%w: sku %s cumulative returned %d exceeds fulfilled sale quantity %d", ErrReturnExceedsOrderQuantity, item.Sku, cumRetQty[item.Sku], fulfilledQty)
+		}
+	}
+	return nil
+}
+
 // CreateReturn creates a physical return request.
 // Enforces inventory contract §3: cumulative return quantity <= sold quantity across all non-rejected returns atomically.
 func (s *Service) CreateReturn(ctx context.Context, ret *Return) (*Return, error) {
@@ -912,6 +1032,14 @@ func (s *Service) CreateReturn(ctx context.Context, ret *Return) (*Return, error
 	}
 	if len(ret.Items) == 0 {
 		return nil, fmt.Errorf("%w: return must contain at least one item", ErrInvalidInput)
+	}
+
+	o, err := s.store.GetOrder(ctx, ret.WorkspaceID, ret.OrderID)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.validateOrderInventoryEligibleForReturn(ctx, o, ret.ReturnID, ret.Items, ""); err != nil {
+		return nil, err
 	}
 
 	if ret.ReturnID == "" {
@@ -1065,12 +1193,16 @@ func (s *Service) ReceiveReturn(ctx context.Context, workspaceID, returnID, rest
 	if err != nil {
 		return nil, err
 	}
-	if o.LifecycleState == StateCreated || o.LifecycleState == StateCancelled {
-		return nil, fmt.Errorf("%w: cannot receive physical return for order in state %s", ErrInvalidReturnTransition, o.LifecycleState)
+	if err := s.validateOrderInventoryEligibleForReturn(ctx, o, ret.ReturnID, ret.Items, restockLocationID); err != nil {
+		return nil, err
 	}
 
 	// Physical restock (aggregate quantities per SKU so duplicate SKU lines in a return restock accurately)
-	if s.inventory != nil && restockLocationID != "" {
+	resolvedRestockLoc := restockLocationID
+	if resolvedRestockLoc == "" && s.inventory != nil {
+		resolvedRestockLoc = s.resolveOrderLocationID(ctx, o, "")
+	}
+	if s.inventory != nil && resolvedRestockLoc != "" {
 		qtyBySku := make(map[string]int32)
 		reasonBySku := make(map[string]string)
 		var skuOrder []string
@@ -1084,7 +1216,7 @@ func (s *Service) ReceiveReturn(ctx context.Context, workspaceID, returnID, rest
 			}
 		}
 		for _, sku := range skuOrder {
-			_, err := s.inventory.RecordPhysicalReturn(ctx, workspaceID, ret.OrderID, returnID, sku, restockLocationID, qtyBySku[sku], reasonBySku[sku])
+			_, err := s.inventory.RecordPhysicalReturn(ctx, workspaceID, ret.OrderID, returnID, sku, resolvedRestockLoc, qtyBySku[sku], reasonBySku[sku])
 			if err != nil {
 				return nil, fmt.Errorf("restock returned item %s: %w", sku, err)
 			}
