@@ -704,6 +704,9 @@ func (s *Service) Checkout(ctx context.Context, req CheckoutRequest) (*CheckoutR
 	if payStatus == PaymentStatusFailed {
 		return nil, ErrPaymentFailed
 	}
+	if payStatus != PaymentStatusSucceeded && payStatus != PaymentStatusPending {
+		return nil, fmt.Errorf("%w: unsettled or unknown payment status %q", ErrPaymentNotVerified, payStatus)
+	}
 
 	// 4b. Durable store-level atomic checkout & payment-intent claim across Service instances BEFORE side effects (R02)
 	claimedReplay, claimedOrderID, err := s.store.ClaimCheckout(ctx, req.WorkspaceID, req.IdempotencyKey, trimmedPI, fp)
