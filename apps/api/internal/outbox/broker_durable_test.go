@@ -16,6 +16,8 @@ import (
 	"io"
 	"math/big"
 	"net"
+	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"os"
 	"os/exec"
@@ -1188,12 +1190,14 @@ func TestRedisStreamBrokerACLUsernamePasswordAndTLS(t *testing.T) {
 		aclPassword = "acl_secret_password_do_not_leak_445566"
 	)
 
-	// Part 1: URLs with username but missing/empty password must fail closed without leaking username.
+	// Part 1: URLs with username or empty userinfo without non-empty password must fail closed without leaking username.
 	for _, invalidACLURL := range []string{
 		"redis://" + aclUser + "@127.0.0.1:6379/0",
 		"redis://" + aclUser + ":@127.0.0.1:6379/0",
+		"redis://:@127.0.0.1:6379/0",
 		"rediss://" + aclUser + "@127.0.0.1:6379/0",
 		"rediss://" + aclUser + ":@127.0.0.1:6379/0",
+		"rediss://:@127.0.0.1:6379/0",
 	} {
 		_, err := outbox.NewRedisStreamBroker(invalidACLURL, "")
 		if err == nil {
@@ -1205,7 +1209,11 @@ func TestRedisStreamBrokerACLUsernamePasswordAndTLS(t *testing.T) {
 	}
 
 	// Part 2: Mock RESP2 server where 'default' user is disabled and only (aclUser, aclPassword)
-	// via 3-arg AUTH or password-only via 2-arg AUTH (for legacy :password@ URLs) is tested.
+	// via 3-arg AUTH or password-only via 2-arg AUTH (for legacy :password@ URLs) is tested,
+	// plus full XADD / XREADGROUP / XPENDING / XACK / NOPERM redaction.
+	var streamMu sync.Mutex
+	var storedEnvelope string
+	var pendingCount int64
 	handleACLConn := func(c net.Conn, allowPasswordOnly bool) {
 		defer c.Close()
 		_ = c.SetDeadline(time.Now().Add(5 * time.Second))
@@ -1256,6 +1264,49 @@ func TestRedisStreamBrokerACLUsernamePasswordAndTLS(t *testing.T) {
 					return
 				}
 				_, _ = c.Write([]byte("+PONG\r\n"))
+				return
+			case "XGROUP":
+				_, _ = c.Write([]byte("+OK\r\n"))
+				return
+			case "XADD":
+				if len(args) >= 5 {
+					if strings.Contains(args[1], "forbidden_acl_stream") {
+						_, _ = c.Write([]byte(fmt.Sprintf("-NOPERM user %s has no permissions to access key with token %s\r\n", aclUser, aclPassword)))
+						return
+					}
+					streamMu.Lock()
+					storedEnvelope = args[4]
+					pendingCount = 1
+					streamMu.Unlock()
+				}
+				_, _ = c.Write([]byte("$15\r\n1700000000000-1\r\n"))
+				return
+			case "XREADGROUP":
+				streamMu.Lock()
+				env := storedEnvelope
+				streamMu.Unlock()
+				streamName := "creativanta:stream:analytics_events"
+				resp := fmt.Sprintf(
+					"*1\r\n*2\r\n$%d\r\n%s\r\n*1\r\n*2\r\n$15\r\n1700000000000-1\r\n*2\r\n$8\r\nenvelope\r\n$%d\r\n%s\r\n",
+					len(streamName), streamName, len(env), env,
+				)
+				_, _ = c.Write([]byte(resp))
+				return
+			case "XPENDING":
+				streamMu.Lock()
+				pc := pendingCount
+				streamMu.Unlock()
+				_, _ = c.Write([]byte(fmt.Sprintf("*4\r\n:%d\r\n$-1\r\n$-1\r\n*-1\r\n", pc)))
+				return
+			case "XACK":
+				if len(args) >= 4 && args[3] == "1700000000000-1" {
+					streamMu.Lock()
+					pendingCount = 0
+					streamMu.Unlock()
+					_, _ = c.Write([]byte(":1\r\n"))
+				} else {
+					_, _ = c.Write([]byte(":0\r\n"))
+				}
 				return
 			default:
 				_, _ = c.Write([]byte("+OK\r\n"))
@@ -1375,6 +1426,52 @@ func TestRedisStreamBrokerACLUsernamePasswordAndTLS(t *testing.T) {
 	})
 	if err := redissACLBroker.Ping(ctx); err != nil {
 		t.Fatalf("expected rediss:// ACL AUTH <username> <password> over TLS 1.2+ to succeed, got: %v", err)
+	}
+
+	// Part 4: Verify full XAdd / XReadGroup / PendingCount / XAck and NOPERM error credential redaction over ACL.
+	_, nopermErr := aclBroker.XAdd(ctx, outbox.QueueName("forbidden_acl_stream"), outbox.StreamMessage{
+		EventID:     "0195f000-0000-7000-8000-000000000991",
+		EventType:   "inventory.stock_moved",
+		WorkspaceID: durableTestWsA,
+		Payload:     json.RawMessage(`{"delta":5}`),
+	})
+	if nopermErr == nil {
+		t.Fatalf("expected NOPERM error from forbidden_acl_stream")
+	}
+	if strings.Contains(nopermErr.Error(), aclUser) || strings.Contains(nopermErr.Error(), aclPassword) {
+		t.Fatalf("CRITICAL: NOPERM error leaked ACL username or password: %v", nopermErr)
+	}
+
+	entryID, err := aclBroker.XAdd(ctx, outbox.QueueAnalyticsEvents, outbox.StreamMessage{
+		EventID:       "0195f000-0000-7000-8000-000000000992",
+		EventType:     "inventory.stock_moved",
+		AggregateType: "product_sku",
+		AggregateID:   "0195f000-0000-7000-8000-000000000993",
+		WorkspaceID:   durableTestWsA,
+		Payload:       json.RawMessage(`{"sku_id":"0195f000-0000-7000-8000-000000000993","delta":7}`),
+		Metadata:      json.RawMessage(`{"actor_id":"` + durableTestOwnerA + `","actor_type":"user","required_perm":"inventory:adjust"}`),
+	})
+	if err != nil || entryID != "1700000000000-1" {
+		t.Fatalf("expected XAdd over ACL to return 1700000000000-1, got id=%q err=%v", entryID, err)
+	}
+	readMsgs, err := aclBroker.XReadGroup(ctx, outbox.QueueAnalyticsEvents, "worker-main", "consumer-acl", time.Now().UTC(), 10)
+	if err != nil || len(readMsgs) != 1 {
+		t.Fatalf("expected 1 message from XReadGroup over ACL, got len=%d err=%v", len(readMsgs), err)
+	}
+	if readMsgs[0].RequiredPerm != "product:manage" {
+		t.Fatalf("expected XReadGroup over ACL to normalize RequiredPerm to product:manage, got %q", readMsgs[0].RequiredPerm)
+	}
+	if pc := aclBroker.PendingCount(outbox.QueueAnalyticsEvents, "worker-main"); pc != 1 {
+		t.Fatalf("expected PendingCount=1 before XAck over ACL, got %d", pc)
+	}
+	if err := aclBroker.XAck(ctx, outbox.QueueAnalyticsEvents, "worker-main", "9999999999999-999"); err == nil {
+		t.Fatalf("expected XAck of unknown entry ID over RedisStreamBroker to return an error")
+	}
+	if err := aclBroker.XAck(ctx, outbox.QueueAnalyticsEvents, "worker-main", entryID); err != nil {
+		t.Fatalf("expected XAck of valid entry ID over ACL to succeed, got: %v", err)
+	}
+	if pc := aclBroker.PendingCount(outbox.QueueAnalyticsEvents, "worker-main"); pc != 0 {
+		t.Fatalf("expected PendingCount=0 after XAck over ACL, got %d", pc)
 	}
 }
 
@@ -1514,13 +1611,20 @@ func TestUpdateStockOutboxPolicyAndAuthorizedExecutor(t *testing.T) {
 		t.Fatalf("expected Viewer to fail with ErrLiveActorAuthorizationRevoked, got: %v", viewerErr)
 	}
 
-	// 3. Unknown permission policy key must return ErrInvalidEventPermissionPolicy (NOT ErrLiveActorAuthorizationRevoked).
-	bogusErr := verifier.VerifyActorAndApproval(ctx, durableTestWsA, durableTestOwnerA, "bogus:unknown_perm_key", "", now)
-	if !errors.Is(bogusErr, outbox.ErrInvalidEventPermissionPolicy) {
-		t.Fatalf("expected ErrInvalidEventPermissionPolicy for unknown permission key, got: %v", bogusErr)
+	// 3. Unknown permission policy key must return ErrInvalidEventPermissionPolicy (NOT ErrLiveActorAuthorizationRevoked),
+	// including when actorID is a user UUID, "system", or empty.
+	for _, act := range []string{durableTestOwnerA, "system", ""} {
+		bogusErr := verifier.VerifyActorAndApproval(ctx, durableTestWsA, act, "bogus:unknown_perm_key", "", now)
+		if !errors.Is(bogusErr, outbox.ErrInvalidEventPermissionPolicy) {
+			t.Fatalf("expected ErrInvalidEventPermissionPolicy for unknown permission key (actor=%q), got: %v", act, bogusErr)
+		}
+		if errors.Is(bogusErr, outbox.ErrLiveActorAuthorizationRevoked) {
+			t.Fatalf("CRITICAL: unknown permission key must NOT wrap ErrLiveActorAuthorizationRevoked")
+		}
 	}
-	if errors.Is(bogusErr, outbox.ErrLiveActorAuthorizationRevoked) {
-		t.Fatalf("CRITICAL: unknown permission key must NOT wrap ErrLiveActorAuthorizationRevoked")
+	// Missing actorID when a valid permission is required must fail closed with ErrLiveActorAuthorizationRevoked.
+	if missingActorErr := verifier.VerifyActorAndApproval(ctx, durableTestWsA, "", "inventory:adjust", "", now); !errors.Is(missingActorErr, outbox.ErrLiveActorAuthorizationRevoked) {
+		t.Fatalf("expected ErrLiveActorAuthorizationRevoked for empty actorID with required permission, got: %v", missingActorErr)
 	}
 
 	// 4. End-to-end outbox poller -> QueueAnalyticsEvents worker execution for valid Editor inventory.stock_moved.
@@ -1551,11 +1655,50 @@ func TestUpdateStockOutboxPolicyAndAuthorizedExecutor(t *testing.T) {
 		t.Fatalf("PollOnce: %v", err)
 	}
 
+	// Verify event_outbox payload & metadata were enriched and normalized to canonical schema (domain_event_catalog.md + rbac_permission_matrix.md).
+	var enrichedPayloadRaw, enrichedMetaRaw []byte
+	if err := pool.QueryRow(ctx, `SELECT payload, metadata FROM event_outbox WHERE event_id = $1::uuid`, stockEventID).Scan(&enrichedPayloadRaw, &enrichedMetaRaw); err != nil {
+		t.Fatalf("query enriched event_outbox row: %v", err)
+	}
+	var enrichedPayload, enrichedMeta map[string]any
+	if err := json.Unmarshal(enrichedPayloadRaw, &enrichedPayload); err != nil {
+		t.Fatalf("unmarshal enrichedPayload: %v", err)
+	}
+	if err := json.Unmarshal(enrichedMetaRaw, &enrichedMeta); err != nil {
+		t.Fatalf("unmarshal enrichedMeta: %v", err)
+	}
+	if enrichedMeta["required_perm"] != "product:manage" {
+		t.Fatalf("expected event_outbox metadata.required_perm normalized to product:manage, got %v", enrichedMeta["required_perm"])
+	}
+	if enrichedPayload["movement_id"] != stockMoveID ||
+		enrichedPayload["location_id"] != stockLocID ||
+		enrichedPayload["movement_type"] != "adjustment" ||
+		fmt.Sprintf("%v", enrichedPayload["quantity"]) != "10" {
+		t.Fatalf("expected event_outbox payload enriched with canonical movement_id/location_id/movement_type/quantity, got %+v", enrichedPayload)
+	}
+
 	inboxEngine := outbox.NewPgConsumerInboxEngine(pool)
 	domainHandler := outbox.NewPgDomainActionHandler()
 	worker := outbox.NewConsumerWorker(outbox.QueueAnalyticsEvents, "worker-main", "worker-f3", broker, inboxEngine)
 	worker.AuthVerifier = verifier
 
+	// Negative check before execution: if inventory.stock_moved executor is unregistered, worker must fail closed
+	// with ErrNoDomainExecutorRegistered and keep the message pending in the PEL without ACKing or abort-dropping.
+	domainHandler.UnregisterExecutor(outbox.QueueAnalyticsEvents, "inventory.stock_moved")
+	unregOutcomes, unregErr := worker.ProcessNext(ctx, now, 10, domainHandler.Handle)
+	if !errors.Is(unregErr, outbox.ErrNoDomainExecutorRegistered) {
+		t.Fatalf("expected ErrNoDomainExecutorRegistered when inventory.stock_moved executor is unregistered, got outcomes=%+v err=%v", unregOutcomes, unregErr)
+	}
+	if len(unregOutcomes) != 1 || unregOutcomes[0].Acked || unregOutcomes[0].AbortedAuth || unregOutcomes[0].Executed {
+		t.Fatalf("expected unregistered executor to leave message un-ACKed and un-aborted, got %+v", unregOutcomes)
+	}
+	if pending := broker.PendingCount(outbox.QueueAnalyticsEvents, "worker-main"); pending != 1 {
+		t.Fatalf("expected PendingCount=1 when executor is unregistered, got %d", pending)
+	}
+
+	// Re-register canonical executor and advance clock past 60s idle claim window so retry executes and ACKs.
+	domainHandler = outbox.NewPgDomainActionHandler()
+	now = now.Add(65 * time.Second)
 	outcomes, err := worker.ProcessNext(ctx, now, 10, domainHandler.Handle)
 	if err != nil {
 		t.Fatalf("Data F3 regression: worker ProcessNext for inventory.stock_moved failed: %v", err)
@@ -1606,7 +1749,7 @@ func TestUpdateStockOutboxPolicyAndAuthorizedExecutor(t *testing.T) {
 			"required_perm": "inventory:adjust",
 		},
 	)
-	now = time.Now().UTC().Add(2 * time.Second)
+	now = now.Add(2 * time.Second)
 	if _, err := poller.PollOnce(ctx, now); err != nil {
 		t.Fatalf("PollOnce viewer event: %v", err)
 	}
@@ -1627,7 +1770,7 @@ func TestUpdateStockOutboxPolicyAndAuthorizedExecutor(t *testing.T) {
 		map[string]any{
 			"sku_id":       stockSkuID,
 			"workspace_id": durableTestWsA,
-			"delta":        5,
+			"delta":        10,
 		},
 		map[string]any{
 			"actor_id":      durableTestOwnerA,
@@ -1635,7 +1778,7 @@ func TestUpdateStockOutboxPolicyAndAuthorizedExecutor(t *testing.T) {
 			"required_perm": "bogus:nonexistent_permission",
 		},
 	)
-	now = time.Now().UTC().Add(3 * time.Second)
+	now = now.Add(2 * time.Second)
 	if _, err := poller.PollOnce(ctx, now); err != nil {
 		t.Fatalf("PollOnce bogus perm event: %v", err)
 	}
@@ -1673,7 +1816,7 @@ func TestUpdateStockOutboxPolicyAndAuthorizedExecutor(t *testing.T) {
 			"required_perm": "inventory:adjust",
 		},
 	)
-	now = time.Now().UTC().Add(4 * time.Second)
+	now = now.Add(2 * time.Second)
 	if _, err := poller.PollOnce(ctx, now); err != nil {
 		t.Fatalf("PollOnce missing SKU event: %v", err)
 	}
@@ -1683,6 +1826,40 @@ func TestUpdateStockOutboxPolicyAndAuthorizedExecutor(t *testing.T) {
 	}
 	if len(noSkuOutcomes) != 1 || noSkuOutcomes[0].Acked || noSkuOutcomes[0].Executed {
 		t.Fatalf("expected missing SKU event to remain un-ACKed and unexecuted, got %+v", noSkuOutcomes)
+	}
+	if err := broker.XAck(ctx, outbox.QueueAnalyticsEvents, "worker-main", noSkuOutcomes[0].StreamEntryID); err != nil {
+		t.Fatalf("XAck missing SKU message: %v", err)
+	}
+
+	// 8. Negative test: inventory.stock_moved whose delta mismatches stock_movements.quantity fails closed with ErrInventoryMovementNotFound.
+	const mismatchEventID = "0195f000-0000-7000-8000-000000000709"
+	enqueueTenantOutboxEvent(
+		t, ctx, pool,
+		durableTestWsA, durableTestOwnerA,
+		mismatchEventID, "inventory.stock_moved", outbox.QueueAnalyticsEvents,
+		"product_sku", stockSkuID,
+		map[string]any{
+			"sku_id":       stockSkuID,
+			"workspace_id": durableTestWsA,
+			"delta":        999,
+			"reason":       "tampered_delta",
+		},
+		map[string]any{
+			"actor_id":      durableTestOwnerA,
+			"actor_type":    "user",
+			"required_perm": "inventory:adjust",
+		},
+	)
+	now = now.Add(2 * time.Second)
+	if _, err := poller.PollOnce(ctx, now); err != nil {
+		t.Fatalf("PollOnce mismatch event: %v", err)
+	}
+	mismatchOutcomes, err := worker.ProcessNext(ctx, now, 10, domainHandler.Handle)
+	if !errors.Is(err, outbox.ErrInventoryMovementNotFound) {
+		t.Fatalf("expected ErrInventoryMovementNotFound when delta mismatches stock_movements ledger quantity, got outcomes=%+v err=%v", mismatchOutcomes, err)
+	}
+	if len(mismatchOutcomes) != 1 || mismatchOutcomes[0].Acked || mismatchOutcomes[0].Executed {
+		t.Fatalf("expected mismatched delta event to remain un-ACKed, got %+v", mismatchOutcomes)
 	}
 }
 
@@ -1985,5 +2162,186 @@ func TestCatalogSearchIndexingRequiresRealProductAndVerifiesDurableIndex(t *test
 	}
 	if pending := broker.PendingCount(outbox.QueueSearchIndexing, "worker-main"); pending != 0 {
 		t.Fatalf("expected PendingCount=0 after successful retry, got %d", pending)
+	}
+
+	// Part 4: Real HTTP MeilisearchIndexBackend adapter verification (Release F2 / Data F4):
+	//  - Invalid URLs with embedded userinfo or bad schemes fail closed without leaking secrets.
+	//  - When RequireExternalSearchBackend is true and no backend is set, worker fails closed with
+	//    ErrNoDomainExecutorRegistered and keeps message pending in PEL.
+	//  - HTTP 401/500 or cross-tenant workspace_id mismatch from Meilisearch fails closed with
+	//    ErrSearchIndexVerificationFailed without leaking the API key.
+	//  - Valid Meilisearch HTTP upsert + read-after-write verification succeeds, records the task receipt,
+	//    and supports Vietnamese/English synonym search ("sản phẩm" <-> "product").
+	const meiliSecretKey = "meili_master_secret_api_key_do_not_leak_998877"
+	for _, badMeiliURL := range []string{
+		"",
+		"ftp://127.0.0.1:7700",
+		"http://admin:" + meiliSecretKey + "@127.0.0.1:7700",
+		"https://:7700",
+		"http://127.0.0.1:99999",
+	} {
+		_, mErr := outbox.NewMeilisearchIndexBackend(badMeiliURL, meiliSecretKey, "")
+		if mErr == nil {
+			t.Fatalf("expected error for invalid Meilisearch URL %q", badMeiliURL)
+		}
+		if strings.Contains(mErr.Error(), meiliSecretKey) {
+			t.Fatalf("CRITICAL: NewMeilisearchIndexBackend leaked secret in error: %v", mErr)
+		}
+	}
+
+	var meiliMu sync.Mutex
+	meiliStore := make(map[string]outbox.CatalogSearchDocument)
+	meiliForceStatus := http.StatusAccepted
+	meiliTamperWorkspace := ""
+
+	meiliServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "Bearer "+meiliSecretKey {
+			w.WriteHeader(http.StatusUnauthorized)
+			_, _ = w.Write([]byte(`{"message":"The provided API key is invalid."}`))
+			return
+		}
+		meiliMu.Lock()
+		forceStatus := meiliForceStatus
+		tamperWs := meiliTamperWorkspace
+		meiliMu.Unlock()
+
+		if forceStatus >= 400 {
+			w.WriteHeader(forceStatus)
+			_, _ = w.Write([]byte(`{"message":"simulated meilisearch failure"}`))
+			return
+		}
+
+		switch r.Method {
+		case http.MethodPost:
+			var docs []outbox.CatalogSearchDocument
+			if err := json.NewDecoder(r.Body).Decode(&docs); err != nil || len(docs) == 0 {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			meiliMu.Lock()
+			for _, d := range docs {
+				meiliStore[d.ProductID] = d
+			}
+			meiliMu.Unlock()
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusAccepted)
+			_, _ = w.Write([]byte(`{"taskUid":4201,"indexUid":"creativanta_products","status":"enqueued"}`))
+		case http.MethodGet:
+			parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+			docID := parts[len(parts)-1]
+			meiliMu.Lock()
+			doc, ok := meiliStore[docID]
+			meiliMu.Unlock()
+			if !ok {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+			if tamperWs != "" {
+				doc.WorkspaceID = tamperWs
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(doc)
+		default:
+			w.WriteHeader(http.StatusMethodNotAllowed)
+		}
+	}))
+	defer meiliServer.Close()
+
+	// Update product title to include Vietnamese term "Sản phẩm đơn hàng" and test synonym search + Meilisearch HTTP backend.
+	if _, err := pool.Exec(ctx, `
+		UPDATE products
+		SET title = 'Sản phẩm Máy Ảnh Đơn Hàng Pro', catalog_status = 'active'
+		WHERE workspace_id = $1::uuid AND product_id = $2::uuid
+	`, durableTestWsA, realProductID); err != nil {
+		t.Fatalf("update product for Meilisearch test: %v", err)
+	}
+
+	const meiliEventID = "0195f000-0000-7000-8000-000000000716"
+	enqueueTenantOutboxEvent(
+		t, ctx, pool,
+		durableTestWsA, durableTestOwnerA,
+		meiliEventID, "product.updated", outbox.QueueSearchIndexing,
+		"product", realProductID,
+		map[string]any{
+			"product_id":        realProductID,
+			"workspace_id":      durableTestWsA,
+			"skip_product_seed": true,
+		},
+		map[string]any{
+			"actor_id":      durableTestOwnerA,
+			"actor_type":    "user",
+			"required_perm": "product:manage",
+		},
+	)
+	now = now.Add(5 * time.Second)
+	if _, err := poller.PollOnce(ctx, now); err != nil {
+		t.Fatalf("PollOnce meiliEventID: %v", err)
+	}
+
+	// 4a. RequireExternalSearchBackend=true with nil backend must fail closed with ErrNoDomainExecutorRegistered.
+	handler.SetSearchIndexBackend(nil)
+	handler.SetRequireExternalSearchBackend(true)
+	noBackendOutcomes, err := worker.ProcessNext(ctx, now, 10, handler.Handle)
+	if !errors.Is(err, outbox.ErrNoDomainExecutorRegistered) {
+		t.Fatalf("expected ErrNoDomainExecutorRegistered when external search backend is required but nil, got outcomes=%+v err=%v", noBackendOutcomes, err)
+	}
+	if len(noBackendOutcomes) != 1 || noBackendOutcomes[0].Acked || noBackendOutcomes[0].Executed {
+		t.Fatalf("expected message to remain un-ACKed when required external search backend is missing, got %+v", noBackendOutcomes)
+	}
+
+	// 4b. Configure real MeilisearchIndexBackend with wrong API key -> fails closed with HTTP 401 and no secret leak.
+	badKeyBackend, err := outbox.NewMeilisearchIndexBackend(meiliServer.URL, "wrong_"+meiliSecretKey, "")
+	if err != nil {
+		t.Fatalf("NewMeilisearchIndexBackend: %v", err)
+	}
+	handler.SetSearchIndexBackend(badKeyBackend)
+	now = now.Add(65 * time.Second)
+	_, badKeyErr := worker.ProcessNext(ctx, now, 10, handler.Handle)
+	if !errors.Is(badKeyErr, outbox.ErrSearchIndexVerificationFailed) {
+		t.Fatalf("expected ErrSearchIndexVerificationFailed on Meilisearch 401, got: %v", badKeyErr)
+	}
+	if strings.Contains(badKeyErr.Error(), meiliSecretKey) {
+		t.Fatalf("CRITICAL: Meilisearch error leaked API key: %v", badKeyErr)
+	}
+
+	// 4c. Configure valid API key, but simulate cross-tenant workspace_id tamper on Meilisearch readback -> fails closed.
+	goodMeiliBackend, err := outbox.NewMeilisearchIndexBackend(meiliServer.URL, meiliSecretKey, "")
+	if err != nil {
+		t.Fatalf("NewMeilisearchIndexBackend valid: %v", err)
+	}
+	handler.SetSearchIndexBackend(goodMeiliBackend)
+	meiliMu.Lock()
+	meiliTamperWorkspace = durableTestWsB
+	meiliMu.Unlock()
+
+	now = now.Add(65 * time.Second)
+	_, tamperErr := worker.ProcessNext(ctx, now, 10, handler.Handle)
+	if !errors.Is(tamperErr, outbox.ErrSearchIndexVerificationFailed) {
+		t.Fatalf("expected ErrSearchIndexVerificationFailed on cross-tenant Meilisearch document mismatch, got: %v", tamperErr)
+	}
+
+	// 4d. Restore valid tenant workspace on Meilisearch server -> retry succeeds, verifies read-after-write, and ACKs.
+	meiliMu.Lock()
+	meiliTamperWorkspace = ""
+	meiliMu.Unlock()
+
+	now = now.Add(65 * time.Second)
+	meiliOutcomes, err := worker.ProcessNext(ctx, now, 10, handler.Handle)
+	if err != nil {
+		t.Fatalf("expected ProcessNext with healthy MeilisearchIndexBackend to succeed, got: %v", err)
+	}
+	if len(meiliOutcomes) != 1 || !meiliOutcomes[0].Executed || !meiliOutcomes[0].Acked {
+		t.Fatalf("expected Executed+Acked with MeilisearchIndexBackend, got %+v", meiliOutcomes)
+	}
+
+	// Verify Vietnamese <-> English synonym search ("product" and "order" match "Sản phẩm ... Đơn Hàng").
+	for _, synQuery := range []string{"product", "hàng hóa", "order", "hoá đơn", "sản phẩm"} {
+		synHits, synErr := outbox.SearchCatalogProducts(ctx, pool, durableTestWsA, outbox.CatalogSearchQuery{
+			Query:         synQuery,
+			CatalogStatus: "active",
+		})
+		if synErr != nil || len(synHits) != 1 || synHits[0].ProductID != realProductID {
+			t.Fatalf("expected Vietnamese/English synonym query %q to match indexed product, got hits=%+v err=%v", synQuery, synHits, synErr)
+		}
 	}
 }

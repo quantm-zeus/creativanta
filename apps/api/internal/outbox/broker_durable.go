@@ -2,6 +2,7 @@ package outbox
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
@@ -12,6 +13,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/http"
 	"net/url"
 	"sort"
 	"strconv"
@@ -40,8 +42,10 @@ var ErrInvalidEventPermissionPolicy = errors.New("outbox: invalid or unknown eve
 func ResolveCanonicalEventPermission(eventType, requiredPerm string) string {
 	perm := strings.TrimSpace(requiredPerm)
 	switch perm {
-	case "inventory:adjust":
+	case "inventory:adjust", "inventory:manage":
 		return "product:manage"
+	case "inventory:read":
+		return "product:read"
 	}
 	if perm != "" {
 		return perm
@@ -62,6 +66,175 @@ type envelopeAuthMeta struct {
 	ActorType    string `json:"actor_type"`
 	RequiredPerm string `json:"required_perm"`
 	ApprovalID   string `json:"approval_id"`
+}
+
+func normalizeMetadataRequiredPerm(raw json.RawMessage, canonicalPerm string) json.RawMessage {
+	if len(raw) == 0 || canonicalPerm == "" {
+		return raw
+	}
+	var obj map[string]any
+	if err := json.Unmarshal(raw, &obj); err != nil {
+		return raw
+	}
+	existing, has := obj["required_perm"]
+	if !has || existing == canonicalPerm {
+		return raw
+	}
+	obj["required_perm"] = canonicalPerm
+	updated, err := json.Marshal(obj)
+	if err != nil {
+		return raw
+	}
+	return updated
+}
+
+func normalizeInventoryStockMovedPayload(raw json.RawMessage) json.RawMessage {
+	if len(raw) == 0 {
+		return raw
+	}
+	var obj map[string]any
+	if err := json.Unmarshal(raw, &obj); err != nil {
+		return raw
+	}
+	changed := false
+	if qtyVal, hasQty := obj["quantity"]; !hasQty || qtyVal == nil {
+		if deltaVal, hasDelta := obj["delta"]; hasDelta && deltaVal != nil {
+			obj["quantity"] = deltaVal
+			changed = true
+		}
+	}
+	if mt, ok := obj["movement_type"].(string); !ok || strings.TrimSpace(mt) == "" {
+		obj["movement_type"] = "adjustment"
+		changed = true
+	}
+	if !changed {
+		return raw
+	}
+	updated, err := json.Marshal(obj)
+	if err != nil {
+		return raw
+	}
+	return updated
+}
+
+func enrichInventoryStockMovedFromLedger(
+	ctx context.Context,
+	db tenantdb.TxBeginner,
+	workspaceID, aggregateID string,
+	raw json.RawMessage,
+) (json.RawMessage, bool) {
+	normalized := normalizeInventoryStockMovedPayload(raw)
+	if len(normalized) == 0 || db == nil || !tenantdb.IsValidNonZeroUUID(workspaceID) {
+		return normalized, !bytes.Equal(normalized, raw)
+	}
+	var obj map[string]any
+	if err := json.Unmarshal(normalized, &obj); err != nil {
+		return normalized, !bytes.Equal(normalized, raw)
+	}
+	existingMoveID, _ := obj["movement_id"].(string)
+	existingLocID, _ := obj["location_id"].(string)
+	if strings.TrimSpace(existingMoveID) != "" && strings.TrimSpace(existingLocID) != "" {
+		return normalized, !bytes.Equal(normalized, raw)
+	}
+	skuID, _ := obj["sku_id"].(string)
+	skuID = strings.TrimSpace(skuID)
+	if skuID == "" {
+		skuID = strings.TrimSpace(aggregateID)
+	}
+	if !tenantdb.IsValidNonZeroUUID(skuID) {
+		return normalized, !bytes.Equal(normalized, raw)
+	}
+
+	tx, err := db.Begin(ctx)
+	if err != nil {
+		return normalized, !bytes.Equal(normalized, raw)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	if _, err := tx.Exec(ctx, `SET LOCAL ROLE app_user`); err != nil {
+		return normalized, !bytes.Equal(normalized, raw)
+	}
+	if _, err := tx.Exec(ctx, `SELECT set_config('app.current_tenant_id', $1, true)`, workspaceID); err != nil {
+		return normalized, !bytes.Equal(normalized, raw)
+	}
+
+	var movementID, locationID, movementType string
+	var quantity int64
+	if err := tx.QueryRow(ctx, `
+		SELECT movement_id::text, location_id::text, movement_type, quantity
+		FROM stock_movements
+		WHERE workspace_id = $1::uuid
+		  AND sku_id = $2::uuid
+		ORDER BY created_at DESC, movement_id DESC
+		LIMIT 1
+	`, workspaceID, skuID).Scan(&movementID, &locationID, &movementType, &quantity); err != nil {
+		return normalized, !bytes.Equal(normalized, raw)
+	}
+
+	if strings.TrimSpace(existingMoveID) == "" && movementID != "" {
+		obj["movement_id"] = movementID
+	}
+	if strings.TrimSpace(existingLocID) == "" && locationID != "" {
+		obj["location_id"] = locationID
+	}
+	if strings.TrimSpace(skuID) != "" {
+		obj["sku_id"] = skuID
+	}
+	if mt, _ := obj["movement_type"].(string); strings.TrimSpace(mt) == "" && movementType != "" {
+		obj["movement_type"] = movementType
+	}
+	if qv, has := obj["quantity"]; !has || qv == nil {
+		obj["quantity"] = quantity
+	}
+	updated, err := json.Marshal(obj)
+	if err != nil {
+		return normalized, !bytes.Equal(normalized, raw)
+	}
+	return updated, !bytes.Equal(updated, raw)
+}
+
+func enrichClaimedOutboxRow(ctx context.Context, db tenantdb.TxBeginner, setRole bool, r *OutboxRow) {
+	if r == nil {
+		return
+	}
+	tmp := StreamMessage{
+		EventType: r.EventType,
+		Metadata:  r.Metadata,
+		Payload:   r.Payload,
+	}
+	populateEnvelopeAuthFields(&tmp, r.Metadata, r.Payload)
+	metaChanged := !bytes.Equal(tmp.Metadata, r.Metadata)
+	r.Metadata = tmp.Metadata
+
+	payloadChanged := !bytes.Equal(tmp.Payload, r.Payload)
+	r.Payload = tmp.Payload
+
+	if strings.TrimSpace(r.EventType) == "inventory.stock_moved" {
+		enriched, changed := enrichInventoryStockMovedFromLedger(ctx, db, r.WorkspaceID, r.AggregateID, r.Payload)
+		if changed {
+			r.Payload = enriched
+			payloadChanged = true
+		}
+	}
+
+	if (metaChanged || payloadChanged) && db != nil && r.OutboxID > 0 {
+		tx, err := db.Begin(ctx)
+		if err == nil {
+			defer func() { _ = tx.Rollback(ctx) }()
+			if setRole {
+				_, _ = tx.Exec(ctx, `SET LOCAL ROLE outbox_poller`)
+			}
+			if _, err := tx.Exec(
+				ctx,
+				`UPDATE event_outbox SET payload = $2::jsonb, metadata = $3::jsonb WHERE outbox_id = $1`,
+				r.OutboxID,
+				[]byte(r.Payload),
+				[]byte(r.Metadata),
+			); err == nil {
+				_ = tx.Commit(ctx)
+			}
+		}
+	}
 }
 
 func populateEnvelopeAuthFields(msg *StreamMessage, metadata, payload json.RawMessage) {
@@ -90,6 +263,12 @@ func populateEnvelopeAuthFields(msg *StreamMessage, metadata, payload json.RawMe
 		}
 	}
 	msg.RequiredPerm = ResolveCanonicalEventPermission(msg.EventType, msg.RequiredPerm)
+	if len(msg.Metadata) > 0 && msg.RequiredPerm != "" {
+		msg.Metadata = normalizeMetadataRequiredPerm(msg.Metadata, msg.RequiredPerm)
+	}
+	if strings.TrimSpace(msg.EventType) == "inventory.stock_moved" && len(msg.Payload) > 0 {
+		msg.Payload = normalizeInventoryStockMovedPayload(msg.Payload)
+	}
 }
 
 func stripBrokerMetadata(raw json.RawMessage) json.RawMessage {
@@ -198,17 +377,6 @@ func (b *PgStreamBroker) XAdd(ctx context.Context, stream QueueName, msg StreamM
 	if b == nil || b.db == nil {
 		return "", errors.New("outbox: PgStreamBroker not initialized")
 	}
-	tx, err := b.db.Begin(ctx)
-	if err != nil {
-		return "", err
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-
-	if b.setRole {
-		if _, err := tx.Exec(ctx, `SET LOCAL ROLE outbox_poller`); err != nil {
-			return "", fmt.Errorf("outbox: SET LOCAL ROLE outbox_poller: %w", err)
-		}
-	}
 
 	pubAt := msg.PublishedAt
 	if pubAt.IsZero() {
@@ -220,6 +388,22 @@ func (b *PgStreamBroker) XAdd(ctx context.Context, stream QueueName, msg StreamM
 	}
 	msg.Metadata = stripBrokerMetadata(msg.Metadata)
 	populateEnvelopeAuthFields(&msg, msg.Metadata, msg.Payload)
+	if strings.TrimSpace(msg.EventType) == "inventory.stock_moved" {
+		enriched, _ := enrichInventoryStockMovedFromLedger(ctx, b.db, msg.WorkspaceID, msg.AggregateID, msg.Payload)
+		msg.Payload = enriched
+	}
+
+	tx, err := b.db.Begin(ctx)
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	if b.setRole {
+		if _, err := tx.Exec(ctx, `SET LOCAL ROLE outbox_poller`); err != nil {
+			return "", fmt.Errorf("outbox: SET LOCAL ROLE outbox_poller: %w", err)
+		}
+	}
 
 	var outboxID int64
 	var rawMeta []byte
@@ -236,6 +420,11 @@ func (b *PgStreamBroker) XAdd(ctx context.Context, stream QueueName, msg StreamM
 	metaMap := make(map[string]any)
 	if len(rawMeta) > 0 {
 		_ = json.Unmarshal(rawMeta, &metaMap)
+	}
+	if msg.RequiredPerm != "" {
+		if _, has := metaMap["required_perm"]; has {
+			metaMap["required_perm"] = msg.RequiredPerm
+		}
 	}
 	var entries []pgBrokerEntry
 	if existingRaw, ok := metaMap[brokerEntriesMetaKey]; ok {
@@ -307,8 +496,15 @@ func (b *PgStreamBroker) XAdd(ctx context.Context, stream QueueName, msg StreamM
 			return "", fmt.Errorf("outbox: XAdd insert standalone outbox row: %w", insErr)
 		}
 	} else {
-		if _, updErr := tx.Exec(ctx, `UPDATE event_outbox SET metadata = $2::jsonb WHERE outbox_id = $1`, outboxID, updatedMeta); updErr != nil {
-			return "", fmt.Errorf("outbox: XAdd update broker entries: %w", updErr)
+		payload := msg.Payload
+		if len(payload) > 0 {
+			if _, updErr := tx.Exec(ctx, `UPDATE event_outbox SET metadata = $2::jsonb, payload = $3::jsonb WHERE outbox_id = $1`, outboxID, updatedMeta, []byte(payload)); updErr != nil {
+				return "", fmt.Errorf("outbox: XAdd update broker entries: %w", updErr)
+			}
+		} else {
+			if _, updErr := tx.Exec(ctx, `UPDATE event_outbox SET metadata = $2::jsonb WHERE outbox_id = $1`, outboxID, updatedMeta); updErr != nil {
+				return "", fmt.Errorf("outbox: XAdd update broker entries: %w", updErr)
+			}
 		}
 	}
 
@@ -669,8 +865,8 @@ func NewRedisStreamBroker(redisURL, keyPrefix string) (*RedisStreamBroker, error
 		user = u.User.Username()
 		var hasPw bool
 		pw, hasPw = u.User.Password()
-		if user != "" && (!hasPw || pw == "") {
-			return nil, errors.New("outbox: redis URL username requires password")
+		if !hasPw || pw == "" {
+			return nil, errors.New("outbox: redis URL userinfo requires non-empty password")
 		}
 	}
 	dbIdx := 0
@@ -708,11 +904,29 @@ func (r *RedisStreamBroker) streamKey(stream QueueName) string {
 	return r.prefix + string(stream)
 }
 
+func (r *RedisStreamBroker) redactError(err error) error {
+	if err == nil || r == nil {
+		return err
+	}
+	msg := err.Error()
+	redacted := msg
+	if r.password != "" && strings.Contains(redacted, r.password) {
+		redacted = strings.ReplaceAll(redacted, r.password, "[REDACTED]")
+	}
+	if r.username != "" && strings.Contains(redacted, r.username) {
+		redacted = strings.ReplaceAll(redacted, r.username, "[REDACTED]")
+	}
+	if redacted != msg {
+		return errors.New(redacted)
+	}
+	return err
+}
+
 func (r *RedisStreamBroker) execCmd(ctx context.Context, args ...string) (any, error) {
 	d := net.Dialer{Timeout: 5 * time.Second}
 	rawConn, err := d.DialContext(ctx, "tcp", r.addr)
 	if err != nil {
-		return nil, err
+		return nil, r.redactError(err)
 	}
 	defer rawConn.Close()
 
@@ -739,7 +953,7 @@ func (r *RedisStreamBroker) execCmd(ctx context.Context, args ...string) (any, e
 		}
 		tlsConn := tls.Client(rawConn, tlsCfg)
 		if err := tlsConn.HandshakeContext(ctx); err != nil {
-			return nil, fmt.Errorf("outbox: redis TLS handshake failed: %w", err)
+			return nil, r.redactError(fmt.Errorf("outbox: redis TLS handshake failed: %w", err))
 		}
 		conn = tlsConn
 	}
@@ -759,17 +973,21 @@ func (r *RedisStreamBroker) execCmd(ctx context.Context, args ...string) (any, e
 	}
 	if r.dbIndex > 0 {
 		if err := writeRESPArray(conn, []string{"SELECT", strconv.Itoa(r.dbIndex)}); err != nil {
-			return nil, err
+			return nil, r.redactError(err)
 		}
 		if _, err := readRESPValue(br); err != nil {
-			return nil, err
+			return nil, r.redactError(err)
 		}
 	}
 
 	if err := writeRESPArray(conn, args); err != nil {
-		return nil, err
+		return nil, r.redactError(err)
 	}
-	return readRESPValue(br)
+	val, err := readRESPValue(br)
+	if err != nil {
+		return nil, r.redactError(err)
+	}
+	return val, nil
 }
 
 func writeRESPArray(w io.Writer, args []string) error {
@@ -943,6 +1161,8 @@ func parseRedisStreamEntries(raw any, consumerID string, now time.Time) []Stream
 			if k == "envelope" && v != "" {
 				var msg StreamMessage
 				if err := json.Unmarshal([]byte(v), &msg); err == nil {
+					msg.Metadata = stripBrokerMetadata(msg.Metadata)
+					populateEnvelopeAuthFields(&msg, msg.Metadata, msg.Payload)
 					msg.StreamEntryID = entryID
 					msg.ClaimedBy = consumerID
 					msg.LastDeliveredAt = now
@@ -957,8 +1177,17 @@ func parseRedisStreamEntries(raw any, consumerID string, now time.Time) []Stream
 
 // XAck acknowledges streamEntryID in groupName via XACK.
 func (r *RedisStreamBroker) XAck(ctx context.Context, stream QueueName, groupName, streamEntryID string) error {
-	_, err := r.execCmd(ctx, "XACK", r.streamKey(stream), groupName, streamEntryID)
-	return err
+	if strings.TrimSpace(streamEntryID) == "" {
+		return errors.New("outbox: XAck requires non-empty streamEntryID")
+	}
+	res, err := r.execCmd(ctx, "XACK", r.streamKey(stream), groupName, streamEntryID)
+	if err != nil {
+		return err
+	}
+	if acked, ok := res.(int64); ok && acked == 0 {
+		return fmt.Errorf("outbox: XAck stream entry %q not found in pending list for stream %s group %s", streamEntryID, stream, groupName)
+	}
+	return nil
 }
 
 // PendingCount queries XPENDING for the number of unacknowledged entries in groupName.
@@ -1290,6 +1519,18 @@ func (v *PgLiveAuthVerifier) VerifyActorAndApproval(
 		return ErrLiveActorAuthorizationRevoked
 	}
 
+	canonicalPerm := ResolveCanonicalEventPermission("", requiredPerm)
+	if canonicalPerm != "" {
+		if _, permErr := rbac.LookupWorkspaceDecision(rbac.RoleOwner, canonicalPerm); permErr != nil {
+			if errors.Is(permErr, rbac.ErrUnknownPermission) || errors.Is(permErr, rbac.ErrUnknownRole) {
+				return fmt.Errorf("%w: %v", ErrInvalidEventPermissionPolicy, permErr)
+			}
+		}
+		if strings.TrimSpace(actorID) == "" {
+			return ErrLiveActorAuthorizationRevoked
+		}
+	}
+
 	if actorID != "" && !strings.EqualFold(actorID, "system") {
 		if !tenantdb.IsValidNonZeroUUID(actorID) {
 			return ErrLiveActorAuthorizationRevoked
@@ -1310,7 +1551,6 @@ func (v *PgLiveAuthVerifier) VerifyActorAndApproval(
 		if err != nil {
 			return fmt.Errorf("outbox: verify actor membership: %w", err)
 		}
-		canonicalPerm := ResolveCanonicalEventPermission("", requiredPerm)
 		if canonicalPerm != "" {
 			if err := rbac.CheckWorkspacePermission(canonicalPerm, rbac.PolicyContext{
 				ActorUserID: actorID,
@@ -1433,6 +1673,220 @@ type SearchIndexBackend interface {
 	GetProductDocument(ctx context.Context, workspaceID, productID string) (*CatalogSearchDocument, error)
 }
 
+// DefaultMeilisearchProductIndex is the canonical product index UID in Meilisearch (docs/05_system/cache_search_strategy.md §2.1).
+const DefaultMeilisearchProductIndex = "creativanta_products"
+
+// MeilisearchIndexBackend implements SearchIndexBackend over HTTP/HTTPS against a Meilisearch
+// endpoint with Bearer API-key authentication, tenant isolation verification, and credential-safe errors.
+type MeilisearchIndexBackend struct {
+	baseURL    string
+	serverName string
+	apiKey     string
+	indexName  string
+	httpClient *http.Client
+}
+
+// NewMeilisearchIndexBackend validates rawURL and indexName and returns a MeilisearchIndexBackend
+// without leaking API keys or URL userinfo in any error string.
+func NewMeilisearchIndexBackend(rawURL, apiKey, indexName string) (*MeilisearchIndexBackend, error) {
+	trimmed := strings.TrimSpace(rawURL)
+	if trimmed == "" {
+		return nil, errors.New("outbox: empty meilisearch URL")
+	}
+	if strings.ContainsAny(trimmed, " \t\r\n") {
+		return nil, errors.New("outbox: invalid meilisearch URL")
+	}
+	u, err := url.Parse(trimmed)
+	if err != nil {
+		return nil, errors.New("outbox: invalid meilisearch URL")
+	}
+	scheme := strings.ToLower(strings.TrimSpace(u.Scheme))
+	if scheme != "http" && scheme != "https" {
+		return nil, errors.New("outbox: unsupported meilisearch URL scheme (expected http or https)")
+	}
+	if u.Opaque != "" || u.User != nil {
+		return nil, errors.New("outbox: meilisearch URL must not embed userinfo credentials")
+	}
+	host := strings.TrimSpace(u.Hostname())
+	if host == "" {
+		return nil, errors.New("outbox: meilisearch URL missing host")
+	}
+	if p := strings.TrimSpace(u.Port()); p != "" {
+		portNum, convErr := strconv.Atoi(p)
+		if convErr != nil || portNum < 1 || portNum > 65535 {
+			return nil, errors.New("outbox: invalid meilisearch port")
+		}
+	}
+	idx := strings.TrimSpace(indexName)
+	if idx == "" {
+		idx = DefaultMeilisearchProductIndex
+	}
+	for _, r := range idx {
+		if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' || r == '-') {
+			return nil, errors.New("outbox: invalid meilisearch index name")
+		}
+	}
+	cleanBase := strings.TrimRight(u.Scheme+"://"+u.Host+u.Path, "/")
+	return &MeilisearchIndexBackend{
+		baseURL:    cleanBase,
+		serverName: host,
+		apiKey:     strings.TrimSpace(apiKey),
+		indexName:  idx,
+		httpClient: &http.Client{Timeout: 10 * time.Second},
+	}, nil
+}
+
+// SetTLSConfig configures custom TLS settings (such as custom RootCAs for isolated test servers)
+// when connecting to an https:// Meilisearch endpoint. Minimum TLS version is enforced as TLS 1.2+.
+func (m *MeilisearchIndexBackend) SetTLSConfig(cfg *tls.Config) {
+	if m == nil {
+		return
+	}
+	tlsCfg := &tls.Config{
+		MinVersion: tls.VersionTLS12,
+		ServerName: m.serverName,
+	}
+	if cfg != nil {
+		tlsCfg = cfg.Clone()
+		if tlsCfg.MinVersion < tls.VersionTLS12 {
+			tlsCfg.MinVersion = tls.VersionTLS12
+		}
+		if tlsCfg.ServerName == "" {
+			tlsCfg.ServerName = m.serverName
+		}
+	}
+	m.httpClient = &http.Client{
+		Timeout: 10 * time.Second,
+		Transport: &http.Transport{
+			TLSClientConfig: tlsCfg,
+		},
+	}
+}
+
+// ProviderName returns the canonical external search provider identifier.
+func (m *MeilisearchIndexBackend) ProviderName() string {
+	return "meilisearch"
+}
+
+func (m *MeilisearchIndexBackend) redactErr(err error) error {
+	if err == nil || m == nil || m.apiKey == "" {
+		return err
+	}
+	msg := err.Error()
+	if strings.Contains(msg, m.apiKey) {
+		return errors.New(strings.ReplaceAll(msg, m.apiKey, "[REDACTED]"))
+	}
+	return err
+}
+
+// UpsertProductDocument upserts a canonical tenant-scoped CatalogSearchDocument into Meilisearch.
+func (m *MeilisearchIndexBackend) UpsertProductDocument(ctx context.Context, doc CatalogSearchDocument) (string, error) {
+	if m == nil || m.httpClient == nil {
+		return "", errors.New("outbox: MeilisearchIndexBackend not initialized")
+	}
+	if !tenantdb.IsValidNonZeroUUID(doc.WorkspaceID) || !tenantdb.IsValidNonZeroUUID(doc.ProductID) {
+		return "", tenantdb.ErrInvalidTenantScope
+	}
+	if strings.TrimSpace(doc.Title) == "" {
+		return "", fmt.Errorf("%w: empty product title", ErrSearchIndexVerificationFailed)
+	}
+	if doc.DocumentID == "" {
+		doc.DocumentID = doc.ProductID
+	}
+
+	bodyBytes, err := json.Marshal([]CatalogSearchDocument{doc})
+	if err != nil {
+		return "", err
+	}
+	endpoint := fmt.Sprintf("%s/indexes/%s/documents?primaryKey=document_id", m.baseURL, url.PathEscape(m.indexName))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(bodyBytes))
+	if err != nil {
+		return "", m.redactErr(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if m.apiKey != "" {
+		req.Header.Set("Authorization", "Bearer "+m.apiKey)
+		req.Header.Set("X-Meilisearch-API-Key", m.apiKey)
+	}
+
+	resp, err := m.httpClient.Do(req)
+	if err != nil {
+		return "", m.redactErr(err)
+	}
+	defer resp.Body.Close()
+	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 64*1024))
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return "", fmt.Errorf("outbox: meilisearch upsert failed with HTTP %d", resp.StatusCode)
+	}
+
+	var taskResp map[string]any
+	if len(respBody) > 0 {
+		_ = json.Unmarshal(respBody, &taskResp)
+	}
+	if statusStr, ok := taskResp["status"].(string); ok {
+		if strings.EqualFold(statusStr, "failed") || strings.EqualFold(statusStr, "canceled") {
+			return "", fmt.Errorf("outbox: meilisearch indexing task reported status %q", statusStr)
+		}
+	}
+	for _, k := range []string{"provider_request_id", "taskUid", "uid", "updateId"} {
+		if v, exists := taskResp[k]; exists && v != nil {
+			s := strings.TrimSpace(fmt.Sprintf("%v", v))
+			if s != "" && s != "<nil>" {
+				return fmt.Sprintf("meili_task_%s", s), nil
+			}
+		}
+	}
+	verPrefix := doc.DocumentVersion
+	if len(verPrefix) > 12 {
+		verPrefix = verPrefix[:12]
+	}
+	return fmt.Sprintf("meili_doc_%s_%s", doc.ProductID[:8], verPrefix), nil
+}
+
+// GetProductDocument fetches a product document from Meilisearch and verifies its workspace_id and product_id.
+func (m *MeilisearchIndexBackend) GetProductDocument(ctx context.Context, workspaceID, productID string) (*CatalogSearchDocument, error) {
+	if m == nil || m.httpClient == nil {
+		return nil, errors.New("outbox: MeilisearchIndexBackend not initialized")
+	}
+	if !tenantdb.IsValidNonZeroUUID(workspaceID) || !tenantdb.IsValidNonZeroUUID(productID) {
+		return nil, tenantdb.ErrInvalidTenantScope
+	}
+	endpoint := fmt.Sprintf(
+		"%s/indexes/%s/documents/%s?workspace_id=%s",
+		m.baseURL,
+		url.PathEscape(m.indexName),
+		url.PathEscape(productID),
+		url.QueryEscape(workspaceID),
+	)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return nil, m.redactErr(err)
+	}
+	req.Header.Set("Accept", "application/json")
+	if m.apiKey != "" {
+		req.Header.Set("Authorization", "Bearer "+m.apiKey)
+		req.Header.Set("X-Meilisearch-API-Key", m.apiKey)
+	}
+
+	resp, err := m.httpClient.Do(req)
+	if err != nil {
+		return nil, m.redactErr(err)
+	}
+	defer resp.Body.Close()
+	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 256*1024))
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("outbox: meilisearch get document failed with HTTP %d", resp.StatusCode)
+	}
+	var doc CatalogSearchDocument
+	if err := json.Unmarshal(respBody, &doc); err != nil {
+		return nil, fmt.Errorf("outbox: meilisearch decode document failed: %w", err)
+	}
+	if doc.WorkspaceID != workspaceID || doc.ProductID != productID {
+		return nil, fmt.Errorf("%w: meilisearch document scope mismatch (got workspace=%q product=%q)", ErrSearchIndexVerificationFailed, doc.WorkspaceID, doc.ProductID)
+	}
+	return &doc, nil
+}
+
 // DomainActionResult holds the verified outcome returned by an authorized DomainEffectExecutor.
 type DomainActionResult struct {
 	ProviderRequestID string
@@ -1455,10 +1909,11 @@ type domainPayloadSpec struct {
 // diagnostics_records in PostgreSQL. If no real executor is registered for the target stream,
 // event type, or external provider, Handle fails closed with ErrNoDomainExecutorRegistered.
 type PgDomainActionHandler struct {
-	mu                  sync.RWMutex
-	streamEventExecs    map[string]DomainEffectExecutor
-	externalProviderMap map[string]DomainEffectExecutor
-	searchBackend       SearchIndexBackend
+	mu                    sync.RWMutex
+	streamEventExecs      map[string]DomainEffectExecutor
+	externalProviderMap   map[string]DomainEffectExecutor
+	searchBackend         SearchIndexBackend
+	requireExternalSearch bool
 }
 
 // NewPgDomainActionHandler creates a PgDomainActionHandler with the durable catalog search
@@ -1492,13 +1947,24 @@ func (h *PgDomainActionHandler) SetSearchIndexBackend(backend SearchIndexBackend
 	h.searchBackend = backend
 }
 
-func (h *PgDomainActionHandler) getSearchBackend() SearchIndexBackend {
+// SetRequireExternalSearchBackend configures whether QueueSearchIndexing events must fail closed
+// with ErrNoDomainExecutorRegistered when no external SearchIndexBackend is configured.
+func (h *PgDomainActionHandler) SetRequireExternalSearchBackend(required bool) {
 	if h == nil {
-		return nil
+		return
+	}
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.requireExternalSearch = required
+}
+
+func (h *PgDomainActionHandler) getSearchBackend() (SearchIndexBackend, bool) {
+	if h == nil {
+		return nil, false
 	}
 	h.mu.RLock()
 	defer h.mu.RUnlock()
-	return h.searchBackend
+	return h.searchBackend, h.requireExternalSearch
 }
 
 // RegisterExecutor registers an authorized internal domain executor for (stream, eventType).
@@ -1513,6 +1979,21 @@ func (h *PgDomainActionHandler) RegisterExecutor(stream QueueName, eventType str
 	}
 	key := string(stream) + ":" + strings.TrimSpace(eventType)
 	h.streamEventExecs[key] = exec
+}
+
+// UnregisterExecutor removes a registered internal domain executor for (stream, eventType)
+// so messages for that stream/event fail closed with ErrNoDomainExecutorRegistered.
+func (h *PgDomainActionHandler) UnregisterExecutor(stream QueueName, eventType string) {
+	if h == nil {
+		return
+	}
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.streamEventExecs == nil {
+		return
+	}
+	key := string(stream) + ":" + strings.TrimSpace(eventType)
+	delete(h.streamEventExecs, key)
 }
 
 // RegisterProviderExecutor registers an authorized external provider connector executor.
@@ -1542,27 +2023,52 @@ func (h *PgDomainActionHandler) resolveExecutor(stream QueueName, eventType, pro
 	if stream == "" {
 		stream = QueueSearchIndexing
 	}
+	if stream == QueueSearchIndexing && h.requireExternalSearch && h.searchBackend == nil {
+		return nil
+	}
 	key := string(stream) + ":" + strings.TrimSpace(eventType)
 	return h.streamEventExecs[key]
+}
+
+var canonicalVietnameseSynonymGroups = []struct {
+	triggers []string
+	phrases  string
+}{
+	{
+		triggers: []string{"đơn hàng", "don hang", "hoá đơn", "hóa đơn", "hoa don", "order"},
+		phrases:  "order đơn hàng hoá đơn hóa đơn don hang hoa don",
+	},
+	{
+		triggers: []string{"sản phẩm", "san pham", "hàng hóa", "hàng hoá", "hang hoa", "product"},
+		phrases:  "product sản phẩm hàng hóa hàng hoá san pham hang hoa",
+	},
+	{
+		triggers: []string{"khách hàng", "khach hang", "người mua", "nguoi mua", "customer"},
+		phrases:  "customer khách hàng người mua khach hang nguoi mua",
+	},
+}
+
+func splitSearchWords(input string) []string {
+	return strings.FieldsFunc(strings.ToLower(strings.TrimSpace(input)), func(r rune) bool {
+		return r == ' ' || r == '\t' || r == '\n' || r == '\r' || r == ',' || r == ';' || r == '.' || r == ':' || r == '/' || r == '\\'
+	})
 }
 
 func buildSearchTokens(parts ...string) ([]string, string) {
 	seen := make(map[string]struct{})
 	var ordered []string
 	var rawBuilder strings.Builder
-	for _, p := range parts {
-		trimmed := strings.TrimSpace(p)
+	addPhrase := func(phrase string) {
+		trimmed := strings.TrimSpace(phrase)
 		if trimmed == "" {
-			continue
+			return
 		}
+		lower := strings.ToLower(trimmed)
 		if rawBuilder.Len() > 0 {
 			rawBuilder.WriteByte(' ')
 		}
-		rawBuilder.WriteString(strings.ToLower(trimmed))
-		fields := strings.FieldsFunc(strings.ToLower(trimmed), func(r rune) bool {
-			return r == ' ' || r == '\t' || r == '\n' || r == '\r' || r == ',' || r == ';' || r == '.' || r == ':' || r == '/' || r == '\\'
-		})
-		for _, tok := range fields {
+		rawBuilder.WriteString(lower)
+		for _, tok := range splitSearchWords(lower) {
 			if tok == "" {
 				continue
 			}
@@ -1570,6 +2076,27 @@ func buildSearchTokens(parts ...string) ([]string, string) {
 				seen[tok] = struct{}{}
 				ordered = append(ordered, tok)
 			}
+		}
+	}
+	for _, p := range parts {
+		addPhrase(p)
+	}
+	baseText := rawBuilder.String()
+	for _, grp := range canonicalVietnameseSynonymGroups {
+		matched := false
+		for _, trig := range grp.triggers {
+			if strings.Contains(trig, " ") {
+				if strings.Contains(baseText, trig) {
+					matched = true
+					break
+				}
+			} else if _, hasTok := seen[trig]; hasTok {
+				matched = true
+				break
+			}
+		}
+		if matched {
+			addPhrase(grp.phrases)
 		}
 	}
 	return ordered, rawBuilder.String()
@@ -1760,7 +2287,11 @@ func (h *PgDomainActionHandler) syncProductSearchIndexTx(
 
 	// If an external SearchIndexBackend (e.g. Meilisearch adapter) is configured, upsert and
 	// verify read-after-write on the backend before allowing the transaction to succeed.
-	if backend := h.getSearchBackend(); backend != nil {
+	backend, reqExt := h.getSearchBackend()
+	if reqExt && backend == nil {
+		return CatalogSearchDocument{}, "", fmt.Errorf("%w: external search index backend is required but not configured", ErrNoDomainExecutorRegistered)
+	}
+	if backend != nil {
 		extReqID, err := backend.UpsertProductDocument(ctx, doc)
 		if err != nil {
 			return CatalogSearchDocument{}, "", fmt.Errorf("%w: external backend (%s) upsert failed: %v", ErrSearchIndexVerificationFailed, backend.ProviderName(), err)
@@ -1867,7 +2398,7 @@ func SearchCatalogProducts(ctx context.Context, db tenantdb.TxBeginner, workspac
 	}
 	defer rows.Close()
 
-	qTokens, _ := buildSearchTokens(query.Query)
+	qTokens := splitSearchWords(query.Query)
 	wantStatus := strings.ToLower(strings.TrimSpace(query.CatalogStatus))
 	wantType := strings.ToLower(strings.TrimSpace(query.ProductType))
 	wantCategory := strings.ToLower(strings.TrimSpace(query.Category))
@@ -2132,6 +2663,10 @@ func (h *PgDomainActionHandler) executeInventoryStockMoved(ctx context.Context, 
 	if wantMovementID != "" && !tenantdb.IsValidNonZeroUUID(wantMovementID) {
 		return DomainActionResult{}, fmt.Errorf("%w: invalid movement_id %q", ErrInventoryMovementNotFound, wantMovementID)
 	}
+	wantLocationID := strings.TrimSpace(p.LocationID)
+	if wantLocationID != "" && !tenantdb.IsValidNonZeroUUID(wantLocationID) {
+		return DomainActionResult{}, fmt.Errorf("%w: invalid location_id %q", ErrInventoryMovementNotFound, wantLocationID)
+	}
 	err = tx.QueryRow(ctx, `
 		SELECT
 			movement_id::text,
@@ -2157,6 +2692,15 @@ func (h *PgDomainActionHandler) executeInventoryStockMoved(ctx context.Context, 
 			return DomainActionResult{}, fmt.Errorf("%w: no committed stock_movements ledger row for sku_id=%s workspace_id=%s", ErrInventoryMovementNotFound, skuID, msg.WorkspaceID)
 		}
 		return DomainActionResult{}, fmt.Errorf("outbox: verify stock_movements ledger row: %w", err)
+	}
+	if wantLocationID != "" && locationID != wantLocationID {
+		return DomainActionResult{}, fmt.Errorf("%w: location_id %q mismatches stock_movements ledger location_id %q", ErrInventoryMovementNotFound, wantLocationID, locationID)
+	}
+	if wantMoveType := strings.TrimSpace(p.MovementType); wantMoveType != "" && !strings.EqualFold(wantMoveType, movementType) {
+		return DomainActionResult{}, fmt.Errorf("%w: movement_type %q mismatches stock_movements ledger movement_type %q", ErrInventoryMovementNotFound, wantMoveType, movementType)
+	}
+	if ledgerQty != delta {
+		return DomainActionResult{}, fmt.Errorf("%w: delta %d mismatches stock_movements ledger quantity %d", ErrInventoryMovementNotFound, delta, ledgerQty)
 	}
 
 	// Synchronize and verify the parent product's durable catalog search index projection

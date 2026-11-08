@@ -512,6 +512,71 @@ func TestConsumerLiveAuthRevocationAbortsQueuedEffectAndAudits(t *testing.T) {
 	}
 }
 
+type strictCanonicalPermVerifier struct {
+	seenPerm  string
+	seenActor string
+}
+
+func (s *strictCanonicalPermVerifier) VerifyActorAndApproval(_ context.Context, _, actorID, requiredPerm, _ string, _ time.Time) error {
+	s.seenActor = actorID
+	s.seenPerm = requiredPerm
+	if requiredPerm == "inventory:adjust" {
+		return ErrLiveActorAuthorizationRevoked
+	}
+	if requiredPerm != "product:manage" {
+		return ErrInvalidEventPermissionPolicy
+	}
+	return nil
+}
+
+func TestMemoryConsumerNormalizesUpdateStockEventPolicyAndPayload(t *testing.T) {
+	ctx := context.Background()
+	now := time.Date(2026, 11, 8, 6, 0, 0, 0, time.UTC)
+	broker := NewMemoryStreamBroker()
+	inbox := NewMemoryConsumerInboxEngine()
+
+	_, err := broker.XAdd(ctx, QueueAnalyticsEvents, StreamMessage{
+		EventID:       testEvent1,
+		EventType:     "inventory.stock_moved",
+		TargetStream:  QueueAnalyticsEvents,
+		AggregateType: "product_sku",
+		AggregateID:   testAgg1,
+		WorkspaceID:   testWorkspaceA,
+		Payload:       json.RawMessage(`{"sku_id":"a1111111-1111-4111-8111-111111111111","workspace_id":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","delta":10,"reason":"manual_adjustment","new_quantity":25}`),
+		Metadata:      json.RawMessage(`{"actor_id":"11111111-1111-4111-8111-111111111111","actor_type":"user","required_perm":"inventory:adjust"}`),
+		PublishedAt:   now,
+	})
+	if err != nil {
+		t.Fatalf("broker.XAdd: %v", err)
+	}
+
+	verifier := &strictCanonicalPermVerifier{}
+	worker := NewConsumerWorker(QueueAnalyticsEvents, "cg_analytics", "worker-1", broker, inbox)
+	worker.AuthVerifier = verifier
+
+	var handledMsg StreamMessage
+	outcomes, err := worker.ProcessNext(ctx, now.Add(time.Second), 5, func(_ context.Context, msg StreamMessage) error {
+		handledMsg = msg
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("ProcessNext failed: %v", err)
+	}
+	if len(outcomes) != 1 || !outcomes[0].Executed || outcomes[0].AbortedAuth || !outcomes[0].Acked {
+		t.Fatalf("expected Executed+Acked without AbortedAuth, got %+v", outcomes)
+	}
+	if verifier.seenPerm != "product:manage" || verifier.seenActor != testUserA {
+		t.Fatalf("expected canonical permission product:manage and actor %s, got perm=%q actor=%q", testUserA, verifier.seenPerm, verifier.seenActor)
+	}
+	var payloadMap map[string]any
+	if err := json.Unmarshal(handledMsg.Payload, &payloadMap); err != nil {
+		t.Fatalf("unmarshal handled payload: %v", err)
+	}
+	if payloadMap["quantity"] != float64(10) || payloadMap["movement_type"] != "adjustment" {
+		t.Fatalf("expected canonical quantity=10 and movement_type=adjustment in payload, got %+v", payloadMap)
+	}
+}
+
 func TestCircuitBreakerAndFairWorkspaceScheduler(t *testing.T) {
 	t0 := time.Date(2026, 11, 2, 6, 40, 0, 0, time.UTC)
 	cb := NewCircuitBreaker("runway_gen3")

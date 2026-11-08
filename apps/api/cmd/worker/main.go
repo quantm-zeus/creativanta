@@ -72,6 +72,27 @@ func main() {
 	authVerifier := outbox.NewPgLiveAuthVerifier(pool)
 	domainHandler := outbox.NewPgDomainActionHandler()
 
+	if strings.EqualFold(strings.TrimSpace(os.Getenv("CREATIVANTA_WORKER_REQUIRE_EXTERNAL_SEARCH")), "true") {
+		domainHandler.SetRequireExternalSearchBackend(true)
+	}
+	searchURL := strings.TrimSpace(os.Getenv("CREATIVANTA_MEILISEARCH_URL"))
+	if searchURL == "" {
+		searchURL = strings.TrimSpace(os.Getenv("CREATIVANTA_SEARCH_BACKEND_URL"))
+	}
+	if searchURL != "" {
+		searchAPIKey := strings.TrimSpace(os.Getenv("CREATIVANTA_MEILISEARCH_API_KEY"))
+		if searchAPIKey == "" {
+			searchAPIKey = strings.TrimSpace(os.Getenv("CREATIVANTA_SEARCH_BACKEND_API_KEY"))
+		}
+		searchIndex := strings.TrimSpace(os.Getenv("CREATIVANTA_MEILISEARCH_INDEX"))
+		meiliBackend, mErr := outbox.NewMeilisearchIndexBackend(searchURL, searchAPIKey, searchIndex)
+		if mErr != nil {
+			slog.Error("worker: search index backend configuration invalid", "error", mErr)
+			os.Exit(1)
+		}
+		domainHandler.SetSearchIndexBackend(meiliBackend)
+	}
+
 	groupName := strings.TrimSpace(os.Getenv("CREATIVANTA_WORKER_GROUP"))
 	if groupName == "" {
 		groupName = "cg_worker_default"
