@@ -64,6 +64,20 @@ func (p *PostgresStore) withTenantTx(ctx context.Context, workspaceID string, fn
 	return tx.Commit(ctx)
 }
 
+func hydrateCheckoutResultFromPayload(payload pgCheckoutClaimPayload, isReplay bool) *CheckoutResult {
+	if payload.Result == nil {
+		return nil
+	}
+	out := cloneCheckoutResult(payload.Result, isReplay)
+	if out.RequestFingerprint == "" {
+		out.RequestFingerprint = payload.RequestFingerprint
+	}
+	if out.PaymentIntentID == "" {
+		out.PaymentIntentID = payload.PaymentIntentID
+	}
+	return out
+}
+
 func (p *PostgresStore) ClaimCheckout(ctx context.Context, workspaceID, idempotencyKey, paymentIntentID, requestFingerprint string) (*CheckoutResult, string, error) {
 	if p.pool == nil {
 		return p.Store.ClaimCheckout(ctx, workspaceID, idempotencyKey, paymentIntentID, requestFingerprint)
@@ -115,7 +129,7 @@ func (p *PostgresStore) ClaimCheckout(ctx context.Context, workspaceID, idempote
 					return ErrPaymentReplay
 				}
 				if status == "succeeded" && payload.Result != nil && payload.Result.Status == "confirmed" {
-					replayRes = cloneCheckoutResult(payload.Result, true)
+					replayRes = hydrateCheckoutResultFromPayload(payload, true)
 					claimedOrderID = payload.OrderID
 					return nil
 				}
@@ -151,7 +165,7 @@ func (p *PostgresStore) ClaimCheckout(ctx context.Context, workspaceID, idempote
 						return ErrPaymentReplay
 					}
 					if piStatus == "succeeded" && piPayload.Result != nil && piPayload.Result.Status == "confirmed" {
-						replayRes = cloneCheckoutResult(piPayload.Result, true)
+						replayRes = hydrateCheckoutResultFromPayload(piPayload, true)
 						claimedOrderID = piPayload.OrderID
 						return nil
 					}
@@ -277,7 +291,7 @@ func (p *PostgresStore) GetCheckoutResultByIdempotency(ctx context.Context, work
 			return err
 		}
 		if payload.Result != nil {
-			out = cloneCheckoutResult(payload.Result, true)
+			out = hydrateCheckoutResultFromPayload(payload, true)
 		}
 		return nil
 	})
@@ -312,7 +326,7 @@ func (p *PostgresStore) GetCheckoutByPaymentIntent(ctx context.Context, workspac
 		}
 		boundIdem = payload.IdempotencyKey
 		if payload.Result != nil {
-			out = cloneCheckoutResult(payload.Result, true)
+			out = hydrateCheckoutResultFromPayload(payload, true)
 		}
 		return nil
 	})
@@ -419,4 +433,420 @@ func (p *PostgresStore) SaveCheckoutResult(ctx context.Context, workspaceID, ide
 		return err
 	}
 	return p.Store.SaveCheckoutResult(ctx, workspaceID, idempotencyKey, res)
+}
+
+func (p *PostgresStore) RecordVerifiedPaymentIntent(ctx context.Context, intent *VerifiedPaymentIntent) error {
+	if err := p.Store.RecordVerifiedPaymentIntent(ctx, intent); err != nil {
+		return err
+	}
+	if p.pool == nil || intent == nil {
+		return nil
+	}
+	raw, err := json.Marshal(intent)
+	if err != nil {
+		return err
+	}
+	return p.withTenantTx(ctx, intent.WorkspaceID, func(tx pgx.Tx) error {
+		_, err := tx.Exec(ctx, `
+			INSERT INTO external_effects (
+				effect_id, workspace_id, operation_key, provider,
+				aggregate_type, aggregate_id, provider_request_id, status, result_payload
+			) VALUES ($1::uuid, $2::uuid, $3, 'own_store', 'payment_intent', $4::uuid, $5, 'succeeded', $6::jsonb)
+			ON CONFLICT (workspace_id, operation_key) DO UPDATE
+			SET result_payload = EXCLUDED.result_payload, updated_at = NOW()
+		`, newUUID(), intent.WorkspaceID, "store_verified_pi:"+strings.TrimSpace(intent.PaymentIntentID), newUUID(), strings.TrimSpace(intent.PaymentIntentID), string(raw))
+		return err
+	})
+}
+
+func (p *PostgresStore) GetVerifiedPaymentIntent(ctx context.Context, workspaceID, paymentIntentID string) (*VerifiedPaymentIntent, error) {
+	if v, err := p.Store.GetVerifiedPaymentIntent(ctx, workspaceID, paymentIntentID); err == nil && v != nil {
+		return v, nil
+	}
+	if p.pool == nil {
+		return p.Store.GetVerifiedPaymentIntent(ctx, workspaceID, paymentIntentID)
+	}
+	var out *VerifiedPaymentIntent
+	err := p.withTenantTx(ctx, workspaceID, func(tx pgx.Tx) error {
+		var raw []byte
+		err := tx.QueryRow(ctx, `
+			SELECT result_payload
+			FROM external_effects
+			WHERE workspace_id = $1::uuid AND operation_key = $2
+		`, workspaceID, "store_verified_pi:"+strings.TrimSpace(paymentIntentID)).Scan(&raw)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrPaymentNotVerified
+		}
+		if err != nil {
+			return err
+		}
+		var v VerifiedPaymentIntent
+		if err := json.Unmarshal(raw, &v); err != nil {
+			return err
+		}
+		out = &v
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (p *PostgresStore) CreateDigitalDelivery(ctx context.Context, d *DigitalDelivery) error {
+	if p.pool == nil || d == nil {
+		return p.Store.CreateDigitalDelivery(ctx, d)
+	}
+	err := p.withTenantTx(ctx, d.WorkspaceID, func(tx pgx.Tx) error {
+		if strings.TrimSpace(d.IdempotencyKey) != "" {
+			idemOp := "store_delivery_idem:" + strings.TrimSpace(d.IdempotencyKey)
+			var existingRaw []byte
+			err := tx.QueryRow(ctx, `
+				SELECT result_payload
+				FROM external_effects
+				WHERE workspace_id = $1::uuid AND operation_key = $2
+				FOR UPDATE
+			`, d.WorkspaceID, idemOp).Scan(&existingRaw)
+			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+				return err
+			}
+			if err == nil && len(existingRaw) > 0 {
+				var existing DigitalDelivery
+				if uErr := json.Unmarshal(existingRaw, &existing); uErr == nil && existing.DeliveryID != "" {
+					*d = existing
+					return nil
+				}
+			}
+		}
+
+		raw, err := json.Marshal(d)
+		if err != nil {
+			return err
+		}
+		_, err = tx.Exec(ctx, `
+			INSERT INTO external_effects (
+				effect_id, workspace_id, operation_key, provider,
+				aggregate_type, aggregate_id, provider_request_id, status, result_payload
+			) VALUES ($1::uuid, $2::uuid, $3, 'own_store', 'digital_delivery', $4::uuid, $5, 'succeeded', $6::jsonb)
+			ON CONFLICT (workspace_id, operation_key) DO UPDATE
+			SET result_payload = EXCLUDED.result_payload, updated_at = NOW()
+		`, newUUID(), d.WorkspaceID, "store_delivery:"+d.DeliveryID, d.DeliveryID, d.CustomerEntityID, string(raw))
+		if err != nil {
+			return err
+		}
+		if strings.TrimSpace(d.IdempotencyKey) != "" {
+			_, err = tx.Exec(ctx, `
+				INSERT INTO external_effects (
+					effect_id, workspace_id, operation_key, provider,
+					aggregate_type, aggregate_id, provider_request_id, status, result_payload
+				) VALUES ($1::uuid, $2::uuid, $3, 'own_store', 'digital_delivery', $4::uuid, $5, 'succeeded', $6::jsonb)
+				ON CONFLICT (workspace_id, operation_key) DO UPDATE
+				SET result_payload = EXCLUDED.result_payload, updated_at = NOW()
+			`, newUUID(), d.WorkspaceID, "store_delivery_idem:"+strings.TrimSpace(d.IdempotencyKey), d.DeliveryID, d.CustomerEntityID, string(raw))
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	return p.Store.CreateDigitalDelivery(ctx, d)
+}
+
+func (p *PostgresStore) DeleteDigitalDelivery(ctx context.Context, workspaceID, deliveryID string) error {
+	_ = p.Store.DeleteDigitalDelivery(ctx, workspaceID, deliveryID)
+	if p.pool == nil {
+		return nil
+	}
+	return p.withTenantTx(ctx, workspaceID, func(tx pgx.Tx) error {
+		_, err := tx.Exec(ctx, `
+			DELETE FROM external_effects
+			WHERE workspace_id = $1::uuid AND aggregate_type = 'digital_delivery' AND aggregate_id = $2::uuid
+		`, workspaceID, deliveryID)
+		return err
+	})
+}
+
+func (p *PostgresStore) ListDeliveriesByCustomer(ctx context.Context, workspaceID, customerEntityID string) ([]DigitalDelivery, error) {
+	if p.pool == nil {
+		return p.Store.ListDeliveriesByCustomer(ctx, workspaceID, customerEntityID)
+	}
+	var out []DigitalDelivery
+	seen := make(map[string]bool)
+	err := p.withTenantTx(ctx, workspaceID, func(tx pgx.Tx) error {
+		rows, err := tx.Query(ctx, `
+			SELECT result_payload
+			FROM external_effects
+			WHERE workspace_id = $1::uuid
+			  AND operation_key LIKE 'store_delivery:%'
+			  AND provider_request_id = $2
+			ORDER BY created_at ASC
+		`, workspaceID, customerEntityID)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var raw []byte
+			if err := rows.Scan(&raw); err != nil {
+				return err
+			}
+			var d DigitalDelivery
+			if err := json.Unmarshal(raw, &d); err == nil && d.DeliveryID != "" && !seen[d.DeliveryID] {
+				seen[d.DeliveryID] = true
+				out = append(out, d)
+			}
+		}
+		return rows.Err()
+	})
+	if err != nil {
+		return nil, err
+	}
+	if memList, err := p.Store.ListDeliveriesByCustomer(ctx, workspaceID, customerEntityID); err == nil {
+		for _, d := range memList {
+			if !seen[d.DeliveryID] {
+				seen[d.DeliveryID] = true
+				out = append(out, d)
+			}
+		}
+	}
+	return out, nil
+}
+
+func (p *PostgresStore) CreateSubscription(ctx context.Context, sub *MembershipSubscription) error {
+	if p.pool == nil || sub == nil {
+		return p.Store.CreateSubscription(ctx, sub)
+	}
+	err := p.withTenantTx(ctx, sub.WorkspaceID, func(tx pgx.Tx) error {
+		if strings.TrimSpace(sub.ProviderSubscriptionID) != "" {
+			provOp := "store_sub_provider:" + strings.TrimSpace(sub.ProviderSubscriptionID)
+			var existingRaw []byte
+			err := tx.QueryRow(ctx, `
+				SELECT result_payload
+				FROM external_effects
+				WHERE workspace_id = $1::uuid AND operation_key = $2
+				FOR UPDATE
+			`, sub.WorkspaceID, provOp).Scan(&existingRaw)
+			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+				return err
+			}
+			if err == nil && len(existingRaw) > 0 {
+				var existing MembershipSubscription
+				if uErr := json.Unmarshal(existingRaw, &existing); uErr == nil && existing.MembershipID != "" {
+					*sub = existing
+					return nil
+				}
+			}
+		}
+
+		raw, err := json.Marshal(sub)
+		if err != nil {
+			return err
+		}
+		_, err = tx.Exec(ctx, `
+			INSERT INTO external_effects (
+				effect_id, workspace_id, operation_key, provider,
+				aggregate_type, aggregate_id, provider_request_id, status, result_payload
+			) VALUES ($1::uuid, $2::uuid, $3, 'own_store', 'membership_subscription', $4::uuid, $5, 'succeeded', $6::jsonb)
+			ON CONFLICT (workspace_id, operation_key) DO UPDATE
+			SET result_payload = EXCLUDED.result_payload, updated_at = NOW()
+		`, newUUID(), sub.WorkspaceID, "store_subscription:"+sub.MembershipID, sub.MembershipID, sub.CustomerEntityID, string(raw))
+		if err != nil {
+			return err
+		}
+		if strings.TrimSpace(sub.ProviderSubscriptionID) != "" {
+			_, err = tx.Exec(ctx, `
+				INSERT INTO external_effects (
+					effect_id, workspace_id, operation_key, provider,
+					aggregate_type, aggregate_id, provider_request_id, status, result_payload
+				) VALUES ($1::uuid, $2::uuid, $3, 'own_store', 'membership_subscription', $4::uuid, $5, 'succeeded', $6::jsonb)
+				ON CONFLICT (workspace_id, operation_key) DO UPDATE
+				SET result_payload = EXCLUDED.result_payload, updated_at = NOW()
+			`, newUUID(), sub.WorkspaceID, "store_sub_provider:"+strings.TrimSpace(sub.ProviderSubscriptionID), sub.MembershipID, sub.CustomerEntityID, string(raw))
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	return p.Store.CreateSubscription(ctx, sub)
+}
+
+func (p *PostgresStore) DeleteSubscription(ctx context.Context, workspaceID, subID string) error {
+	_ = p.Store.DeleteSubscription(ctx, workspaceID, subID)
+	if p.pool == nil {
+		return nil
+	}
+	return p.withTenantTx(ctx, workspaceID, func(tx pgx.Tx) error {
+		_, err := tx.Exec(ctx, `
+			DELETE FROM external_effects
+			WHERE workspace_id = $1::uuid AND aggregate_type = 'membership_subscription' AND aggregate_id = $2::uuid
+		`, workspaceID, subID)
+		return err
+	})
+}
+
+func (p *PostgresStore) ListSubscriptionsByCustomer(ctx context.Context, workspaceID, customerEntityID string) ([]MembershipSubscription, error) {
+	if p.pool == nil {
+		return p.Store.ListSubscriptionsByCustomer(ctx, workspaceID, customerEntityID)
+	}
+	var out []MembershipSubscription
+	seen := make(map[string]bool)
+	err := p.withTenantTx(ctx, workspaceID, func(tx pgx.Tx) error {
+		rows, err := tx.Query(ctx, `
+			SELECT result_payload
+			FROM external_effects
+			WHERE workspace_id = $1::uuid
+			  AND operation_key LIKE 'store_subscription:%'
+			  AND provider_request_id = $2
+			ORDER BY created_at ASC
+		`, workspaceID, customerEntityID)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var raw []byte
+			if err := rows.Scan(&raw); err != nil {
+				return err
+			}
+			var sub MembershipSubscription
+			if err := json.Unmarshal(raw, &sub); err == nil && sub.MembershipID != "" && !seen[sub.MembershipID] {
+				seen[sub.MembershipID] = true
+				out = append(out, sub)
+			}
+		}
+		return rows.Err()
+	})
+	if err != nil {
+		return nil, err
+	}
+	if memList, err := p.Store.ListSubscriptionsByCustomer(ctx, workspaceID, customerEntityID); err == nil {
+		for _, sub := range memList {
+			if !seen[sub.MembershipID] {
+				seen[sub.MembershipID] = true
+				out = append(out, sub)
+			}
+		}
+	}
+	return out, nil
+}
+
+func (p *PostgresStore) RecordFinancialPosting(ctx context.Context, posting *FinancialPosting) error {
+	if p.pool == nil || posting == nil {
+		return p.Store.RecordFinancialPosting(ctx, posting)
+	}
+	err := p.withTenantTx(ctx, posting.WorkspaceID, func(tx pgx.Tx) error {
+		orderOp := "store_posting_order:" + strings.TrimSpace(posting.OrderID)
+		var existingRaw []byte
+		err := tx.QueryRow(ctx, `
+			SELECT result_payload
+			FROM external_effects
+			WHERE workspace_id = $1::uuid AND operation_key = $2
+			FOR UPDATE
+		`, posting.WorkspaceID, orderOp).Scan(&existingRaw)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return err
+		}
+		if err == nil && len(existingRaw) > 0 {
+			var existing FinancialPosting
+			if uErr := json.Unmarshal(existingRaw, &existing); uErr == nil && existing.PostingID != "" {
+				*posting = existing
+				return nil
+			}
+		}
+
+		raw, err := json.Marshal(posting)
+		if err != nil {
+			return err
+		}
+		_, err = tx.Exec(ctx, `
+			INSERT INTO external_effects (
+				effect_id, workspace_id, operation_key, provider,
+				aggregate_type, aggregate_id, provider_request_id, status, result_payload
+			) VALUES ($1::uuid, $2::uuid, $3, 'own_store', 'financial_posting', $4::uuid, $5, 'succeeded', $6::jsonb)
+			ON CONFLICT (workspace_id, operation_key) DO UPDATE
+			SET result_payload = EXCLUDED.result_payload, updated_at = NOW()
+		`, newUUID(), posting.WorkspaceID, "store_posting:"+posting.PostingID, posting.PostingID, posting.OrderID, string(raw))
+		if err != nil {
+			return err
+		}
+		_, err = tx.Exec(ctx, `
+			INSERT INTO external_effects (
+				effect_id, workspace_id, operation_key, provider,
+				aggregate_type, aggregate_id, provider_request_id, status, result_payload
+			) VALUES ($1::uuid, $2::uuid, $3, 'own_store', 'financial_posting', $4::uuid, $5, 'succeeded', $6::jsonb)
+			ON CONFLICT (workspace_id, operation_key) DO UPDATE
+			SET result_payload = EXCLUDED.result_payload, updated_at = NOW()
+		`, newUUID(), posting.WorkspaceID, orderOp, posting.PostingID, posting.OrderID, string(raw))
+		return err
+	})
+	if err != nil {
+		return err
+	}
+	return p.Store.RecordFinancialPosting(ctx, posting)
+}
+
+func (p *PostgresStore) DeleteFinancialPosting(ctx context.Context, workspaceID, postingID string) error {
+	_ = p.Store.DeleteFinancialPosting(ctx, workspaceID, postingID)
+	if p.pool == nil {
+		return nil
+	}
+	return p.withTenantTx(ctx, workspaceID, func(tx pgx.Tx) error {
+		_, err := tx.Exec(ctx, `
+			DELETE FROM external_effects
+			WHERE workspace_id = $1::uuid AND aggregate_type = 'financial_posting' AND aggregate_id = $2::uuid
+		`, workspaceID, postingID)
+		return err
+	})
+}
+
+func (p *PostgresStore) ListFinancialPostings(ctx context.Context, workspaceID string) ([]FinancialPosting, error) {
+	if p.pool == nil {
+		return p.Store.ListFinancialPostings(ctx, workspaceID)
+	}
+	var out []FinancialPosting
+	seen := make(map[string]bool)
+	err := p.withTenantTx(ctx, workspaceID, func(tx pgx.Tx) error {
+		rows, err := tx.Query(ctx, `
+			SELECT result_payload
+			FROM external_effects
+			WHERE workspace_id = $1::uuid
+			  AND operation_key LIKE 'store_posting:%'
+			ORDER BY created_at ASC
+		`, workspaceID)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var raw []byte
+			if err := rows.Scan(&raw); err != nil {
+				return err
+			}
+			var fp FinancialPosting
+			if err := json.Unmarshal(raw, &fp); err == nil && fp.PostingID != "" && !seen[fp.PostingID] {
+				seen[fp.PostingID] = true
+				out = append(out, fp)
+			}
+		}
+		return rows.Err()
+	})
+	if err != nil {
+		return nil, err
+	}
+	if memList, err := p.Store.ListFinancialPostings(ctx, workspaceID); err == nil {
+		for _, fp := range memList {
+			if !seen[fp.PostingID] {
+				seen[fp.PostingID] = true
+				out = append(out, fp)
+			}
+		}
+	}
+	return out, nil
 }

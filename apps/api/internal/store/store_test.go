@@ -1331,4 +1331,67 @@ func TestRemediation_R02_CrossInstanceCheckoutIdempotencyAndAtomicCompensation(t
 		t.Fatalf("expected clean state after retry: postings=%d (want 3) subs=%d (want 1) delivs=%d (want 1) stock=%d (want 2)",
 			len(postingsAfterRetry), len(retrySubs), len(retryDelivs), stockAfterRetry)
 	}
+
+	// 5. Unsettled / unknown PaymentStatus ("requires_payment_method", "requires_action", "canceled", "unknown", "")
+	//    must FAIL CLOSED with ErrPaymentNotVerified and grant 0 economic effects (both via store VerifiedPaymentIntent and custom PaymentVerifier).
+	svc1.SetPaymentVerifier(nil)
+	unsettledCustID := newUUID()
+	for i, badStatus := range []PaymentStatus{
+		"requires_payment_method",
+		"requires_action",
+		"canceled",
+		"processing",
+		"unknown",
+		"",
+	} {
+		badPI := fmt.Sprintf("pi_r02_unsettled_%d", i)
+		_ = svc1.RecordVerifiedPaymentIntent(ctx, &VerifiedPaymentIntent{
+			WorkspaceID:     wsID,
+			PaymentIntentID: badPI,
+			Amount:          mustDecimal(t, "300000.000000"),
+			Currency:        "VND",
+			Status:          badStatus,
+		})
+		_, err := svc1.Checkout(ctx, CheckoutRequest{
+			WorkspaceID:      wsID,
+			CustomerEntityID: unsettledCustID,
+			IdempotencyKey:   fmt.Sprintf("r02-unsettled-idem-%d", i),
+			PaymentIntentID:  badPI,
+			BundleID:         bundle.BundleID,
+			MembershipPlanID: plan.PlanID,
+			ProductIDs:       []string{prodID},
+			OrderAmount:      mustDecimal(t, "300000.000000"),
+			Currency:         "VND",
+		})
+		if !errors.Is(err, ErrPaymentNotVerified) {
+			t.Fatalf("expected unsettled store PaymentStatus %q to fail closed with ErrPaymentNotVerified, got %v", badStatus, err)
+		}
+
+		// Also verify custom PaymentVerifier returning badStatus fails closed
+		svc2.SetPaymentVerifier(func(_ context.Context, _ string, _ string, _ tenantdb.ExactDecimal, _ string) (PaymentStatus, error) {
+			return badStatus, nil
+		})
+		_, err = svc2.Checkout(ctx, CheckoutRequest{
+			WorkspaceID:      wsID,
+			CustomerEntityID: unsettledCustID,
+			IdempotencyKey:   fmt.Sprintf("r02-unsettled-verifier-idem-%d", i),
+			PaymentIntentID:  fmt.Sprintf("pi_r02_unsettled_verifier_%d", i),
+			BundleID:         bundle.BundleID,
+			MembershipPlanID: plan.PlanID,
+			ProductIDs:       []string{prodID},
+			OrderAmount:      mustDecimal(t, "300000.000000"),
+			Currency:         "VND",
+		})
+		if !errors.Is(err, ErrPaymentNotVerified) {
+			t.Fatalf("expected custom PaymentVerifier returning %q to fail closed with ErrPaymentNotVerified, got %v", badStatus, err)
+		}
+	}
+	unsettledSubs, _ := mem.ListSubscriptionsByCustomer(ctx, wsID, unsettledCustID)
+	unsettledDelivs, _ := mem.ListDeliveriesByCustomer(ctx, wsID, unsettledCustID)
+	postingsAfterUnsettled, _ := mem.ListFinancialPostings(ctx, wsID)
+	stockAfterUnsettled, _ := mem.GetProductStock(ctx, wsID, compID)
+	if len(unsettledSubs) != 0 || len(unsettledDelivs) != 0 || len(postingsAfterUnsettled) != 3 || stockAfterUnsettled != 2 {
+		t.Fatalf("R02 VIOLATION: unsettled PaymentStatus granted economic effects! subs=%d delivs=%d postings=%d stock=%d",
+			len(unsettledSubs), len(unsettledDelivs), len(postingsAfterUnsettled), stockAfterUnsettled)
+	}
 }

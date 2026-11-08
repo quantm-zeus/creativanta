@@ -259,6 +259,49 @@ func TestPostgresLiveCrossInstanceCheckoutIdempotencyAndRLS(t *testing.T) {
 		t.Fatalf("RLS violation: tenantB should not read tenantA checkout result by payment_intent_id (res=%+v idem=%q err=%v)", rlsRes, rlsIdem, err)
 	}
 
+	// 3b. Cross-instance IdempotencyKey replay with tampered RequestFingerprint or conflicting PaymentIntentID
+	//     must fail closed with ErrPaymentReplay on svc2 (proving RequestFingerprint and PaymentIntentID survive JSONB persistence).
+	if _, err := svc2.Checkout(ctx, CheckoutRequest{
+		WorkspaceID:      tenantA,
+		CustomerEntityID: customerA,
+		IdempotencyKey:   "pg-same-idem-1",
+		PaymentIntentID:  "pi_pg_same_1",
+		ProductIDs:       []string{prodA},
+		OrderAmount:      mustDecimal(t, "99000.000000"), // tampered amount -> different RequestFingerprint
+		Currency:         "VND",
+	}); !errors.Is(err, ErrPaymentReplay) {
+		t.Fatalf("expected cross-instance replay with tampered OrderAmount on settled IdempotencyKey to fail with ErrPaymentReplay, got %v", err)
+	}
+	if _, err := svc2.Checkout(ctx, CheckoutRequest{
+		WorkspaceID:      tenantA,
+		CustomerEntityID: customerA,
+		IdempotencyKey:   "pg-same-idem-1",
+		PaymentIntentID:  "pi_pg_different_pi", // conflicting PaymentIntentID on settled IdempotencyKey
+		ProductIDs:       []string{prodA},
+		OrderAmount:      mustDecimal(t, "50000.000000"),
+		Currency:         "VND",
+	}); !errors.Is(err, ErrPaymentReplay) {
+		t.Fatalf("expected cross-instance replay with conflicting PaymentIntentID on settled IdempotencyKey to fail with ErrPaymentReplay, got %v", err)
+	}
+
+	// 3c. Cross-instance economic effects visibility: deliveries and financial postings created on svc1/svc2
+	//     must be visible on a brand-new third PostgresStore instance (pgStore3) with an empty MemoryStore.
+	pgStore3 := NewPostgresStore(appPool, NewMemoryStore())
+	delivsOn3, err := pgStore3.ListDeliveriesByCustomer(ctx, tenantA, customerA)
+	if err != nil {
+		t.Fatalf("pgStore3.ListDeliveriesByCustomer failed: %v", err)
+	}
+	if len(delivsOn3) != 2 {
+		t.Fatalf("expected 2 deliveries (for customerA across the 2 settled checkouts) visible on fresh pgStore3 instance, got %d", len(delivsOn3))
+	}
+	postingsOn3, err := pgStore3.ListFinancialPostings(ctx, tenantA)
+	if err != nil {
+		t.Fatalf("pgStore3.ListFinancialPostings failed: %v", err)
+	}
+	if len(postingsOn3) != 2 {
+		t.Fatalf("expected 2 financial postings visible on fresh pgStore3 instance, got %d", len(postingsOn3))
+	}
+
 	// 4. Failure compensation: SaveCheckoutResult failure releases PostgreSQL claim and rolls back posting
 	flakyMem := NewMemoryStore()
 	flakyStore := &failingSavePostgresStore{

@@ -2038,3 +2038,194 @@ func TestRemediation_R01_UnrelatedInvoicePaidDoesNotActivatePendingPlan(t *testi
 		return nil
 	})
 }
+
+func TestR01_InvoicePaidGuardrailEdgeCases(t *testing.T) {
+	now := time.Date(2026, 11, 2, 10, 0, 0, 0, time.UTC)
+	reg := loadTestRBAC(t)
+	store := NewMemoryStore(now)
+	engine := NewEngine(store)
+	svc := NewService(reg, engine, "whsec_test_secret_r01_edge")
+	svc.SetClock(func() time.Time { return now })
+
+	// Case 1: Active Starter subscription ($20) with pending Business upgrade ($200).
+	// An invoice.paid carrying StripePriceID="price_business_monthly_usd", TargetPlan="", and AmountPaid=20
+	// must NOT silently renew Starter with a mismatched StripePriceID or activate Business.
+	const wsActive = "55555555-5555-4555-8555-555555555551"
+	activeCtx := rbac.WithPolicyContext(context.Background(), rbac.PolicyContext{
+		ActorUserID: testUserOwner,
+		WorkspaceID: wsActive,
+		Role:        rbac.RoleOwner,
+	})
+	starterSess, err := svc.ChangePlan(activeCtx, &adminv1.ChangePlanRequest{
+		Context:         &commonv1.CommandContext{IdempotencyKey: "r01-edge-starter"},
+		TargetPlan:      "starter",
+		BillingInterval: "monthly",
+	})
+	if err != nil {
+		t.Fatalf("ChangePlan starter failed: %v", err)
+	}
+	if _, err := svc.SettleStripeWebhook(StripeWebhookEvent{
+		EventID:           "evt_edge_activate_starter",
+		EventType:         "invoice.paid",
+		WorkspaceID:       wsActive,
+		SubscriptionID:    "sub_edge_starter",
+		StripeInvoiceID:   "in_edge_starter_1",
+		CheckoutSessionID: starterSess.GetCheckoutSessionId(),
+		TargetPlan:        "starter",
+		BillingInterval:   "monthly",
+		PeriodKey:         "2026-11",
+		AmountPaid:        tenantdb.MustParseExactDecimal("20"),
+		Currency:          "USD",
+		PaymentStatus:     "paid",
+		OccurredAt:        now,
+	}); err != nil {
+		t.Fatalf("activate starter failed: %v", err)
+	}
+
+	// Replaying ChangePlan with the same IdempotencyKey after settlement must NOT reset session status to "pending",
+	// and replaying with a different TargetPlan must fail closed with ErrInvalidBillingInput.
+	if _, err := svc.ChangePlan(activeCtx, &adminv1.ChangePlanRequest{
+		Context:         &commonv1.CommandContext{IdempotencyKey: "r01-edge-starter"},
+		TargetPlan:      "business",
+		BillingInterval: "monthly",
+	}); !errors.Is(err, ErrInvalidBillingInput) {
+		t.Fatalf("expected ChangePlan replay with conflicting TargetPlan to fail with ErrInvalidBillingInput, got %v", err)
+	}
+	if _, err := svc.ChangePlan(activeCtx, &adminv1.ChangePlanRequest{
+		Context:         &commonv1.CommandContext{IdempotencyKey: "r01-edge-starter"},
+		TargetPlan:      "starter",
+		BillingInterval: "monthly",
+	}); err != nil {
+		t.Fatalf("expected ChangePlan replay with identical parameters to succeed idempotently, got %v", err)
+	}
+	_ = store.WithWorkspaceTx(wsActive, func(st *WorkspaceBillingState) error {
+		if st.CheckoutSessions[starterSess.GetCheckoutSessionId()].Status != "settled" {
+			t.Fatalf("expected settled checkout session to remain settled after idempotent replay, got %s",
+				st.CheckoutSessions[starterSess.GetCheckoutSessionId()].Status)
+		}
+		return nil
+	})
+
+	// Create pending Business upgrade on wsActive
+	if _, err := svc.ChangePlan(activeCtx, &adminv1.ChangePlanRequest{
+		Context:         &commonv1.CommandContext{IdempotencyKey: "r01-edge-biz-pending"},
+		TargetPlan:      "business",
+		BillingInterval: "monthly",
+	}); err != nil {
+		t.Fatalf("ChangePlan business failed: %v", err)
+	}
+	if _, err := svc.SettleStripeWebhook(StripeWebhookEvent{
+		EventID:         "evt_edge_mismatched_price_id",
+		EventType:       "invoice.paid",
+		WorkspaceID:     wsActive,
+		SubscriptionID:  "sub_edge_starter",
+		StripeInvoiceID: "in_edge_mismatched_price",
+		StripePriceID:   "price_business_monthly_usd",
+		PeriodKey:       "2026-12",
+		AmountPaid:      tenantdb.MustParseExactDecimal("20"),
+		Currency:        "USD",
+		PaymentStatus:   "paid",
+		OccurredAt:      now.Add(24 * time.Hour),
+	}); !errors.Is(err, ErrInvalidBillingInput) {
+		t.Fatalf("expected invoice.paid with business StripePriceID and starter AmountPaid ($20) to fail with ErrInvalidBillingInput, got %v", err)
+	}
+
+	// Case 2: Trialing Pro subscription (Amount=0 initially) must reject invoice.paid with wrong AmountPaid ($20),
+	// and when settled after trial expiry (downgraded to free) with an abandoned pending Business session,
+	// an unbound invoice.paid must NOT activate Business!
+	const wsTrial = "55555555-5555-4555-8555-555555555552"
+	trialCtx := rbac.WithPolicyContext(context.Background(), rbac.PolicyContext{
+		ActorUserID: testUserOwner,
+		WorkspaceID: wsTrial,
+		Role:        rbac.RoleOwner,
+	})
+	trialSub, err := svc.StartProTrial(trialCtx, wsTrial)
+	if err != nil {
+		t.Fatalf("StartProTrial failed: %v", err)
+	}
+	trialSubID := trialSub.GetSubscriptionId().GetValue()
+	if _, err := svc.SettleStripeWebhook(StripeWebhookEvent{
+		EventID:         "evt_edge_trial_underpaid",
+		EventType:       "invoice.paid",
+		WorkspaceID:     wsTrial,
+		SubscriptionID:  trialSubID,
+		StripeInvoiceID: "in_edge_trial_underpaid",
+		PeriodKey:       "2026-11",
+		AmountPaid:      tenantdb.MustParseExactDecimal("20"),
+		Currency:        "USD",
+		PaymentStatus:   "paid",
+		OccurredAt:      now,
+	}); !errors.Is(err, ErrInvalidBillingInput) {
+		t.Fatalf("expected trialing Pro subscription to reject underpaid ($20 vs $60) invoice.paid, got %v", err)
+	}
+
+	// Owner initiates a pending Business upgrade during trial, then trial expires without payment -> downgraded to free.
+	if _, err := svc.ChangePlan(trialCtx, &adminv1.ChangePlanRequest{
+		Context:         &commonv1.CommandContext{IdempotencyKey: "r01-edge-trial-biz"},
+		TargetPlan:      "business",
+		BillingInterval: "monthly",
+	}); err != nil {
+		t.Fatalf("ChangePlan business on trial failed: %v", err)
+	}
+	if _, err := svc.ExpireTrialWithoutPayment(wsTrial, now.Add(14*24*time.Hour)); err != nil {
+		t.Fatalf("ExpireTrialWithoutPayment failed: %v", err)
+	}
+	// Unbound invoice.paid with no CheckoutSessionID/TargetPlan/StripePriceID/AmountPaid must fail closed on downgraded free workspace.
+	if _, err := svc.SettleStripeWebhook(StripeWebhookEvent{
+		EventID:         "evt_edge_downgraded_free_unbound",
+		EventType:       "invoice.paid",
+		WorkspaceID:     wsTrial,
+		SubscriptionID:  trialSubID,
+		StripeInvoiceID: "in_edge_downgraded_unbound",
+		PeriodKey:       "2026-11",
+		PaymentStatus:   "paid",
+		OccurredAt:      now,
+	}); !errors.Is(err, ErrInvalidBillingInput) {
+		t.Fatalf("expected unbound invoice.paid on downgraded free workspace with pending Business session to fail with ErrInvalidBillingInput, got %v", err)
+	}
+	_ = store.WithWorkspaceTx(wsTrial, func(st *WorkspaceBillingState) error {
+		if st.SubscriptionTier != "free" {
+			t.Fatalf("expected downgraded workspace to remain on free tier, got %s", st.SubscriptionTier)
+		}
+		return nil
+	})
+
+	// Case 3: Fresh workspace with pending Pro upgrade: invoice.paid with empty SubscriptionID and empty CheckoutSessionID
+	// (or with a credit-pack invoice ID) must fail closed instead of inventing "default_sub" and activating Pro.
+	const wsFresh = "55555555-5555-4555-8555-555555555553"
+	freshCtx := rbac.WithPolicyContext(context.Background(), rbac.PolicyContext{
+		ActorUserID: testUserOwner,
+		WorkspaceID: wsFresh,
+		Role:        rbac.RoleOwner,
+	})
+	if _, err := svc.ChangePlan(freshCtx, &adminv1.ChangePlanRequest{
+		Context:         &commonv1.CommandContext{IdempotencyKey: "r01-edge-fresh-pro"},
+		TargetPlan:      "pro",
+		BillingInterval: "monthly",
+	}); err != nil {
+		t.Fatalf("ChangePlan pro on fresh workspace failed: %v", err)
+	}
+	if _, err := svc.SettleStripeWebhook(StripeWebhookEvent{
+		EventID:         "evt_edge_fresh_no_sub_id",
+		EventType:       "invoice.paid",
+		WorkspaceID:     wsFresh,
+		StripeInvoiceID: "in_edge_fresh_no_sub",
+		PeriodKey:       "2026-11",
+		PaymentStatus:   "paid",
+		OccurredAt:      now,
+	}); !errors.Is(err, ErrInvalidBillingInput) {
+		t.Fatalf("expected invoice.paid with empty SubscriptionID and empty CheckoutSessionID to fail with ErrInvalidBillingInput, got %v", err)
+	}
+	if _, err := svc.SettleStripeWebhook(StripeWebhookEvent{
+		EventID:         "evt_edge_fresh_pack_invoice",
+		EventType:       "invoice.paid",
+		WorkspaceID:     wsFresh,
+		SubscriptionID:  "sub_fresh_1",
+		StripeInvoiceID: "in_cs_pack_unrelated",
+		PeriodKey:       "2026-11",
+		PaymentStatus:   "paid",
+		OccurredAt:      now,
+	}); !errors.Is(err, ErrInvalidBillingInput) {
+		t.Fatalf("expected invoice.paid with credit-pack StripeInvoiceID (in_cs_pack_*) to fail with ErrInvalidBillingInput, got %v", err)
+	}
+}
