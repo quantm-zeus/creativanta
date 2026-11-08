@@ -454,10 +454,67 @@ func extractServerPeerIP(r *http.Request) string {
 	return raw
 }
 
+func normalizeForwardedCandidateIP(raw string) string {
+	s := strings.TrimSpace(raw)
+	s = strings.Trim(s, `"`)
+	if strings.HasPrefix(s, "[") {
+		if end := strings.Index(s, "]"); end > 1 {
+			return s[1:end]
+		}
+	}
+	if host, _, err := net.SplitHostPort(s); err == nil {
+		return strings.TrimSpace(host)
+	}
+	return s
+}
+
+func hasNonVPNForwardedClientIP(r *http.Request) bool {
+	if r == nil {
+		return true
+	}
+	for _, xff := range r.Header.Values("X-Forwarded-For") {
+		parts := strings.Split(xff, ",")
+		for _, p := range parts {
+			ip := normalizeForwardedCandidateIP(p)
+			if ip == "" || !internaladmin.IsTailscaleOrLoopbackVPNPeerIP(ip) {
+				return true
+			}
+		}
+	}
+	for _, xrip := range r.Header.Values("X-Real-IP") {
+		ip := normalizeForwardedCandidateIP(xrip)
+		if ip == "" || !internaladmin.IsTailscaleOrLoopbackVPNPeerIP(ip) {
+			return true
+		}
+	}
+	for _, fwd := range r.Header.Values("Forwarded") {
+		entries := strings.Split(fwd, ",")
+		for _, entry := range entries {
+			params := strings.Split(entry, ";")
+			foundFor := false
+			for _, param := range params {
+				kv := strings.SplitN(strings.TrimSpace(param), "=", 2)
+				if len(kv) == 2 && strings.EqualFold(strings.TrimSpace(kv[0]), "for") {
+					foundFor = true
+					ip := normalizeForwardedCandidateIP(kv[1])
+					if ip == "" || !internaladmin.IsTailscaleOrLoopbackVPNPeerIP(ip) {
+						return true
+					}
+				}
+			}
+			if !foundFor {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func mountAdminAPIRoutes(mux *http.ServeMux, idStore *pgIdentityStore) {
 	// Isolated admin API listener (ModeAdminAPI):
 	// - Rejects any request carrying x-workspace-id header (403 Forbidden)
 	// - Requires verified VPN/Tailscale or loopback transport peer IP (403 Forbidden)
+	// - Rejects external non-VPN client traffic forwarded through a loopback reverse proxy (403 Forbidden)
 	// - Rejects workspace/user Clerk JWT tokens; requires an isolated MFA+VPN verified admin_sessions token
 	// - Does NOT mount tenant services or unguarded AdminAuthService/Login (AUTH-05)
 	mux.HandleFunc("/admin/v1/whoami", func(w http.ResponseWriter, r *http.Request) {
@@ -470,7 +527,7 @@ func mountAdminAPIRoutes(mux *http.ServeMux, idStore *pgIdentityStore) {
 			return
 		}
 		peerIP := extractServerPeerIP(r)
-		if !internaladmin.IsTailscaleOrLoopbackVPNPeerIP(peerIP) {
+		if !internaladmin.IsTailscaleOrLoopbackVPNPeerIP(peerIP) || hasNonVPNForwardedClientIP(r) {
 			writeJSONError(w, http.StatusForbidden, "permission_denied", "admin API requires verified VPN or loopback transport")
 			return
 		}
