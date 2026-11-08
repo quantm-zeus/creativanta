@@ -1806,3 +1806,176 @@ func TestR08_OrderToAffiliateVerifierSyncAndConcurrentRefunds(t *testing.T) {
 		t.Fatalf("financial refunds must not restock physical inventory: expected OnHand=18, got %d", bal.OnHand)
 	}
 }
+
+// Billing N02: Unfulfilled (created or un-deducted) orders, cancelled orders (including confirmed-then-cancelled),
+// and historical pre-opening_at orders that never deducted stock must reject physical returns
+// and must never fabricate inventory stock on ReceiveReturn.
+func TestN02_UnfulfilledConfirmedAndUnsoldOrdersRejectReturnAndNeverFabricateStock(t *testing.T) {
+	ctx := context.Background()
+	orderSvc, invSvc, orderStore, invStore, _ := setupTestHarness()
+
+	wsID := "00000000-0000-0000-0000-000000000001"
+	locID := "00000000-0000-0000-0000-000000000010"
+	skuID := "SKU-N02-01"
+
+	t0 := time.Date(2026, 3, 25, 10, 0, 0, 0, time.UTC)
+	if err := invSvc.RecordOpeningBaseline(ctx, wsID, skuID, locID, 10, t0); err != nil {
+		t.Fatalf("RecordOpeningBaseline failed: %v", err)
+	}
+
+	// 1. Order in StateCreated (held reservation, not fulfilled -> OnHand=10, Reserved=2):
+	// CreateReturn MUST fail with ErrInvalidReturnTransition.
+	createdOrd, _, err := orderSvc.IngestOrder(ctx, &order.Order{
+		WorkspaceID:     wsID,
+		SourceClass:     order.SourceClassOfficial,
+		SourcePlatform:  "shopee",
+		ExternalOrderID: "sp-n02-created-1",
+		LifecycleState:  order.StateCreated,
+		Amount:          tenantdb.MustParseExactDecimal("200000.000000"),
+		Currency:        "VND",
+		OrderedAt:       t0.Add(1 * time.Hour),
+		Items: []order.OrderItem{
+			{Sku: skuID, Name: "N02 Item", Quantity: 2, UnitPrice: tenantdb.MustParseExactDecimal("100000.000000")},
+		},
+	}, locID)
+	if err != nil {
+		t.Fatalf("IngestOrder failed: %v", err)
+	}
+	if _, err := orderSvc.CreateReturn(ctx, &order.Return{
+		WorkspaceID: wsID,
+		OrderID:     createdOrd.OrderID,
+		ReturnType:  "full",
+		Items:       []order.ReturnItem{{Sku: skuID, Quantity: 2, Reason: "unfulfilled created return attempt"}},
+	}); !errors.Is(err, order.ErrInvalidReturnTransition) {
+		t.Fatalf("N02 violation: expected ErrInvalidReturnTransition when creating return on StateCreated order, got %v", err)
+	}
+
+	// 2. Confirm then Cancel the order before shipment (OnHand: 10 -> 8 -> 10 via mov_cancel_comp):
+	// Return created before cancel MUST be rejected on ReceiveReturn, and CreateReturn after cancel MUST be rejected.
+	if _, err := orderSvc.ConfirmOrder(ctx, wsID, createdOrd.OrderID); err != nil {
+		t.Fatalf("ConfirmOrder failed: %v", err)
+	}
+	retBeforeCancel, err := orderSvc.CreateReturn(ctx, &order.Return{
+		WorkspaceID: wsID,
+		OrderID:     createdOrd.OrderID,
+		ReturnType:  "full",
+		Items:       []order.ReturnItem{{Sku: skuID, Quantity: 2, Reason: "return initiated before cancel"}},
+	})
+	if err != nil {
+		t.Fatalf("CreateReturn on confirmed order failed: %v", err)
+	}
+	if _, err := orderSvc.CancelOrder(ctx, wsID, createdOrd.OrderID, "cancelled_before_shipment"); err != nil {
+		t.Fatalf("CancelOrder failed: %v", err)
+	}
+	if _, err := orderSvc.ReceiveReturn(ctx, wsID, retBeforeCancel.ReturnID, locID); !errors.Is(err, order.ErrInvalidReturnTransition) {
+		t.Fatalf("N02 violation: expected ErrInvalidReturnTransition when receiving return after pre-shipment cancel, got %v", err)
+	}
+	if _, err := orderSvc.CreateReturn(ctx, &order.Return{
+		WorkspaceID: wsID,
+		OrderID:     createdOrd.OrderID,
+		ReturnType:  "full",
+		Items:       []order.ReturnItem{{Sku: skuID, Quantity: 2, Reason: "return after cancel"}},
+	}); !errors.Is(err, order.ErrInvalidReturnTransition) {
+		t.Fatalf("N02 violation: expected ErrInvalidReturnTransition when creating return after cancel, got %v", err)
+	}
+
+	// 3. Historical order before opening_at (stock was NEVER deducted on ingest/complete -> OnHand remains 10)
+	// must NOT fabricate stock via CreateReturn / ReceiveReturn!
+	histOrd, _, err := orderSvc.IngestOrder(ctx, &order.Order{
+		WorkspaceID:     wsID,
+		SourceClass:     order.SourceClassImported,
+		SourcePlatform:  "shopee",
+		ExternalOrderID: "sp-n02-hist-1",
+		LifecycleState:  order.StateCompleted,
+		Amount:          tenantdb.MustParseExactDecimal("300000.000000"),
+		Currency:        "VND",
+		OrderedAt:       t0.Add(-24 * time.Hour), // Before opening baseline t0!
+		Items: []order.OrderItem{
+			{Sku: skuID, Name: "N02 Item", Quantity: 3, UnitPrice: tenantdb.MustParseExactDecimal("100000.000000")},
+		},
+	}, locID)
+	if err != nil {
+		t.Fatalf("IngestOrder historical failed: %v", err)
+	}
+	balAfterHist, _ := invStore.GetBalance(ctx, wsID, skuID, locID)
+	if balAfterHist.OnHand != 10 {
+		t.Fatalf("expected OnHand=10 after historical order import, got %d", balAfterHist.OnHand)
+	}
+
+	if _, err := orderSvc.CreateReturn(ctx, &order.Return{
+		WorkspaceID: wsID,
+		OrderID:     histOrd.OrderID,
+		ReturnType:  "full",
+		Items:       []order.ReturnItem{{Sku: skuID, Quantity: 3, Reason: "historical order return"}},
+	}); !errors.Is(err, order.ErrInvalidReturnTransition) {
+		t.Fatalf("N02 violation: expected ErrInvalidReturnTransition on historical order without sale deduction, got %v", err)
+	}
+
+	balFinal, _ := invStore.GetBalance(ctx, wsID, skuID, locID)
+	if balFinal.OnHand != 10 || balFinal.Reserved != 0 {
+		t.Fatalf("N02 violation: expected OnHand=10 Reserved=0 (no fabricated stock), got OnHand=%d Reserved=%d", balFinal.OnHand, balFinal.Reserved)
+	}
+	_ = orderStore
+}
+
+// Billing R06 extra coverage: If CreateOrder succeeds and ReserveStock crashes on a StateCreated order,
+// subsequent ConfirmOrder -> FulfillOrder -> CompleteOrder (which do not pass locID) must recover the
+// order's location from persisted metadata and deduct stock instead of falling back to 0000...0001 and skipping.
+func TestR06_ConfirmFulfillCompleteAfterReserveCrashRecoversLocationAndDeductsStock(t *testing.T) {
+	ctx := context.Background()
+	_, invSvc, baseOrderStore, invStore, sink := setupTestHarness()
+	finStore := finance.NewMemoryStore()
+	finSvc := finance.NewService(finStore, nil, nil)
+
+	wsID := "00000000-0000-0000-0000-000000000001"
+	locID := "00000000-0000-0000-0000-000000000010"
+	skuID := "SKU-R06-LOC-01"
+
+	t0 := time.Date(2026, 3, 25, 10, 0, 0, 0, time.UTC)
+	if err := invSvc.RecordOpeningBaseline(ctx, wsID, skuID, locID, 10, t0); err != nil {
+		t.Fatalf("RecordOpeningBaseline failed: %v", err)
+	}
+
+	crashStore := &nonDeletingOrderStore{Store: baseOrderStore, blockDelete: true}
+	crashInv := &crashSimulatingInventoryService{inner: invSvc, failReserve: true}
+	svcCrash := order.NewService(crashStore, crashInv, sink, func() time.Time { return t0.Add(2 * time.Hour) }).WithFinance(finSvc)
+
+	ordID := "33333333-3333-4333-8333-333333333601"
+	_, _, err := svcCrash.IngestOrder(ctx, &order.Order{
+		OrderID:         ordID,
+		WorkspaceID:     wsID,
+		SourceClass:     order.SourceClassOfficial,
+		SourcePlatform:  "tiktok",
+		ExternalOrderID: "tt-r06-loc-1",
+		LifecycleState:  order.StateCreated,
+		Amount:          tenantdb.MustParseExactDecimal("200000.000000"),
+		Currency:        "VND",
+		OrderedAt:       t0.Add(1 * time.Hour),
+		Items: []order.OrderItem{
+			{Sku: skuID, Name: "R06 Loc Product", Quantity: 3, UnitPrice: tenantdb.MustParseExactDecimal("100000.000000")},
+		},
+	}, locID)
+	if err == nil {
+		t.Fatalf("expected simulated crash on ReserveStock")
+	}
+
+	// Now a healthy service instance processes ConfirmOrder -> FulfillOrder -> CompleteOrder (without passing locID)
+	svcHealthy := order.NewService(baseOrderStore, invSvc, sink, func() time.Time { return t0.Add(2 * time.Hour) }).WithFinance(finSvc)
+	if _, err := svcHealthy.ConfirmOrder(ctx, wsID, ordID); err != nil {
+		t.Fatalf("ConfirmOrder after crash recovery failed: %v", err)
+	}
+	if _, err := svcHealthy.FulfillOrder(ctx, wsID, ordID); err != nil {
+		t.Fatalf("FulfillOrder after crash recovery failed: %v", err)
+	}
+	if _, err := svcHealthy.CompleteOrder(ctx, wsID, ordID); err != nil {
+		t.Fatalf("CompleteOrder after crash recovery failed: %v", err)
+	}
+
+	bal, err := invStore.GetBalance(ctx, wsID, skuID, locID)
+	if err != nil {
+		t.Fatalf("GetBalance failed: %v", err)
+	}
+	if bal.OnHand != 7 || bal.Reserved != 0 {
+		t.Fatalf("R06 violation: expected OnHand=7 Reserved=0 after Confirm/Fulfill/Complete recovery, got OnHand=%d Reserved=%d", bal.OnHand, bal.Reserved)
+	}
+}
