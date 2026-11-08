@@ -1630,6 +1630,8 @@ func TestS5_F4_VideoEngineRenderJobs500_TreatedAsUnknownOutcomeNoFallbackOrRefun
 type blockingCheckStatusProvider struct {
 	inCheckStatus chan struct{}
 	releaseCheck  chan struct{}
+	returnStatus  string
+	resultURL     string
 }
 
 func (p *blockingCheckStatusProvider) Name() string { return "veo" }
@@ -1649,9 +1651,14 @@ func (p *blockingCheckStatusProvider) CheckStatus(_ context.Context, providerJob
 	default:
 	}
 	<-p.releaseCheck
+	st := p.returnStatus
+	if st == "" {
+		st = "processing"
+	}
 	return &ProviderGenStatus{
 		ProviderJobID: providerJobID,
-		Status:        "processing",
+		Status:        st,
+		ResultURL:     p.resultURL,
 		ProgressPct:   45,
 		DurationSecs:  tenantdb.MustParseExactDecimal("15"),
 		Resolution:    "1080x1920",
@@ -1730,5 +1737,61 @@ func TestR05_CancelDuringCheckStatusAfterProviderAcceptance_HoldsCreditsAndPersi
 	quarantinedAsset, _ := store.GetAsset(ctx, wsID, quarantinedJob.AssetID)
 	if quarantinedJob.ResultURL != "" || (quarantinedAsset != nil && quarantinedAsset.FileURL != "") {
 		t.Fatalf("R05 VIOLATION: late completion leaked ResultURL=%q or FileURL=%q after reservation release!", quarantinedJob.ResultURL, quarantinedAsset.FileURL)
+	}
+
+	// Subtest 2: CheckStatus unblocks with "completed" after Cancel was called during CheckStatus ->
+	// Cancel held credits (no refund), and Generate commits the held reservation so output is NEVER free!
+	wsID2 := "ws-r05-checkstatus-completed"
+	store2 := NewMemoryStore()
+	prov2 := &blockingCheckStatusProvider{
+		inCheckStatus: make(chan struct{}, 1),
+		releaseCheck:  make(chan struct{}),
+		returnStatus:  "completed",
+		resultURL:     "https://cdn.creativanta.com/generated/r05-paid-output.mp4",
+	}
+	svc2 := NewService(ServiceConfig{
+		Store:           store2,
+		PrimaryProvider: prov2,
+		InitialBalances: map[string]tenantdb.ExactDecimal{
+			wsID2: tenantdb.MustParseExactDecimal("100"),
+		},
+	})
+
+	var genResp *connect.Response[productionv1.GenerateResponse]
+	var genErr error
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		genResp, genErr = svc2.Generate(ctx, connect.NewRequest(&productionv1.GenerateRequest{
+			Context: &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: wsID2}},
+			Title:   "R05 CheckStatus Completed Video",
+			Prompt:  "Cancel arrives while CheckStatus is in flight and provider returns completed",
+		}))
+	}()
+
+	<-prov2.inCheckStatus
+	jobs2, _ := store2.ListActiveJobs(ctx, wsID2)
+	jobID2 := jobs2[0].JobID
+
+	_, cancelErr2 := svc2.Cancel(ctx, connect.NewRequest(&productionv1.CancelRequest{
+		Context: &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: wsID2}},
+		JobId:   jobID2,
+	}))
+	if cancelErr2 == nil || !errors.Is(cancelErr2, ErrOutcomeUnknown) {
+		t.Fatalf("R05 VIOLATION: expected Cancel during in-flight CheckStatus to return ErrOutcomeUnknown, got: %v", cancelErr2)
+	}
+
+	close(prov2.releaseCheck)
+	wg.Wait()
+
+	if genErr != nil || genResp == nil {
+		t.Fatalf("expected Generate to complete and commit held reservation, got err=%v", genErr)
+	}
+	if bal2 := svc2.GetWorkspaceBalance(wsID2); bal2.Cmp(tenantdb.MustParseExactDecimal("20")) != 0 {
+		t.Fatalf("R05 CRITICAL VIOLATION: completed output granted without charging credits! balance=%s (expected 20)", bal2.String())
+	}
+	resRec2, ok2 := svc2.GetReservationByJob(jobID2)
+	if !ok2 || resRec2.Status != "committed" {
+		t.Fatalf("expected reservation status 'committed', got %+v", resRec2)
 	}
 }

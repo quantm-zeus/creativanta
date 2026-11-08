@@ -424,7 +424,7 @@ func (am *ApprovalManager) Approve(
 	currentActionHash := req.ActionHash
 	var matchedDownstreamActionNodeID string
 	for _, edge := range wf.ActionChain.Edges {
-		if edge.FromNodeID == req.NodeID {
+		if edge.FromNodeID == req.NodeID && (edge.Branch == EdgeBranchSuccess || edge.Branch == "") {
 			for _, n := range wf.ActionChain.Nodes {
 				if n.NodeID == edge.ToNodeID && n.NodeType == NodeTypeAction {
 					matchedDownstreamActionNodeID = strings.TrimSpace(n.NodeID)
