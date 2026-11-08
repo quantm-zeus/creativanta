@@ -1361,6 +1361,568 @@ func (s *PostgresStore) GetEffectByKey(ctx context.Context, workspaceID, operati
 	return eff, nil
 }
 
+func (s *PostgresStore) ClaimPublishEffect(ctx context.Context, item *PublishItem, job *PublishJob, effect *ExternalEffect) (bool, *ExternalEffect, error) {
+	if effect == nil || item == nil || job == nil {
+		return false, nil, errors.New("publish: item, job, and effect are required to claim publish effect")
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	tx, err := s.beginTenantTx(ctx, item.WorkspaceID)
+	if err != nil {
+		return false, nil, err
+	}
+	defer tx.Rollback()
+
+	now := time.Now().UTC()
+	if item.CreatedAt.IsZero() {
+		item.CreatedAt = now
+	}
+	if item.UpdatedAt.IsZero() {
+		item.UpdatedAt = now
+	}
+	if item.PublishMode == "" {
+		item.PublishMode = "direct"
+	}
+	if item.LifecycleState == "" {
+		item.LifecycleState = StateExecuting
+	}
+	if item.DiagnosticsState == "" {
+		item.DiagnosticsState = DiagnosticsHealthy
+	}
+
+	if job.PublishJobID == "" {
+		job.PublishJobID = NewID()
+	}
+	if job.CreatedAt.IsZero() {
+		job.CreatedAt = now
+	}
+	if job.UpdatedAt.IsZero() {
+		job.UpdatedAt = now
+	}
+	if job.LifecycleState == "" {
+		job.LifecycleState = StateExecuting
+	}
+	if job.MaxAttempts == 0 {
+		job.MaxAttempts = 3
+	}
+
+	if effect.EffectID == "" {
+		effect.EffectID = NewID()
+	}
+	if effect.CreatedAt.IsZero() {
+		effect.CreatedAt = now
+	}
+	if effect.UpdatedAt.IsZero() {
+		effect.UpdatedAt = now
+	}
+
+	// Lock the publish_item row if it exists in PostgreSQL to serialize concurrent claims across instances.
+	if isValidPGUUID(item.PublishItemID) {
+		var lockedItemID string
+		_ = tx.QueryRowContext(
+			ctx,
+			`SELECT publish_item_id FROM publish_items WHERE workspace_id = $1 AND publish_item_id = $2 AND deleted_at IS NULL FOR UPDATE`,
+			item.WorkspaceID, item.PublishItemID,
+		).Scan(&lockedItemID)
+	}
+
+	// 1. Check if an effect with the same (workspace_id, operation_key) already exists.
+	if effect.OperationKey != "" {
+		row := tx.QueryRowContext(
+			ctx,
+			`SELECT `+selectExternalEffectColumns+` FROM external_effects WHERE workspace_id = $1 AND operation_key = $2 FOR UPDATE`,
+			item.WorkspaceID, effect.OperationKey,
+		)
+		byKey, scanErr := scanExternalEffectRow(row)
+		if scanErr != nil && !errors.Is(scanErr, sql.ErrNoRows) {
+			return false, nil, fmt.Errorf("postgres claim check external_effect by key: %w", scanErr)
+		}
+		if byKey != nil {
+			if byKey.Status == "succeeded" || byKey.Status == "prepared" || byKey.Status == "submitted" || byKey.Status == "unknown" {
+				return false, byKey, nil
+			}
+			if byKey.Status == "failed" {
+				if stringFromMap(byKey.ResultPayload, "reconciled") != "confirmed_not_published" &&
+					!boolFromMap(byKey.ResultPayload, "definitive_rejection") {
+					return false, byKey, nil
+				}
+			}
+		}
+	}
+
+	// 2. Check if any active or succeeded effect already exists for this job or item.
+	rows, err := tx.QueryContext(
+		ctx,
+		`SELECT `+selectExternalEffectColumns+`
+		FROM external_effects
+		WHERE workspace_id = $1
+		  AND (
+			result_payload->>'publish_item_id' = $2
+			OR result_payload->>'publish_job_id' = $3
+			OR (aggregate_type = 'publish_job' AND aggregate_id = COALESCE($4::uuid, '00000000-0000-0000-0000-000000000000'::uuid))
+			OR (aggregate_type = 'publish_item' AND aggregate_id = COALESCE($5::uuid, '00000000-0000-0000-0000-000000000000'::uuid))
+		  )
+		ORDER BY created_at DESC, effect_id DESC
+		FOR UPDATE`,
+		item.WorkspaceID,
+		item.PublishItemID,
+		job.PublishJobID,
+		nullableUUID(job.PublishJobID),
+		nullableUUID(item.PublishItemID),
+	)
+	if err != nil {
+		return false, nil, fmt.Errorf("postgres claim list active external_effects: %w", err)
+	}
+	var existingActive *ExternalEffect
+	for rows.Next() {
+		eff, scanErr := scanExternalEffectRow(rows)
+		if scanErr != nil {
+			rows.Close()
+			return false, nil, scanErr
+		}
+		if eff.Status == "succeeded" || eff.Status == "prepared" || eff.Status == "submitted" || eff.Status == "unknown" {
+			existingActive = eff
+			break
+		}
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return false, nil, err
+	}
+	rows.Close()
+	if existingActive != nil {
+		return false, existingActive, nil
+	}
+
+	// 3. Upsert publish_items within the same transaction.
+	hashtagsJSON, _ := json.Marshal(item.Hashtags)
+	if len(hashtagsJSON) == 0 || string(hashtagsJSON) == "null" {
+		hashtagsJSON = []byte("[]")
+	}
+	compDetailsJSON, _ := json.Marshal(item.ComplianceDetails)
+	if len(compDetailsJSON) == 0 || string(compDetailsJSON) == "null" {
+		compDetailsJSON = []byte("{}")
+	}
+	metaMap := make(map[string]any)
+	for k, v := range item.Metadata {
+		metaMap[k] = v
+	}
+	if item.AssetID != "" {
+		metaMap["_pub_asset_id"] = item.AssetID
+	}
+	if item.TargetAccountID != "" {
+		metaMap["_pub_target_account_id"] = item.TargetAccountID
+	}
+	if item.CreatedBy != "" {
+		metaMap["_pub_created_by"] = item.CreatedBy
+	}
+	if len(item.LinkedOfferIDs) > 0 {
+		metaMap["_pub_linked_offer_ids"] = item.LinkedOfferIDs
+	}
+	if len(item.LinkedCampaignIDs) > 0 {
+		metaMap["_pub_linked_campaign_ids"] = item.LinkedCampaignIDs
+	}
+	metaJSON, _ := json.Marshal(metaMap)
+	offerArr := formatUUIDArrayLiteral(item.LinkedOfferIDs)
+	campArr := formatUUIDArrayLiteral(item.LinkedCampaignIDs)
+
+	upsertItemSQL := `
+		INSERT INTO publish_items (
+			publish_item_id, workspace_id, asset_id, target_platform, target_account_id,
+			target_format, publish_mode, title, description, hashtags,
+			schedule_at, capability_snapshot_id, lifecycle_state, diagnostics_state,
+			linked_offer_ids, linked_campaign_ids, packaging_score,
+			compliance_scan_result, compliance_details, metadata, created_by,
+			created_at, updated_at, deleted_at
+		) VALUES (
+			$1, $2, $3, $4, $5,
+			$6, $7, $8, $9, $10::jsonb,
+			$11, $12, $13, $14,
+			$15::uuid[], $16::uuid[], $17,
+			$18, $19::jsonb, $20::jsonb, $21,
+			$22, $23, $24
+		)
+		ON CONFLICT (publish_item_id) DO UPDATE SET
+			asset_id = EXCLUDED.asset_id,
+			target_platform = EXCLUDED.target_platform,
+			target_account_id = EXCLUDED.target_account_id,
+			target_format = EXCLUDED.target_format,
+			publish_mode = EXCLUDED.publish_mode,
+			title = EXCLUDED.title,
+			description = EXCLUDED.description,
+			hashtags = EXCLUDED.hashtags,
+			schedule_at = EXCLUDED.schedule_at,
+			capability_snapshot_id = EXCLUDED.capability_snapshot_id,
+			lifecycle_state = EXCLUDED.lifecycle_state,
+			diagnostics_state = EXCLUDED.diagnostics_state,
+			linked_offer_ids = EXCLUDED.linked_offer_ids,
+			linked_campaign_ids = EXCLUDED.linked_campaign_ids,
+			packaging_score = EXCLUDED.packaging_score,
+			compliance_scan_result = EXCLUDED.compliance_scan_result,
+			compliance_details = EXCLUDED.compliance_details,
+			metadata = EXCLUDED.metadata,
+			updated_at = EXCLUDED.updated_at,
+			deleted_at = EXCLUDED.deleted_at
+		WHERE publish_items.workspace_id = $2
+	`
+	_, _ = tx.ExecContext(ctx, "SAVEPOINT sp_claim_save_item")
+	_, err = tx.ExecContext(
+		ctx,
+		upsertItemSQL,
+		item.PublishItemID,
+		item.WorkspaceID,
+		nullableUUID(item.AssetID),
+		item.TargetPlatform,
+		nullableUUID(item.TargetAccountID),
+		nullIfEmpty(item.TargetFormat),
+		item.PublishMode,
+		nullIfEmpty(item.Title),
+		nullIfEmpty(item.Description),
+		string(hashtagsJSON),
+		item.ScheduleAt,
+		nullableUUID(item.CapabilitySnapshotID),
+		item.LifecycleState,
+		item.DiagnosticsState,
+		offerArr,
+		campArr,
+		item.PackagingScore,
+		nullIfEmpty(item.ComplianceScanResult),
+		string(compDetailsJSON),
+		string(metaJSON),
+		nullableUUID(item.CreatedBy),
+		item.CreatedAt,
+		item.UpdatedAt,
+		item.DeletedAt,
+	)
+	if err != nil {
+		_, _ = tx.ExecContext(ctx, "ROLLBACK TO SAVEPOINT sp_claim_save_item")
+		_, err = tx.ExecContext(
+			ctx,
+			upsertItemSQL,
+			item.PublishItemID,
+			item.WorkspaceID,
+			nil,
+			item.TargetPlatform,
+			nil,
+			nullIfEmpty(item.TargetFormat),
+			item.PublishMode,
+			nullIfEmpty(item.Title),
+			nullIfEmpty(item.Description),
+			string(hashtagsJSON),
+			item.ScheduleAt,
+			nullableUUID(item.CapabilitySnapshotID),
+			item.LifecycleState,
+			item.DiagnosticsState,
+			offerArr,
+			campArr,
+			item.PackagingScore,
+			nullIfEmpty(item.ComplianceScanResult),
+			string(compDetailsJSON),
+			string(metaJSON),
+			nil,
+			item.CreatedAt,
+			item.UpdatedAt,
+			item.DeletedAt,
+		)
+		if err != nil {
+			return false, nil, fmt.Errorf("postgres claim save publish_item: %w", err)
+		}
+	}
+
+	// 4. Upsert publish_jobs within the same transaction.
+	summaryMap := make(map[string]any)
+	for k, v := range job.LastExecutionSummary {
+		summaryMap[k] = v
+	}
+	if job.ApprovalRequestID != "" {
+		summaryMap["_pub_approval_request_id"] = job.ApprovalRequestID
+	}
+	summaryJSON, _ := json.Marshal(summaryMap)
+	_, err = tx.ExecContext(
+		ctx,
+		`INSERT INTO publish_jobs (
+			publish_job_id, workspace_id, publish_item_id, dispatch_strategy,
+			lifecycle_state, attempt_count, max_attempts, current_worker_id,
+			last_execution_summary, approval_request_id, created_at, updated_at, deleted_at
+		) VALUES (
+			$1, $2, $3, $4,
+			$5, $6, $7, $8,
+			$9::jsonb, $10, $11, $12, $13
+		)
+		ON CONFLICT (publish_job_id) DO UPDATE SET
+			dispatch_strategy = EXCLUDED.dispatch_strategy,
+			lifecycle_state = EXCLUDED.lifecycle_state,
+			attempt_count = EXCLUDED.attempt_count,
+			max_attempts = EXCLUDED.max_attempts,
+			current_worker_id = EXCLUDED.current_worker_id,
+			last_execution_summary = EXCLUDED.last_execution_summary,
+			approval_request_id = EXCLUDED.approval_request_id,
+			updated_at = EXCLUDED.updated_at,
+			deleted_at = EXCLUDED.deleted_at
+		WHERE publish_jobs.workspace_id = $2`,
+		job.PublishJobID,
+		job.WorkspaceID,
+		job.PublishItemID,
+		nullIfEmpty(job.DispatchStrategy),
+		job.LifecycleState,
+		job.AttemptCount,
+		job.MaxAttempts,
+		nullIfEmpty(job.CurrentWorkerID),
+		string(summaryJSON),
+		nullableUUID(job.ApprovalRequestID),
+		job.CreatedAt,
+		job.UpdatedAt,
+		job.DeletedAt,
+	)
+	if err != nil {
+		return false, nil, fmt.Errorf("postgres claim save publish_job: %w", err)
+	}
+
+	// 5. Claim external_effect with guarded conflict check (only overwrite if status = 'failed').
+	payloadMap := make(map[string]any)
+	for k, v := range effect.ResultPayload {
+		payloadMap[k] = v
+	}
+	if effect.ConnectedAccountID != "" {
+		payloadMap["_pub_connected_account_id"] = effect.ConnectedAccountID
+	}
+	payloadJSON, _ := json.Marshal(payloadMap)
+
+	claimEffectSQL := `
+		INSERT INTO external_effects (
+			effect_id, workspace_id, operation_key, provider, connected_account_id,
+			aggregate_type, aggregate_id, provider_request_id, status,
+			result_payload, last_checked_at, created_at, updated_at
+		) VALUES (
+			$1, $2, $3, $4, $5,
+			$6, $7, $8, $9,
+			$10::jsonb, $11, $12, $13
+		)
+		ON CONFLICT (workspace_id, operation_key) DO UPDATE SET
+			provider_request_id = EXCLUDED.provider_request_id,
+			status = EXCLUDED.status,
+			result_payload = EXCLUDED.result_payload,
+			last_checked_at = EXCLUDED.last_checked_at,
+			updated_at = EXCLUDED.updated_at
+		WHERE external_effects.workspace_id = $2
+		  AND external_effects.status = 'failed'
+	`
+	_, _ = tx.ExecContext(ctx, "SAVEPOINT sp_claim_effect")
+	res, err := tx.ExecContext(
+		ctx,
+		claimEffectSQL,
+		effect.EffectID,
+		effect.WorkspaceID,
+		effect.OperationKey,
+		effect.Provider,
+		nullableUUID(effect.ConnectedAccountID),
+		effect.AggregateType,
+		effect.AggregateID,
+		nullIfEmpty(effect.ProviderRequestID),
+		effect.Status,
+		string(payloadJSON),
+		effect.LastCheckedAt,
+		effect.CreatedAt,
+		effect.UpdatedAt,
+	)
+	if err != nil {
+		_, _ = tx.ExecContext(ctx, "ROLLBACK TO SAVEPOINT sp_claim_effect")
+		res, err = tx.ExecContext(
+			ctx,
+			claimEffectSQL,
+			effect.EffectID,
+			effect.WorkspaceID,
+			effect.OperationKey,
+			effect.Provider,
+			nil,
+			effect.AggregateType,
+			effect.AggregateID,
+			nullIfEmpty(effect.ProviderRequestID),
+			effect.Status,
+			string(payloadJSON),
+			effect.LastCheckedAt,
+			effect.CreatedAt,
+			effect.UpdatedAt,
+		)
+		if err != nil {
+			return false, nil, fmt.Errorf("postgres claim external_effect: %w", err)
+		}
+	}
+
+	if affected, aErr := res.RowsAffected(); aErr == nil && affected == 0 {
+		row := tx.QueryRowContext(
+			ctx,
+			`SELECT `+selectExternalEffectColumns+` FROM external_effects WHERE workspace_id = $1 AND operation_key = $2`,
+			effect.WorkspaceID, effect.OperationKey,
+		)
+		winner, scanErr := scanExternalEffectRow(row)
+		if scanErr != nil {
+			return false, nil, fmt.Errorf("postgres claim read winner external_effect: %w", scanErr)
+		}
+		return false, winner, nil
+	}
+
+	if err := tx.Commit(); err != nil {
+		return false, nil, err
+	}
+	return true, cloneExternalEffect(effect), nil
+}
+
+// GetAssetComplianceRecord loads canonical QA/rights/consent compliance state for an asset from PostgreSQL.
+func (s *PostgresStore) GetAssetComplianceRecord(ctx context.Context, workspaceID, assetID string) (*AssetComplianceRecord, error) {
+	if !isValidPGUUID(workspaceID) || !isValidPGUUID(assetID) {
+		return nil, nil
+	}
+	tx, err := s.beginTenantTx(ctx, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	var (
+		qualityState sql.NullString
+		metaRaw      []byte
+		foundAsset   bool
+	)
+	err = tx.QueryRowContext(
+		ctx,
+		`SELECT quality_state, metadata FROM assets WHERE workspace_id = $1 AND asset_id = $2 AND deleted_at IS NULL`,
+		workspaceID, assetID,
+	).Scan(&qualityState, &metaRaw)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("postgres get asset compliance record: %w", err)
+	}
+	if err == nil {
+		foundAsset = true
+	}
+
+	var (
+		qaScore          sql.NullFloat64
+		qaComplianceRes  sql.NullString
+		qaHasHardBlocks  sql.NullBool
+		qaOverridesRaw   []byte
+		foundPackagingQA bool
+	)
+	qaErr := tx.QueryRowContext(
+		ctx,
+		`SELECT overall_score, compliance_result, has_hard_blocks, overrides
+		FROM packaging_qa_results
+		WHERE workspace_id = $1 AND asset_id = $2 AND deleted_at IS NULL
+		ORDER BY updated_at DESC, created_at DESC
+		LIMIT 1`,
+		workspaceID, assetID,
+	).Scan(&qaScore, &qaComplianceRes, &qaHasHardBlocks, &qaOverridesRaw)
+	if qaErr == nil {
+		foundPackagingQA = true
+	}
+
+	if !foundAsset && !foundPackagingQA {
+		return nil, nil
+	}
+
+	meta := make(map[string]any)
+	if len(metaRaw) > 0 {
+		_ = json.Unmarshal(metaRaw, &meta)
+	}
+
+	unlicensed := boolFromMap(meta, "unlicensed_media") || boolFromMap(meta, "rights_blocked")
+	policyViol := boolFromMap(meta, "policy_violation")
+	var reasons []string
+	if unlicensed {
+		reasons = append(reasons, "unlicensed_media")
+	}
+	if policyViol {
+		reasons = append(reasons, "policy_violation")
+	}
+
+	qState := stringFromMap(meta, "compliance_scan_result")
+	if qState == "" {
+		qState = strings.TrimSpace(qualityState.String)
+	}
+
+	rec := &AssetComplianceRecord{
+		AssetID:          assetID,
+		WorkspaceID:      workspaceID,
+		QualityState:     qState,
+		HasHardBlocks:    boolFromMap(meta, "has_hard_blocks") || boolFromMap(meta, "is_hard_blocked") || unlicensed || policyViol || strings.EqualFold(qualityState.String, "rejected"),
+		ViolationReasons: reasons,
+		RightsVerified:   boolFromMap(meta, "rights_verified"),
+		ConsentRequired:  boolFromMap(meta, "consent_required"),
+		ConsentRecordID:  stringFromMap(meta, "consent_record_id"),
+		CharacterID:      stringFromMap(meta, "character_id"),
+		SubjectUserID:    stringFromMap(meta, "subject_user_id"),
+	}
+	if score, ok := float32FromMap(meta, "packaging_score"); ok && score > 0 {
+		rec.PackagingScore = score
+	}
+	if foundPackagingQA {
+		if strings.TrimSpace(qaComplianceRes.String) != "" && stringFromMap(meta, "compliance_scan_result") == "" {
+			rec.QualityState = strings.TrimSpace(qaComplianceRes.String)
+		}
+		if qaHasHardBlocks.Valid && qaHasHardBlocks.Bool {
+			rec.HasHardBlocks = true
+		}
+		if qaScore.Valid && qaScore.Float64 > 0 && rec.PackagingScore == 0 {
+			rec.PackagingScore = float32(qaScore.Float64)
+		}
+		if !mapHasKey(meta, "rights_verified") && !rec.HasHardBlocks && !unlicensed &&
+			(strings.EqualFold(qualityState.String, "approved") || strings.EqualFold(qualityState.String, "promoted_canonical")) {
+			rec.RightsVerified = true
+		}
+	}
+
+	_ = tx.Commit()
+	return rec, nil
+}
+
+// GetPublishConsentRecord loads a canonical consent record from PostgreSQL.
+func (s *PostgresStore) GetPublishConsentRecord(ctx context.Context, workspaceID, consentRecordID string) (*PublishConsentRecord, error) {
+	if !isValidPGUUID(workspaceID) || !isValidPGUUID(consentRecordID) {
+		return nil, nil
+	}
+	tx, err := s.beginTenantTx(ctx, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	var (
+		cID         string
+		wsID        sql.NullString
+		userID      sql.NullString
+		consentType sql.NullString
+		granted     bool
+		revokedAt   sql.NullTime
+	)
+	err = tx.QueryRowContext(
+		ctx,
+		`SELECT consent_id, workspace_id, user_id, consent_type, granted, revoked_at FROM consent_records WHERE workspace_id = $1 AND consent_id = $2`,
+		workspaceID, consentRecordID,
+	).Scan(&cID, &wsID, &userID, &consentType, &granted, &revokedAt)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("postgres get consent_record: %w", err)
+	}
+	_ = tx.Commit()
+	var revTime *time.Time
+	if revokedAt.Valid {
+		t := revokedAt.Time.UTC()
+		revTime = &t
+	}
+	return &PublishConsentRecord{
+		ConsentID:   cID,
+		WorkspaceID: wsID.String,
+		UserID:      userID.String,
+		ConsentType: consentType.String,
+		Granted:     granted,
+		RevokedAt:   revTime,
+	}, nil
+}
+
 func (s *PostgresStore) ListEffectsByAggregate(ctx context.Context, workspaceID, aggregateType, aggregateID string) ([]*ExternalEffect, error) {
 	if !isValidPGUUID(aggregateID) {
 		return nil, nil

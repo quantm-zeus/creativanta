@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	commonv1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/common/v1"
@@ -95,6 +96,22 @@ func NewService(cfg ServiceConfig) *Service {
 	if store == nil && !cfg.RequireDurableStore {
 		store = NewMemoryStore()
 	}
+	if cc, ok := cfg.ComplianceChecker.(*CanonicalComplianceChecker); ok && cc != nil {
+		if src, ok := store.(ComplianceRecordSource); ok {
+			cc.mu.RLock()
+			hasSource := cc.source != nil
+			cc.mu.RUnlock()
+			if !hasSource {
+				cc.SetRecordSource(src)
+			}
+		}
+	}
+	var capEvaluator CapabilityEvaluator
+	if cfg.CapabilityService != nil {
+		if eval, ok := cfg.CapabilityService.(CapabilityEvaluator); ok {
+			capEvaluator = eval
+		}
+	}
 	return &Service{
 		store:               store,
 		requireDurableStore: cfg.RequireDurableStore,
@@ -102,6 +119,7 @@ func NewService(cfg ServiceConfig) *Service {
 		recentDispatches:    make([]time.Time, 0),
 		workspaceDispatches: make(map[string][]time.Time),
 		connectors:          cfg.Connectors,
+		capEvaluator:        capEvaluator,
 		accountLookup:       cfg.Accounts,
 		approvalChecker:     cfg.ApprovalChecker,
 		complianceChecker:   cfg.ComplianceChecker,
@@ -114,6 +132,16 @@ func NewService(cfg ServiceConfig) *Service {
 func (s *Service) SetComplianceChecker(checker ComplianceChecker) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if cc, ok := checker.(*CanonicalComplianceChecker); ok && cc != nil {
+		if src, ok := s.store.(ComplianceRecordSource); ok {
+			cc.mu.RLock()
+			hasSource := cc.source != nil
+			cc.mu.RUnlock()
+			if !hasSource {
+				cc.SetRecordSource(src)
+			}
+		}
+	}
 	s.complianceChecker = checker
 }
 
@@ -408,14 +436,15 @@ func (s *Service) Events() []DomainEvent {
 
 // ResolveCapability evaluates platform capability for publish_post.
 func (s *Service) ResolveCapability(workspaceID, platform string) *publishv1.PlatformCapabilitySummary {
-	p := strings.ToLower(platform)
+	p := strings.ToLower(strings.TrimSpace(platform))
 	summary := &publishv1.PlatformCapabilitySummary{
-		Platform:        p,
-		CapabilityState: publishv1.PublishCapabilityState_PUBLISH_CAPABILITY_STATE_MANUAL,
-		ConnectorState:  "connected",
-		RequiredScopes:  []string{"publish"},
-		Executable:      true,
-		PolicySummary:   "Xuất bản nội dung lên nền tảng",
+		Platform:               p,
+		CapabilityState:        publishv1.PublishCapabilityState_PUBLISH_CAPABILITY_STATE_MANUAL,
+		ConnectorState:         "connected",
+		RequiredScopes:         []string{"publish"},
+		RequiresManualFallback: true,
+		Executable:             false,
+		PolicySummary:          "Xuất bản nội dung lên nền tảng",
 	}
 
 	s.mu.RLock()
@@ -432,6 +461,7 @@ func (s *Service) ResolveCapability(workspaceID, platform string) *publishv1.Pla
 		switch eval.State {
 		case capability.StateNative:
 			summary.CapabilityState = publishv1.PublishCapabilityState_PUBLISH_CAPABILITY_STATE_NATIVE
+			summary.RequiresManualFallback = !eval.Executable
 		case capability.StateReadOnly:
 			summary.CapabilityState = publishv1.PublishCapabilityState_PUBLISH_CAPABILITY_STATE_READ_ONLY
 			summary.RequiresManualFallback = true
@@ -439,10 +469,16 @@ func (s *Service) ResolveCapability(workspaceID, platform string) *publishv1.Pla
 		case capability.StateManual:
 			summary.CapabilityState = publishv1.PublishCapabilityState_PUBLISH_CAPABILITY_STATE_MANUAL
 			summary.RequiresManualFallback = true
+			summary.Executable = false
 		case capability.StateDegraded:
 			summary.CapabilityState = publishv1.PublishCapabilityState_PUBLISH_CAPABILITY_STATE_DEGRADED
 			summary.RequiresManualFallback = true
+			summary.Executable = false
 		case capability.StateUnsupported:
+			summary.CapabilityState = publishv1.PublishCapabilityState_PUBLISH_CAPABILITY_STATE_UNSUPPORTED
+			summary.RequiresManualFallback = true
+			summary.Executable = false
+		default:
 			summary.CapabilityState = publishv1.PublishCapabilityState_PUBLISH_CAPABILITY_STATE_UNSUPPORTED
 			summary.RequiresManualFallback = true
 			summary.Executable = false
@@ -459,9 +495,20 @@ func (s *Service) ResolveCapability(workspaceID, platform string) *publishv1.Pla
 			summary.CapabilityState = publishv1.PublishCapabilityState_PUBLISH_CAPABILITY_STATE_NATIVE
 			summary.RequiresManualFallback = false
 			summary.Executable = true
+		default:
+			summary.CapabilityState = publishv1.PublishCapabilityState_PUBLISH_CAPABILITY_STATE_UNSUPPORTED
+			summary.RequiresManualFallback = true
+			summary.Executable = false
 		}
 	}
 	return summary
+}
+
+func isCapabilityNativeExecutable(capSummary *publishv1.PlatformCapabilitySummary) bool {
+	return capSummary != nil &&
+		capSummary.CapabilityState == publishv1.PublishCapabilityState_PUBLISH_CAPABILITY_STATE_NATIVE &&
+		capSummary.Executable &&
+		!capSummary.RequiresManualFallback
 }
 
 // CalculateJitterDelay calculates system queue fairness jitter (RULE-M11-006).
@@ -1377,11 +1424,9 @@ func (s *Service) Execute(ctx context.Context, req *connect.Request[publishv1.Ex
 		}
 	}
 
-	// Capability re-check at execution time (EC-M11-004)
+	// Capability re-check at execution time (EC-M11-004 / R4): fail closed unless NATIVE and Executable.
 	capSummary := s.ResolveCapability(item.WorkspaceID, item.TargetPlatform)
-	if capSummary.CapabilityState == publishv1.PublishCapabilityState_PUBLISH_CAPABILITY_STATE_MANUAL ||
-		capSummary.CapabilityState == publishv1.PublishCapabilityState_PUBLISH_CAPABILITY_STATE_UNSUPPORTED ||
-		capSummary.CapabilityState == publishv1.PublishCapabilityState_PUBLISH_CAPABILITY_STATE_DEGRADED {
+	if !isCapabilityNativeExecutable(capSummary) {
 		item.LifecycleState = StateRequiresManualFallback
 		item.DiagnosticsState = DiagnosticsDegraded
 		item.UpdatedAt = now
@@ -1404,9 +1449,6 @@ func (s *Service) Execute(ctx context.Context, req *connect.Request[publishv1.Ex
 			MaxAttempts:      3,
 			CreatedAt:        now,
 			UpdatedAt:        now,
-		}
-		if err := s.store.SaveJob(ctx, job); err != nil {
-			return nil, connect.NewError(connect.CodeInternal, err)
 		}
 	}
 
@@ -1457,6 +1499,12 @@ func (s *Service) Execute(ctx context.Context, req *connect.Request[publishv1.Ex
 				checkedAt := s.nowFn()
 				existingEffect.LastCheckedAt = &checkedAt
 				existingEffect.UpdatedAt = checkedAt
+
+				if probeErr == nil && statusRes != nil {
+					if bindErr := s.verifyConnectorStatusBinding(item, existingEffect, existingEffect.ProviderRequestID, statusRes, false); bindErr != nil {
+						return nil, connect.NewError(connect.CodeInvalidArgument, bindErr)
+					}
+				}
 
 				if probeErr == nil && statusRes != nil && (statusRes.Found || statusRes.Status == "confirmed_published") {
 					completedAt := checkedAt
@@ -1531,28 +1579,28 @@ func (s *Service) Execute(ctx context.Context, req *connect.Request[publishv1.Ex
 		}
 	}
 
-	// Re-verify canonical QA/rights/consent gate immediately before external dispatch (F2).
+	// Re-verify canonical QA/rights/consent gate and capability state immediately before external dispatch (F2 / R4).
 	if err := s.enforceComplianceAndDiagnosticsGate(ctx, item); err != nil {
 		return nil, err
 	}
+	if latestCap := s.ResolveCapability(item.WorkspaceID, item.TargetPlatform); !isCapabilityNativeExecutable(latestCap) {
+		item.LifecycleState = StateRequiresManualFallback
+		item.DiagnosticsState = DiagnosticsDegraded
+		item.UpdatedAt = now
+		_ = s.store.SaveItem(ctx, item)
+		s.recordEvent(ctx, item.WorkspaceID, EventPublishRequiresManualFallback, "publish_item", item.PublishItemID, map[string]any{
+			"platform": item.TargetPlatform,
+			"reason":   latestCap.PolicySummary,
+		})
+		return nil, connect.NewError(connect.CodeFailedPrecondition, ErrCapabilityDegraded)
+	}
 
-	// Transition to executing
+	// Prepare executing state and atomically claim the publish effect BEFORE calling connector (R6).
 	item.LifecycleState = StateExecuting
 	item.UpdatedAt = now
 	job.LifecycleState = StateExecuting
 	job.AttemptCount++
 	job.UpdatedAt = now
-	_ = s.store.SaveItem(ctx, item)
-	_ = s.store.SaveJob(ctx, job)
-
-	s.mu.Lock()
-	s.recentDispatches = append(s.recentDispatches, now)
-	s.mu.Unlock()
-
-	s.recordEvent(ctx, item.WorkspaceID, EventPublishExecuting, "publish_item", item.PublishItemID, map[string]any{
-		"job_id":  job.PublishJobID,
-		"attempt": job.AttemptCount,
-	})
 
 	effect := &ExternalEffect{
 		EffectID:           NewID(),
@@ -1571,9 +1619,49 @@ func (s *Service) Execute(ctx context.Context, req *connect.Request[publishv1.Ex
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
-	if err := s.store.SaveEffect(ctx, effect); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+
+	claimed, winnerEffect, claimErr := s.store.ClaimPublishEffect(ctx, item, job, effect)
+	if claimErr != nil {
+		return nil, connect.NewError(connect.CodeInternal, claimErr)
 	}
+	if !claimed {
+		if winnerEffect != nil {
+			if err := s.verifyEffectMatchesItem(ctx, winnerEffect, item); err != nil {
+				return nil, connect.NewError(connect.CodeAlreadyExists, err)
+			}
+			if latestEff, _ := s.store.GetEffectByKey(ctx, item.WorkspaceID, winnerEffect.OperationKey); latestEff != nil {
+				winnerEffect = latestEff
+			}
+			if winnerEffect.Status == "succeeded" {
+				completedAt := winnerEffect.UpdatedAt
+				if completedAt.IsZero() {
+					completedAt = now
+				}
+				extPostID := stringFromMap(winnerEffect.ResultPayload, "external_post_id")
+				extPostURL := stringFromMap(winnerEffect.ResultPayload, "external_post_url")
+				successLog, channelPost, cErr := s.completePublishedItem(ctx, caller, item, job, winnerEffect, extPostID, extPostURL, PathNativeAPI, "", nil, completedAt, false)
+				if cErr != nil {
+					return nil, cErr
+				}
+				return connect.NewResponse(&publishv1.ExecuteResponse{
+					Item:        ItemToProto(item),
+					Job:         JobToProto(job),
+					Log:         LogToProto(successLog),
+					ChannelPost: ChannelPostToProto(channelPost),
+				}), nil
+			}
+		}
+		return nil, connect.NewError(connect.CodeFailedPrecondition, ErrUnknownSubmit)
+	}
+
+	s.mu.Lock()
+	s.recentDispatches = append(s.recentDispatches, now)
+	s.mu.Unlock()
+
+	s.recordEvent(ctx, item.WorkspaceID, EventPublishExecuting, "publish_item", item.PublishItemID, map[string]any{
+		"job_id":  job.PublishJobID,
+		"attempt": job.AttemptCount,
+	})
 
 	// External platform submission
 	pubResult, callErr := connector.PublishPost(ctx, item.TargetAccountID, item, opKey)
@@ -1848,8 +1936,8 @@ func (s *Service) ReconcilePublish(ctx context.Context, req *connect.Request[pub
 		}), nil
 	}
 
-	if strings.TrimSpace(statusRes.ProviderRequestID) != "" && strings.TrimSpace(statusRes.ProviderRequestID) != providerReqID {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%w: connector returned status for %q instead of %q", ErrProviderRequestMismatch, statusRes.ProviderRequestID, providerReqID))
+	if err := s.verifyConnectorStatusBinding(item, activeEffect, providerReqID, statusRes, boundReqID == ""); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
 	if boundReqID == "" {
@@ -2914,6 +3002,68 @@ func (s *Service) SyncPostMetrics(ctx context.Context, req *connect.Request[publ
 	}), nil
 }
 
+func (s *Service) verifyConnectorStatusBinding(item *PublishItem, activeEffect *ExternalEffect, providerReqID string, statusRes *ConnectorStatusResult, requireProof bool) error {
+	if statusRes == nil {
+		return fmt.Errorf("%w: empty connector status result", ErrProviderRequestMismatch)
+	}
+	if strings.TrimSpace(statusRes.ProviderRequestID) != "" && strings.TrimSpace(statusRes.ProviderRequestID) != providerReqID {
+		return fmt.Errorf("%w: connector returned status for %q instead of %q", ErrProviderRequestMismatch, statusRes.ProviderRequestID, providerReqID)
+	}
+
+	expectedOpKey := ""
+	if activeEffect != nil {
+		expectedOpKey = strings.TrimSpace(activeEffect.OperationKey)
+	}
+	actualOpKey := strings.TrimSpace(statusRes.OperationKey)
+	if requireProof && actualOpKey == "" {
+		return fmt.Errorf("%w: connector status for unbound provider_request_id %q is missing operation_key binding", ErrProviderRequestMismatch, providerReqID)
+	}
+	if actualOpKey != "" && expectedOpKey != "" && actualOpKey != expectedOpKey {
+		return fmt.Errorf("%w: connector operation_key %q does not match effect operation_key %q", ErrProviderRequestMismatch, actualOpKey, expectedOpKey)
+	}
+
+	expectedAccID := ""
+	if item != nil {
+		expectedAccID = strings.TrimSpace(item.TargetAccountID)
+	}
+	if expectedAccID == "" && activeEffect != nil {
+		expectedAccID = strings.TrimSpace(activeEffect.ConnectedAccountID)
+	}
+	actualAccID := strings.TrimSpace(statusRes.ConnectedAccountID)
+	if requireProof && expectedAccID != "" && actualAccID == "" {
+		return fmt.Errorf("%w: connector status for unbound provider_request_id %q is missing connected_account_id binding", ErrProviderRequestMismatch, providerReqID)
+	}
+	if actualAccID != "" && expectedAccID != "" && actualAccID != expectedAccID {
+		return fmt.Errorf("%w: connector connected_account_id %q does not match target_account_id %q", ErrProviderRequestMismatch, actualAccID, expectedAccID)
+	}
+
+	expectedHash := ""
+	if activeEffect != nil {
+		expectedHash = stringFromMap(activeEffect.ResultPayload, "request_hash")
+	}
+	if expectedHash == "" && item != nil {
+		expectedHash = computePublishRequestHash(item)
+	}
+	actualHash := strings.TrimSpace(statusRes.RequestHash)
+	if requireProof && expectedHash != "" && actualHash == "" {
+		return fmt.Errorf("%w: connector status for unbound provider_request_id %q is missing request_hash binding", ErrProviderRequestMismatch, providerReqID)
+	}
+	if actualHash != "" && expectedHash != "" && actualHash != expectedHash {
+		return fmt.Errorf("%w: connector request_hash %q does not match item request_hash %q", ErrProviderRequestMismatch, actualHash, expectedHash)
+	}
+
+	expectedItemID := ""
+	if item != nil {
+		expectedItemID = strings.TrimSpace(item.PublishItemID)
+	}
+	actualItemID := strings.TrimSpace(statusRes.PublishItemID)
+	if actualItemID != "" && expectedItemID != "" && actualItemID != expectedItemID {
+		return fmt.Errorf("%w: connector publish_item_id %q does not match item %q", ErrProviderRequestMismatch, actualItemID, expectedItemID)
+	}
+
+	return nil
+}
+
 func (s *Service) PublishVariants(ctx context.Context, req *connect.Request[publishv1.PublishVariantsRequest]) (*connect.Response[publishv1.PublishVariantsResponse], error) {
 	caller, err := s.authorizeRPC(ctx, "PublishService/PublishVariants", extractCmdWorkspaceID(req.Msg.Context))
 	if err != nil {
@@ -2928,21 +3078,88 @@ func (s *Service) PublishVariants(ctx context.Context, req *connect.Request[publ
 		return nil, connect.NewError(connect.CodePermissionDenied, err)
 	}
 
+	batchKey := ""
+	if req.Msg.Context != nil {
+		batchKey = strings.TrimSpace(req.Msg.Context.IdempotencyKey)
+	}
+	if batchKey != "" {
+		h := sha256.New()
+		for _, id := range req.Msg.PublishItemIds {
+			_, _ = h.Write([]byte(strings.TrimSpace(id) + "\x00"))
+		}
+		batchHash := hex.EncodeToString(h.Sum(nil))
+		batchOpKey := fmt.Sprintf("pub_batch_idem_%s_%s", caller.WorkspaceID, batchKey)
+		if existingBatch, bErr := s.store.GetEffectByKey(ctx, caller.WorkspaceID, batchOpKey); bErr == nil && existingBatch != nil {
+			boundBatchHash := stringFromMap(existingBatch.ResultPayload, "batch_request_hash")
+			if boundBatchHash != "" && boundBatchHash != batchHash {
+				return nil, connect.NewError(connect.CodeAlreadyExists, ErrIdempotencyKeyConflict)
+			}
+		} else {
+			now := s.nowFn()
+			aggID := NewID()
+			if len(req.Msg.PublishItemIds) > 0 && strings.TrimSpace(req.Msg.PublishItemIds[0]) != "" {
+				aggID = strings.TrimSpace(req.Msg.PublishItemIds[0])
+			}
+			_ = s.store.SaveEffect(ctx, &ExternalEffect{
+				EffectID:      NewID(),
+				WorkspaceID:   caller.WorkspaceID,
+				OperationKey:  batchOpKey,
+				Provider:      "publish_batch",
+				AggregateType: "publish_batch",
+				AggregateID:   aggID,
+				Status:        "succeeded",
+				ResultPayload: map[string]any{
+					"batch_request_hash": batchHash,
+				},
+				CreatedAt: now,
+				UpdatedAt: now,
+			})
+		}
+	}
+
 	items := make([]*publishv1.PublishItem, 0, len(req.Msg.PublishItemIds))
 	jobs := make([]*publishv1.PublishJob, 0, len(req.Msg.PublishItemIds))
+	var (
+		firstErr       error
+		succeededCount int
+	)
 
 	for _, id := range req.Msg.PublishItemIds {
-		res, err := s.Execute(ctx, connect.NewRequest(&publishv1.ExecuteRequest{
-			Context:       req.Msg.Context,
-			PublishItemId: id,
+		trimmedID := strings.TrimSpace(id)
+		var childCtx *commonv1.CommandContext
+		if req.Msg.Context != nil {
+			childCtx, _ = proto.Clone(req.Msg.Context).(*commonv1.CommandContext)
+			if childCtx != nil && batchKey != "" {
+				childCtx.IdempotencyKey = fmt.Sprintf("%s:item:%s", batchKey, trimmedID)
+			}
+		}
+		res, execErr := s.Execute(ctx, connect.NewRequest(&publishv1.ExecuteRequest{
+			Context:       childCtx,
+			PublishItemId: trimmedID,
 		}))
-		if err != nil {
-			return nil, err
+		if execErr != nil {
+			if firstErr == nil {
+				firstErr = execErr
+			}
+			if len(req.Msg.PublishItemIds) == 1 {
+				return nil, execErr
+			}
+			if failedItem, gErr := s.store.GetItem(ctx, caller.WorkspaceID, trimmedID); gErr == nil && failedItem != nil {
+				items = append(items, ItemToProto(failedItem))
+				if failedJob, jErr := s.store.GetJobByItemID(ctx, caller.WorkspaceID, trimmedID); jErr == nil && failedJob != nil {
+					jobs = append(jobs, JobToProto(failedJob))
+				}
+			}
+			continue
 		}
 		if res != nil {
+			succeededCount++
 			items = append(items, res.Msg.Item)
 			jobs = append(jobs, res.Msg.Job)
 		}
+	}
+	if succeededCount == 0 && firstErr != nil {
+		return nil, firstErr
 	}
 	return connect.NewResponse(&publishv1.PublishVariantsResponse{
 		Items: items,
