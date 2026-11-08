@@ -101,6 +101,15 @@ func (b *MemoryStreamBroker) XAdd(_ context.Context, stream QueueName, msg Strea
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
+	if msg.PublishedAt.IsZero() {
+		msg.PublishedAt = time.Now().UTC()
+	}
+	if msg.TargetStream == "" {
+		msg.TargetStream = stream
+	}
+	msg.Metadata = stripBrokerMetadata(msg.Metadata)
+	populateEnvelopeAuthFields(&msg, msg.Metadata, msg.Payload)
+
 	entryID := fmt.Sprintf("%d-%d", msg.PublishedAt.UnixMilli(), b.nextSeq)
 	b.nextSeq++
 	msg.StreamEntryID = entryID
@@ -281,12 +290,13 @@ func (w *ConsumerWorker) processSingleMessage(
 	now time.Time,
 	handler func(ctx context.Context, msg StreamMessage) error,
 ) (ConsumerOutcome, error) {
+	populateEnvelopeAuthFields(&msg, msg.Metadata, msg.Payload)
 	outcome := ConsumerOutcome{
 		StreamEntryID: msg.StreamEntryID,
 		EventID:       msg.EventID,
 	}
 
-	if w.AuthVerifier != nil && (msg.WorkspaceID != "" || msg.ActorID != "" || msg.ApprovalID != "") {
+	if w.AuthVerifier != nil && (msg.WorkspaceID != "" || msg.ActorID != "" || msg.RequiredPerm != "" || msg.ApprovalID != "") {
 		if authErr := w.AuthVerifier.VerifyActorAndApproval(ctx, msg.WorkspaceID, msg.ActorID, msg.RequiredPerm, msg.ApprovalID, now); authErr != nil {
 			if !errors.Is(authErr, ErrLiveActorAuthorizationRevoked) && !errors.Is(authErr, ErrApprovalExpiredBeforeExecution) {
 				return outcome, authErr

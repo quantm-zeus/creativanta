@@ -352,6 +352,9 @@ func (s *PgOutboxStore) ClaimBatch(ctx context.Context, pollerID string, now tim
 	if err := tx.Commit(ctx); err != nil {
 		return nil, err
 	}
+	for i := range claimed {
+		enrichClaimedOutboxRow(ctx, s.db, s.setRole, &claimed[i])
+	}
 	return claimed, nil
 }
 
