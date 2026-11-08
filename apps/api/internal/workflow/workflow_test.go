@@ -3094,4 +3094,9 @@ func TestR5_ApprovalSingleUsePerActionNode_BlocksSecondIdenticalSensitiveAction(
 	if count := dispatcher.GetDispatchedCount(publishRPC); count != 1 {
 		t.Fatalf("R5 CRITICAL VIOLATION: expected exactly 1 dispatch (for act_a only), got %d dispatches!", count)
 	}
+
+	// Verify that UndoApprove is rejected once the approval request has been consumed by act_a
+	if _, undoErr := svc.UndoApprove(ctx, manager, pending[0].RequestID); !errors.Is(undoErr, workflow.ErrInvalidApprovalState) && !errors.Is(undoErr, workflow.ErrInvalidRunState) {
+		t.Fatalf("R5 VIOLATION: expected UndoApprove on consumed approval request to fail, got: %v", undoErr)
+	}
 }

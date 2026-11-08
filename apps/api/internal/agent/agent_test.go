@@ -831,6 +831,7 @@ func TestR4_Agent_ActualBudgetOverrunRecordsSpendPreservesOutputAndNeverReplaysE
 		WorkspaceID:   wsID,
 		WorkspaceRole: "manager",
 	}
+	store.SetMemberRole(wsID, caller.UserID, caller.WorkspaceRole, true)
 
 	// Launch with a 6.000000 ceiling. Step 1 estimates 2.000000 (so pre-step check passes),
 	// but Step 1 actual spend is 9.000000 (> 6.000000 ceiling).
@@ -991,6 +992,44 @@ func TestR3_AgentLiveMembership_FailsClosedWithoutResolverAndHonorsAuthoritative
 		_, approveErr := svc.ProvideInput(ctx, manager, run.AgentRunID, "", "", true, "", "")
 		if !errors.Is(approveErr, ErrPermissionDenied) {
 			t.Fatalf("R3 VIOLATION: expected authoritative store demotion (without svc.SetMemberRole) to block execution with ErrPermissionDenied, got: %v", approveErr)
+		}
+	}
+
+	// 3. Same-actor resume via ProvideInput without authoritative membership in store or resolver MUST also fail closed.
+	{
+		store := NewMemStore()
+		svc := NewService(store)
+		svc.SetStepExecutor(NewSimulatedStepExecutor())
+
+		run, _, _, err := svc.LaunchAgent(ctx, editor, AgentTypeVideoAgent, "Budget pause test", "", "", "6.000000", "", true, nil)
+		if !errors.Is(err, ErrBudgetCeilingExceeded) {
+			t.Fatalf("expected budget ceiling pause after step 1, got: %v", err)
+		}
+		_, resumeErr := svc.ProvideInput(ctx, editor, run.AgentRunID, "", "", false, "50.000000", "")
+		if !errors.Is(resumeErr, ErrPermissionDenied) {
+			t.Fatalf("R3 VIOLATION: expected same-actor ProvideInput resume without authoritative membership to fail with ErrPermissionDenied, got: %v", resumeErr)
+		}
+	}
+
+	// 4. ConnectRPC AgentHandler without explicit roleResolver honors authoritative store membership revocations/demotions.
+	{
+		store := NewMemStore()
+		svc := NewService(store)
+		h := NewAgentHandler(svc)
+
+		store.SetMemberRole(wsID, editor.UserID, "viewer", true)
+		staleEditorSessionCtx := transportauth.WithPrincipal(ctx, transportauth.Session{
+			UserID:      editor.UserID,
+			WorkspaceID: wsID,
+			Role:        "editor", // Stale token role; authoritative store says "viewer"
+		})
+		_, err := h.LaunchAgent(staleEditorSessionCtx, connect.NewRequest(&automationv1.AgentServiceLaunchAgentRequest{
+			WorkspaceId: wsID,
+			AgentType:   automationv1.AgentType_AGENT_TYPE_GENERIC,
+			TaskPrompt:  "Attempt launch with stale token after store demotion",
+		}))
+		if connect.CodeOf(err) != connect.CodePermissionDenied {
+			t.Fatalf("R3 VIOLATION: expected AgentHandler to honor authoritative store demotion to viewer, got: %v", err)
 		}
 	}
 }

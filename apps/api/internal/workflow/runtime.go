@@ -1217,6 +1217,22 @@ func (e *ExecutionEngine) runLoop(
 		case NodeTypeApproval:
 			// Check if resuming with approval decision
 			if signal != nil && signal.SignalType == "approval_granted" {
+				if sigReqID, ok := signal.Payload["approval_request_id"].(string); ok && strings.TrimSpace(sigReqID) != "" {
+					sigReq, rErr := e.store.GetApprovalRequest(ctx, workspaceID, strings.TrimSpace(sigReqID))
+					if rErr != nil || sigReq == nil {
+						return nil, fmt.Errorf("%w: approval request %s not found for gate %s", ErrUnauthorized, sigReqID, node.NodeID)
+					}
+					hydrateApprovalMetadata(sigReq)
+					if sigReq.Status != "approved" || sigReq.ObjectID != runID {
+						return nil, fmt.Errorf("%w: approval request %s is not valid for run %s", ErrUnauthorized, sigReqID, runID)
+					}
+					if strings.TrimSpace(sigReq.ConsumedByNodeID) != "" || strings.TrimSpace(sigReq.ConsumedByStepID) != "" {
+						return nil, fmt.Errorf("%w: approval request %s has already been consumed", ErrUnauthorized, sigReqID)
+					}
+					if strings.TrimSpace(sigReq.NodeID) != "" && sigReq.NodeID != node.NodeID {
+						return nil, fmt.Errorf("%w: approval request %s belongs to gate %s, cannot resume gate %s", ErrUnauthorized, sigReqID, sigReq.NodeID, node.NodeID)
+					}
+				}
 				// Resumed after approval granted!
 				stepOrder := int16(len(existingSteps) + 1)
 				step := &WorkflowRunStep{

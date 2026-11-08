@@ -634,8 +634,12 @@ func (am *ApprovalManager) UndoApprove(
 	if err != nil {
 		return nil, err
 	}
+	hydrateApprovalMetadata(req)
 	if req.Status != "approved" {
 		return nil, fmt.Errorf("%w: only approved requests can be reverted to pending", ErrInvalidApprovalState)
+	}
+	if strings.TrimSpace(req.ConsumedByNodeID) != "" || strings.TrimSpace(req.ConsumedByStepID) != "" {
+		return nil, fmt.Errorf("%w: approval request %s has already been consumed by action node %s", ErrInvalidApprovalState, req.RequestID, req.ConsumedByNodeID)
 	}
 
 	// Verify run state: if run has already succeeded, cannot undo approval

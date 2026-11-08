@@ -447,7 +447,7 @@ func (s *Service) ProvideInput(
 		}
 		_ = s.store.UpdateRun(ctx, run)
 		// Resume execution
-		return s.ExecuteRemainingSteps(ctx, caller, run.AgentRunID, 0)
+		return s.ExecuteRemainingSteps(withResumedExecution(ctx), caller, run.AgentRunID, 0)
 	}
 
 	// 3. Budget Ceiling Elevation (Target 2 & F13)
@@ -486,7 +486,7 @@ func (s *Service) ProvideInput(
 			}
 		}
 		_ = s.store.UpdateRun(ctx, run)
-		return s.ExecuteRemainingSteps(ctx, caller, run.AgentRunID, 0)
+		return s.ExecuteRemainingSteps(withResumedExecution(ctx), caller, run.AgentRunID, 0)
 	}
 
 	// 4. Human Context Injection
@@ -506,7 +506,7 @@ func (s *Service) ProvideInput(
 			}
 		}
 		_ = s.store.UpdateRun(ctx, run)
-		return s.ExecuteRemainingSteps(ctx, caller, run.AgentRunID, 0)
+		return s.ExecuteRemainingSteps(withResumedExecution(ctx), caller, run.AgentRunID, 0)
 	}
 
 	return run, nil

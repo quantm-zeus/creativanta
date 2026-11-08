@@ -71,10 +71,24 @@ func isInactiveOrRevokedAgentRole(role string, active bool) bool {
 	return !active || trimmed == "" || strings.EqualFold(trimmed, "revoked") || strings.EqualFold(trimmed, "none") || strings.EqualFold(trimmed, "denied")
 }
 
+type resumedExecutionCtxKey struct{}
+
+func withResumedExecution(ctx context.Context) context.Context {
+	return context.WithValue(ctx, resumedExecutionCtxKey{}, true)
+}
+
+func isResumedExecution(ctx context.Context) bool {
+	if ctx == nil {
+		return false
+	}
+	v, _ := ctx.Value(resumedExecutionCtxKey{}).(bool)
+	return v
+}
+
 // resolveInitiatorRole resolves the initiator's current active workspace role from an authoritative
 // membership source (configured MembershipRoleResolver or WorkspaceMembershipStore). It never falls
 // back to a launch-time role snapshot or unverified observed cache on cross-actor/resumed execution (R3).
-func (r *Runtime) resolveInitiatorRole(ctx context.Context, workspaceID, createdBy string, liveCaller CallerContext) (string, bool, error) {
+func (r *Runtime) resolveInitiatorRole(ctx context.Context, workspaceID, createdBy string, liveCaller CallerContext, isResumed bool) (string, bool, error) {
 	ws := strings.TrimSpace(workspaceID)
 	uid := strings.TrimSpace(createdBy)
 	if ws == "" || uid == "" {
@@ -116,7 +130,7 @@ func (r *Runtime) resolveInitiatorRole(ctx context.Context, workspaceID, created
 		return strings.TrimSpace(st.role), true, nil
 	}
 
-	if strings.TrimSpace(liveCaller.WorkspaceID) == ws && strings.TrimSpace(liveCaller.UserID) == uid {
+	if !isResumed && strings.TrimSpace(liveCaller.WorkspaceID) == ws && strings.TrimSpace(liveCaller.UserID) == uid {
 		if isInactiveOrRevokedAgentRole(liveCaller.WorkspaceRole, true) {
 			return "", false, fmt.Errorf("%w: initiator %s role is invalid or revoked", ErrPermissionDenied, uid)
 		}
@@ -290,7 +304,8 @@ func (r *Runtime) ExecuteNextStep(ctx context.Context, caller CallerContext, run
 	// ------------------------------------------------------------------------
 	effectiveRole := caller.WorkspaceRole
 	if strings.TrimSpace(run.CreatedBy) != "" {
-		initRole, active, roleErr := r.resolveInitiatorRole(ctx, run.WorkspaceID, run.CreatedBy, caller)
+		isResumed := isResumedExecution(ctx) || run.ApprovalState == ApprovalApproved
+		initRole, active, roleErr := r.resolveInitiatorRole(ctx, run.WorkspaceID, run.CreatedBy, caller, isResumed)
 		if roleErr != nil || !active || initRole == "" || !CheckPermission(initRole, "agent:execute") {
 			currentStep.Status = StepStatusFailed
 			currentStep.CompletedAt = &now

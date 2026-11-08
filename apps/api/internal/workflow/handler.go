@@ -63,6 +63,19 @@ func (h *Handler) resolveCaller(ctx context.Context, explicitWorkspaceID string,
 			return CallerContext{}, connect.NewError(connect.CodePermissionDenied, errors.New("active workspace membership required"))
 		}
 		role = strings.TrimSpace(resolvedRole)
+	} else if h.service != nil && h.service.store != nil {
+		if memStore, ok := h.service.store.(WorkspaceMembershipStore); ok && memStore != nil {
+			resolvedRole, active, found, err := memStore.ResolveWorkspaceMemberRole(ctx, session.WorkspaceID, session.UserID)
+			if err != nil {
+				return CallerContext{}, connect.NewError(connect.CodePermissionDenied, err)
+			}
+			if found {
+				if isInactiveOrRevokedRole(resolvedRole, active) {
+					return CallerContext{}, connect.NewError(connect.CodePermissionDenied, errors.New("active workspace membership required"))
+				}
+				role = strings.TrimSpace(resolvedRole)
+			}
+		}
 	}
 	if role == "" || !rbac.IsValidWorkspaceRole(role) {
 		return CallerContext{}, connect.NewError(connect.CodePermissionDenied, errors.New("verified workspace membership role required"))
