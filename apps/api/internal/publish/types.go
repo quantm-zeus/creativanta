@@ -250,12 +250,16 @@ type ConnectorPublishResult struct {
 
 // ConnectorStatusResult is the reconciliation result from polling platform status.
 type ConnectorStatusResult struct {
-	ProviderRequestID string
-	ExternalPostID    string
-	ExternalPostURL   string
-	Found             bool
-	PublishedAt       *time.Time
-	Status            string // confirmed_published, confirmed_not_published, still_unknown
+	ProviderRequestID  string
+	OperationKey       string
+	ConnectedAccountID string
+	PublishItemID      string
+	RequestHash        string
+	ExternalPostID     string
+	ExternalPostURL    string
+	Found              bool
+	PublishedAt        *time.Time
+	Status             string // confirmed_published, confirmed_not_published, still_unknown
 }
 
 // AssetComplianceRecord represents canonical QA, rights, and consent metadata for a publishable asset.
@@ -284,29 +288,53 @@ type PublishConsentRecord struct {
 	RevokedAt   *time.Time
 }
 
+// ComplianceRecordSource provides canonical QA, rights, and consent records from an authoritative store.
+type ComplianceRecordSource interface {
+	GetAssetComplianceRecord(ctx context.Context, workspaceID, assetID string) (*AssetComplianceRecord, error)
+	GetPublishConsentRecord(ctx context.Context, workspaceID, consentID string) (*PublishConsentRecord, error)
+}
+
 // CanonicalComplianceChecker evaluates canonical QA, rights, and likeness/voice consent records before publishing.
+// Always fails closed when an asset has no canonical QA/rights record or when the backing source fails.
 type CanonicalComplianceChecker struct {
-	mu                          sync.RWMutex
-	requireAssetRecord          bool
-	defaultPassWhenUnregistered bool
-	assets                      map[string]*AssetComplianceRecord
-	consents                    map[string]*PublishConsentRecord
+	mu                 sync.RWMutex
+	requireAssetRecord bool
+	source             ComplianceRecordSource
+	assets             map[string]*AssetComplianceRecord
+	consents           map[string]*PublishConsentRecord
 }
 
 // NewCanonicalComplianceChecker creates a strict compliance checker backed by canonical QA and consent records.
-func NewCanonicalComplianceChecker(requireAssetRecord bool) *CanonicalComplianceChecker {
+// Runtime compliance checking always requires a canonical asset QA/rights record and fails closed when absent.
+func NewCanonicalComplianceChecker(_ bool) *CanonicalComplianceChecker {
 	return &CanonicalComplianceChecker{
-		requireAssetRecord:          requireAssetRecord,
-		defaultPassWhenUnregistered: !requireAssetRecord,
-		assets:                      make(map[string]*AssetComplianceRecord),
-		consents:                    make(map[string]*PublishConsentRecord),
+		requireAssetRecord: true,
+		assets:             make(map[string]*AssetComplianceRecord),
+		consents:           make(map[string]*PublishConsentRecord),
 	}
 }
 
-// NewDefaultComplianceChecker creates a compliance checker that enforces registered QA/consent blocks
-// and passes items with no registered violations.
+// NewCanonicalComplianceCheckerWithSource creates a strict compliance checker backed by an authoritative ComplianceRecordSource.
+func NewCanonicalComplianceCheckerWithSource(source ComplianceRecordSource) *CanonicalComplianceChecker {
+	return &CanonicalComplianceChecker{
+		requireAssetRecord: true,
+		source:             source,
+		assets:             make(map[string]*AssetComplianceRecord),
+		consents:           make(map[string]*PublishConsentRecord),
+	}
+}
+
+// NewDefaultComplianceChecker creates the default runtime compliance checker, which strictly requires
+// registered canonical QA, rights, and consent records and fails closed when records are missing.
 func NewDefaultComplianceChecker() *CanonicalComplianceChecker {
-	return NewCanonicalComplianceChecker(false)
+	return NewCanonicalComplianceChecker(true)
+}
+
+// SetRecordSource sets or updates the backing canonical compliance record source.
+func (c *CanonicalComplianceChecker) SetRecordSource(source ComplianceRecordSource) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.source = source
 }
 
 // SetAssetCompliance registers or updates a canonical asset QA/rights/consent record.
@@ -347,7 +375,7 @@ func isValidPublishConsentType(consentType string) bool {
 }
 
 // CheckPublishCompliance implements ComplianceChecker.
-func (c *CanonicalComplianceChecker) CheckPublishCompliance(_ context.Context, workspaceID, assetID, _ string) (string, bool, map[string]any, error) {
+func (c *CanonicalComplianceChecker) CheckPublishCompliance(ctx context.Context, workspaceID, assetID, _ string) (string, bool, map[string]any, error) {
 	workspaceID = strings.TrimSpace(workspaceID)
 	assetID = strings.TrimSpace(assetID)
 	if workspaceID == "" {
@@ -355,26 +383,46 @@ func (c *CanonicalComplianceChecker) CheckPublishCompliance(_ context.Context, w
 	}
 
 	c.mu.RLock()
-	defer c.mu.RUnlock()
-
 	if assetID != "" {
 		for k, other := range c.assets {
 			if strings.HasSuffix(k, "|"+assetID) && other != nil && other.WorkspaceID != "" && other.WorkspaceID != workspaceID {
+				c.mu.RUnlock()
 				return "blocked", true, map[string]any{"has_hard_blocks": true, "reason": "cross_tenant_asset"}, ErrPermissionDenied
 			}
 		}
 	}
-
-	rec := c.assets[workspaceID+"|"+assetID]
-	if rec == nil {
-		if c.requireAssetRecord || !c.defaultPassWhenUnregistered {
-			return "unverified", true, map[string]any{"has_hard_blocks": true, "reason": "canonical_qa_report_missing"}, ErrComplianceHardBlocked
+	var rec *AssetComplianceRecord
+	if assetID != "" {
+		if r := c.assets[workspaceID+"|"+assetID]; r != nil {
+			cp := *r
+			rec = &cp
 		}
-		return "pass", false, map[string]any{
-			"packaging_score":  float32(85.0),
-			"rights_verified":  true,
-			"consent_verified": true,
-		}, nil
+	}
+	source := c.source
+	c.mu.RUnlock()
+
+	if rec == nil && source != nil && assetID != "" {
+		srcRec, srcErr := source.GetAssetComplianceRecord(ctx, workspaceID, assetID)
+		if srcErr != nil {
+			return "unverified", true, map[string]any{
+				"has_hard_blocks": true,
+				"reason":          "canonical_qa_source_error",
+			}, fmt.Errorf("%w: %v", ErrComplianceHardBlocked, srcErr)
+		}
+		if srcRec != nil {
+			if srcRec.WorkspaceID != "" && strings.TrimSpace(srcRec.WorkspaceID) != workspaceID {
+				return "blocked", true, map[string]any{"has_hard_blocks": true, "reason": "cross_tenant_asset"}, ErrPermissionDenied
+			}
+			cp := *srcRec
+			rec = &cp
+		}
+	}
+
+	if assetID == "" || rec == nil {
+		return "unverified", true, map[string]any{
+			"has_hard_blocks": true,
+			"reason":          "canonical_qa_report_missing",
+		}, ErrComplianceHardBlocked
 	}
 
 	score := rec.PackagingScore
@@ -408,8 +456,29 @@ func (c *CanonicalComplianceChecker) CheckPublishCompliance(_ context.Context, w
 			details["has_hard_blocks"] = true
 			return "blocked", true, details, ErrComplianceHardBlocked
 		}
-		cr := c.consents[workspaceID+"|"+cid]
-		if cr == nil || (cr.WorkspaceID != "" && cr.WorkspaceID != workspaceID) || !cr.Granted || cr.RevokedAt != nil {
+		c.mu.RLock()
+		var cr *PublishConsentRecord
+		if stored := c.consents[workspaceID+"|"+cid]; stored != nil {
+			cp := *stored
+			cr = &cp
+		}
+		c.mu.RUnlock()
+
+		if cr == nil && source != nil {
+			srcConsent, cErr := source.GetPublishConsentRecord(ctx, workspaceID, cid)
+			if cErr != nil {
+				details["consent_verified"] = false
+				details["has_hard_blocks"] = true
+				details["reason"] = "canonical_consent_source_error"
+				return "blocked", true, details, fmt.Errorf("%w: %v", ErrComplianceHardBlocked, cErr)
+			}
+			if srcConsent != nil {
+				cp := *srcConsent
+				cr = &cp
+			}
+		}
+
+		if cr == nil || (cr.WorkspaceID != "" && strings.TrimSpace(cr.WorkspaceID) != workspaceID) || !cr.Granted || cr.RevokedAt != nil {
 			details["consent_verified"] = false
 			details["consent_revoked"] = true
 			details["has_hard_blocks"] = true

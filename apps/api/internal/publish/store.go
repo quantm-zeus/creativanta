@@ -3,6 +3,7 @@ package publish
 import (
 	"context"
 	"sort"
+	"strings"
 	"sync"
 )
 
@@ -29,6 +30,7 @@ type Store interface {
 	ListPosts(ctx context.Context, workspaceID string) ([]*ChannelPost, error)
 
 	SaveEffect(ctx context.Context, effect *ExternalEffect) error
+	ClaimPublishEffect(ctx context.Context, item *PublishItem, job *PublishJob, effect *ExternalEffect) (claimed bool, existing *ExternalEffect, err error)
 	GetEffectByKey(ctx context.Context, workspaceID, operationKey string) (*ExternalEffect, error)
 	ListEffectsByAggregate(ctx context.Context, workspaceID, aggregateType, aggregateID string) ([]*ExternalEffect, error)
 
@@ -386,11 +388,92 @@ func effectCompositeKey(workspaceID, operationKey string) string {
 	return workspaceID + "|" + operationKey
 }
 
+func isActiveOrSucceededEffectStatus(status string) bool {
+	switch strings.ToLower(strings.TrimSpace(status)) {
+	case "prepared", "submitted", "unknown", "succeeded":
+		return true
+	default:
+		return false
+	}
+}
+
+func isRetryableFailedEffect(eff *ExternalEffect) bool {
+	if eff == nil || strings.ToLower(strings.TrimSpace(eff.Status)) != "failed" {
+		return false
+	}
+	return stringFromMap(eff.ResultPayload, "reconciled") == "confirmed_not_published" ||
+		boolFromMap(eff.ResultPayload, "definitive_rejection")
+}
+
 func (m *MemoryStore) SaveEffect(_ context.Context, effect *ExternalEffect) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.effects[effectCompositeKey(effect.WorkspaceID, effect.OperationKey)] = cloneExternalEffect(effect)
 	return nil
+}
+
+// ClaimPublishEffect atomically claims a publish effect for (workspaceID, publishItemID, operationKey).
+// If any active (prepared/submitted/unknown) or succeeded effect already exists for the operation key
+// or for the publish item (or any of its jobs), ClaimPublishEffect returns (false, existingEffect, nil)
+// without modifying state. Only the single winning caller receives (true, claimedEffect, nil).
+func (m *MemoryStore) ClaimPublishEffect(_ context.Context, item *PublishItem, job *PublishJob, effect *ExternalEffect) (bool, *ExternalEffect, error) {
+	if item == nil || effect == nil || strings.TrimSpace(item.WorkspaceID) == "" || strings.TrimSpace(effect.OperationKey) == "" {
+		return false, nil, ErrInvalidState
+	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	wsID := strings.TrimSpace(item.WorkspaceID)
+	itemID := strings.TrimSpace(item.PublishItemID)
+	compKey := effectCompositeKey(wsID, effect.OperationKey)
+
+	if existingByKey, ok := m.effects[compKey]; ok && existingByKey != nil {
+		if isActiveOrSucceededEffectStatus(existingByKey.Status) || !isRetryableFailedEffect(existingByKey) {
+			return false, cloneExternalEffect(existingByKey), nil
+		}
+	}
+
+	var matchedActive *ExternalEffect
+	for _, eff := range m.effects {
+		if eff == nil || eff.WorkspaceID != wsID || !isActiveOrSucceededEffectStatus(eff.Status) {
+			continue
+		}
+		belongsToItem := false
+		if stringFromMap(eff.ResultPayload, "publish_item_id") == itemID {
+			belongsToItem = true
+		} else if eff.AggregateType == "publish_item" && eff.AggregateID == itemID {
+			belongsToItem = true
+		} else if job != nil && eff.AggregateType == "publish_job" && eff.AggregateID == job.PublishJobID {
+			belongsToItem = true
+		} else if eff.AggregateType == "publish_job" {
+			if j, ok := m.jobs[eff.AggregateID]; ok && j != nil && j.WorkspaceID == wsID && j.PublishItemID == itemID {
+				belongsToItem = true
+			}
+		}
+		if belongsToItem {
+			if matchedActive == nil || eff.CreatedAt.After(matchedActive.CreatedAt) || (eff.CreatedAt.Equal(matchedActive.CreatedAt) && eff.EffectID > matchedActive.EffectID) {
+				matchedActive = eff
+			}
+		}
+	}
+	if matchedActive != nil {
+		return false, cloneExternalEffect(matchedActive), nil
+	}
+
+	if storedItem, ok := m.items[itemID]; ok && storedItem != nil && storedItem.DeletedAt == nil && storedItem.WorkspaceID == wsID {
+		if storedItem.LifecycleState == StatePublished {
+			return false, nil, nil
+		}
+	}
+
+	m.items[itemID] = clonePublishItem(item)
+	if job != nil && job.PublishJobID != "" {
+		m.jobs[job.PublishJobID] = clonePublishJob(job)
+	}
+	claimed := cloneExternalEffect(effect)
+	m.effects[compKey] = claimed
+	return true, cloneExternalEffect(claimed), nil
 }
 
 func (m *MemoryStore) GetEffectByKey(_ context.Context, workspaceID, operationKey string) (*ExternalEffect, error) {
