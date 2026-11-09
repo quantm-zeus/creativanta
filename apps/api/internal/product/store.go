@@ -758,7 +758,7 @@ func (m *MemoryStore) BatchTag(_ context.Context, workspaceID string, productIDs
 	return count, nil
 }
 
-func (m *MemoryStore) GetIdempotencyRecord(_ context.Context, workspaceID, idempotencyKey string) (*IdempotencyRecord, error) {
+func (m *MemoryStore) GetIdempotencyRecord(ctx context.Context, workspaceID, idempotencyKey string) (*IdempotencyRecord, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -766,7 +766,11 @@ func (m *MemoryStore) GetIdempotencyRecord(_ context.Context, workspaceID, idemp
 	if !exists {
 		return nil, nil
 	}
-	if !rec.ExpiresAt.IsZero() && time.Now().UTC().After(rec.ExpiresAt) {
+	now := time.Now().UTC()
+	if ctxNow, ok := IdempotencyNowFromContext(ctx); ok {
+		now = ctxNow
+	}
+	if !rec.ExpiresAt.IsZero() && now.After(rec.ExpiresAt) {
 		return nil, nil
 	}
 	cp := rec
@@ -776,12 +780,17 @@ func (m *MemoryStore) GetIdempotencyRecord(_ context.Context, workspaceID, idemp
 	return &cp, nil
 }
 
-func (m *MemoryStore) SaveIdempotencyRecord(_ context.Context, rec IdempotencyRecord) error {
+func (m *MemoryStore) SaveIdempotencyRecord(ctx context.Context, rec IdempotencyRecord) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	key := rec.WorkspaceID + ":" + rec.IdempotencyKey
 	now := time.Now().UTC()
+	if ctxNow, ok := IdempotencyNowFromContext(ctx); ok {
+		now = ctxNow
+	} else if !rec.CreatedAt.IsZero() {
+		now = rec.CreatedAt.UTC()
+	}
 	if existing, ok := m.idempotency[key]; ok {
 		if existing.ExpiresAt.IsZero() || now.Before(existing.ExpiresAt) {
 			if existing.RequestHash != rec.RequestHash {
@@ -1999,12 +2008,16 @@ func (s *PostgresStore) BatchTag(ctx context.Context, workspaceID string, produc
 
 func (s *PostgresStore) GetIdempotencyRecord(ctx context.Context, workspaceID, idempotencyKey string) (*IdempotencyRecord, error) {
 	db := s.dbFromContext(ctx)
+	now := time.Now().UTC()
+	if ctxNow, ok := IdempotencyNowFromContext(ctx); ok {
+		now = ctxNow
+	}
 	var rec IdempotencyRecord
 	err := db.QueryRow(ctx, `
 		SELECT workspace_id::text, idempotency_key, request_hash, COALESCE(response_code, 200), COALESCE(response_body, response_payload, '{}'::jsonb), created_at, expires_at
 		FROM api_idempotency_records
-		WHERE workspace_id = $1::uuid AND actor_id = $1::uuid AND rpc = 'product.mutation' AND idempotency_key = $2 AND expires_at > NOW()
-	`, workspaceID, idempotencyKey).Scan(
+		WHERE workspace_id = $1::uuid AND actor_id = $1::uuid AND rpc = 'product.mutation' AND idempotency_key = $2 AND expires_at > $3
+	`, workspaceID, idempotencyKey, now).Scan(
 		&rec.WorkspaceID, &rec.IdempotencyKey, &rec.RequestHash,
 		&rec.ResponseStatus, &rec.ResponseBody, &rec.CreatedAt, &rec.ExpiresAt,
 	)
@@ -2020,6 +2033,9 @@ func (s *PostgresStore) GetIdempotencyRecord(ctx context.Context, workspaceID, i
 func (s *PostgresStore) SaveIdempotencyRecord(ctx context.Context, rec IdempotencyRecord) error {
 	db := s.dbFromContext(ctx)
 	now := time.Now().UTC()
+	if ctxNow, ok := IdempotencyNowFromContext(ctx); ok {
+		now = ctxNow
+	}
 	createdAt := rec.CreatedAt
 	if createdAt.IsZero() {
 		createdAt = now
@@ -2051,7 +2067,7 @@ func (s *PostgresStore) SaveIdempotencyRecord(ctx context.Context, rec Idempoten
 		    response_payload = EXCLUDED.response_payload,
 		    created_at = EXCLUDED.created_at,
 		    expires_at = EXCLUDED.expires_at
-		WHERE api_idempotency_records.expires_at <= NOW()
+		WHERE api_idempotency_records.expires_at <= $6
 	`, rec.WorkspaceID, rec.IdempotencyKey, rec.RequestHash, statusCode, bodyJSON, createdAt, expiresAt)
 	if err != nil {
 		return fmt.Errorf("save idempotency record: %w", err)
@@ -2340,22 +2356,38 @@ func resolveOrderRateMicro(orderID, orderCurrency, targetCurrency string, fx *Ex
 	if ordCurr == "" {
 		ordCurr = targetCurr
 	}
+	if fx != nil {
+		baseCurr := strings.ToUpper(strings.TrimSpace(fx.BaseCurrency))
+		quoteCurr := strings.ToUpper(strings.TrimSpace(fx.QuoteCurrency))
+		rateStr := strings.TrimSpace(fx.RateToBase)
+		if baseCurr != "" || quoteCurr != "" || rateStr != "" {
+			if baseCurr == "" || quoteCurr == "" || rateStr == "" {
+				return nil, fmt.Errorf("%w: order %s has incomplete exchange_rate_snapshot", ErrCurrencyMismatch, orderID)
+			}
+			if quoteCurr != ordCurr && baseCurr != ordCurr {
+				return nil, fmt.Errorf("%w: order %s exchange_rate_snapshot (%s->%s) does not match order currency %s", ErrCurrencyMismatch, orderID, quoteCurr, baseCurr, ordCurr)
+			}
+			rateDec, err := tenantdb.ParseExactDecimal(rateStr)
+			if err != nil || rateDec.IsZero() || rateDec.IsNegative() {
+				return nil, fmt.Errorf("%w: order %s has invalid rate_to_base %q", ErrCurrencyMismatch, orderID, fx.RateToBase)
+			}
+			rateMicro := decToMicro(rateDec)
+			if baseCurr == quoteCurr && rateMicro.Cmp(microScaleInt) != 0 {
+				return nil, fmt.Errorf("%w: order %s same-currency exchange_rate_snapshot must have rate 1, got %q", ErrCurrencyMismatch, orderID, fx.RateToBase)
+			}
+			if ordCurr == targetCurr {
+				return new(big.Int).Set(microScaleInt), nil
+			}
+			if baseCurr != targetCurr || quoteCurr != ordCurr {
+				return nil, fmt.Errorf("%w: order %s exchange_rate_snapshot (%s->%s) does not match (%s->%s)", ErrCurrencyMismatch, orderID, quoteCurr, baseCurr, ordCurr, targetCurr)
+			}
+			return rateMicro, nil
+		}
+	}
 	if ordCurr == targetCurr {
 		return new(big.Int).Set(microScaleInt), nil
 	}
-	if fx == nil {
-		return nil, fmt.Errorf("%w: order %s currency %s != target currency %s and exchange_rate_snapshot is missing", ErrCurrencyMismatch, orderID, ordCurr, targetCurr)
-	}
-	baseCurr := strings.ToUpper(strings.TrimSpace(fx.BaseCurrency))
-	quoteCurr := strings.ToUpper(strings.TrimSpace(fx.QuoteCurrency))
-	if baseCurr != targetCurr || quoteCurr != ordCurr || strings.TrimSpace(fx.RateToBase) == "" {
-		return nil, fmt.Errorf("%w: order %s exchange_rate_snapshot (%s->%s) does not match (%s->%s)", ErrCurrencyMismatch, orderID, quoteCurr, baseCurr, ordCurr, targetCurr)
-	}
-	rateDec, err := tenantdb.ParseExactDecimal(fx.RateToBase)
-	if err != nil || rateDec.IsZero() || rateDec.IsNegative() {
-		return nil, fmt.Errorf("%w: order %s has invalid rate_to_base %q", ErrCurrencyMismatch, orderID, fx.RateToBase)
-	}
-	return decToMicro(rateDec), nil
+	return nil, fmt.Errorf("%w: order %s currency %s != target currency %s and exchange_rate_snapshot is missing", ErrCurrencyMismatch, orderID, ordCurr, targetCurr)
 }
 
 func mulMicro(amountMicro, rateMicro *big.Int) *big.Int {
@@ -2460,11 +2492,16 @@ func computeProductSalesSummary(
 		if state == "cancelled" {
 			continue
 		}
-		if filter.Since != nil && !o.OrderedAt.IsZero() && o.OrderedAt.Before(*filter.Since) {
-			continue
-		}
-		if filter.Until != nil && !o.OrderedAt.IsZero() && o.OrderedAt.After(*filter.Until) {
-			continue
+		if filter.Since != nil || filter.Until != nil {
+			if o.OrderedAt.IsZero() {
+				continue
+			}
+			if filter.Since != nil && o.OrderedAt.Before(*filter.Since) {
+				continue
+			}
+			if filter.Until != nil && o.OrderedAt.After(*filter.Until) {
+				continue
+			}
 		}
 
 		var lines []AnalyticsOrderLine
@@ -2488,22 +2525,46 @@ func computeProductSalesSummary(
 		var prodOrderUnits int64
 		matched := false
 
+		type prodBucket struct {
+			key      string
+			firstIdx int
+			grossOrd *big.Int
+		}
+		var buckets []*prodBucket
+		bucketByKey := make(map[string]*prodBucket)
+
 		// Check if any line in this order matches the product first
-		for _, li := range lines {
+		for idx, li := range lines {
 			lg := lineGrossMicro(li)
 			ordTotalGrossMicro.Add(ordTotalGrossMicro, lg)
+			bKey := strings.TrimSpace(li.ProductID)
 			if lineMatchesProduct(li, p.ProductID, skuKeys) {
 				matched = true
 				prodOrderUnits += li.Quantity
 				prodOrderGrossOrdMicro.Add(prodOrderGrossOrdMicro, lg)
+				bKey = p.ProductID
+			} else if bKey == "" {
+				if strings.TrimSpace(li.SkuID) != "" {
+					bKey = strings.TrimSpace(li.SkuID)
+				} else if strings.TrimSpace(li.Sku) != "" {
+					bKey = strings.TrimSpace(li.Sku)
+				} else {
+					bKey = fmt.Sprintf("line-%d", idx)
+				}
 			}
+			b, ok := bucketByKey[bKey]
+			if !ok {
+				b = &prodBucket{key: bKey, firstIdx: idx, grossOrd: big.NewInt(0)}
+				bucketByKey[bKey] = b
+				buckets = append(buckets, b)
+			}
+			b.grossOrd.Add(b.grossOrd, lg)
 		}
 		if !matched {
 			continue
 		}
-		ordAmtMicro := decToMicro(o.Amount)
-		if ordTotalGrossMicro.Cmp(ordAmtMicro) < 0 {
-			ordTotalGrossMicro.Set(ordAmtMicro)
+		if ordTotalGrossMicro.Sign() <= 0 {
+			ordTotalGrossMicro.Set(decToMicro(o.Amount))
 		}
 
 		rateMicro, err := resolveOrderRateMicro(o.OrderID, o.Currency, targetCurr, o.ExchangeRateSnapshot)
@@ -2564,12 +2625,54 @@ func computeProductSalesSummary(
 
 		allocatedRefundMicro := new(big.Int).Set(directProductRefundTargetMicro)
 		if orderLevelRefundTargetMicro.Sign() > 0 && ordTotalGrossTargetMicro.Sign() > 0 && prodGrossTargetMicro.Sign() > 0 {
-			// Proportional allocation: ROUND(order_refund * prod_gross / order_gross)
-			num := new(big.Int).Mul(orderLevelRefundTargetMicro, prodGrossTargetMicro)
-			halfDenom := new(big.Int).Quo(ordTotalGrossTargetMicro, big.NewInt(2))
-			num.Add(num, halfDenom)
-			propShare := new(big.Int).Quo(num, ordTotalGrossTargetMicro)
-			allocatedRefundMicro.Add(allocatedRefundMicro, propShare)
+			refundPool := new(big.Int).Set(orderLevelRefundTargetMicro)
+			if refundPool.Cmp(ordTotalGrossTargetMicro) > 0 {
+				refundPool.Set(ordTotalGrossTargetMicro)
+			}
+			// Largest-remainder exact micro allocation across distinct product buckets in the order
+			type allocEntry struct {
+				key      string
+				firstIdx int
+				gross    *big.Int
+				quotient *big.Int
+				rem      *big.Int
+			}
+			allocs := make([]allocEntry, 0, len(buckets))
+			sumQuot := big.NewInt(0)
+			for _, b := range buckets {
+				bGross := mulMicro(b.grossOrd, rateMicro)
+				num := new(big.Int).Mul(refundPool, bGross)
+				q, r := new(big.Int).QuoRem(num, ordTotalGrossTargetMicro, new(big.Int))
+				sumQuot.Add(sumQuot, q)
+				allocs = append(allocs, allocEntry{
+					key:      b.key,
+					firstIdx: b.firstIdx,
+					gross:    bGross,
+					quotient: q,
+					rem:      r,
+				})
+			}
+			leftover := new(big.Int).Sub(refundPool, sumQuot).Int64()
+			if leftover > 0 {
+				sort.Slice(allocs, func(i, j int) bool {
+					if cmp := allocs[i].rem.Cmp(allocs[j].rem); cmp != 0 {
+						return cmp > 0
+					}
+					if cmp := allocs[i].gross.Cmp(allocs[j].gross); cmp != 0 {
+						return cmp > 0
+					}
+					return allocs[i].firstIdx < allocs[j].firstIdx
+				})
+				for i := int64(0); i < leftover && int(i) < len(allocs); i++ {
+					allocs[i].quotient.Add(allocs[i].quotient, big.NewInt(1))
+				}
+			}
+			for _, a := range allocs {
+				if a.key == p.ProductID {
+					allocatedRefundMicro.Add(allocatedRefundMicro, a.quotient)
+					break
+				}
+			}
 		}
 		if allocatedRefundMicro.Cmp(prodGrossTargetMicro) > 0 {
 			allocatedRefundMicro.Set(prodGrossTargetMicro)
@@ -2637,7 +2740,7 @@ func computeProductSalesChart(
 		if state == "cancelled" || state == "refunded" {
 			continue
 		}
-		if !o.OrderedAt.IsZero() && o.OrderedAt.Before(cutoff) {
+		if o.OrderedAt.IsZero() || o.OrderedAt.Before(cutoff) || o.OrderedAt.After(refNow) {
 			continue
 		}
 		var lines []AnalyticsOrderLine
@@ -2716,12 +2819,6 @@ func computeProductRank(
 	normCurrency := strings.ToUpper(strings.TrimSpace(target.Currency))
 	if normCurrency == "" {
 		normCurrency = "VND"
-	}
-	for _, o := range orders {
-		if o.ExchangeRateSnapshot != nil && strings.TrimSpace(o.ExchangeRateSnapshot.BaseCurrency) != "" {
-			normCurrency = strings.ToUpper(strings.TrimSpace(o.ExchangeRateSnapshot.BaseCurrency))
-			break
-		}
 	}
 
 	type perfEntry struct {

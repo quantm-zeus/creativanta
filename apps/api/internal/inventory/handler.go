@@ -3,30 +3,160 @@ package inventory
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"strings"
+	"sync"
 
 	"connectrpc.com/connect"
 	commercev1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/commerce/v1"
 	"github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/commerce/v1/commercev1connect"
 	commonv1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/common/v1"
+	"github.com/quantm-zeus/creativanta/apps/api/internal/rbac"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/transportauth"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func resolveTenantContext(ctx context.Context, cmdCtx *commonv1.CommandContext) (string, error) {
-	if session, ok := transportauth.PrincipalFromContext(ctx); ok && session.WorkspaceID != "" {
-		if cmdCtx != nil && cmdCtx.WorkspaceId != nil && cmdCtx.WorkspaceId.Value != "" {
-			if cmdCtx.WorkspaceId.Value != session.WorkspaceID && !session.InternalAdmin {
+type inventoryRPCBinding struct {
+	permissionKey string
+	roleEnvelope  string
+}
+
+var inventoryRPCBindings = map[string]inventoryRPCBinding{
+	"InventoryService/GetSummary":          {permissionKey: "product:read", roleEnvelope: "Member"},
+	"InventoryService/ListStock":           {permissionKey: "product:read", roleEnvelope: "Member"},
+	"InventoryService/ListMovements":       {permissionKey: "product:read", roleEnvelope: "Member"},
+	"InventoryService/CreateStockMovement": {permissionKey: "product:manage", roleEnvelope: "Editor+"},
+	"InventoryService/BulkStockIn":         {permissionKey: "product:manage", roleEnvelope: "Editor+"},
+	"InventoryService/GetAlerts":           {permissionKey: "product:read", roleEnvelope: "Member"},
+	"InventoryService/UpdateThresholds":    {permissionKey: "product:manage", roleEnvelope: "Editor+"},
+	"InventoryService/Export":              {permissionKey: "product:read", roleEnvelope: "Editor+"},
+}
+
+var inventoryRoleRank = map[string]int{
+	rbac.RoleOwner:       7,
+	rbac.RoleAdmin:       6,
+	rbac.RoleManager:     5,
+	rbac.RoleEditor:      4,
+	rbac.RoleContributor: 3,
+	rbac.RoleViewer:      2,
+	rbac.RoleExternal:    1,
+}
+
+func checkInventoryRoleEnvelope(role, envelope string) error {
+	rank, ok := inventoryRoleRank[strings.ToLower(strings.TrimSpace(role))]
+	if !ok {
+		return errors.New("inventory: caller lacks required role permission")
+	}
+	switch envelope {
+	case "Owner":
+		if rank < inventoryRoleRank[rbac.RoleOwner] {
+			return errors.New("inventory: caller lacks required role permission")
+		}
+	case "Admin+":
+		if rank < inventoryRoleRank[rbac.RoleAdmin] {
+			return errors.New("inventory: caller lacks required role permission")
+		}
+	case "Manager+":
+		if rank < inventoryRoleRank[rbac.RoleManager] {
+			return errors.New("inventory: caller lacks required role permission")
+		}
+	case "Editor+":
+		if rank < inventoryRoleRank[rbac.RoleEditor] {
+			return errors.New("inventory: caller lacks required role permission")
+		}
+	case "Contributor+":
+		if rank < inventoryRoleRank[rbac.RoleContributor] {
+			return errors.New("inventory: caller lacks required role permission")
+		}
+	case "Viewer+", "Member":
+		if rank < inventoryRoleRank[rbac.RoleViewer] {
+			return errors.New("inventory: caller lacks required role permission")
+		}
+	}
+	return nil
+}
+
+// WithCaller injects an authenticated workspace caller into ctx for direct handler tests.
+func WithCaller(ctx context.Context, workspaceID, userID, role string) context.Context {
+	if role == "" {
+		role = rbac.RoleOwner
+	}
+	if userID == "" {
+		userID = "user-inventory-default"
+	}
+	return rbac.WithPolicyContext(ctx, rbac.PolicyContext{
+		ActorUserID: userID,
+		WorkspaceID: workspaceID,
+		Role:        role,
+	})
+}
+
+func authorizeInventoryRPC(ctx context.Context, rpcName string, cmdCtx *commonv1.CommandContext) (string, error) {
+	binding, hasBinding := inventoryRPCBindings[rpcName]
+
+	if pctx, ok := rbac.PolicyContextFromContext(ctx); ok && strings.TrimSpace(pctx.WorkspaceID) != "" {
+		if cmdCtx != nil && cmdCtx.WorkspaceId != nil && strings.TrimSpace(cmdCtx.WorkspaceId.Value) != "" {
+			if strings.TrimSpace(cmdCtx.WorkspaceId.Value) != strings.TrimSpace(pctx.WorkspaceID) {
 				return "", connect.NewError(connect.CodePermissionDenied, tenantdb.ErrScopeMismatch)
 			}
 		}
-		return session.WorkspaceID, nil
+		if hasBinding {
+			if err := rbac.CheckWorkspacePermission(binding.permissionKey, pctx); err != nil {
+				return "", connect.NewError(connect.CodePermissionDenied, err)
+			}
+			if err := checkInventoryRoleEnvelope(pctx.Role, binding.roleEnvelope); err != nil {
+				return "", connect.NewError(connect.CodePermissionDenied, err)
+			}
+		}
+		return strings.TrimSpace(pctx.WorkspaceID), nil
 	}
-	if cmdCtx != nil && cmdCtx.WorkspaceId != nil && cmdCtx.WorkspaceId.Value != "" {
-		return cmdCtx.WorkspaceId.Value, nil
+
+	if session, ok := transportauth.PrincipalFromContext(ctx); ok && strings.TrimSpace(session.WorkspaceID) != "" {
+		if cmdCtx != nil && cmdCtx.WorkspaceId != nil && strings.TrimSpace(cmdCtx.WorkspaceId.Value) != "" {
+			if strings.TrimSpace(cmdCtx.WorkspaceId.Value) != strings.TrimSpace(session.WorkspaceID) && !session.InternalAdmin {
+				return "", connect.NewError(connect.CodePermissionDenied, tenantdb.ErrScopeMismatch)
+			}
+		}
+		role := rbac.RoleOwner
+		if pctx, hasPolicy := rbac.PolicyContextFromContext(ctx); hasPolicy && strings.TrimSpace(pctx.Role) != "" {
+			role = strings.ToLower(strings.TrimSpace(pctx.Role))
+		}
+		if hasBinding && !session.InternalAdmin {
+			pctx := rbac.PolicyContext{
+				ActorUserID: session.UserID,
+				WorkspaceID: session.WorkspaceID,
+				Role:        role,
+			}
+			if err := rbac.CheckWorkspacePermission(binding.permissionKey, pctx); err != nil {
+				return "", connect.NewError(connect.CodePermissionDenied, err)
+			}
+			if err := checkInventoryRoleEnvelope(role, binding.roleEnvelope); err != nil {
+				return "", connect.NewError(connect.CodePermissionDenied, err)
+			}
+		}
+		return strings.TrimSpace(session.WorkspaceID), nil
 	}
+
 	return "", connect.NewError(connect.CodeUnauthenticated, ErrMissingTenant)
+}
+
+func validateCommandIdempotencyKey(cmdCtx *commonv1.CommandContext, rpcName string) (string, error) {
+	if cmdCtx == nil {
+		return "", connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("inventory: idempotency_key is required for %s", rpcName))
+	}
+	if len(cmdCtx.Reason) > 2000 {
+		return "", connect.NewError(connect.CodeInvalidArgument, errors.New("inventory: reason exceeds 2000 characters"))
+	}
+	key := strings.TrimSpace(cmdCtx.IdempotencyKey)
+	if key == "" {
+		return "", connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("inventory: idempotency_key is required for %s", rpcName))
+	}
+	if len(key) > 255 {
+		return "", connect.NewError(connect.CodeInvalidArgument, errors.New("inventory: idempotency_key exceeds 255 characters"))
+	}
+	return key, nil
 }
 
 func toProtoMovementType(mt string) commercev1.StockMovementType {
@@ -116,17 +246,22 @@ func toProtoBalance(b *Balance) *commercev1.InventoryBalance {
 }
 
 type Handler struct {
-	service *Service
+	service    *Service
+	mu         sync.RWMutex
+	thresholds map[string]int32
 }
 
 func NewHandler(service *Service) *Handler {
-	return &Handler{service: service}
+	return &Handler{
+		service:    service,
+		thresholds: make(map[string]int32),
+	}
 }
 
 var _ commercev1connect.InventoryServiceHandler = (*Handler)(nil)
 
 func (h *Handler) GetSummary(ctx context.Context, _ *connect.Request[commercev1.InventoryServiceGetSummaryRequest]) (*connect.Response[commercev1.InventoryServiceGetSummaryResponse], error) {
-	wsID, err := resolveTenantContext(ctx, nil)
+	wsID, err := authorizeInventoryRPC(ctx, "InventoryService/GetSummary", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -143,7 +278,8 @@ func (h *Handler) GetSummary(ctx context.Context, _ *connect.Request[commercev1.
 	for _, b := range balances {
 		totalOnHand += b.OnHand
 		totalReserved += b.Reserved
-		if (b.OnHand - b.Reserved) <= 5 {
+		threshold := h.getSkuThreshold(wsID, b.SkuID)
+		if (b.OnHand - b.Reserved) <= threshold {
 			lowStockAlerts++
 		}
 	}
@@ -157,7 +293,7 @@ func (h *Handler) GetSummary(ctx context.Context, _ *connect.Request[commercev1.
 }
 
 func (h *Handler) ListStock(ctx context.Context, req *connect.Request[commercev1.InventoryServiceListStockRequest]) (*connect.Response[commercev1.InventoryServiceListStockResponse], error) {
-	wsID, err := resolveTenantContext(ctx, nil)
+	wsID, err := authorizeInventoryRPC(ctx, "InventoryService/ListStock", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -166,6 +302,9 @@ func (h *Handler) ListStock(ctx context.Context, req *connect.Request[commercev1
 	offset := 0
 	if msg.Pagination != nil && msg.Pagination.PageSize > 0 {
 		limit = int(msg.Pagination.PageSize)
+		if limit > 100 {
+			limit = 100
+		}
 	}
 
 	balances, total, err := h.service.store.ListBalances(ctx, wsID, msg.LocationId, limit, offset)
@@ -188,7 +327,7 @@ func (h *Handler) ListStock(ctx context.Context, req *connect.Request[commercev1
 }
 
 func (h *Handler) ListMovements(ctx context.Context, req *connect.Request[commercev1.InventoryServiceListMovementsRequest]) (*connect.Response[commercev1.InventoryServiceListMovementsResponse], error) {
-	wsID, err := resolveTenantContext(ctx, nil)
+	wsID, err := authorizeInventoryRPC(ctx, "InventoryService/ListMovements", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -197,6 +336,9 @@ func (h *Handler) ListMovements(ctx context.Context, req *connect.Request[commer
 	offset := 0
 	if msg.Pagination != nil && msg.Pagination.PageSize > 0 {
 		limit = int(msg.Pagination.PageSize)
+		if limit > 100 {
+			limit = 100
+		}
 	}
 
 	movements, total, err := h.service.store.ListMovements(ctx, wsID, msg.SkuId, msg.LocationId, limit, offset)
@@ -218,68 +360,330 @@ func (h *Handler) ListMovements(ctx context.Context, req *connect.Request[commer
 	}), nil
 }
 
+func isAllowedManualAdjustmentType(pmt commercev1.StockMovementType) (string, bool) {
+	switch pmt {
+	case commercev1.StockMovementType_STOCK_MOVEMENT_TYPE_PURCHASE:
+		return MovementPurchase, true
+	case commercev1.StockMovementType_STOCK_MOVEMENT_TYPE_ADJUSTMENT:
+		return MovementAdjustment, true
+	case commercev1.StockMovementType_STOCK_MOVEMENT_TYPE_DAMAGE:
+		return MovementDamage, true
+	case commercev1.StockMovementType_STOCK_MOVEMENT_TYPE_PLATFORM_SYNC:
+		return MovementPlatformSync, true
+	default:
+		// Reject direct sale/return/transfer/unspecified fabrication on generic manual adjustment endpoint
+		return "", false
+	}
+}
+
+func mapInventoryHandlerError(err error) error {
+	if err == nil {
+		return nil
+	}
+	var connErr *connect.Error
+	if errors.As(err, &connErr) {
+		return connErr
+	}
+	switch {
+	case errors.Is(err, ErrMissingTenant):
+		return connect.NewError(connect.CodeUnauthenticated, err)
+	case errors.Is(err, ErrInvalidQuantity),
+		errors.Is(err, ErrInvalidInput):
+		return connect.NewError(connect.CodeInvalidArgument, err)
+	case errors.Is(err, ErrInsufficientStock),
+		errors.Is(err, ErrNegativeSellable),
+		errors.Is(err, ErrReservationConflict),
+		errors.Is(err, ErrReservationExpired),
+		errors.Is(err, ErrDiscrepancy),
+		errors.Is(err, ErrReturnExceedsSold),
+		errors.Is(err, ErrMovementImmutable):
+		return connect.NewError(connect.CodeFailedPrecondition, err)
+	case errors.Is(err, ErrMovementDuplicate):
+		return connect.NewError(connect.CodeAlreadyExists, err)
+	case errors.Is(err, ErrLocationNotFound),
+		errors.Is(err, ErrSkuNotInitialized),
+		errors.Is(err, ErrReservationNotFound):
+		return connect.NewError(connect.CodeNotFound, err)
+	default:
+		return connect.NewError(connect.CodeInternal, err)
+	}
+}
+
 func (h *Handler) CreateStockMovement(ctx context.Context, req *connect.Request[commercev1.InventoryServiceCreateStockMovementRequest]) (*connect.Response[commercev1.InventoryServiceCreateStockMovementResponse], error) {
-	wsID, err := resolveTenantContext(ctx, req.Msg.Context)
+	msg := req.Msg
+	if msg == nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("inventory: request is required"))
+	}
+	wsID, err := authorizeInventoryRPC(ctx, "InventoryService/CreateStockMovement", msg.Context)
 	if err != nil {
 		return nil, err
 	}
-	msg := req.Msg
+	idemKey, err := validateCommandIdempotencyKey(msg.Context, "InventoryService/CreateStockMovement")
+	if err != nil {
+		return nil, err
+	}
+	skuID := strings.TrimSpace(msg.SkuId)
+	locID := strings.TrimSpace(msg.LocationId)
+	if skuID == "" || locID == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("inventory: sku_id and location_id are required"))
+	}
 	if msg.Quantity == 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, ErrInvalidQuantity)
 	}
-
-	movKey := fmt.Sprintf("manual_%s_%s_%d", msg.SkuId, msg.LocationId, h.service.clock().UnixNano())
-	mov := &Movement{
-		WorkspaceID:  wsID,
-		SkuID:        msg.SkuId,
-		LocationID:   msg.LocationId,
-		MovementType: fromProtoMovementType(msg.MovementType),
-		MovementKey:  movKey,
-		Quantity:     msg.Quantity,
-		Reason:       msg.Reason,
+	if len(msg.Reason) > 2000 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("inventory: reason exceeds 2000 characters"))
+	}
+	movType, ok := isAllowedManualAdjustmentType(msg.MovementType)
+	if !ok {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("inventory: movement_type %v is not permitted on manual adjustment RPC", msg.MovementType))
 	}
 
-	pairs := []SkuLocPair{{SkuID: msg.SkuId, LocationID: msg.LocationId}}
+	movKey := fmt.Sprintf("manual:%s", idemKey)
+	now := h.service.clock().UTC()
+	mov := &Movement{
+		MovementID:    newUUID(),
+		WorkspaceID:   wsID,
+		SkuID:         skuID,
+		LocationID:    locID,
+		MovementType:  movType,
+		MovementKey:   movKey,
+		Quantity:      msg.Quantity,
+		ReferenceType: strings.TrimSpace(msg.ReferenceType),
+		ReferenceID:   strings.TrimSpace(msg.ReferenceId),
+		Reason:        msg.Reason,
+		CreatedAt:     now,
+	}
+
+	pairs := []SkuLocPair{{SkuID: skuID, LocationID: locID}}
+	var resultMov *Movement
 	err = h.service.store.AtomicExecute(ctx, wsID, pairs, func(tx StoreTx) error {
-		bal, err := tx.GetBalanceForUpdate(ctx, wsID, msg.SkuId, msg.LocationId)
+		existing, err := tx.FindMovementByKey(ctx, wsID, movKey)
+		if err != nil {
+			return err
+		}
+		if existing != nil {
+			if existing.SkuID != skuID || existing.LocationID != locID || existing.MovementType != movType || existing.Quantity != msg.Quantity {
+				return ErrMovementDuplicate
+			}
+			resultMov = existing
+			return nil
+		}
+
+		bal, err := tx.GetBalanceForUpdate(ctx, wsID, skuID, locID)
 		if err != nil {
 			return err
 		}
 		bal.OnHand += msg.Quantity
-		if bal.OnHand < 0 {
+		if bal.OnHand < 0 || bal.Sellable() < 0 {
 			return ErrInsufficientStock
 		}
+		bal.UpdatedAt = now
 		if err := tx.UpdateBalance(ctx, bal); err != nil {
 			return err
 		}
-		return tx.AppendMovement(ctx, mov)
+		if err := tx.AppendMovement(ctx, mov); err != nil {
+			return err
+		}
+		resultMov = mov
+		return nil
 	})
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		return nil, mapInventoryHandlerError(err)
 	}
 
-	bal, _ := h.service.store.GetBalance(ctx, wsID, msg.SkuId, msg.LocationId)
+	bal, _ := h.service.store.GetBalance(ctx, wsID, skuID, locID)
 	return connect.NewResponse(&commercev1.InventoryServiceCreateStockMovementResponse{
-		Movement:   toProtoMovement(mov),
+		Movement:   toProtoMovement(resultMov),
 		NewBalance: toProtoBalance(bal),
 	}), nil
 }
 
 func (h *Handler) BulkStockIn(ctx context.Context, req *connect.Request[commercev1.InventoryServiceBulkStockInRequest]) (*connect.Response[commercev1.InventoryServiceBulkStockInResponse], error) {
-	return connect.NewResponse(&commercev1.InventoryServiceBulkStockInResponse{}), nil
+	msg := req.Msg
+	if msg == nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("inventory: request is required"))
+	}
+	wsID, err := authorizeInventoryRPC(ctx, "InventoryService/BulkStockIn", msg.Context)
+	if err != nil {
+		return nil, err
+	}
+	idemKey, err := validateCommandIdempotencyKey(msg.Context, "InventoryService/BulkStockIn")
+	if err != nil {
+		return nil, err
+	}
+	locID := strings.TrimSpace(msg.LocationId)
+	if locID == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("inventory: location_id is required"))
+	}
+	if len(msg.Items) == 0 || len(msg.Items) > 100 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("inventory: bulk stock-in items count must be between 1 and 100"))
+	}
+	if len(msg.Reason) > 2000 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("inventory: reason exceeds 2000 characters"))
+	}
+
+	pairs := make([]SkuLocPair, 0, len(msg.Items))
+	for _, item := range msg.Items {
+		if item == nil || strings.TrimSpace(item.SkuId) == "" || item.Quantity <= 0 {
+			return nil, connect.NewError(connect.CodeInvalidArgument, ErrInvalidQuantity)
+		}
+		pairs = append(pairs, SkuLocPair{
+			SkuID:      strings.TrimSpace(item.SkuId),
+			LocationID: locID,
+		})
+	}
+
+	now := h.service.clock().UTC()
+	recorded := make([]*Movement, 0, len(msg.Items))
+	err = h.service.store.AtomicExecute(ctx, wsID, pairs, func(tx StoreTx) error {
+		for idx, item := range msg.Items {
+			skuID := strings.TrimSpace(item.SkuId)
+			movKey := fmt.Sprintf("bulk_stock_in:%s:%d", idemKey, idx)
+			existing, err := tx.FindMovementByKey(ctx, wsID, movKey)
+			if err != nil {
+				return err
+			}
+			if existing != nil {
+				if existing.SkuID != skuID || existing.LocationID != locID || existing.Quantity != item.Quantity {
+					return ErrMovementDuplicate
+				}
+				recorded = append(recorded, existing)
+				continue
+			}
+
+			bal, err := tx.GetBalanceForUpdate(ctx, wsID, skuID, locID)
+			if err != nil {
+				return err
+			}
+			bal.OnHand += item.Quantity
+			bal.UpdatedAt = now
+			if err := tx.UpdateBalance(ctx, bal); err != nil {
+				return err
+			}
+
+			mov := &Movement{
+				MovementID:    newUUID(),
+				WorkspaceID:   wsID,
+				SkuID:         skuID,
+				LocationID:    locID,
+				MovementType:  MovementPurchase,
+				MovementKey:   movKey,
+				Quantity:      item.Quantity,
+				ReferenceType: "bulk_stock_in",
+				ReferenceID:   idemKey,
+				Reason:        msg.Reason,
+				CreatedAt:     now,
+			}
+			if err := tx.AppendMovement(ctx, mov); err != nil {
+				return err
+			}
+			recorded = append(recorded, mov)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, mapInventoryHandlerError(err)
+	}
+
+	protoMovements := make([]*commercev1.StockMovement, 0, len(recorded))
+	for _, m := range recorded {
+		protoMovements = append(protoMovements, toProtoMovement(m))
+	}
+	return connect.NewResponse(&commercev1.InventoryServiceBulkStockInResponse{
+		ProcessedCount: int32(len(protoMovements)),
+		Movements:      protoMovements,
+	}), nil
 }
 
-func (h *Handler) GetAlerts(ctx context.Context, req *connect.Request[commercev1.InventoryServiceGetAlertsRequest]) (*connect.Response[commercev1.InventoryServiceGetAlertsResponse], error) {
-	return connect.NewResponse(&commercev1.InventoryServiceGetAlertsResponse{}), nil
+func (h *Handler) getSkuThreshold(wsID, skuID string) int32 {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	if t, ok := h.thresholds[wsID+":"+skuID]; ok {
+		return t
+	}
+	return 5
+}
+
+func (h *Handler) GetAlerts(ctx context.Context, _ *connect.Request[commercev1.InventoryServiceGetAlertsRequest]) (*connect.Response[commercev1.InventoryServiceGetAlertsResponse], error) {
+	wsID, err := authorizeInventoryRPC(ctx, "InventoryService/GetAlerts", nil)
+	if err != nil {
+		return nil, err
+	}
+	balances, _, err := h.service.store.ListBalances(ctx, wsID, "", 1000, 0)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	var alerts []*commercev1.InventoryAlert
+	for _, b := range balances {
+		sellable := b.OnHand - b.Reserved
+		threshold := h.getSkuThreshold(wsID, b.SkuID)
+		if sellable <= threshold {
+			level := "low_stock"
+			if sellable <= 0 {
+				level = "out_of_stock"
+			}
+			alerts = append(alerts, &commercev1.InventoryAlert{
+				SkuId:        b.SkuID,
+				SkuCode:      b.SkuID,
+				CurrentStock: sellable,
+				Threshold:    threshold,
+				AlertLevel:   level,
+			})
+		}
+	}
+	return connect.NewResponse(&commercev1.InventoryServiceGetAlertsResponse{
+		Alerts: alerts,
+	}), nil
 }
 
 func (h *Handler) UpdateThresholds(ctx context.Context, req *connect.Request[commercev1.InventoryServiceUpdateThresholdsRequest]) (*connect.Response[commercev1.InventoryServiceUpdateThresholdsResponse], error) {
-	return connect.NewResponse(&commercev1.InventoryServiceUpdateThresholdsResponse{}), nil
+	msg := req.Msg
+	if msg == nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("inventory: request is required"))
+	}
+	wsID, err := authorizeInventoryRPC(ctx, "InventoryService/UpdateThresholds", msg.Context)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := validateCommandIdempotencyKey(msg.Context, "InventoryService/UpdateThresholds"); err != nil {
+		return nil, err
+	}
+	skuID := strings.TrimSpace(msg.SkuId)
+	if skuID == "" || msg.LowStockThreshold < 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("inventory: valid sku_id and non-negative low_stock_threshold are required"))
+	}
+	h.mu.Lock()
+	h.thresholds[wsID+":"+skuID] = msg.LowStockThreshold
+	h.mu.Unlock()
+	return connect.NewResponse(&commercev1.InventoryServiceUpdateThresholdsResponse{
+		SkuId:             skuID,
+		LowStockThreshold: msg.LowStockThreshold,
+	}), nil
 }
 
 func (h *Handler) Export(ctx context.Context, req *connect.Request[commercev1.InventoryServiceExportRequest]) (*connect.Response[commercev1.InventoryServiceExportResponse], error) {
+	wsID, err := authorizeInventoryRPC(ctx, "InventoryService/Export", nil)
+	if err != nil {
+		return nil, err
+	}
+	msg := req.Msg
+	format := "csv"
+	locID := ""
+	if msg != nil {
+		locID = strings.TrimSpace(msg.LocationId)
+		if f := strings.ToLower(strings.TrimSpace(msg.Format)); f != "" {
+			if f != "csv" && f != "json" {
+				return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("inventory: unsupported export format %q", msg.Format))
+			}
+			format = f
+		}
+	}
+	balances, _, err := h.service.store.ListBalances(ctx, wsID, locID, 1000, 0)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
 	return connect.NewResponse(&commercev1.InventoryServiceExportResponse{
-		DownloadUrl: "/exports/inventory.csv",
-		RowCount:    0,
+		DownloadUrl: fmt.Sprintf("/exports/inventory.%s", format),
+		RowCount:    int32(len(balances)),
 	}), nil
 }

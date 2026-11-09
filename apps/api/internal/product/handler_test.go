@@ -1717,3 +1717,532 @@ func TestSecondPass_DataF11_UpdateHonorsInventoryEnabledAndClearFields(t *testin
 		t.Fatalf("expected CodeAlreadyExists when replaying Update idempotency_key with different inventory_enabled, got %v", err)
 	}
 }
+
+func TestSecondPass_DataF13_PriceAndCogsCurrencyValidationAndMismatchRejected(t *testing.T) {
+	baseCtx := context.Background()
+	store := product.NewMemoryStore()
+	sink := product.NewMemoryEventSink()
+	svc := product.NewService(store, sink, nil)
+	h := product.NewHandler(svc)
+
+	ctxOwner := product.WithCaller(baseCtx, testWorkspaceID1, "user-owner-1", rbac.RoleOwner)
+
+	// 1. Create with mismatched Product.Currency ("VND") vs BasePrice.Currency ("USD") -> CodeInvalidArgument
+	if _, err := h.Create(ctxOwner, connect.NewRequest(&commercev1.CreateRequest{
+		Context:     testCmdCtx("", "idem-f13-create-mismatch-base"),
+		ProductType: commercev1.ProductType_PRODUCT_TYPE_PHYSICAL,
+		Title:       "Mismatched BasePrice Currency",
+		BasePrice:   &commonv1.Money{Amount: "100.000000", Currency: "USD"},
+		Currency:    "VND",
+	})); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("F13 regression: expected CodeInvalidArgument when Create Currency=VND but BasePrice.Currency=USD, got %v", err)
+	}
+
+	// 2. Create with mismatched Cogs.Currency ("EUR") -> CodeInvalidArgument
+	if _, err := h.Create(ctxOwner, connect.NewRequest(&commercev1.CreateRequest{
+		Context:     testCmdCtx("", "idem-f13-create-mismatch-cogs"),
+		ProductType: commercev1.ProductType_PRODUCT_TYPE_PHYSICAL,
+		Title:       "Mismatched COGS Currency",
+		BasePrice:   &commonv1.Money{Amount: "100000.000000", Currency: "VND"},
+		Cogs:        &commonv1.Money{Amount: "40.000000", Currency: "EUR"},
+		Currency:    "VND",
+	})); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("F13 regression: expected CodeInvalidArgument when Create Currency=VND but Cogs.Currency=EUR, got %v", err)
+	}
+
+	// 3. Create with invalid SKU PriceOverride (bad decimal or mismatched currency) -> CodeInvalidArgument
+	if _, err := h.Create(ctxOwner, connect.NewRequest(&commercev1.CreateRequest{
+		Context:     testCmdCtx("", "idem-f13-create-bad-sku-price"),
+		ProductType: commercev1.ProductType_PRODUCT_TYPE_PHYSICAL,
+		Title:       "Invalid SKU Override",
+		BasePrice:   &commonv1.Money{Amount: "100000.000000", Currency: "VND"},
+		Currency:    "VND",
+		InitialSkus: []*commercev1.ProductSku{
+			{
+				SkuCode:       "SKU-BAD-CURR",
+				PriceOverride: &commonv1.Money{Amount: "10.000000", Currency: "USD"},
+			},
+		},
+	})); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("F13 regression: expected CodeInvalidArgument for SKU PriceOverride currency mismatch, got %v", err)
+	}
+
+	if _, err := h.Create(ctxOwner, connect.NewRequest(&commercev1.CreateRequest{
+		Context:     testCmdCtx("", "idem-f13-create-bad-sku-dec"),
+		ProductType: commercev1.ProductType_PRODUCT_TYPE_PHYSICAL,
+		Title:       "Malformed SKU Override Decimal",
+		BasePrice:   &commonv1.Money{Amount: "100000.000000", Currency: "VND"},
+		Currency:    "VND",
+		InitialSkus: []*commercev1.ProductSku{
+			{
+				SkuCode:       "SKU-BAD-DEC",
+				PriceOverride: &commonv1.Money{Amount: "not-a-number", Currency: "VND"},
+			},
+		},
+	})); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("F13 regression: expected CodeInvalidArgument for malformed SKU PriceOverride amount, got %v", err)
+	}
+
+	// 4. Create valid VND product
+	created, err := h.Create(ctxOwner, connect.NewRequest(&commercev1.CreateRequest{
+		Context:     testCmdCtx("", "idem-f13-create-valid"),
+		ProductType: commercev1.ProductType_PRODUCT_TYPE_PHYSICAL,
+		Title:       "Valid VND Product",
+		BasePrice:   &commonv1.Money{Amount: "100000.000000", Currency: "VND"},
+		Cogs:        &commonv1.Money{Amount: "40000.000000", Currency: "VND"},
+		Currency:    "VND",
+	}))
+	if err != nil {
+		t.Fatalf("Create valid product failed: %v", err)
+	}
+	pid := created.Msg.Product.ProductId
+
+	// 5. Update BasePrice with USD on a VND product -> must fail with CodeInvalidArgument and NOT overwrite price!
+	if _, err := h.Update(ctxOwner, connect.NewRequest(&commercev1.UpdateRequest{
+		Context:   testCmdCtx("", "idem-f13-update-usd-base"),
+		ProductId: pid,
+		BasePrice: &commonv1.Money{Amount: "10.000000", Currency: "USD"},
+	})); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("F13 regression: expected CodeInvalidArgument when updating VND product with USD BasePrice, got %v", err)
+	}
+
+	// 6. Update Cogs with USD on a VND product -> must fail with CodeInvalidArgument!
+	if _, err := h.Update(ctxOwner, connect.NewRequest(&commercev1.UpdateRequest{
+		Context:   testCmdCtx("", "idem-f13-update-usd-cogs"),
+		ProductId: pid,
+		Cogs:      &commonv1.Money{Amount: "5.000000", Currency: "USD"},
+	})); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("F13 regression: expected CodeInvalidArgument when updating VND product with USD Cogs, got %v", err)
+	}
+
+	// 7. Update BasePrice with empty Currency -> must fail with CodeInvalidArgument!
+	if _, err := h.Update(ctxOwner, connect.NewRequest(&commercev1.UpdateRequest{
+		Context:   testCmdCtx("", "idem-f13-update-empty-curr"),
+		ProductId: pid,
+		BasePrice: &commonv1.Money{Amount: "120000.000000", Currency: ""},
+	})); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("F13 regression: expected CodeInvalidArgument when updating BasePrice with empty currency, got %v", err)
+	}
+
+	// Verify stored product still has original 100000 VND BasePrice and 40000 VND Cogs
+	fetched, err := h.Get(ctxOwner, connect.NewRequest(&commercev1.GetRequest{ProductId: pid}))
+	if err != nil {
+		t.Fatalf("Get failed: %v", err)
+	}
+	if fetched.Msg.Product.BasePrice.Amount != "100000" || fetched.Msg.Product.BasePrice.Currency != "VND" {
+		t.Fatalf("F13 regression: stored BasePrice corrupted to %+v", fetched.Msg.Product.BasePrice)
+	}
+	if fetched.Msg.Product.Cogs.Amount != "40000" || fetched.Msg.Product.Cogs.Currency != "VND" {
+		t.Fatalf("F13 regression: stored Cogs corrupted to %+v", fetched.Msg.Product.Cogs)
+	}
+}
+
+func TestSecondPass_DataF15_LongSearchAndCategoryFilterCursorRoundTripWithin512Limit(t *testing.T) {
+	baseCtx := context.Background()
+	store := product.NewMemoryStore()
+	sink := product.NewMemoryEventSink()
+	currentTime := time.Date(2026, 11, 7, 15, 0, 0, 0, time.UTC)
+	svc := product.NewService(store, sink, func() time.Time { return currentTime })
+	h := product.NewHandler(svc)
+
+	ctxOwner := product.WithCaller(baseCtx, testWorkspaceID1, "user-owner-1", rbac.RoleOwner)
+
+	longCategory := "Danh-Mục-Sản-Phẩm-Cao-Cấp-" + strings.Repeat("ChínhHãng", 20)
+	longSearch := "Kem dưỡng ẩm chuyên sâu phục hồi da ban đêm " + strings.Repeat("UltraRepair", 16)
+
+	for i := 1; i <= 2; i++ {
+		currentTime = currentTime.Add(time.Second)
+		if _, err := h.Create(ctxOwner, connect.NewRequest(&commercev1.CreateRequest{
+			Context:     testCmdCtx("", fmt.Sprintf("idem-f15-create-%d", i)),
+			ProductType: commercev1.ProductType_PRODUCT_TYPE_PHYSICAL,
+			Title:       fmt.Sprintf("%s #%d", longSearch, i),
+			Category:    longCategory,
+			BasePrice:   &commonv1.Money{Amount: "150000.000000", Currency: "VND"},
+			Currency:    "VND",
+		})); err != nil {
+			t.Fatalf("Create %d failed: %v", i, err)
+		}
+	}
+
+	// 1. List page 1 with long CategoryFilter and SearchQuery
+	listP1, err := h.List(ctxOwner, connect.NewRequest(&commercev1.ListRequest{
+		Pagination:     &commonv1.Pagination{PageSize: 1},
+		CategoryFilter: longCategory,
+		SearchQuery:    longSearch,
+	}))
+	if err != nil {
+		t.Fatalf("List page 1 failed: %v", err)
+	}
+	if !listP1.Msg.Pagination.GetHasMore() {
+		t.Fatal("expected has_more=true on List page 1")
+	}
+	listToken := listP1.Msg.Pagination.GetNextPageToken()
+	if len(listToken) > 512 {
+		t.Fatalf("F15 regression: server emitted List next_page_token of length %d (> 512 limit)", len(listToken))
+	}
+
+	// List page 2 must decode token cleanly and return second product
+	listP2, err := h.List(ctxOwner, connect.NewRequest(&commercev1.ListRequest{
+		Pagination:     &commonv1.Pagination{PageSize: 1, PageToken: listToken},
+		CategoryFilter: longCategory,
+		SearchQuery:    longSearch,
+	}))
+	if err != nil {
+		t.Fatalf("F15 regression: List page 2 rejected server-emitted token (len=%d): %v", len(listToken), err)
+	}
+	if len(listP2.Msg.Products) != 1 || listP2.Msg.Products[0].ProductId == listP1.Msg.Products[0].ProductId {
+		t.Fatalf("unexpected List page 2 products: %+v", listP2.Msg.Products)
+	}
+
+	// Changing SearchQuery by 1 char with same token must fail closed with CodeInvalidArgument
+	if _, err := h.List(ctxOwner, connect.NewRequest(&commercev1.ListRequest{
+		Pagination:     &commonv1.Pagination{PageSize: 1, PageToken: listToken},
+		CategoryFilter: longCategory,
+		SearchQuery:    longSearch + "X",
+	})); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("expected CodeInvalidArgument when reusing List cursor with modified SearchQuery, got %v", err)
+	}
+
+	// 2. Search page 1 & page 2 with long Query
+	searchP1, err := h.Search(ctxOwner, connect.NewRequest(&commercev1.SearchRequest{
+		Query:      longSearch,
+		Pagination: &commonv1.Pagination{PageSize: 1},
+	}))
+	if err != nil {
+		t.Fatalf("Search page 1 failed: %v", err)
+	}
+	searchToken := searchP1.Msg.Pagination.GetNextPageToken()
+	if len(searchToken) > 512 {
+		t.Fatalf("F15 regression: server emitted Search next_page_token of length %d (> 512 limit)", len(searchToken))
+	}
+	searchP2, err := h.Search(ctxOwner, connect.NewRequest(&commercev1.SearchRequest{
+		Query:      longSearch,
+		Pagination: &commonv1.Pagination{PageSize: 1, PageToken: searchToken},
+	}))
+	if err != nil {
+		t.Fatalf("F15 regression: Search page 2 rejected server-emitted token (len=%d): %v", len(searchToken), err)
+	}
+	if len(searchP2.Msg.Products) != 1 {
+		t.Fatalf("expected 1 product on Search page 2, got %d", len(searchP2.Msg.Products))
+	}
+}
+
+func TestSecondPass_DataF1_F6_F7_F8_F11_EdgeCaseRegressions(t *testing.T) {
+	baseCtx := context.Background()
+	store := product.NewMemoryStore()
+	sink := product.NewMemoryEventSink()
+	// Use a simulated clock in 2020 (well in the past relative to wall clock) to verify F1 clock consistency
+	simNow := time.Date(2020, 5, 10, 12, 0, 0, 0, time.UTC)
+	svc := product.NewService(store, sink, func() time.Time { return simNow })
+	h := product.NewHandler(svc)
+
+	ctxOwner := product.WithCaller(baseCtx, testWorkspaceID1, "user-owner-1", rbac.RoleOwner)
+
+	// --- F1: Idempotency record must respect Service clock, not wall-clock time.Now() ---
+	p1Resp, err := h.Create(ctxOwner, connect.NewRequest(&commercev1.CreateRequest{
+		Context:     testCmdCtx("", "idem-f1-simclock-p1"),
+		ProductType: commercev1.ProductType_PRODUCT_TYPE_PHYSICAL,
+		Title:       "Product A",
+		Category:    "Skincare",
+		BasePrice:   &commonv1.Money{Amount: "100.000000", Currency: "USD"},
+		Currency:    "USD",
+	}))
+	if err != nil {
+		t.Fatalf("Create p1 failed: %v", err)
+	}
+	simNow = simNow.Add(5 * time.Minute)
+	p1Replay, err := h.Create(ctxOwner, connect.NewRequest(&commercev1.CreateRequest{
+		Context:     testCmdCtx("", "idem-f1-simclock-p1"),
+		ProductType: commercev1.ProductType_PRODUCT_TYPE_PHYSICAL,
+		Title:       "Product A",
+		Category:    "Skincare",
+		BasePrice:   &commonv1.Money{Amount: "100.000000", Currency: "USD"},
+		Currency:    "USD",
+	}))
+	if err != nil {
+		t.Fatalf("Replay p1 failed: %v", err)
+	}
+	if p1Replay.Msg.Product.ProductId != p1Resp.Msg.Product.ProductId {
+		t.Fatalf("F1 clock regression: idempotency replay created duplicate product %s != %s",
+			p1Replay.Msg.Product.ProductId, p1Resp.Msg.Product.ProductId)
+	}
+
+	p2Resp, err := h.Create(ctxOwner, connect.NewRequest(&commercev1.CreateRequest{
+		Context:     testCmdCtx("", "idem-f1-simclock-p2"),
+		ProductType: commercev1.ProductType_PRODUCT_TYPE_PHYSICAL,
+		Title:       "Product B",
+		Category:    "Skincare",
+		BasePrice:   &commonv1.Money{Amount: "100.000000", Currency: "USD"},
+		Currency:    "USD",
+	}))
+	if err != nil {
+		t.Fatalf("Create p2 failed: %v", err)
+	}
+	p3Resp, err := h.Create(ctxOwner, connect.NewRequest(&commercev1.CreateRequest{
+		Context:     testCmdCtx("", "idem-f1-simclock-p3"),
+		ProductType: commercev1.ProductType_PRODUCT_TYPE_PHYSICAL,
+		Title:       "Product C",
+		Category:    "Skincare",
+		BasePrice:   &commonv1.Money{Amount: "100.000000", Currency: "USD"},
+		Currency:    "USD",
+	}))
+	if err != nil {
+		t.Fatalf("Create p3 failed: %v", err)
+	}
+
+	p1ID := p1Resp.Msg.Product.ProductId
+	p2ID := p2Resp.Msg.Product.ProductId
+	p3ID := p3Resp.Msg.Product.ProductId
+
+	dec20, _ := tenantdb.ParseExactDecimal("20.000000")
+	dec100, _ := tenantdb.ParseExactDecimal("100.000000")
+	dec140, _ := tenantdb.ParseExactDecimal("140.000000")
+	dec250, _ := tenantdb.ParseExactDecimal("250.000000")
+	dec300, _ := tenantdb.ParseExactDecimal("300.000000")
+
+	// --- F6: Multi-product order where Order.Amount (250) > sum of line gross (200) + 3-way remainder ---
+	store.SeedOrder(product.AnalyticsOrder{
+		OrderID:        "ord-f6-shipping",
+		WorkspaceID:    testWorkspaceID1,
+		LifecycleState: "delivered",
+		Currency:       "USD",
+		Amount:         dec250, // includes 50 shipping
+		OrderedAt:      simNow.Add(-24 * time.Hour),
+		Items: []product.AnalyticsOrderLine{
+			{ProductID: p1ID, Quantity: 1, UnitPrice: &dec100, Total: &dec100},
+			{ProductID: p2ID, Quantity: 1, UnitPrice: &dec100, Total: &dec100},
+		},
+	})
+	store.SeedRefund(product.AnalyticsRefund{
+		RefundID:       "ref-f6-shipping-20",
+		WorkspaceID:    testWorkspaceID1,
+		OrderID:        "ord-f6-shipping",
+		LifecycleState: "completed",
+		Currency:       "USD",
+		Amount:         dec20,
+		CreatedAt:      simNow.Add(-12 * time.Hour),
+	})
+
+	s1, err := h.GetSalesStats(ctxOwner, connect.NewRequest(&commercev1.GetSalesStatsRequest{ProductId: p1ID}))
+	if err != nil {
+		t.Fatalf("GetSalesStats p1 failed: %v", err)
+	}
+	s2, err := h.GetSalesStats(ctxOwner, connect.NewRequest(&commercev1.GetSalesStatsRequest{ProductId: p2ID}))
+	if err != nil {
+		t.Fatalf("GetSalesStats p2 failed: %v", err)
+	}
+	if s1.Msg.NetSales.Amount != "90" || s2.Msg.NetSales.Amount != "90" {
+		t.Fatalf("F6 shipping denominator regression: expected NetSales 90 + 90 = 180, got p1=%s p2=%s",
+			s1.Msg.NetSales.Amount, s2.Msg.NetSales.Amount)
+	}
+
+	// 3-way split of 100.000000 refund across 3 products of 100.000000 each -> sum of NetSales must be 200.000000
+	store.SeedOrder(product.AnalyticsOrder{
+		OrderID:        "ord-f6-threeway",
+		WorkspaceID:    testWorkspaceID1,
+		LifecycleState: "delivered",
+		Currency:       "USD",
+		Amount:         dec300,
+		OrderedAt:      simNow.Add(-20 * time.Hour),
+		Items: []product.AnalyticsOrderLine{
+			{ProductID: p1ID, Quantity: 1, UnitPrice: &dec100, Total: &dec100},
+			{ProductID: p2ID, Quantity: 1, UnitPrice: &dec100, Total: &dec100},
+			{ProductID: p3ID, Quantity: 1, UnitPrice: &dec100, Total: &dec100},
+		},
+	})
+	store.SeedRefund(product.AnalyticsRefund{
+		RefundID:       "ref-f6-threeway-100",
+		WorkspaceID:    testWorkspaceID1,
+		OrderID:        "ord-f6-threeway",
+		LifecycleState: "completed",
+		Currency:       "USD",
+		Amount:         dec100,
+		CreatedAt:      simNow.Add(-10 * time.Hour),
+	})
+
+	s1After, _ := h.GetSalesStats(ctxOwner, connect.NewRequest(&commercev1.GetSalesStatsRequest{ProductId: p1ID}))
+	s2After, _ := h.GetSalesStats(ctxOwner, connect.NewRequest(&commercev1.GetSalesStatsRequest{ProductId: p2ID}))
+	s3After, _ := h.GetSalesStats(ctxOwner, connect.NewRequest(&commercev1.GetSalesStatsRequest{ProductId: p3ID}))
+	// Total NetSales across p1, p2, p3 should be 180 (from ord 1) + 200 (from ord 2) = 380.000000
+	net1, _ := tenantdb.ParseExactDecimal(s1After.Msg.NetSales.Amount)
+	net2, _ := tenantdb.ParseExactDecimal(s2After.Msg.NetSales.Amount)
+	net3, _ := tenantdb.ParseExactDecimal(s3After.Msg.NetSales.Amount)
+	sum12, _ := net1.Add(net2)
+	totalNet, _ := sum12.Add(net3)
+	if totalNet.String() != "380" {
+		t.Fatalf("F6 3-way remainder regression: expected total NetSales across products = 380, got %s (%s + %s + %s)",
+			totalNet.String(), net1.String(), net2.String(), net3.String())
+	}
+
+	// --- F8: Zero OrderedAt and future OrderedAt must be excluded from period stats and chart ---
+	store.SeedOrder(product.AnalyticsOrder{
+		OrderID:        "ord-f8-zero-time",
+		WorkspaceID:    testWorkspaceID1,
+		LifecycleState: "delivered",
+		Currency:       "USD",
+		Amount:         dec100,
+		OrderedAt:      time.Time{}, // zero timestamp!
+		Items: []product.AnalyticsOrderLine{
+			{ProductID: p3ID, Quantity: 5, UnitPrice: &dec20, Total: &dec100},
+		},
+	})
+	store.SeedOrder(product.AnalyticsOrder{
+		OrderID:        "ord-f8-future-time",
+		WorkspaceID:    testWorkspaceID1,
+		LifecycleState: "delivered",
+		Currency:       "USD",
+		Amount:         dec140,
+		OrderedAt:      simNow.Add(48 * time.Hour), // future timestamp!
+		Items: []product.AnalyticsOrderLine{
+			{ProductID: p3ID, Quantity: 7, UnitPrice: &dec20, Total: &dec140},
+		},
+	})
+
+	s3Period7d, err := h.GetSalesStats(ctxOwner, connect.NewRequest(&commercev1.GetSalesStatsRequest{
+		ProductId: p3ID,
+		Period:    "7d",
+	}))
+	if err != nil {
+		t.Fatalf("GetSalesStats p3 7d failed: %v", err)
+	}
+	if s3Period7d.Msg.UnitsSold != 1 {
+		t.Fatalf("F8 regression: zero/future timestamp order leaked into 7d period stats: units=%d (want 1)", s3Period7d.Msg.UnitsSold)
+	}
+
+	chartP3, err := h.GetSalesChart(ctxOwner, connect.NewRequest(&commercev1.GetSalesChartRequest{
+		ProductId: p3ID,
+		Interval:  "7d",
+	}))
+	if err != nil {
+		t.Fatalf("GetSalesChart p3 7d failed: %v", err)
+	}
+	if len(chartP3.Msg.DataPoints) != 1 || chartP3.Msg.DataPoints[0].Amount.Amount != "100" {
+		t.Fatalf("F8 regression: zero/future timestamp order leaked into 7d sales chart: points=%+v (want 1 point of 100)", chartP3.Msg.DataPoints)
+	}
+
+	// Invalid chart interval -> CodeInvalidArgument
+	if _, err := h.GetSalesChart(ctxOwner, connect.NewRequest(&commercev1.GetSalesChartRequest{
+		ProductId: p3ID,
+		Interval:  "invalid_interval",
+	})); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("F8 regression: expected CodeInvalidArgument for invalid chart interval, got %v", err)
+	}
+
+	// --- F11: Malformed metadata_json and invalid CatalogStatus in Update must fail closed ---
+	badMeta := "{malformed-json"
+	if _, err := h.Update(ctxOwner, connect.NewRequest(&commercev1.UpdateRequest{
+		Context:      testCmdCtx("", "idem-f11-bad-meta"),
+		ProductId:    p1ID,
+		MetadataJson: &badMeta,
+	})); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("F11 regression: expected CodeInvalidArgument for malformed metadata_json in Update, got %v", err)
+	}
+
+	unspecStatus := commercev1.CatalogStatus_CATALOG_STATUS_UNSPECIFIED
+	if _, err := h.Update(ctxOwner, connect.NewRequest(&commercev1.UpdateRequest{
+		Context:       testCmdCtx("", "idem-f11-unspec-status"),
+		ProductId:     p1ID,
+		CatalogStatus: &unspecStatus,
+	})); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("F11 regression: expected CodeInvalidArgument for explicit CATALOG_STATUS_UNSPECIFIED in Update, got %v", err)
+	}
+}
+
+func TestSecondPass_DataF7_MixedCurrencyRankAndInvalidSameCurrencyFXRejected(t *testing.T) {
+	baseCtx := context.Background()
+	store := product.NewMemoryStore()
+	sink := product.NewMemoryEventSink()
+	now := time.Date(2026, 11, 7, 16, 0, 0, 0, time.UTC)
+	svc := product.NewService(store, sink, func() time.Time { return now })
+	h := product.NewHandler(svc)
+
+	ctxOwner := product.WithCaller(baseCtx, testWorkspaceID1, "user-owner-1", rbac.RoleOwner)
+
+	p1, err := h.Create(ctxOwner, connect.NewRequest(&commercev1.CreateRequest{
+		Context:     testCmdCtx("", "idem-f7-edge-p1"),
+		ProductType: commercev1.ProductType_PRODUCT_TYPE_PHYSICAL,
+		Title:       "VND Product 1",
+		Category:    "Audio",
+		BasePrice:   &commonv1.Money{Amount: "500000.000000", Currency: "VND"},
+		Currency:    "VND",
+	}))
+	if err != nil {
+		t.Fatalf("Create p1 failed: %v", err)
+	}
+	p2, err := h.Create(ctxOwner, connect.NewRequest(&commercev1.CreateRequest{
+		Context:     testCmdCtx("", "idem-f7-edge-p2"),
+		ProductType: commercev1.ProductType_PRODUCT_TYPE_PHYSICAL,
+		Title:       "VND Product 2",
+		Category:    "Audio",
+		BasePrice:   &commonv1.Money{Amount: "500000.000000", Currency: "VND"},
+		Currency:    "VND",
+	}))
+	if err != nil {
+		t.Fatalf("Create p2 failed: %v", err)
+	}
+
+	p1ID := p1.Msg.Product.ProductId
+	p2ID := p2.Msg.Product.ProductId
+	dec500k, _ := tenantdb.ParseExactDecimal("500000.000000")
+	dec1M, _ := tenantdb.ParseExactDecimal("1000000.000000")
+
+	// Order 1: Same-currency VND order for P1 (no FX snapshot)
+	store.SeedOrder(product.AnalyticsOrder{
+		OrderID:        "ord-f7-edge-vnd-native",
+		WorkspaceID:    testWorkspaceID1,
+		LifecycleState: "delivered",
+		Currency:       "VND",
+		Amount:         dec500k,
+		OrderedAt:      now.Add(-2 * time.Hour),
+		Items: []product.AnalyticsOrderLine{
+			{ProductID: p1ID, Quantity: 1, UnitPrice: &dec500k, Total: &dec500k},
+		},
+	})
+	// Order 2: VND order for P2 that happens to carry an FX snapshot with BaseCurrency="USD" (rate 0.000040)
+	store.SeedOrder(product.AnalyticsOrder{
+		OrderID:        "ord-f7-edge-vnd-with-usd-base-snap",
+		WorkspaceID:    testWorkspaceID1,
+		LifecycleState: "delivered",
+		Currency:       "VND",
+		Amount:         dec1M,
+		OrderedAt:      now.Add(-1 * time.Hour),
+		ExchangeRateSnapshot: &product.ExchangeRateSnapshot{
+			BaseCurrency:  "USD",
+			QuoteCurrency: "VND",
+			RateToBase:    "0.000040",
+		},
+		Items: []product.AnalyticsOrderLine{
+			{ProductID: p2ID, Quantity: 2, UnitPrice: &dec500k, Total: &dec1M},
+		},
+	})
+
+	// GetRank for P1 (VND) must succeed because both Order 1 and Order 2 are in VND (target.Currency="VND")!
+	rank1, err := h.GetRank(ctxOwner, connect.NewRequest(&commercev1.GetRankRequest{ProductId: p1ID}))
+	if err != nil {
+		t.Fatalf("F7 rank regression: GetRank failed when another VND order had BaseCurrency=USD snapshot: %v", err)
+	}
+	if rank1.Msg.RankInWorkspace != 2 {
+		t.Fatalf("expected P1 rank=2 (500k vs 1M VND), got %d", rank1.Msg.RankInWorkspace)
+	}
+
+	// Same-currency order with corrupted ExchangeRateSnapshot (RateToBase="2.5" instead of "1") must fail closed!
+	store.SeedOrder(product.AnalyticsOrder{
+		OrderID:        "ord-f7-edge-corrupt-same-curr-fx",
+		WorkspaceID:    testWorkspaceID1,
+		LifecycleState: "delivered",
+		Currency:       "VND",
+		Amount:         dec500k,
+		OrderedAt:      now.Add(-30 * time.Minute),
+		ExchangeRateSnapshot: &product.ExchangeRateSnapshot{
+			BaseCurrency:  "VND",
+			QuoteCurrency: "VND",
+			RateToBase:    "2.500000", // invalid non-unit rate for same currency!
+		},
+		Items: []product.AnalyticsOrderLine{
+			{ProductID: p1ID, Quantity: 1, UnitPrice: &dec500k, Total: &dec500k},
+		},
+	})
+	if _, err := h.GetSalesStats(ctxOwner, connect.NewRequest(&commercev1.GetSalesStatsRequest{ProductId: p1ID})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("F7 regression: expected CodeFailedPrecondition for same-currency order with RateToBase=2.5, got %v", err)
+	}
+}
