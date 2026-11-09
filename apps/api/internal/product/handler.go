@@ -304,6 +304,8 @@ func executeIdempotentMutation[T any](
 	}
 	defer rollbackTx()
 
+	txStore := h.service.txStore(txCtx)
+
 	hashPayload := reqPayload
 	if cmdCtx != nil && cmdCtx.ExpectedUpdatedAt != nil {
 		hashPayload = map[string]any{
@@ -312,7 +314,7 @@ func executeIdempotentMutation[T any](
 		}
 	}
 	reqHash := hashCommandPayload(rpcName, hashPayload)
-	existing, err := h.service.store.GetIdempotencyRecord(txCtx, wsID, idemKey)
+	existing, err := txStore.GetIdempotencyRecord(txCtx, wsID, idemKey)
 	if err != nil {
 		return nil, mapError(err)
 	}
@@ -351,7 +353,7 @@ func executeIdempotentMutation[T any](
 			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("marshal idempotency response: %w", err))
 		}
 	}
-	if err := h.service.store.SaveIdempotencyRecord(txCtx, IdempotencyRecord{
+	if err := txStore.SaveIdempotencyRecord(txCtx, IdempotencyRecord{
 		WorkspaceID:    wsID,
 		IdempotencyKey: idemKey,
 		RequestHash:    reqHash,
@@ -360,6 +362,19 @@ func executeIdempotentMutation[T any](
 		CreatedAt:      now,
 		ExpiresAt:      now.Add(7 * 24 * time.Hour),
 	}); err != nil {
+		var alreadyCommitted *idempotencyAlreadyCommittedError
+		if errors.As(err, &alreadyCommitted) {
+			rollbackTx()
+			replayMsg := newResp()
+			if len(alreadyCommitted.Record.ResponseBody) > 0 {
+				if pm, ok := any(replayMsg).(proto.Message); ok {
+					if uErr := protojson.Unmarshal(alreadyCommitted.Record.ResponseBody, pm); uErr != nil {
+						return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("unmarshal cached idempotency response: %w", uErr))
+					}
+				}
+			}
+			return connect.NewResponse(replayMsg), nil
+		}
 		return nil, mapError(err)
 	}
 

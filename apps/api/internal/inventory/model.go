@@ -4,9 +4,37 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 )
+
+func checkedAddInt32(a, b int32) (int32, error) {
+	sum := int64(a) + int64(b)
+	if sum < math.MinInt32 || sum > math.MaxInt32 {
+		return 0, ErrInvalidQuantity
+	}
+	return int32(sum), nil
+}
+
+func checkedAddPositiveInt32(a, b int32) (int32, error) {
+	if a <= 0 || b <= 0 {
+		return 0, ErrInvalidQuantity
+	}
+	sum := int64(a) + int64(b)
+	if sum <= 0 || sum > math.MaxInt32 {
+		return 0, ErrInvalidQuantity
+	}
+	return int32(sum), nil
+}
+
+func checkedSubInt32(a, b int32) (int32, error) {
+	diff := int64(a) - int64(b)
+	if diff < math.MinInt32 || diff > math.MaxInt32 {
+		return 0, ErrInvalidQuantity
+	}
+	return int32(diff), nil
+}
 
 func newUUID() string {
 	var b [16]byte
@@ -87,7 +115,14 @@ type Balance struct {
 
 // Sellable returns the current available units that can be promised to local checkout.
 func (b *Balance) Sellable() int32 {
-	return b.OnHand - b.Reserved
+	diff := int64(b.OnHand) - int64(b.Reserved)
+	if diff < math.MinInt32 {
+		return math.MinInt32
+	}
+	if diff > math.MaxInt32 {
+		return math.MaxInt32
+	}
+	return int32(diff)
 }
 
 // Movement represents an immutable stock movement ledger entry (§19.9H).

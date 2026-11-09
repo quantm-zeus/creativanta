@@ -112,6 +112,10 @@ func (s *Service) lockIdempotency(workspaceID, idempotencyKey string) func() {
 	return mu.Unlock
 }
 
+func (s *Service) txStore(ctx context.Context) Store {
+	return storeFromContext(ctx, s.store)
+}
+
 func (s *Service) emitEvent(ctx context.Context, evt OutboxEvent) error {
 	if buf, ok := txEventBufferFromContext(ctx); ok {
 		buf.mu.Lock()
@@ -181,7 +185,8 @@ func (s *Service) CreateProduct(ctx context.Context, p *Product) (*Product, erro
 		}
 	}
 
-	if err := s.store.CreateProduct(ctx, p); err != nil {
+	st := s.txStore(ctx)
+	if err := st.CreateProduct(ctx, p); err != nil {
 		return nil, err
 	}
 
@@ -200,14 +205,14 @@ func (s *Service) CreateProduct(ctx context.Context, p *Product) (*Product, erro
 		CreatedAt:     now,
 	})
 
-	return s.store.GetProduct(ctx, p.WorkspaceID, p.ProductID)
+	return st.GetProduct(ctx, p.WorkspaceID, p.ProductID)
 }
 
 func (s *Service) GetProduct(ctx context.Context, workspaceID, productID string) (*Product, error) {
 	if strings.TrimSpace(workspaceID) == "" {
 		return nil, ErrMissingTenant
 	}
-	return s.store.GetProduct(ctx, workspaceID, productID)
+	return s.txStore(ctx).GetProduct(ctx, workspaceID, productID)
 }
 
 func (s *Service) ListProducts(ctx context.Context, workspaceID string, filter ListFilter, limit, offset int) ([]*Product, int64, error) {
@@ -223,7 +228,7 @@ func (s *Service) ListProducts(ctx context.Context, workspaceID string, filter L
 	if offset < 0 {
 		offset = 0
 	}
-	return s.store.ListProducts(ctx, workspaceID, filter, limit, offset)
+	return s.txStore(ctx).ListProducts(ctx, workspaceID, filter, limit, offset)
 }
 
 func (s *Service) UpdateProduct(ctx context.Context, p *Product) (*Product, error) {
@@ -237,7 +242,8 @@ func (s *Service) UpdateProduct(ctx context.Context, p *Product) (*Product, erro
 	unlock := s.lockProduct(p.WorkspaceID, p.ProductID)
 	defer unlock()
 
-	existing, err := s.store.GetProduct(ctx, p.WorkspaceID, p.ProductID)
+	st := s.txStore(ctx)
+	existing, err := st.GetProduct(ctx, p.WorkspaceID, p.ProductID)
 	if err != nil {
 		return nil, err
 	}
@@ -298,9 +304,16 @@ func (s *Service) UpdateProduct(ctx context.Context, p *Product) (*Product, erro
 	if len(p.Images) > 0 {
 		existing.Images = p.Images
 	}
+	var existingSearchIndex any
+	if existing.Metadata != nil {
+		existingSearchIndex = existing.Metadata["search_index"]
+	}
 	if p.HasPatchMetadata {
 		if len(p.PatchMetadata) == 0 {
 			existing.Metadata = make(map[string]any)
+			if existingSearchIndex != nil {
+				existing.Metadata["search_index"] = existingSearchIndex
+			}
 		} else {
 			if existing.Metadata == nil {
 				existing.Metadata = make(map[string]any)
@@ -329,7 +342,7 @@ func (s *Service) UpdateProduct(ctx context.Context, p *Product) (*Product, erro
 		return nil, err
 	}
 
-	if err := s.store.UpdateProduct(ctx, existing); err != nil {
+	if err := st.UpdateProduct(ctx, existing); err != nil {
 		return nil, err
 	}
 
@@ -351,7 +364,7 @@ func (s *Service) UpdateProduct(ctx context.Context, p *Product) (*Product, erro
 		})
 	}
 
-	return s.store.GetProduct(ctx, p.WorkspaceID, p.ProductID)
+	return st.GetProduct(ctx, p.WorkspaceID, p.ProductID)
 }
 
 func (s *Service) DeleteProduct(ctx context.Context, workspaceID, productID string) error {
@@ -360,7 +373,7 @@ func (s *Service) DeleteProduct(ctx context.Context, workspaceID, productID stri
 	}
 	unlock := s.lockProduct(workspaceID, productID)
 	defer unlock()
-	return s.store.DeleteProduct(ctx, workspaceID, productID)
+	return s.txStore(ctx).DeleteProduct(ctx, workspaceID, productID)
 }
 
 func (s *Service) ArchiveProduct(ctx context.Context, workspaceID, productID string) (*Product, error) {
@@ -370,7 +383,8 @@ func (s *Service) ArchiveProduct(ctx context.Context, workspaceID, productID str
 	unlock := s.lockProduct(workspaceID, productID)
 	defer unlock()
 
-	existing, err := s.store.GetProduct(ctx, workspaceID, productID)
+	st := s.txStore(ctx)
+	existing, err := st.GetProduct(ctx, workspaceID, productID)
 	if err != nil {
 		return nil, err
 	}
@@ -379,7 +393,7 @@ func (s *Service) ArchiveProduct(ctx context.Context, workspaceID, productID str
 		ctx = WithExpectedUpdatedAt(ctx, &prevUpdated)
 	}
 	oldStatus := existing.CatalogStatus
-	if err := s.store.ArchiveProduct(ctx, workspaceID, productID); err != nil {
+	if err := st.ArchiveProduct(ctx, workspaceID, productID); err != nil {
 		return nil, err
 	}
 	now := s.clock()
@@ -399,21 +413,21 @@ func (s *Service) ArchiveProduct(ctx context.Context, workspaceID, productID str
 			CreatedAt:     now,
 		})
 	}
-	return s.store.GetProduct(ctx, workspaceID, productID)
+	return st.GetProduct(ctx, workspaceID, productID)
 }
 
 func (s *Service) BulkArchiveProducts(ctx context.Context, workspaceID string, productIDs []string) (int, error) {
 	if strings.TrimSpace(workspaceID) == "" {
 		return 0, ErrMissingTenant
 	}
-	return s.store.BulkArchiveProducts(ctx, workspaceID, productIDs)
+	return s.txStore(ctx).BulkArchiveProducts(ctx, workspaceID, productIDs)
 }
 
 func (s *Service) BatchTagProducts(ctx context.Context, workspaceID string, productIDs, tagsToAdd, tagsToRemove []string) (int, error) {
 	if strings.TrimSpace(workspaceID) == "" {
 		return 0, ErrMissingTenant
 	}
-	return s.store.BatchTag(ctx, workspaceID, productIDs, tagsToAdd, tagsToRemove)
+	return s.txStore(ctx).BatchTag(ctx, workspaceID, productIDs, tagsToAdd, tagsToRemove)
 }
 
 func (s *Service) Import(
@@ -465,7 +479,7 @@ func (s *Service) GetLinkedContent(ctx context.Context, workspaceID, productID s
 	if strings.TrimSpace(workspaceID) == "" {
 		return nil, ErrMissingTenant
 	}
-	return s.store.GetLinkedContent(ctx, workspaceID, productID)
+	return s.txStore(ctx).GetLinkedContent(ctx, workspaceID, productID)
 }
 
 func (s *Service) LinkContent(ctx context.Context, workspaceID, productID string, ref ContentRef) (ContentRef, error) {
@@ -483,7 +497,7 @@ func (s *Service) LinkContent(ctx context.Context, workspaceID, productID string
 	}
 	unlock := s.lockProduct(workspaceID, productID)
 	defer unlock()
-	if err := s.store.LinkContent(ctx, workspaceID, productID, ref); err != nil {
+	if err := s.txStore(ctx).LinkContent(ctx, workspaceID, productID, ref); err != nil {
 		return ContentRef{}, err
 	}
 	return ref, nil
@@ -506,19 +520,34 @@ func (s *Service) UpdateStock(ctx context.Context, workspaceID, skuID string, de
 
 	meta, _ := StockAdjustmentMetaFromContext(ctx)
 	ctx = WithStockAdjustmentMeta(ctx, cleanReason, meta.MovementKey)
+	updatedMeta, _ := StockAdjustmentMetaFromContext(ctx)
 
-	newQty, err := s.store.UpdateSkuStock(ctx, workspaceID, skuID, delta)
+	newQty, err := s.txStore(ctx).UpdateSkuStock(ctx, workspaceID, skuID, delta)
 	if err != nil {
 		return 0, err
 	}
 
-	payload, _ := json.Marshal(map[string]any{
-		"sku_id":       skuID,
-		"workspace_id": workspaceID,
-		"delta":        delta,
-		"reason":       cleanReason,
-		"new_quantity": newQty,
-	})
+	payloadMap := map[string]any{
+		"sku_id":        skuID,
+		"workspace_id":  workspaceID,
+		"movement_type": "adjustment",
+		"quantity":      delta,
+		"delta":         delta,
+		"reason":        cleanReason,
+		"new_quantity":  newQty,
+	}
+	if updatedMeta.Result != nil {
+		if updatedMeta.Result.MovementID != "" {
+			payloadMap["movement_id"] = updatedMeta.Result.MovementID
+		}
+		if updatedMeta.Result.LocationID != "" {
+			payloadMap["location_id"] = updatedMeta.Result.LocationID
+		}
+		if updatedMeta.Result.MovementType != "" {
+			payloadMap["movement_type"] = updatedMeta.Result.MovementType
+		}
+	}
+	payload, _ := json.Marshal(payloadMap)
 	_ = s.emitEvent(ctx, OutboxEvent{
 		EventID:       newUUID(),
 		EventType:     "inventory.stock_moved",
@@ -536,7 +565,7 @@ func (s *Service) SetAlertThreshold(ctx context.Context, workspaceID, skuID stri
 	if strings.TrimSpace(workspaceID) == "" {
 		return ErrMissingTenant
 	}
-	return s.store.SetSkuAlertThreshold(ctx, workspaceID, skuID, threshold)
+	return s.txStore(ctx).SetSkuAlertThreshold(ctx, workspaceID, skuID, threshold)
 }
 
 // Projections for extended commerce RPCs
@@ -550,10 +579,17 @@ func (s *Service) GetStats(ctx context.Context, workspaceID, productID string) (
 		if sku.IsActive {
 			activeSkus++
 		}
-		onHand += sku.StockQuantity
-		reserved += sku.StockReserved
+		var sumErr error
+		onHand, sumErr = checkedAddInt32(onHand, sku.StockQuantity)
+		if sumErr != nil {
+			return 0, nil, 0, 0, 0, sumErr
+		}
+		reserved, sumErr = checkedAddInt32(reserved, sku.StockReserved)
+		if sumErr != nil {
+			return 0, nil, 0, 0, 0, sumErr
+		}
 	}
-	summary, err := s.store.GetProductSalesSummary(ctx, workspaceID, productID)
+	summary, err := s.txStore(ctx).GetProductSalesSummary(ctx, workspaceID, productID)
 	if err != nil {
 		return 0, nil, 0, 0, 0, err
 	}
@@ -588,7 +624,7 @@ func (s *Service) GetSalesSummaryWithPeriod(ctx context.Context, workspaceID, pr
 			return nil, fmt.Errorf("%w: unsupported period %q (must be 7d, 30d, or 90d)", ErrInvalidInput, period)
 		}
 	}
-	return s.store.GetProductSalesSummary(ctx, workspaceID, productID)
+	return s.txStore(ctx).GetProductSalesSummary(ctx, workspaceID, productID)
 }
 
 func (s *Service) GetSalesChart(ctx context.Context, workspaceID, productID string, days int) ([]SalesChartDataPoint, string, error) {
@@ -603,7 +639,7 @@ func (s *Service) GetSalesChart(ctx context.Context, workspaceID, productID stri
 		now := s.clock().UTC()
 		ctx = WithSalesStatsFilter(ctx, SalesStatsFilter{Until: &now})
 	}
-	pts, err := s.store.GetProductSalesChart(ctx, workspaceID, productID, days)
+	pts, err := s.txStore(ctx).GetProductSalesChart(ctx, workspaceID, productID, days)
 	if err != nil {
 		return nil, "", err
 	}
@@ -618,5 +654,5 @@ func (s *Service) GetRank(ctx context.Context, workspaceID, productID string) (*
 	if strings.TrimSpace(workspaceID) == "" {
 		return nil, ErrMissingTenant
 	}
-	return s.store.GetProductRank(ctx, workspaceID, productID)
+	return s.txStore(ctx).GetProductRank(ctx, workspaceID, productID)
 }

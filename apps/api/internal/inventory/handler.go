@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"sync"
 
@@ -271,23 +272,31 @@ func (h *Handler) GetSummary(ctx context.Context, _ *connect.Request[commercev1.
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	totalOnHand := int32(0)
-	totalReserved := int32(0)
+	var totalOnHand64, totalReserved64 int64
 	lowStockAlerts := int32(0)
 
 	for _, b := range balances {
-		totalOnHand += b.OnHand
-		totalReserved += b.Reserved
+		totalOnHand64 += int64(b.OnHand)
+		totalReserved64 += int64(b.Reserved)
 		threshold := h.getSkuThreshold(wsID, b.SkuID)
-		if (b.OnHand - b.Reserved) <= threshold {
+		if int64(b.OnHand)-int64(b.Reserved) <= int64(threshold) {
 			lowStockAlerts++
 		}
+	}
+	clampInt32 := func(v int64) int32 {
+		if v > math.MaxInt32 {
+			return math.MaxInt32
+		}
+		if v < math.MinInt32 {
+			return math.MinInt32
+		}
+		return int32(v)
 	}
 
 	return connect.NewResponse(&commercev1.InventoryServiceGetSummaryResponse{
 		TotalSkus:      int32(total),
-		TotalOnHand:    totalOnHand,
-		TotalReserved:  totalReserved,
+		TotalOnHand:    clampInt32(totalOnHand64),
+		TotalReserved:  clampInt32(totalReserved64),
 		LowStockAlerts: lowStockAlerts,
 	}), nil
 }
@@ -473,10 +482,14 @@ func (h *Handler) CreateStockMovement(ctx context.Context, req *connect.Request[
 		if err != nil {
 			return err
 		}
-		bal.OnHand += msg.Quantity
-		if bal.OnHand < 0 || bal.Sellable() < 0 {
+		newOnHand, err := checkedAddInt32(bal.OnHand, msg.Quantity)
+		if err != nil {
+			return err
+		}
+		if newOnHand < 0 || int64(newOnHand)-int64(bal.Reserved) < 0 {
 			return ErrInsufficientStock
 		}
+		bal.OnHand = newOnHand
 		bal.UpdatedAt = now
 		if err := tx.UpdateBalance(ctx, bal); err != nil {
 			return err
@@ -523,12 +536,18 @@ func (h *Handler) BulkStockIn(ctx context.Context, req *connect.Request[commerce
 	}
 
 	pairs := make([]SkuLocPair, 0, len(msg.Items))
+	sumBySku := make(map[string]int64, len(msg.Items))
 	for _, item := range msg.Items {
 		if item == nil || strings.TrimSpace(item.SkuId) == "" || item.Quantity <= 0 {
 			return nil, connect.NewError(connect.CodeInvalidArgument, ErrInvalidQuantity)
 		}
+		skuID := strings.TrimSpace(item.SkuId)
+		sumBySku[skuID] += int64(item.Quantity)
+		if sumBySku[skuID] <= 0 || sumBySku[skuID] > math.MaxInt32 {
+			return nil, connect.NewError(connect.CodeInvalidArgument, ErrInvalidQuantity)
+		}
 		pairs = append(pairs, SkuLocPair{
-			SkuID:      strings.TrimSpace(item.SkuId),
+			SkuID:      skuID,
 			LocationID: locID,
 		})
 	}
@@ -536,6 +555,8 @@ func (h *Handler) BulkStockIn(ctx context.Context, req *connect.Request[commerce
 	now := h.service.clock().UTC()
 	recorded := make([]*Movement, 0, len(msg.Items))
 	err = h.service.store.AtomicExecute(ctx, wsID, pairs, func(tx StoreTx) error {
+		existingByIdx := make(map[int]*Movement, len(msg.Items))
+		projectedOnHandBySku := make(map[string]int32, len(sumBySku))
 		for idx, item := range msg.Items {
 			skuID := strings.TrimSpace(item.SkuId)
 			movKey := fmt.Sprintf("bulk_stock_in:%s:%d", idemKey, idx)
@@ -547,15 +568,48 @@ func (h *Handler) BulkStockIn(ctx context.Context, req *connect.Request[commerce
 				if existing.SkuID != skuID || existing.LocationID != locID || existing.Quantity != item.Quantity {
 					return ErrMovementDuplicate
 				}
+				existingByIdx[idx] = existing
+				continue
+			}
+
+			currOnHand, loaded := projectedOnHandBySku[skuID]
+			if !loaded {
+				bal, err := tx.GetBalanceForUpdate(ctx, wsID, skuID, locID)
+				if err != nil {
+					return err
+				}
+				currOnHand = bal.OnHand
+			}
+			nextOnHand, err := checkedAddPositiveInt32(currOnHand, item.Quantity)
+			if currOnHand == 0 {
+				nextOnHand = item.Quantity
+				err = nil
+			} else if currOnHand < 0 {
+				nextOnHand, err = checkedAddInt32(currOnHand, item.Quantity)
+			}
+			if err != nil {
+				return err
+			}
+			projectedOnHandBySku[skuID] = nextOnHand
+		}
+
+		for idx, item := range msg.Items {
+			if existing, ok := existingByIdx[idx]; ok {
 				recorded = append(recorded, existing)
 				continue
 			}
+			skuID := strings.TrimSpace(item.SkuId)
+			movKey := fmt.Sprintf("bulk_stock_in:%s:%d", idemKey, idx)
 
 			bal, err := tx.GetBalanceForUpdate(ctx, wsID, skuID, locID)
 			if err != nil {
 				return err
 			}
-			bal.OnHand += item.Quantity
+			newOnHand, err := checkedAddInt32(bal.OnHand, item.Quantity)
+			if err != nil {
+				return err
+			}
+			bal.OnHand = newOnHand
 			bal.UpdatedAt = now
 			if err := tx.UpdateBalance(ctx, bal); err != nil {
 				return err
