@@ -2,8 +2,10 @@ package product_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -2244,5 +2246,187 @@ func TestSecondPass_DataF7_MixedCurrencyRankAndInvalidSameCurrencyFXRejected(t *
 	})
 	if _, err := h.GetSalesStats(ctxOwner, connect.NewRequest(&commercev1.GetSalesStatsRequest{ProductId: p1ID})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("F7 regression: expected CodeFailedPrecondition for same-currency order with RateToBase=2.5, got %v", err)
+	}
+}
+
+type preCommittedIdempotencyStore struct {
+	product.Store
+	hideFirstLookup int32
+}
+
+func (p *preCommittedIdempotencyStore) GetIdempotencyRecord(ctx context.Context, workspaceID, idempotencyKey string) (*product.IdempotencyRecord, error) {
+	if atomic.CompareAndSwapInt32(&p.hideFirstLookup, 1, 0) {
+		return nil, nil
+	}
+	return p.Store.GetIdempotencyRecord(ctx, workspaceID, idempotencyKey)
+}
+
+func TestRemediation_M05_N1_N2_N3_StockOverflowIdempotencyMovementEventAndSearchIndexSync(t *testing.T) {
+	baseCtx := context.Background()
+	memStore := product.NewMemoryStore()
+	raceStore := &preCommittedIdempotencyStore{Store: memStore}
+	sink := product.NewMemoryEventSink()
+	now := time.Date(2026, 11, 9, 8, 0, 0, 0, time.UTC)
+	svc := product.NewService(raceStore, sink, func() time.Time { return now })
+	h := product.NewHandler(svc)
+
+	ctxOwner := product.WithCaller(baseCtx, testWorkspaceID1, "user-owner-1", rbac.RoleOwner)
+
+	// 1. N1: When SaveIdempotencyRecord encounters an already-committed record with the same RequestHash,
+	// executeIdempotentMutation must roll back the duplicate product creation and replay the first product ID.
+	createReq := &commercev1.CreateRequest{
+		Context:          testCmdCtx("", "idem-n1-concurrent-race"),
+		ProductType:      commercev1.ProductType_PRODUCT_TYPE_PHYSICAL,
+		Title:            "Camera Tripod Pro",
+		Category:         "Studio",
+		BasePrice:        &commonv1.Money{Amount: "500000.000000", Currency: "VND"},
+		Currency:         "VND",
+		InventoryEnabled: true,
+		InitialSkus: []*commercev1.ProductSku{
+			{
+				SkuCode:       "TRIPOD-PRO-1",
+				Currency:      "VND",
+				StockQuantity: 10,
+				IsActive:      true,
+			},
+			{
+				SkuCode:       "TRIPOD-PRO-2",
+				Currency:      "VND",
+				StockQuantity: 5,
+				IsActive:      true,
+			},
+		},
+	}
+	firstResp, err := h.Create(ctxOwner, connect.NewRequest(createReq))
+	if err != nil {
+		t.Fatalf("first Create failed: %v", err)
+	}
+	firstProdID := firstResp.Msg.Product.ProductId
+	sku1ID := firstResp.Msg.Product.Skus[0].SkuId
+	sku2ID := firstResp.Msg.Product.Skus[1].SkuId
+
+	// Simulate race where GetIdempotencyRecord misses (returns nil), execFn creates a second product,
+	// and SaveIdempotencyRecord hits the already-committed record with identical RequestHash.
+	atomic.StoreInt32(&raceStore.hideFirstLookup, 1)
+	secondResp, err := h.Create(ctxOwner, connect.NewRequest(createReq))
+	if err != nil {
+		t.Fatalf("raced Create replay failed: %v", err)
+	}
+	if secondResp.Msg.Product.ProductId != firstProdID {
+		t.Fatalf("N1 regression: raced Create returned new product %s instead of replaying %s",
+			secondResp.Msg.Product.ProductId, firstProdID)
+	}
+	listResp, err := h.List(ctxOwner, connect.NewRequest(&commercev1.ListRequest{}))
+	if err != nil {
+		t.Fatalf("List failed: %v", err)
+	}
+	if len(listResp.Msg.Products) != 1 {
+		t.Fatalf("N1 regression: expected 1 product after rolling back duplicate creation, got %d", len(listResp.Msg.Products))
+	}
+
+	// 2. N2: UpdateStock must bind exact movement_id, location_id, movement_type="adjustment", and quantity=delta
+	// into the emitted inventory.stock_moved event payload.
+	beforeEvents := len(sink.Events())
+	if _, err := h.UpdateStock(ctxOwner, connect.NewRequest(&commercev1.UpdateStockRequest{
+		Context:       testCmdCtx("", "idem-n2-move-1"),
+		SkuId:         sku1ID,
+		DeltaQuantity: 7,
+		Reason:        "restock_batch_1",
+	})); err != nil {
+		t.Fatalf("UpdateStock 1 failed: %v", err)
+	}
+	if _, err := h.UpdateStock(ctxOwner, connect.NewRequest(&commercev1.UpdateStockRequest{
+		Context:       testCmdCtx("", "idem-n2-move-2"),
+		SkuId:         sku1ID,
+		DeltaQuantity: -3,
+		Reason:        "cycle_count_2",
+	})); err != nil {
+		t.Fatalf("UpdateStock 2 failed: %v", err)
+	}
+	evts := sink.Events()
+	if len(evts) != beforeEvents+2 {
+		t.Fatalf("expected 2 new inventory.stock_moved events, got %d", len(evts)-beforeEvents)
+	}
+	var payload1, payload2 map[string]any
+	_ = json.Unmarshal(evts[beforeEvents].PayloadJSON, &payload1)
+	_ = json.Unmarshal(evts[beforeEvents+1].PayloadJSON, &payload2)
+	movID1, _ := payload1["movement_id"].(string)
+	locID1, _ := payload1["location_id"].(string)
+	movID2, _ := payload2["movement_id"].(string)
+	locID2, _ := payload2["location_id"].(string)
+	if movID1 == "" || movID2 == "" || movID1 == movID2 || locID1 == "" || locID2 == "" {
+		t.Fatalf("N2 regression: expected distinct non-empty movement_id and location_id on each event, got p1=%+v p2=%+v", payload1, payload2)
+	}
+	if payload1["movement_type"] != "adjustment" || payload1["quantity"] != float64(7) || payload2["quantity"] != float64(-3) {
+		t.Fatalf("N2 regression: unexpected movement_type/quantity in event payloads: p1=%+v p2=%+v", payload1, payload2)
+	}
+
+	// 3. M05: UpdateStock must reject int32 overflow (both single-location and multi-location sum)
+	// sku1ID now has 4 units on hand; adding math.MaxInt32 must fail closed with CodeInvalidArgument.
+	if _, err := h.UpdateStock(ctxOwner, connect.NewRequest(&commercev1.UpdateStockRequest{
+		Context:       testCmdCtx("", "idem-m05-overflow-single"),
+		SkuId:         sku1ID,
+		DeltaQuantity: math.MaxInt32,
+		Reason:        "overflow_attempt",
+	})); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("M05 regression: expected CodeInvalidArgument on UpdateStock int32 overflow, got %v", err)
+	}
+
+	// Multi-location sum overflow in UpdateStock and GetStats
+	memStore.SetLocationBalance(testWorkspaceID1, sku2ID, "loc-secondary", math.MaxInt32-2, 0)
+	if _, err := h.UpdateStock(ctxOwner, connect.NewRequest(&commercev1.UpdateStockRequest{
+		Context:       testCmdCtx("", "idem-m05-overflow-multiloc"),
+		SkuId:         sku2ID,
+		DeltaQuantity: 10,
+		Reason:        "multiloc_overflow_attempt",
+	})); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("M05 regression: expected CodeInvalidArgument on multi-location UpdateStock int32 overflow, got %v", err)
+	}
+	if _, err := h.GetStats(ctxOwner, connect.NewRequest(&commercev1.GetStatsRequest{
+		ProductId: firstProdID,
+	})); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("M05 regression: expected CodeInvalidArgument on GetStats multi-SKU int32 overflow, got %v", err)
+	}
+	memStore.SetLocationBalance(testWorkspaceID1, sku2ID, "loc-secondary", 0, 0)
+
+	// 4. N3: When product has metadata["search_index"], UpdateProduct on title/category/base_price
+	// must synchronize metadata["search_index"] immediately without emitting product.catalog_status_changed.
+	seedMeta := `{"search_index":{"document_id":"` + firstProdID + `","workspace_id":"` + testWorkspaceID1 + `","product_id":"` + firstProdID + `","title":"Camera Tripod Pro","category":"Studio","base_price":"500000.000000","catalog_status":"active"}}`
+	if _, err := h.Update(ctxOwner, connect.NewRequest(&commercev1.UpdateRequest{
+		Context:      testCmdCtx("", "idem-n3-seed-index"),
+		ProductId:    firstProdID,
+		MetadataJson: &seedMeta,
+	})); err != nil {
+		t.Fatalf("seed search_index metadata failed: %v", err)
+	}
+	eventsBeforeTitleUpdate := len(sink.Events())
+	newTitle := "Chân Máy Ảnh Carbon Studio Ultra"
+	newCategory := "Phụ Kiện Quay Phim"
+	if _, err := h.Update(ctxOwner, connect.NewRequest(&commercev1.UpdateRequest{
+		Context:   testCmdCtx("", "idem-n3-update-title-cat-price"),
+		ProductId: firstProdID,
+		Title:     &newTitle,
+		Category:  &newCategory,
+		BasePrice: &commonv1.Money{Amount: "650000.000000", Currency: "VND"},
+	})); err != nil {
+		t.Fatalf("Update title/category/price failed: %v", err)
+	}
+	if len(sink.Events()) != eventsBeforeTitleUpdate {
+		t.Fatalf("expected 0 status_changed events when catalog_status did not change, got %d new events", len(sink.Events())-eventsBeforeTitleUpdate)
+	}
+	storedProd, err := memStore.GetProduct(baseCtx, testWorkspaceID1, firstProdID)
+	if err != nil {
+		t.Fatalf("GetProduct failed: %v", err)
+	}
+	idxMap, ok := storedProd.Metadata["search_index"].(map[string]any)
+	if !ok || idxMap == nil {
+		t.Fatalf("N3 regression: expected metadata[\"search_index\"] map, got %T", storedProd.Metadata["search_index"])
+	}
+	if idxMap["title"] != newTitle || idxMap["category"] != newCategory || idxMap["base_price"] != "650000.000000" {
+		t.Fatalf("N3 regression: metadata[\"search_index\"] not synchronized after Update: %+v", idxMap)
+	}
+	searchableText, _ := idxMap["searchable_text"].(string)
+	if !strings.Contains(searchableText, "carbon") || !strings.Contains(searchableText, "quay phim") {
+		t.Fatalf("N3 regression: searchable_text not updated with new title/category tokens: %q", searchableText)
 	}
 }

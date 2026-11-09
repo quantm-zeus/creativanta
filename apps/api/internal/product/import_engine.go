@@ -115,13 +115,18 @@ func NeutralizeFormula(val string) string {
 	return val
 }
 
-// ComputeFingerprint hashes the raw payload, mappings, and shop scope to create a reproducible commit token.
-func ComputeFingerprint(workspaceID, connectedAccountID, platform, rawData string, mappings map[string]string) string {
+// ComputeFingerprint hashes the raw payload, mappings, defaultCurrency, and shop scope to create a reproducible commit token.
+func ComputeFingerprint(workspaceID, connectedAccountID, platform, rawData string, mappings map[string]string, defaultCurrency ...string) string {
+	curr := "VND"
+	if len(defaultCurrency) > 0 && strings.TrimSpace(defaultCurrency[0]) != "" {
+		curr = strings.ToUpper(strings.TrimSpace(defaultCurrency[0]))
+	}
 	h := sha256.New()
 	h.Write([]byte(TemplateVersionV1))
 	h.Write([]byte(workspaceID))
 	h.Write([]byte(connectedAccountID))
 	h.Write([]byte(platform))
+	h.Write([]byte("|currency:" + curr + "|"))
 	h.Write([]byte(rawData))
 	if len(mappings) > 0 {
 		var keys []string
@@ -164,12 +169,7 @@ func (e *ImportEngine) Process(
 		defaultCurrency = "VND"
 	}
 
-	fingerprint := ComputeFingerprint(workspaceID, connectedAccountID, platform, rawData, columnMappings)
-
-	// If committing (previewOnly = false) and previewToken was provided, verify it matches
-	if !previewOnly && previewToken != "" && previewToken != fingerprint {
-		return nil, ErrDuplicateImportToken
-	}
+	fingerprint := ComputeFingerprint(workspaceID, connectedAccountID, platform, rawData, columnMappings, defaultCurrency)
 
 	r := csv.NewReader(strings.NewReader(rawData))
 	r.FieldsPerRecord = -1
@@ -197,6 +197,16 @@ func (e *ImportEngine) Process(
 	if !previewOnly && requiresCorrection {
 		return res, fmt.Errorf("%w: cannot commit import with mapping errors: %s",
 			ErrMappingCorrectionNeeded, strings.Join(mappingErrors, "; "))
+	}
+
+	// If committing (previewOnly = false), require a non-empty previewToken that matches the fingerprint (including defaultCurrency).
+	if !previewOnly {
+		if strings.TrimSpace(previewToken) == "" {
+			return nil, fmt.Errorf("%w: preview_token is required to commit import", ErrInvalidInput)
+		}
+		if previewToken != fingerprint {
+			return nil, ErrDuplicateImportToken
+		}
 	}
 
 	var parsedRows []map[string]string
@@ -231,6 +241,7 @@ func (e *ImportEngine) Process(
 
 	// In-batch deduplication tracking to ensure repeated rows inside the same file no-op
 	seenBatchKeys := make(map[string]bool)
+	store := storeFromContext(ctx, e.store)
 
 	// Process each row
 	for i, rowData := range parsedRows {
@@ -340,7 +351,7 @@ func (e *ImportEngine) Process(
 
 		// ACCEPTANCE TARGET 1: Scoped by workspace_id + connected_account_id + platform + external_id
 		// Two shops with same source ID remain separate because connectedAccountID is isolated!
-		existing, err := e.store.FindProductByExternalID(ctx, workspaceID, platform, extID, connectedAccountID)
+		existing, err := store.FindProductByExternalID(ctx, workspaceID, platform, extID, connectedAccountID)
 		if err != nil && !errors.Is(err, ErrProductNotFound) {
 			outcome.Action = "error"
 			outcome.ErrorMessage = fmt.Sprintf("database lookup error: %v", err)
@@ -374,7 +385,7 @@ func (e *ImportEngine) Process(
 						existing.Description = desc
 					}
 					existing.UpdatedAt = time.Now().UTC()
-					if err := e.store.UpdateProduct(ctx, existing); err != nil {
+					if err := store.UpdateProduct(ctx, existing); err != nil {
 						outcome.Action = "error"
 						outcome.ErrorMessage = fmt.Sprintf("database write error: %v", err)
 						res.UpdateCount--
@@ -442,7 +453,7 @@ func (e *ImportEngine) Process(
 		outcome.ProductData = newProd
 
 		if !previewOnly {
-			if err := e.store.CreateProduct(ctx, newProd); err != nil {
+			if err := store.CreateProduct(ctx, newProd); err != nil {
 				outcome.Action = "error"
 				outcome.ErrorMessage = fmt.Sprintf("database write error: %v", err)
 				res.CreateCount--

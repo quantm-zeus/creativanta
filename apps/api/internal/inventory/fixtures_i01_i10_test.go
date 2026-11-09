@@ -832,3 +832,109 @@ func TestSecondPass_InventoryHandler_RBACIdempotencyMovementRestrictionsAndBulkS
 		t.Fatalf("BulkStockIn replay double-counted stock: got %d, want 14", bal1Replay.OnHand)
 	}
 }
+
+func TestRemediation_M05_QuantityInt32OverflowCannotBypassSellableStock(t *testing.T) {
+	ctx := context.Background()
+	store := inventory.NewMemoryStore()
+	sink := &mockSink{}
+	now := time.Date(2026, 11, 9, 10, 0, 0, 0, time.UTC)
+	svc := inventory.NewService(store, sink, func() time.Time { return now })
+	h := inventory.NewHandler(svc)
+
+	const wsID = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbb05"
+	const locID = "loc-m05"
+	const skuID = "sku-m05"
+
+	_ = store.CreateLocation(ctx, &inventory.Location{
+		LocationID:  locID,
+		WorkspaceID: wsID,
+		Name:        "Warehouse M05",
+		IsDefault:   true,
+		Status:      inventory.StatusActive,
+	})
+	if err := svc.RecordOpeningBaseline(ctx, wsID, skuID, locID, 10, now.Add(-1*time.Hour)); err != nil {
+		t.Fatalf("RecordOpeningBaseline: %v", err)
+	}
+
+	// Case 1 (exact Codex M05 repro): Three lines for same SKU/location: MaxInt32, MaxInt32, 3.
+	// Unchecked int32 addition wraps: 2147483647 + 2147483647 = -2; -2 + 3 = 1 <= 10 sellable!
+	_, err := svc.ReserveStock(ctx, wsID, "ord-m05-wrap-positive", []inventory.ReservationItem{
+		{SkuID: skuID, LocationID: locID, Quantity: 2147483647},
+		{SkuID: skuID, LocationID: locID, Quantity: 2147483647},
+		{SkuID: skuID, LocationID: locID, Quantity: 3},
+	}, 15*time.Minute)
+	if !errors.Is(err, inventory.ErrInvalidQuantity) {
+		t.Fatalf("M05 regression (wrap to +1): expected ErrInvalidQuantity on int32 overflow, got %v", err)
+	}
+
+	// Case 2: Two lines wrapping to negative int32 (2000000000 + 2000000000 = -294967296 < 10 sellable)
+	_, err = svc.ReserveStock(ctx, wsID, "ord-m05-wrap-negative", []inventory.ReservationItem{
+		{SkuID: skuID, LocationID: locID, Quantity: 2000000000},
+		{SkuID: skuID, LocationID: locID, Quantity: 2000000000},
+	}, 15*time.Minute)
+	if !errors.Is(err, inventory.ErrInvalidQuantity) {
+		t.Fatalf("M05 regression (wrap to negative): expected ErrInvalidQuantity on int32 overflow, got %v", err)
+	}
+
+	// Case 3: Boundary MaxInt32 + 1 overflow
+	_, err = svc.ReserveStock(ctx, wsID, "ord-m05-boundary", []inventory.ReservationItem{
+		{SkuID: skuID, LocationID: locID, Quantity: 2147483647},
+		{SkuID: skuID, LocationID: locID, Quantity: 1},
+	}, 15*time.Minute)
+	if !errors.Is(err, inventory.ErrInvalidQuantity) {
+		t.Fatalf("M05 regression (MaxInt32 + 1): expected ErrInvalidQuantity on int32 overflow, got %v", err)
+	}
+
+	// Verify no reservation or movement was created and balance remains intact (OnHand=10, Reserved=0)
+	bal, err := store.GetBalance(ctx, wsID, skuID, locID)
+	if err != nil {
+		t.Fatalf("GetBalance: %v", err)
+	}
+	if bal.OnHand != 10 || bal.Reserved != 0 || bal.Sellable() != 10 {
+		t.Fatalf("M05 corrupted balance: got OnHand=%d Reserved=%d Sellable=%d, want 10/0/10",
+			bal.OnHand, bal.Reserved, bal.Sellable())
+	}
+
+	// Case 4: RecordPhysicalReturn overflow (10 + MaxInt32) must be rejected without mutating OnHand or appending movement
+	if _, err := svc.RecordPhysicalReturn(ctx, wsID, "ord-m05", "ret-m05-overflow", skuID, locID, 2147483647, "overflow return"); !errors.Is(err, inventory.ErrInvalidQuantity) {
+		t.Fatalf("M05 RecordPhysicalReturn overflow: expected ErrInvalidQuantity, got %v", err)
+	}
+	movements, _, _ := store.ListMovements(ctx, wsID, skuID, locID, 100, 0)
+	if len(movements) != 1 { // only opening baseline movement
+		t.Fatalf("expected only 1 movement (opening baseline), got %d", len(movements))
+	}
+
+	// Case 5: Handler CreateStockMovement and BulkStockIn int32 overflow must fail with CodeInvalidArgument
+	ctxEditor := rbac.WithPolicyContext(ctx, rbac.PolicyContext{
+		ActorUserID: "user-editor-m05",
+		WorkspaceID: wsID,
+		Role:        rbac.RoleEditor,
+	})
+	if _, err := h.CreateStockMovement(ctxEditor, connect.NewRequest(&commercev1.InventoryServiceCreateStockMovementRequest{
+		Context:      &commonv1.CommandContext{IdempotencyKey: "idem-m05-create-overflow"},
+		SkuId:        skuID,
+		LocationId:   locID,
+		MovementType: commercev1.StockMovementType_STOCK_MOVEMENT_TYPE_ADJUSTMENT,
+		Quantity:     2147483647,
+		Reason:       "overflow adjustment",
+	})); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("M05 CreateStockMovement overflow: expected CodeInvalidArgument, got %v", err)
+	}
+
+	if _, err := h.BulkStockIn(ctxEditor, connect.NewRequest(&commercev1.InventoryServiceBulkStockInRequest{
+		Context:    &commonv1.CommandContext{IdempotencyKey: "idem-m05-bulk-overflow"},
+		LocationId: locID,
+		Reason:     "overflow bulk stock in",
+		Items: []*commercev1.StockMovementItem{
+			{SkuId: skuID, Quantity: 2147483640},
+			{SkuId: skuID, Quantity: 100},
+		},
+	})); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("M05 BulkStockIn overflow: expected CodeInvalidArgument, got %v", err)
+	}
+
+	balFinal, _ := store.GetBalance(ctx, wsID, skuID, locID)
+	if balFinal.OnHand != 10 || balFinal.Reserved != 0 {
+		t.Fatalf("expected balance unchanged at OnHand=10 Reserved=0, got %+v", balFinal)
+	}
+}

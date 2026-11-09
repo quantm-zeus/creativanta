@@ -96,7 +96,11 @@ func (s *Service) ReserveStock(
 		}
 		pairKey := fmt.Sprintf("%s:%s", item.SkuID, item.LocationID)
 		if idx, exists := indexByPair[pairKey]; exists {
-			coalesced[idx].Quantity += item.Quantity
+			sum, err := checkedAddPositiveInt32(coalesced[idx].Quantity, item.Quantity)
+			if err != nil {
+				return nil, err
+			}
+			coalesced[idx].Quantity = sum
 		} else {
 			indexByPair[pairKey] = len(coalesced)
 			coalesced = append(coalesced, item)
@@ -136,9 +140,13 @@ func (s *Service) ReserveStock(
 			if err != nil {
 				return err
 			}
-			if bal.Sellable() < item.Quantity {
+			sellable64 := int64(bal.OnHand) - int64(bal.Reserved)
+			if sellable64 < int64(item.Quantity) {
 				return fmt.Errorf("%w: sku %s at location %s needs %d, sellable %d",
 					ErrInsufficientStock, item.SkuID, item.LocationID, item.Quantity, bal.Sellable())
+			}
+			if _, err := checkedAddInt32(bal.Reserved, item.Quantity); err != nil {
+				return err
 			}
 		}
 
@@ -176,7 +184,11 @@ func (s *Service) ReserveStock(
 			if err != nil {
 				return err
 			}
-			bal.Reserved += item.Quantity
+			newReserved, err := checkedAddInt32(bal.Reserved, item.Quantity)
+			if err != nil {
+				return err
+			}
+			bal.Reserved = newReserved
 			if err := tx.UpdateBalance(ctx, bal); err != nil {
 				return err
 			}
@@ -245,6 +257,22 @@ func (s *Service) FulfillReservation(
 				}
 				return fmt.Errorf("%w: reservation %s in status %s", ErrReservationConflict, r.ReservationID, r.Status)
 			}
+			if r.Quantity <= 0 {
+				return ErrInvalidQuantity
+			}
+
+			bal, err := tx.GetBalanceForUpdate(ctx, workspaceID, r.SkuID, r.LocationID)
+			if err != nil {
+				return err
+			}
+			newOnHand, err := checkedSubInt32(bal.OnHand, r.Quantity)
+			if err != nil {
+				return err
+			}
+			newReserved, err := checkedSubInt32(bal.Reserved, r.Quantity)
+			if err != nil {
+				return err
+			}
 
 			// 1. Consume reservation
 			if err := tx.UpdateReservationStatus(ctx, workspaceID, r.ReservationID, ResConsumed); err != nil {
@@ -272,12 +300,8 @@ func (s *Service) FulfillReservation(
 			newlyCreatedMovements = append(newlyCreatedMovements, mov)
 
 			// 3. Decrement on_hand and reserved
-			bal, err := tx.GetBalanceForUpdate(ctx, workspaceID, r.SkuID, r.LocationID)
-			if err != nil {
-				return err
-			}
-			bal.OnHand -= r.Quantity
-			bal.Reserved -= r.Quantity
+			bal.OnHand = newOnHand
+			bal.Reserved = newReserved
 			if bal.Reserved < 0 {
 				bal.Reserved = 0
 			}
@@ -571,6 +595,15 @@ func (s *Service) RecordPhysicalReturn(
 			return nil
 		}
 
+		bal, err := tx.GetBalanceForUpdate(ctx, workspaceID, skuID, locationID)
+		if err != nil {
+			return err
+		}
+		newOnHand, err := checkedAddInt32(bal.OnHand, quantity)
+		if err != nil {
+			return err
+		}
+
 		mov = &Movement{
 			MovementID:    newUUID(),
 			WorkspaceID:   workspaceID,
@@ -589,11 +622,7 @@ func (s *Service) RecordPhysicalReturn(
 		}
 		newlyCreated = true
 
-		bal, err := tx.GetBalanceForUpdate(ctx, workspaceID, skuID, locationID)
-		if err != nil {
-			return err
-		}
-		bal.OnHand += quantity
+		bal.OnHand = newOnHand
 		return tx.UpdateBalance(ctx, bal)
 	})
 
@@ -675,7 +704,10 @@ func (s *Service) PlatformSyncAbsoluteCount(
 			return err
 		}
 
-		delta := count - bal.OnHand
+		delta, err := checkedSubInt32(count, bal.OnHand)
+		if err != nil {
+			return err
+		}
 		if delta == 0 {
 			// Identical count: NO-OP per contract (I10)
 			return nil
@@ -740,19 +772,20 @@ func (s *Service) ReconcileLedger(ctx context.Context, workspaceID, skuID, locat
 		return nil, err
 	}
 
-	var sum int32 = 0
+	var sum64 int64
 	for _, m := range movements {
-		sum += m.Quantity
+		sum64 += int64(m.Quantity)
 	}
-
-	if sum != bal.OnHand {
+	sum := int32(sum64)
+	if sum64 != int64(bal.OnHand) {
+		disc64 := int64(bal.OnHand) - sum64
 		rep := &DiscrepancyReport{
 			WorkspaceID:   workspaceID,
 			SkuID:         skuID,
 			LocationID:    locationID,
 			ExpectedStock: sum,
 			ActualStock:   bal.OnHand,
-			Discrepancy:   bal.OnHand - sum,
+			Discrepancy:   int32(disc64),
 		}
 		s.emitEvent(ctx, "inventory.discrepancy_detected", "inventory_balance", bal.BalanceID, workspaceID, rep)
 		return rep, ErrDiscrepancy

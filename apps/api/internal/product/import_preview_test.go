@@ -29,7 +29,11 @@ ITEM-1001,Tai nghe Gaming Shop Beta,physical,490000,VND`
 	shopAAccountID := "shop-alpha-001"
 	shopBAccountID := "shop-beta-002"
 
-	// 1. Import Shop A
+	// 1. Preview and Import Shop A
+	prevA, err := svc.Import(ctx, testWorkspaceID1, "tiktok", shopAAccountID, csvDataShopA, nil, "VND", true, "")
+	if err != nil {
+		t.Fatalf("Shop A preview failed: %v", err)
+	}
 	resA, err := svc.Import(
 		ctx,
 		testWorkspaceID1,
@@ -39,7 +43,7 @@ ITEM-1001,Tai nghe Gaming Shop Beta,physical,490000,VND`
 		nil,
 		"VND",
 		false, // commit
-		"",
+		prevA.PreviewToken,
 	)
 	if err != nil {
 		t.Fatalf("Shop A import failed: %v", err)
@@ -49,7 +53,11 @@ ITEM-1001,Tai nghe Gaming Shop Beta,physical,490000,VND`
 	}
 	productIDA := resA.CreatedProducts[0].ProductID
 
-	// 2. Import Shop B with identical external_id ITEM-1001
+	// 2. Preview and Import Shop B with identical external_id ITEM-1001
+	prevB, err := svc.Import(ctx, testWorkspaceID1, "tiktok", shopBAccountID, csvDataShopB, nil, "VND", true, "")
+	if err != nil {
+		t.Fatalf("Shop B preview failed: %v", err)
+	}
 	resB, err := svc.Import(
 		ctx,
 		testWorkspaceID1,
@@ -59,7 +67,7 @@ ITEM-1001,Tai nghe Gaming Shop Beta,physical,490000,VND`
 		nil,
 		"VND",
 		false, // commit
-		"",
+		prevB.PreviewToken,
 	)
 	if err != nil {
 		t.Fatalf("Shop B import failed: %v", err)
@@ -117,6 +125,10 @@ SKU-REP-01,Son Môi Lì Dưỡng Ẩm,physical,120000,VND
 SKU-REP-02,Phấn Nước Cushion Che Khuyết Điểm,physical,320000,VND`
 
 	// 1. Initial import with repeated rows in the file
+	prev1, err := svc.Import(ctx, testWorkspaceID1, "shopee", "shopee-acc-1", csvRepeatedRows, nil, "VND", true, "")
+	if err != nil {
+		t.Fatalf("Initial preview failed: %v", err)
+	}
 	res1, err := svc.Import(
 		ctx,
 		testWorkspaceID1,
@@ -126,7 +138,7 @@ SKU-REP-02,Phấn Nước Cushion Che Khuyết Điểm,physical,320000,VND`
 		nil,
 		"VND",
 		false, // commit
-		"",
+		prev1.PreviewToken,
 	)
 	if err != nil {
 		t.Fatalf("Initial import failed: %v", err)
@@ -156,7 +168,7 @@ SKU-REP-02,Phấn Nước Cushion Che Khuyết Điểm,physical,320000,VND`
 		nil,
 		"VND",
 		false, // commit
-		"",
+		prev1.PreviewToken,
 	)
 	if err != nil {
 		t.Fatalf("Re-import failed: %v", err)
@@ -347,5 +359,82 @@ Thảm Yoga TPE 6mm,199000,VND`
 	)
 	if err != product.ErrDuplicateImportToken {
 		t.Fatalf("expected ErrDuplicateImportToken, got %v", err)
+	}
+}
+
+func TestRemediation_N4_ImportPreviewTokenRequiredAndBindsCurrency(t *testing.T) {
+	ctx := context.Background()
+	svc, store, _ := newTestService()
+
+	csvWithoutCurrencyColumn := `external_id,title,price
+EXT-N4-1,Đèn Bàn Học Chống Cận,250000`
+
+	// 1. Committing without a preview token must fail closed before mutating the store
+	if _, err := svc.Import(
+		ctx,
+		testWorkspaceID1,
+		"csv",
+		"",
+		csvWithoutCurrencyColumn,
+		nil,
+		"VND",
+		false,
+		"",
+	); err == nil {
+		t.Fatal("N4 regression: expected commit without previewToken to be rejected")
+	}
+
+	// 2. Preview with defaultCurrency="VND", then attempt commit with same previewToken but defaultCurrency="USD"
+	previewVND, err := svc.Import(
+		ctx,
+		testWorkspaceID1,
+		"csv",
+		"",
+		csvWithoutCurrencyColumn,
+		nil,
+		"VND",
+		true,
+		"",
+	)
+	if err != nil {
+		t.Fatalf("previewVND failed: %v", err)
+	}
+	if _, err := svc.Import(
+		ctx,
+		testWorkspaceID1,
+		"csv",
+		"",
+		csvWithoutCurrencyColumn,
+		nil,
+		"USD",
+		false,
+		previewVND.PreviewToken,
+	); err != product.ErrDuplicateImportToken {
+		t.Fatalf("N4 regression: expected ErrDuplicateImportToken when defaultCurrency changed from VND to USD after preview, got %v", err)
+	}
+
+	// Verify store still has 0 products
+	list, total, err := store.ListProducts(ctx, testWorkspaceID1, product.ListFilter{}, 50, 0)
+	if err != nil || total != 0 || len(list) != 0 {
+		t.Fatalf("expected 0 products after rejected commits, got total=%d len=%d err=%v", total, len(list), err)
+	}
+
+	// 3. Commit with matching defaultCurrency="VND" and previewVND.PreviewToken succeeds
+	commitVND, err := svc.Import(
+		ctx,
+		testWorkspaceID1,
+		"csv",
+		"",
+		csvWithoutCurrencyColumn,
+		nil,
+		"VND",
+		false,
+		previewVND.PreviewToken,
+	)
+	if err != nil || commitVND.CreateCount != 1 {
+		t.Fatalf("expected commit with matching VND currency and token to succeed, got res=%+v err=%v", commitVND, err)
+	}
+	if commitVND.CreatedProducts[0].Currency != "VND" {
+		t.Fatalf("expected committed currency VND, got %s", commitVND.CreatedProducts[0].Currency)
 	}
 }

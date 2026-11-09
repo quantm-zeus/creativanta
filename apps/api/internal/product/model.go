@@ -5,11 +5,20 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
 	"github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb"
 )
+
+func checkedAddInt32(a, b int32) (int32, error) {
+	sum := int64(a) + int64(b)
+	if sum > math.MaxInt32 || sum < math.MinInt32 {
+		return 0, fmt.Errorf("%w: stock quantity overflows int32 bounds", ErrInvalidInput)
+	}
+	return int32(sum), nil
+}
 
 func newUUID() string {
 	var b [16]byte
@@ -21,20 +30,33 @@ func newUUID() string {
 }
 
 var (
-	ErrProductNotFound         = errors.New("product: not found")
-	ErrSkuNotFound             = errors.New("product sku: not found")
-	ErrInvalidInput            = errors.New("product: invalid input")
-	ErrMissingTenant           = errors.New("product: missing tenant workspace ID")
-	ErrMappingCorrectionNeeded = errors.New("product import: invalid mapping, correction required")
-	ErrDuplicateImportToken    = errors.New("product import: preview token mismatch or expired")
-	ErrUnauthorizedAction      = errors.New("product: unauthorized action")
-	ErrDuplicateSkuCode        = errors.New("product: duplicate sku_code under this product")
-	ErrProductArchived         = errors.New("product: cannot modify archived or deleted product")
-	ErrInsufficientStock       = errors.New("product: insufficient stock for adjustment")
-	ErrIdempotencyConflict     = errors.New("SYSTEM_CONFLICT_001: idempotency key already used with different request payload")
-	ErrConcurrencyConflict     = errors.New("SYSTEM_CONFLICT_001: product was modified concurrently; expected_updated_at mismatch")
-	ErrCurrencyMismatch        = errors.New("product: cross-currency order missing valid exchange_rate_snapshot")
+	ErrProductNotFound             = errors.New("product: not found")
+	ErrSkuNotFound                 = errors.New("product sku: not found")
+	ErrInvalidInput                = errors.New("product: invalid input")
+	ErrMissingTenant               = errors.New("product: missing tenant workspace ID")
+	ErrMappingCorrectionNeeded     = errors.New("product import: invalid mapping, correction required")
+	ErrDuplicateImportToken        = errors.New("product import: preview token mismatch or expired")
+	ErrUnauthorizedAction          = errors.New("product: unauthorized action")
+	ErrDuplicateSkuCode            = errors.New("product: duplicate sku_code under this product")
+	ErrProductArchived             = errors.New("product: cannot modify archived or deleted product")
+	ErrInsufficientStock           = errors.New("product: insufficient stock for adjustment")
+	ErrIdempotencyConflict         = errors.New("SYSTEM_CONFLICT_001: idempotency key already used with different request payload")
+	ErrIdempotencyAlreadyCommitted = errors.New("product: idempotency key already committed with identical request payload")
+	ErrConcurrencyConflict         = errors.New("SYSTEM_CONFLICT_001: product was modified concurrently; expected_updated_at mismatch")
+	ErrCurrencyMismatch            = errors.New("product: cross-currency order missing valid exchange_rate_snapshot")
 )
+
+type idempotencyAlreadyCommittedError struct {
+	Record IdempotencyRecord
+}
+
+func (e *idempotencyAlreadyCommittedError) Error() string {
+	return ErrIdempotencyAlreadyCommitted.Error()
+}
+
+func (e *idempotencyAlreadyCommittedError) Unwrap() error {
+	return ErrIdempotencyAlreadyCommitted
+}
 
 const (
 	TypePhysical   = "physical"
@@ -144,24 +166,39 @@ type ListFilter struct {
 
 type stockAdjContextKey struct{}
 
+type StockAdjustmentResult struct {
+	MovementID   string
+	LocationID   string
+	MovementType string
+}
+
 type StockAdjustmentMeta struct {
 	Reason      string
 	MovementKey string
 	LocationID  string
+	Result      *StockAdjustmentResult
 }
 
 func WithStockAdjustmentMeta(ctx context.Context, reason, movementKey string) context.Context {
 	existing, _ := StockAdjustmentMetaFromContext(ctx)
+	res := existing.Result
+	if res == nil {
+		res = &StockAdjustmentResult{}
+	}
 	return context.WithValue(ctx, stockAdjContextKey{}, StockAdjustmentMeta{
 		Reason:      reason,
 		MovementKey: movementKey,
 		LocationID:  existing.LocationID,
+		Result:      res,
 	})
 }
 
 func WithStockAdjustmentLocation(ctx context.Context, locationID string) context.Context {
 	existing, _ := StockAdjustmentMetaFromContext(ctx)
 	existing.LocationID = strings.TrimSpace(locationID)
+	if existing.Result == nil {
+		existing.Result = &StockAdjustmentResult{}
+	}
 	return context.WithValue(ctx, stockAdjContextKey{}, existing)
 }
 

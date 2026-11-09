@@ -3,8 +3,10 @@ package product_test
 import (
 	"context"
 	"crypto/rand"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"net"
 	"net/url"
 	"os"
@@ -630,5 +632,205 @@ func TestPostgresLiveProductAndSkuCatalog(t *testing.T) {
 		}
 	}
 
+	// 13. Remediation M05, N1, N2, N3 on PostgreSQL with pool-backed adapter store (matching runtimeassembly tenantProductStore)
+	if _, err := h.UpdateStock(callerCtx, connect.NewRequest(&commercev1.UpdateStockRequest{
+		Context: &commonv1.CommandContext{
+			WorkspaceId:    &commonv1.UUID{Value: tenantA},
+			IdempotencyKey: "pg-m05-overflow-reject",
+		},
+		SkuId:         skuID,
+		DeltaQuantity: math.MaxInt32,
+		Reason:        "overflow_attempt",
+	})); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("M05 Postgres regression: expected CodeInvalidArgument on int32 overflow in UpdateStock, got %v", err)
+	}
+
+	adapterStore := &poolAdapterProductStore{pool: adminPool}
+	adapterSvc := product.NewService(adapterStore, product.NewMemoryEventSink(), func() time.Time { return t0 })
+	adapterHandler := product.NewHandler(adapterSvc)
+
+	n1CreateResp, err := adapterHandler.Create(callerCtx, connect.NewRequest(&commercev1.CreateRequest{
+		Context: &commonv1.CommandContext{
+			WorkspaceId:    &commonv1.UUID{Value: tenantA},
+			IdempotencyKey: "pg-n1-adapter-create-1",
+		},
+		ProductType:      commercev1.ProductType_PRODUCT_TYPE_PHYSICAL,
+		Title:            "Micro Thu Âm Không Dây Pro",
+		Category:         "Audio",
+		BasePrice:        &commonv1.Money{Amount: "950000.000000", Currency: "VND"},
+		Currency:         "VND",
+		InventoryEnabled: true,
+		MetadataJson:     `{"search_index":{"document_id":"pending","workspace_id":"` + tenantA + `","title":"Micro Thu Âm Không Dây Pro"}}`,
+		InitialSkus: []*commercev1.ProductSku{
+			{
+				SkuCode:       "MIC-PRO-01",
+				Currency:      "VND",
+				StockQuantity: 10,
+				IsActive:      true,
+			},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("N1 adapterHandler.Create failed: %v", err)
+	}
+	n1ProdID := n1CreateResp.Msg.Product.ProductId
+	n1SkuID := n1CreateResp.Msg.Product.Skus[0].SkuId
+
+	// Replay with identical idempotency key must return the exact same product without creating a second row
+	n1ReplayResp, err := adapterHandler.Create(callerCtx, connect.NewRequest(&commercev1.CreateRequest{
+		Context: &commonv1.CommandContext{
+			WorkspaceId:    &commonv1.UUID{Value: tenantA},
+			IdempotencyKey: "pg-n1-adapter-create-1",
+		},
+		ProductType:      commercev1.ProductType_PRODUCT_TYPE_PHYSICAL,
+		Title:            "Micro Thu Âm Không Dây Pro",
+		Category:         "Audio",
+		BasePrice:        &commonv1.Money{Amount: "950000.000000", Currency: "VND"},
+		Currency:         "VND",
+		InventoryEnabled: true,
+		MetadataJson:     `{"search_index":{"document_id":"pending","workspace_id":"` + tenantA + `","title":"Micro Thu Âm Không Dây Pro"}}`,
+		InitialSkus: []*commercev1.ProductSku{
+			{
+				SkuCode:       "MIC-PRO-01",
+				Currency:      "VND",
+				StockQuantity: 10,
+				IsActive:      true,
+			},
+		},
+	}))
+	if err != nil || n1ReplayResp.Msg.Product.ProductId != n1ProdID {
+		t.Fatalf("N1 Postgres replay mismatch: got=%v want=%s err=%v", n1ReplayResp, n1ProdID, err)
+	}
+
+	// UpdateStock via adapterHandler must write event_outbox row containing movement_id, location_id, movement_type="adjustment", quantity=15
+	if _, err := adapterHandler.UpdateStock(callerCtx, connect.NewRequest(&commercev1.UpdateStockRequest{
+		Context: &commonv1.CommandContext{
+			WorkspaceId:    &commonv1.UUID{Value: tenantA},
+			IdempotencyKey: "pg-n2-adapter-stock-1",
+		},
+		SkuId:         n1SkuID,
+		DeltaQuantity: 15,
+		Reason:        "warehouse_restock",
+	})); err != nil {
+		t.Fatalf("N2 adapterHandler.UpdateStock failed: %v", err)
+	}
+	var outboxPayloadRaw []byte
+	if err := adminPool.QueryRow(ctx, `
+		SELECT payload
+		FROM event_outbox
+		WHERE workspace_id = $1::uuid AND aggregate_id = $2::uuid AND event_type = 'inventory.stock_moved'
+		ORDER BY created_at DESC LIMIT 1
+	`, tenantA, n1SkuID).Scan(&outboxPayloadRaw); err != nil {
+		t.Fatalf("N2 query event_outbox for inventory.stock_moved failed: %v", err)
+	}
+	var outboxPayload map[string]any
+	if err := json.Unmarshal(outboxPayloadRaw, &outboxPayload); err != nil {
+		t.Fatalf("N2 unmarshal outbox payload: %v", err)
+	}
+	if outboxPayload["movement_id"] == "" || outboxPayload["location_id"] == "" || outboxPayload["movement_type"] != "adjustment" || outboxPayload["quantity"] != float64(15) {
+		t.Fatalf("N2 Postgres regression: outbox payload missing movement_id/location_id/movement_type/quantity: %+v", outboxPayload)
+	}
+
+	// Update title/category/base_price via adapterHandler must synchronize metadata->'search_index' in PostgreSQL (N3)
+	updTitle := "Micro Thu Âm Không Dây Studio Max"
+	updCat := "Thiết Bị Thu Âm"
+	if _, err := adapterHandler.Update(callerCtx, connect.NewRequest(&commercev1.UpdateRequest{
+		Context: &commonv1.CommandContext{
+			WorkspaceId:    &commonv1.UUID{Value: tenantA},
+			IdempotencyKey: "pg-n3-adapter-update-1",
+		},
+		ProductId: n1ProdID,
+		Title:     &updTitle,
+		Category:  &updCat,
+		BasePrice: &commonv1.Money{Amount: "1200000.000000", Currency: "VND"},
+	})); err != nil {
+		t.Fatalf("N3 adapterHandler.Update failed: %v", err)
+	}
+	var syncedTitle, syncedCat, syncedPrice string
+	if err := adminPool.QueryRow(ctx, `
+		SELECT
+			COALESCE(metadata->'search_index'->>'title', ''),
+			COALESCE(metadata->'search_index'->>'category', ''),
+			COALESCE(metadata->'search_index'->>'base_price', '')
+		FROM products
+		WHERE workspace_id = $1::uuid AND product_id = $2::uuid
+	`, tenantA, n1ProdID).Scan(&syncedTitle, &syncedCat, &syncedPrice); err != nil {
+		t.Fatalf("N3 query products.metadata->'search_index' failed: %v", err)
+	}
+	if syncedTitle != updTitle || syncedCat != updCat || syncedPrice != "1200000.000000" {
+		t.Fatalf("N3 Postgres regression: metadata->'search_index' not synchronized: title=%q cat=%q price=%q",
+			syncedTitle, syncedCat, syncedPrice)
+	}
+
 	t.Log("PASS: Live PostgreSQL RLS isolation, product catalog, stock movements ledger, CAS, keyset cursor, and sales analytics verified.")
+}
+
+// poolAdapterProductStore mirrors runtimeassembly.tenantProductStore (holding only an unexported *pgxpool.Pool field)
+// to verify that beginStoreMutationTx unwraps the pool and executes mutations + idempotency + outbox atomically in one pgx.Tx.
+type poolAdapterProductStore struct {
+	pool *pgxpool.Pool
+}
+
+func (s *poolAdapterProductStore) CreateProduct(context.Context, *product.Product) error {
+	return errors.New("unexpected non-tx call to CreateProduct")
+}
+func (s *poolAdapterProductStore) GetProduct(context.Context, string, string) (*product.Product, error) {
+	return nil, errors.New("unexpected non-tx call to GetProduct")
+}
+func (s *poolAdapterProductStore) ListProducts(context.Context, string, product.ListFilter, int, int) ([]*product.Product, int64, error) {
+	return nil, 0, errors.New("unexpected non-tx call to ListProducts")
+}
+func (s *poolAdapterProductStore) UpdateProduct(context.Context, *product.Product) error {
+	return errors.New("unexpected non-tx call to UpdateProduct")
+}
+func (s *poolAdapterProductStore) DeleteProduct(context.Context, string, string) error {
+	return errors.New("unexpected non-tx call to DeleteProduct")
+}
+func (s *poolAdapterProductStore) ArchiveProduct(context.Context, string, string) error {
+	return errors.New("unexpected non-tx call to ArchiveProduct")
+}
+func (s *poolAdapterProductStore) BulkArchiveProducts(context.Context, string, []string) (int, error) {
+	return 0, errors.New("unexpected non-tx call to BulkArchiveProducts")
+}
+func (s *poolAdapterProductStore) FindProductByExternalID(context.Context, string, string, string, string) (*product.Product, error) {
+	return nil, errors.New("unexpected non-tx call to FindProductByExternalID")
+}
+func (s *poolAdapterProductStore) CreateSku(context.Context, *product.ProductSku) error {
+	return errors.New("unexpected non-tx call to CreateSku")
+}
+func (s *poolAdapterProductStore) GetSku(context.Context, string, string) (*product.ProductSku, error) {
+	return nil, errors.New("unexpected non-tx call to GetSku")
+}
+func (s *poolAdapterProductStore) ListSkusByProduct(context.Context, string, string) ([]product.ProductSku, error) {
+	return nil, errors.New("unexpected non-tx call to ListSkusByProduct")
+}
+func (s *poolAdapterProductStore) UpdateSkuStock(context.Context, string, string, int32) (int32, error) {
+	return 0, errors.New("unexpected non-tx call to UpdateSkuStock")
+}
+func (s *poolAdapterProductStore) SetSkuAlertThreshold(context.Context, string, string, int32) error {
+	return errors.New("unexpected non-tx call to SetSkuAlertThreshold")
+}
+func (s *poolAdapterProductStore) LinkContent(context.Context, string, string, product.ContentRef) error {
+	return errors.New("unexpected non-tx call to LinkContent")
+}
+func (s *poolAdapterProductStore) GetLinkedContent(context.Context, string, string) ([]product.ContentRef, error) {
+	return nil, errors.New("unexpected non-tx call to GetLinkedContent")
+}
+func (s *poolAdapterProductStore) BatchTag(context.Context, string, []string, []string, []string) (int, error) {
+	return 0, errors.New("unexpected non-tx call to BatchTag")
+}
+func (s *poolAdapterProductStore) GetIdempotencyRecord(context.Context, string, string) (*product.IdempotencyRecord, error) {
+	return nil, errors.New("unexpected non-tx call to GetIdempotencyRecord")
+}
+func (s *poolAdapterProductStore) SaveIdempotencyRecord(context.Context, product.IdempotencyRecord) error {
+	return errors.New("unexpected non-tx call to SaveIdempotencyRecord")
+}
+func (s *poolAdapterProductStore) GetProductSalesSummary(context.Context, string, string) (*product.ProductSalesSummary, error) {
+	return nil, errors.New("unexpected non-tx call to GetProductSalesSummary")
+}
+func (s *poolAdapterProductStore) GetProductSalesChart(context.Context, string, string, int) ([]product.SalesChartDataPoint, error) {
+	return nil, errors.New("unexpected non-tx call to GetProductSalesChart")
+}
+func (s *poolAdapterProductStore) GetProductRank(context.Context, string, string) (*product.ProductRankSummary, error) {
+	return nil, errors.New("unexpected non-tx call to GetProductRank")
 }

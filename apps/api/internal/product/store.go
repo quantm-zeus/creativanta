@@ -2,9 +2,12 @@ package product
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"math/big"
 	"reflect"
 	"sort"
@@ -12,12 +15,15 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"unsafe"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/quantm-zeus/creativanta/apps/api/internal/rbac"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb"
+	"github.com/quantm-zeus/creativanta/apps/api/internal/transportauth"
 )
 
 type Store interface {
@@ -360,7 +366,20 @@ func (m *MemoryStore) UpdateProduct(_ context.Context, p *Product) error {
 	if !cp.UpdatedAt.After(existing.UpdatedAt) {
 		cp.UpdatedAt = existing.UpdatedAt.Add(time.Microsecond)
 	}
+	cp.SKUs = m.getSkusForProductLocked(cp.WorkspaceID, cp.ProductID)
+	if existing.Metadata != nil {
+		if existingIdx, hasIdx := existing.Metadata["search_index"]; hasIdx && existingIdx != nil {
+			if cp.Metadata == nil {
+				cp.Metadata = make(map[string]any)
+			}
+			if _, stillHasIdx := cp.Metadata["search_index"]; !stillHasIdx {
+				cp.Metadata["search_index"] = existingIdx
+			}
+		}
+	}
+	refreshProductSearchIndexMetadata(cp)
 	p.UpdatedAt = cp.UpdatedAt
+	p.Metadata = cp.Metadata
 	m.products[p.ProductID] = cp
 	return nil
 }
@@ -407,6 +426,8 @@ func (m *MemoryStore) ArchiveProduct(ctx context.Context, workspaceID, productID
 		now = p.UpdatedAt.Add(time.Microsecond)
 	}
 	p.UpdatedAt = now
+	p.SKUs = m.getSkusForProductLocked(workspaceID, productID)
+	refreshProductSearchIndexMetadata(p)
 	return nil
 }
 
@@ -425,6 +446,8 @@ func (m *MemoryStore) BulkArchiveProducts(_ context.Context, workspaceID string,
 			} else {
 				p.UpdatedAt = now
 			}
+			p.SKUs = m.getSkusForProductLocked(workspaceID, pid)
+			refreshProductSearchIndexMetadata(p)
 			count++
 		}
 	}
@@ -518,6 +541,11 @@ func (m *MemoryStore) UpdateSkuStock(ctx context.Context, workspaceID, skuID str
 			if mv.SkuID != skuID || mv.Quantity != delta || mv.Reason != reason {
 				return 0, ErrIdempotencyConflict
 			}
+			if meta.Result != nil {
+				meta.Result.MovementID = mv.MovementID
+				meta.Result.LocationID = mv.LocationID
+				meta.Result.MovementType = mv.MovementType
+			}
 			return s.StockQuantity, nil
 		}
 	}
@@ -576,31 +604,46 @@ func (m *MemoryStore) UpdateSkuStock(ctx context.Context, workspaceID, skuID str
 	}
 
 	locBal := m.balances[skuKey][locID]
-	newLocOnHand := locBal.OnHand + delta
+	newLocOnHand, err := checkedAddInt32(locBal.OnHand, delta)
+	if err != nil {
+		return s.StockQuantity, err
+	}
 	if newLocOnHand < 0 {
 		return s.StockQuantity, fmt.Errorf("%w: stock quantity cannot be negative", ErrInsufficientStock)
 	}
 	if newLocOnHand < locBal.Reserved {
 		return s.StockQuantity, fmt.Errorf("%w: stock quantity (%d) cannot be less than reserved stock (%d)", ErrInsufficientStock, newLocOnHand, locBal.Reserved)
 	}
-	locBal.OnHand = newLocOnHand
-	m.balances[skuKey][locID] = locBal
 
-	var totalOnHand, totalReserved int32
-	for _, bal := range m.balances[skuKey] {
-		totalOnHand += bal.OnHand
-		totalReserved += bal.Reserved
+	totalOnHand := newLocOnHand
+	totalReserved := locBal.Reserved
+	for k, bal := range m.balances[skuKey] {
+		if k == locID {
+			continue
+		}
+		var sumErr error
+		totalOnHand, sumErr = checkedAddInt32(totalOnHand, bal.OnHand)
+		if sumErr != nil {
+			return s.StockQuantity, sumErr
+		}
+		totalReserved, sumErr = checkedAddInt32(totalReserved, bal.Reserved)
+		if sumErr != nil {
+			return s.StockQuantity, sumErr
+		}
 	}
 	if totalOnHand < s.StockReserved {
 		return s.StockQuantity, fmt.Errorf("%w: stock quantity (%d) cannot be less than reserved stock (%d)", ErrInsufficientStock, totalOnHand, s.StockReserved)
 	}
+	locBal.OnHand = newLocOnHand
+	m.balances[skuKey][locID] = locBal
 	if totalReserved > s.StockReserved {
 		s.StockReserved = totalReserved
 	}
 	s.StockQuantity = totalOnHand
 	s.UpdatedAt = now
+	movementID := newUUID()
 	m.movements = append(m.movements, StockMovementRecord{
-		MovementID:   newUUID(),
+		MovementID:   movementID,
 		WorkspaceID:  workspaceID,
 		SkuID:        skuID,
 		LocationID:   locID,
@@ -610,6 +653,15 @@ func (m *MemoryStore) UpdateSkuStock(ctx context.Context, workspaceID, skuID str
 		MovementKey:  movementKey,
 		CreatedAt:    now,
 	})
+	if meta.Result != nil {
+		meta.Result.MovementID = movementID
+		meta.Result.LocationID = locID
+		meta.Result.MovementType = "adjustment"
+	}
+	if p, ok := m.products[s.ProductID]; ok && p != nil && p.WorkspaceID == workspaceID && p.DeletedAt == nil {
+		p.SKUs = m.getSkusForProductLocked(workspaceID, p.ProductID)
+		refreshProductSearchIndexMetadata(p)
+	}
 	return totalOnHand, nil
 }
 
@@ -796,7 +848,11 @@ func (m *MemoryStore) SaveIdempotencyRecord(ctx context.Context, rec Idempotency
 			if existing.RequestHash != rec.RequestHash {
 				return ErrIdempotencyConflict
 			}
-			return nil
+			cpExisting := existing
+			if existing.ResponseBody != nil {
+				cpExisting.ResponseBody = append([]byte(nil), existing.ResponseBody...)
+			}
+			return &idempotencyAlreadyCommittedError{Record: cpExisting}
 		}
 	}
 	cp := rec
@@ -1248,6 +1304,12 @@ func (s *PostgresStore) ListProducts(ctx context.Context, workspaceID string, fi
 
 func (s *PostgresStore) UpdateProduct(ctx context.Context, p *Product) error {
 	db := s.dbFromContext(ctx)
+	if len(p.SKUs) == 0 && p.Metadata != nil && p.Metadata["search_index"] != nil {
+		if skus, skuErr := s.ListSkusByProduct(ctx, p.WorkspaceID, p.ProductID); skuErr == nil {
+			p.SKUs = skus
+		}
+	}
+	refreshProductSearchIndexMetadata(p)
 	extJSON, err := json.Marshal(p.ExternalRefs)
 	if err != nil {
 		return fmt.Errorf("marshal external_refs: %w", err)
@@ -1672,17 +1734,23 @@ func (s *PostgresStore) UpdateSkuStock(ctx context.Context, workspaceID, skuID s
 
 	var resultQty int32
 	err := s.withTx(ctx, workspaceID, func(db DBTX) error {
+		var existingMovementID, existingLocationID, existingMovementType string
 		var existingSkuID string
 		var existingQty int32
 		var existingReason string
 		err := db.QueryRow(ctx, `
-			SELECT sku_id::text, quantity, COALESCE(reason, '')
+			SELECT movement_id::text, location_id::text, movement_type::text, sku_id::text, quantity, COALESCE(reason, '')
 			FROM stock_movements
 			WHERE workspace_id = $1::uuid AND movement_key = $2
-		`, workspaceID, movementKey).Scan(&existingSkuID, &existingQty, &existingReason)
+		`, workspaceID, movementKey).Scan(&existingMovementID, &existingLocationID, &existingMovementType, &existingSkuID, &existingQty, &existingReason)
 		if err == nil {
 			if existingSkuID != skuID || existingQty != delta || existingReason != reason {
 				return ErrIdempotencyConflict
+			}
+			if meta.Result != nil {
+				meta.Result.MovementID = existingMovementID
+				meta.Result.LocationID = existingLocationID
+				meta.Result.MovementType = existingMovementType
 			}
 			return db.QueryRow(ctx, `
 				SELECT stock_quantity
@@ -1774,7 +1842,10 @@ func (s *PostgresStore) UpdateSkuStock(ctx context.Context, workspaceID, skuID s
 					}
 				}
 
-				newBalOnHand := balOnHand + delta
+				newBalOnHand, addErr := checkedAddInt32(balOnHand, delta)
+				if addErr != nil {
+					return addErr
+				}
 				if newBalOnHand < 0 || newBalOnHand < balReserved {
 					return fmt.Errorf("%w: location stock balance (%d) cannot be less than reserved (%d)", ErrInsufficientStock, newBalOnHand, balReserved)
 				}
@@ -1789,7 +1860,10 @@ func (s *PostgresStore) UpdateSkuStock(ctx context.Context, workspaceID, skuID s
 				return fmt.Errorf("lock inventory balance: %w", err)
 			}
 		} else {
-			newBalOnHand := balOnHand + delta
+			newBalOnHand, addErr := checkedAddInt32(balOnHand, delta)
+			if addErr != nil {
+				return addErr
+			}
 			if newBalOnHand < 0 || newBalOnHand < balReserved {
 				return fmt.Errorf("%w: location stock balance (%d) cannot be less than reserved (%d)", ErrInsufficientStock, newBalOnHand, balReserved)
 			}
@@ -1803,6 +1877,7 @@ func (s *PostgresStore) UpdateSkuStock(ctx context.Context, workspaceID, skuID s
 			}
 		}
 
+		movementID := newUUID()
 		_, err = db.Exec(ctx, `
 			INSERT INTO stock_movements (
 				movement_id, workspace_id, sku_id, location_id,
@@ -1811,20 +1886,30 @@ func (s *PostgresStore) UpdateSkuStock(ctx context.Context, workspaceID, skuID s
 				$1::uuid, $2::uuid, $3::uuid, $4::uuid,
 				'adjustment', $5, $6, $7, NOW()
 			)
-		`, newUUID(), workspaceID, skuID, locationID, delta, reason, movementKey)
+		`, movementID, workspaceID, skuID, locationID, delta, reason, movementKey)
 		if err != nil {
 			return fmt.Errorf("insert stock movement: %w", err)
 		}
+		if meta.Result != nil {
+			meta.Result.MovementID = movementID
+			meta.Result.LocationID = locationID
+			meta.Result.MovementType = "adjustment"
+		}
 
-		var totalOnHand, totalReserved int32
+		var sumOnHand64, sumReserved64 int64
 		err = db.QueryRow(ctx, `
-			SELECT COALESCE(SUM(on_hand)::int4, 0), COALESCE(SUM(reserved)::int4, 0)
+			SELECT COALESCE(SUM(on_hand), 0), COALESCE(SUM(reserved), 0)
 			FROM inventory_balances
 			WHERE workspace_id = $1::uuid AND sku_id = $2::uuid
-		`, workspaceID, skuID).Scan(&totalOnHand, &totalReserved)
+		`, workspaceID, skuID).Scan(&sumOnHand64, &sumReserved64)
 		if err != nil {
 			return fmt.Errorf("sum inventory balances: %w", err)
 		}
+		if sumOnHand64 > math.MaxInt32 || sumOnHand64 < math.MinInt32 || sumReserved64 > math.MaxInt32 || sumReserved64 < math.MinInt32 {
+			return fmt.Errorf("%w: total stock quantity overflows int32 bounds", ErrInvalidInput)
+		}
+		totalOnHand := int32(sumOnHand64)
+		totalReserved := int32(sumReserved64)
 		if totalReserved < currentReserved {
 			totalReserved = currentReserved
 		}
@@ -2073,18 +2158,22 @@ func (s *PostgresStore) SaveIdempotencyRecord(ctx context.Context, rec Idempoten
 		return fmt.Errorf("save idempotency record: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
-		var existingHash string
+		var existing IdempotencyRecord
 		err := db.QueryRow(ctx, `
-			SELECT request_hash
+			SELECT workspace_id::text, idempotency_key, request_hash, COALESCE(response_code, 200), COALESCE(response_body, response_payload, '{}'::jsonb), created_at, expires_at
 			FROM api_idempotency_records
 			WHERE workspace_id = $1::uuid AND actor_id = $1::uuid AND rpc = 'product.mutation' AND idempotency_key = $2
-		`, rec.WorkspaceID, rec.IdempotencyKey).Scan(&existingHash)
+		`, rec.WorkspaceID, rec.IdempotencyKey).Scan(
+			&existing.WorkspaceID, &existing.IdempotencyKey, &existing.RequestHash,
+			&existing.ResponseStatus, &existing.ResponseBody, &existing.CreatedAt, &existing.ExpiresAt,
+		)
 		if err != nil {
 			return fmt.Errorf("query existing idempotency record: %w", err)
 		}
-		if existingHash != rec.RequestHash {
+		if existing.RequestHash != rec.RequestHash {
 			return ErrIdempotencyConflict
 		}
+		return &idempotencyAlreadyCommittedError{Record: existing}
 	}
 	return nil
 }
@@ -2931,6 +3020,16 @@ func computeProductRank(
 // ============================================================================
 
 type txEventBufferKey struct{}
+type txStoreContextKey struct{}
+
+func storeFromContext(ctx context.Context, fallback Store) Store {
+	if ctx != nil {
+		if st, ok := ctx.Value(txStoreContextKey{}).(Store); ok && st != nil {
+			return st
+		}
+	}
+	return fallback
+}
 
 type txEventBuffer struct {
 	mu     sync.Mutex
@@ -2988,6 +3087,520 @@ func unwrapConcreteStore(store Store) any {
 		}
 	}
 	return nil
+}
+
+func unwrapStorePool(store Store) *pgxpool.Pool {
+	if store == nil {
+		return nil
+	}
+	v := reflect.ValueOf(store)
+	for v.IsValid() && (v.Kind() == reflect.Ptr || v.Kind() == reflect.Interface) {
+		if v.IsNil() {
+			return nil
+		}
+		v = v.Elem()
+	}
+	if !v.IsValid() || v.Kind() != reflect.Struct {
+		return nil
+	}
+	if !v.CanAddr() {
+		cp := reflect.New(v.Type()).Elem()
+		cp.Set(v)
+		v = cp
+	}
+	poolType := reflect.TypeOf((*pgxpool.Pool)(nil))
+	for i := 0; i < v.NumField(); i++ {
+		f := v.Field(i)
+		if f.Type() == poolType {
+			if f.CanInterface() {
+				if p, ok := f.Interface().(*pgxpool.Pool); ok && p != nil {
+					return p
+				}
+			} else if f.CanAddr() {
+				p := *(**pgxpool.Pool)(unsafe.Pointer(f.UnsafeAddr()))
+				if p != nil {
+					return p
+				}
+			}
+		}
+		if f.CanInterface() {
+			if inner, ok := f.Interface().(Store); ok && inner != nil {
+				if p := unwrapStorePool(inner); p != nil {
+					return p
+				}
+			}
+		}
+	}
+	return nil
+}
+
+type txPoolProductStore struct {
+	*PostgresStore
+	tx          pgx.Tx
+	workspaceID string
+	actorUserID string
+}
+
+func (s *txPoolProductStore) insertOutboxEventTx(
+	ctx context.Context,
+	targetStream, eventType, aggregateType, aggregateID, workspaceID string,
+	payloadJSON, metaJSON []byte,
+) error {
+	if len(payloadJSON) == 0 {
+		payloadJSON = []byte(`{}`)
+	}
+	if len(metaJSON) == 0 {
+		metaJSON = []byte(`{}`)
+	}
+	_, err := s.tx.Exec(ctx, `
+		INSERT INTO event_outbox (
+			event_id, event_type, target_stream, aggregate_type, aggregate_id,
+			workspace_id, payload, metadata
+		) VALUES (
+			$1::uuid, $2, $3, $4, $5::uuid,
+			$6::uuid, $7::jsonb, $8::jsonb
+		)
+	`, newUUID(), eventType, targetStream, aggregateType, aggregateID, workspaceID, payloadJSON, metaJSON)
+	return err
+}
+
+func (s *txPoolProductStore) insertAuditEventTx(
+	ctx context.Context,
+	workspaceID, action, resourceType, resourceID string,
+	changesJSON []byte,
+) error {
+	if len(changesJSON) == 0 {
+		changesJSON = []byte(`{}`)
+	}
+	_, err := s.tx.Exec(ctx, `
+		INSERT INTO audit_events (
+			audit_event_id, workspace_id, actor_user_id, actor_type,
+			action, resource_type, resource_id, changes, reason
+		) VALUES (
+			$1::uuid, $2::uuid, $3::uuid, 'user',
+			$4, $5, $6::uuid, $7::jsonb, ''
+		)
+	`, newUUID(), workspaceID, s.actorUserID, action, resourceType, resourceID, changesJSON)
+	return err
+}
+
+func (s *txPoolProductStore) CreateProduct(ctx context.Context, p *Product) error {
+	if p == nil {
+		return ErrInvalidInput
+	}
+	if err := s.PostgresStore.CreateProduct(ctx, p); err != nil {
+		return err
+	}
+	payloadBytes, err := json.Marshal(map[string]any{
+		"product_id":     p.ProductID,
+		"workspace_id":   p.WorkspaceID,
+		"type":           string(p.ProductType),
+		"title":          p.Title,
+		"catalog_status": string(p.CatalogStatus),
+		"sku_count":      len(p.SKUs),
+	})
+	if err != nil {
+		return err
+	}
+	metaBytes, err := json.Marshal(map[string]any{
+		"actor_id":      s.actorUserID,
+		"actor_type":    "user",
+		"required_perm": "product:manage",
+	})
+	if err != nil {
+		return err
+	}
+	if err := s.insertOutboxEventTx(ctx, "search_indexing", "product.created", "product", p.ProductID, p.WorkspaceID, payloadBytes, metaBytes); err != nil {
+		return err
+	}
+	return s.insertAuditEventTx(ctx, p.WorkspaceID, "product.created", "product", p.ProductID, payloadBytes)
+}
+
+func (s *txPoolProductStore) UpdateProduct(ctx context.Context, p *Product) error {
+	if p == nil {
+		return ErrInvalidInput
+	}
+	prevStatus := p.PreviousCatalogStatus
+	if prevStatus == "" {
+		if existing, err := s.PostgresStore.GetProduct(ctx, p.WorkspaceID, p.ProductID); err == nil && existing != nil {
+			prevStatus = existing.CatalogStatus
+		}
+	}
+	if err := s.PostgresStore.UpdateProduct(ctx, p); err != nil {
+		return err
+	}
+	if prevStatus != "" && prevStatus != p.CatalogStatus {
+		payloadBytes, _ := json.Marshal(map[string]any{
+			"product_id":     p.ProductID,
+			"workspace_id":   p.WorkspaceID,
+			"from":           prevStatus,
+			"to":             string(p.CatalogStatus),
+			"catalog_status": string(p.CatalogStatus),
+		})
+		metaBytes, _ := json.Marshal(map[string]any{
+			"actor_id":      s.actorUserID,
+			"actor_type":    "user",
+			"required_perm": "product:manage",
+		})
+		if err := s.insertOutboxEventTx(ctx, "search_indexing", "product.catalog_status_changed", "product", p.ProductID, p.WorkspaceID, payloadBytes, metaBytes); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *txPoolProductStore) ArchiveProduct(ctx context.Context, workspaceID, productID string) error {
+	existing, err := s.PostgresStore.GetProduct(ctx, workspaceID, productID)
+	if err != nil {
+		return err
+	}
+	if err := s.PostgresStore.ArchiveProduct(ctx, workspaceID, productID); err != nil {
+		return err
+	}
+	if existing.CatalogStatus != StatusArchived {
+		payloadBytes, _ := json.Marshal(map[string]any{
+			"product_id":     productID,
+			"workspace_id":   workspaceID,
+			"from":           existing.CatalogStatus,
+			"to":             StatusArchived,
+			"catalog_status": StatusArchived,
+		})
+		metaBytes, _ := json.Marshal(map[string]any{
+			"actor_id":      s.actorUserID,
+			"actor_type":    "user",
+			"required_perm": "product:manage",
+		})
+		if err := s.insertOutboxEventTx(ctx, "search_indexing", "product.catalog_status_changed", "product", productID, workspaceID, payloadBytes, metaBytes); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *txPoolProductStore) BulkArchiveProducts(ctx context.Context, workspaceID string, productIDs []string) (int, error) {
+	type priorProductState struct {
+		productID string
+		status    string
+	}
+	var priorStates []priorProductState
+	seen := make(map[string]struct{}, len(productIDs))
+	for _, pid := range productIDs {
+		if _, dup := seen[pid]; dup {
+			continue
+		}
+		seen[pid] = struct{}{}
+		if existing, err := s.PostgresStore.GetProduct(ctx, workspaceID, pid); err == nil && existing != nil && existing.CatalogStatus != StatusArchived {
+			priorStates = append(priorStates, priorProductState{
+				productID: existing.ProductID,
+				status:    string(existing.CatalogStatus),
+			})
+		}
+	}
+	count, err := s.PostgresStore.BulkArchiveProducts(ctx, workspaceID, productIDs)
+	if err != nil {
+		return 0, err
+	}
+	for _, prior := range priorStates {
+		payloadBytes, _ := json.Marshal(map[string]any{
+			"product_id":     prior.productID,
+			"workspace_id":   workspaceID,
+			"from":           prior.status,
+			"to":             StatusArchived,
+			"catalog_status": StatusArchived,
+		})
+		metaBytes, _ := json.Marshal(map[string]any{
+			"actor_id":      s.actorUserID,
+			"actor_type":    "user",
+			"required_perm": "product:manage",
+		})
+		if err := s.insertOutboxEventTx(ctx, "search_indexing", "product.catalog_status_changed", "product", prior.productID, workspaceID, payloadBytes, metaBytes); err != nil {
+			return 0, err
+		}
+	}
+	return count, nil
+}
+
+func (s *txPoolProductStore) UpdateSkuStock(ctx context.Context, workspaceID, skuID string, delta int32) (int32, error) {
+	newQty, err := s.PostgresStore.UpdateSkuStock(ctx, workspaceID, skuID, delta)
+	if err != nil {
+		return 0, err
+	}
+	meta, _ := StockAdjustmentMetaFromContext(ctx)
+	reason := meta.Reason
+	if reason == "" {
+		reason = "manual_adjustment"
+	}
+	payloadMap := map[string]any{
+		"sku_id":        skuID,
+		"workspace_id":  workspaceID,
+		"movement_type": "adjustment",
+		"quantity":      delta,
+		"delta":         delta,
+		"reason":        reason,
+		"new_quantity":  newQty,
+	}
+	if meta.Result != nil {
+		if meta.Result.MovementID != "" {
+			payloadMap["movement_id"] = meta.Result.MovementID
+		}
+		if meta.Result.LocationID != "" {
+			payloadMap["location_id"] = meta.Result.LocationID
+		}
+		if meta.Result.MovementType != "" {
+			payloadMap["movement_type"] = meta.Result.MovementType
+		}
+	}
+	payloadBytes, _ := json.Marshal(payloadMap)
+	metaBytes, _ := json.Marshal(map[string]any{
+		"actor_id":      s.actorUserID,
+		"actor_type":    "user",
+		"required_perm": "inventory:adjust",
+	})
+	if err := s.insertOutboxEventTx(ctx, "analytics_events", "inventory.stock_moved", "product_sku", skuID, workspaceID, payloadBytes, metaBytes); err != nil {
+		return 0, err
+	}
+	if err := s.insertAuditEventTx(ctx, workspaceID, "inventory.stock_moved", "product_sku", skuID, payloadBytes); err != nil {
+		return 0, err
+	}
+	return newQty, nil
+}
+
+var productVietnameseSearchSynonyms = []struct {
+	triggers []string
+	phrases  string
+}{
+	{
+		triggers: []string{"đơn hàng", "don hang", "hoá đơn", "hóa đơn", "hoa don", "order"},
+		phrases:  "order đơn hàng hoá đơn hóa đơn don hang hoa don",
+	},
+	{
+		triggers: []string{"sản phẩm", "san pham", "hàng hóa", "hàng hoá", "hang hoa", "product"},
+		phrases:  "product sản phẩm hàng hóa hàng hoá san pham hang hoa",
+	},
+	{
+		triggers: []string{"khách hàng", "khach hang", "người mua", "nguoi mua", "customer"},
+		phrases:  "customer khách hàng người mua khach hang nguoi mua",
+	},
+}
+
+func splitProductSearchWords(input string) []string {
+	return strings.FieldsFunc(strings.ToLower(strings.TrimSpace(input)), func(r rune) bool {
+		return r == ' ' || r == '\t' || r == '\n' || r == '\r' || r == ',' || r == ';' || r == '.' || r == ':' || r == '/' || r == '\\'
+	})
+}
+
+func buildProductSearchTokens(parts ...string) ([]string, string) {
+	seen := make(map[string]struct{})
+	var ordered []string
+	var rawBuilder strings.Builder
+	addPhrase := func(phrase string) {
+		trimmed := strings.TrimSpace(phrase)
+		if trimmed == "" {
+			return
+		}
+		lower := strings.ToLower(trimmed)
+		if rawBuilder.Len() > 0 {
+			rawBuilder.WriteByte(' ')
+		}
+		rawBuilder.WriteString(lower)
+		for _, tok := range splitProductSearchWords(lower) {
+			if tok == "" {
+				continue
+			}
+			if _, exists := seen[tok]; !exists {
+				seen[tok] = struct{}{}
+				ordered = append(ordered, tok)
+			}
+		}
+	}
+	for _, p := range parts {
+		addPhrase(p)
+	}
+	baseText := rawBuilder.String()
+	for _, grp := range productVietnameseSearchSynonyms {
+		matched := false
+		for _, trig := range grp.triggers {
+			if strings.Contains(trig, " ") {
+				if strings.Contains(baseText, trig) {
+					matched = true
+					break
+				}
+			} else if _, hasTok := seen[trig]; hasTok {
+				matched = true
+				break
+			}
+		}
+		if matched {
+			addPhrase(grp.phrases)
+		}
+	}
+	return ordered, rawBuilder.String()
+}
+
+func formatSearchDecimal6(d *tenantdb.ExactDecimal) string {
+	if d == nil {
+		return "0.000000"
+	}
+	s := strings.TrimSpace(d.String())
+	if s == "" {
+		return "0.000000"
+	}
+	if !strings.Contains(s, ".") {
+		return s + ".000000"
+	}
+	parts := strings.SplitN(s, ".", 2)
+	frac := parts[1]
+	for len(frac) < 6 {
+		frac += "0"
+	}
+	if len(frac) > 6 {
+		frac = frac[:6]
+	}
+	return parts[0] + "." + frac
+}
+
+func refreshProductSearchIndexMetadata(p *Product) {
+	if p == nil || p.Metadata == nil {
+		return
+	}
+	rawIdx, exists := p.Metadata["search_index"]
+	if !exists || rawIdx == nil {
+		return
+	}
+	var existingMap map[string]any
+	if m, ok := rawIdx.(map[string]any); ok {
+		existingMap = m
+	} else if b, err := json.Marshal(rawIdx); err == nil {
+		_ = json.Unmarshal(b, &existingMap)
+	}
+
+	skuCodes := make([]string, 0)
+	var totalStock, reservedStock int64
+	var activeSKUs, lowStockSKUs int
+	if len(p.SKUs) > 0 {
+		for _, sku := range p.SKUs {
+			if !sku.IsActive {
+				continue
+			}
+			activeSKUs++
+			skuCodes = append(skuCodes, sku.SkuCode)
+			totalStock += int64(sku.StockQuantity)
+			reservedStock += int64(sku.StockReserved)
+			if int64(sku.StockQuantity)-int64(sku.StockReserved) <= int64(sku.LowStockThreshold) {
+				lowStockSKUs++
+			}
+		}
+	} else if existingMap != nil {
+		if codes, ok := existingMap["sku_codes"].([]any); ok {
+			for _, c := range codes {
+				if s, ok := c.(string); ok {
+					skuCodes = append(skuCodes, s)
+				}
+			}
+		} else if codes, ok := existingMap["sku_codes"].([]string); ok {
+			skuCodes = append(skuCodes, codes...)
+		}
+		if v, ok := existingMap["sku_count"].(float64); ok {
+			activeSKUs = int(v)
+		} else if v, ok := existingMap["sku_count"].(int); ok {
+			activeSKUs = v
+		}
+		if v, ok := existingMap["total_stock"].(float64); ok {
+			totalStock = int64(v)
+		} else if v, ok := existingMap["total_stock"].(int64); ok {
+			totalStock = v
+		}
+		if v, ok := existingMap["reserved_stock"].(float64); ok {
+			reservedStock = int64(v)
+		} else if v, ok := existingMap["reserved_stock"].(int64); ok {
+			reservedStock = v
+		}
+		if v, ok := existingMap["low_stock_sku_count"].(float64); ok {
+			lowStockSKUs = int(v)
+		} else if v, ok := existingMap["low_stock_sku_count"].(int); ok {
+			lowStockSKUs = v
+		}
+	}
+
+	availableStock := totalStock - reservedStock
+	inStock := !p.InventoryEnabled || availableStock > 0
+	basePriceStr := formatSearchDecimal6(p.BasePrice)
+	curr := strings.TrimSpace(p.Currency)
+	if curr == "" {
+		curr = "VND"
+	}
+	tokenParts := append([]string{p.Title, p.Description, p.Category, p.ProductType}, skuCodes...)
+	tokens, searchableText := buildProductSearchTokens(tokenParts...)
+
+	lastEventID := ""
+	if existingMap != nil {
+		if s, ok := existingMap["last_event_id"].(string); ok {
+			lastEventID = s
+		}
+	}
+	if lastEventID == "" {
+		prefix := p.ProductID
+		if len(prefix) > 8 {
+			prefix = prefix[:8]
+		}
+		lastEventID = "sync_" + prefix
+	}
+
+	versionSum := sha256.Sum256([]byte(fmt.Sprintf(
+		"%s|%s|%s|%s|%s|%s|%s|%s|%t|%d|%d|%d|%s|%s",
+		p.WorkspaceID,
+		p.ProductID,
+		p.Title,
+		p.Description,
+		p.Category,
+		p.ProductType,
+		p.CatalogStatus,
+		basePriceStr,
+		p.InventoryEnabled,
+		activeSKUs,
+		totalStock,
+		reservedStock,
+		strings.Join(skuCodes, ","),
+		lastEventID,
+	)))
+	docVersion := hex.EncodeToString(versionSum[:16])
+	updatedUTC := p.UpdatedAt.UTC()
+	if updatedUTC.IsZero() {
+		updatedUTC = time.Now().UTC()
+	}
+	createdUTC := p.CreatedAt.UTC()
+	if createdUTC.IsZero() {
+		createdUTC = updatedUTC
+	}
+
+	p.Metadata["search_index"] = map[string]any{
+		"document_id":         p.ProductID,
+		"workspace_id":        p.WorkspaceID,
+		"product_id":          p.ProductID,
+		"title":               p.Title,
+		"description":         p.Description,
+		"category":            p.Category,
+		"product_type":        p.ProductType,
+		"catalog_status":      p.CatalogStatus,
+		"base_price":          basePriceStr,
+		"currency":            curr,
+		"inventory_enabled":   p.InventoryEnabled,
+		"sku_count":           activeSKUs,
+		"sku_codes":           skuCodes,
+		"total_stock":         totalStock,
+		"reserved_stock":      reservedStock,
+		"available_stock":     availableStock,
+		"low_stock_sku_count": lowStockSKUs,
+		"in_stock":            inStock,
+		"search_tokens":       tokens,
+		"searchable_text":     searchableText,
+		"last_event_id":       lastEventID,
+		"last_event_type":     "product.updated",
+		"document_version":    docVersion,
+		"product_created_at":  createdUTC,
+		"product_updated_at":  updatedUTC,
+		"indexed_at":          updatedUTC.Truncate(time.Microsecond),
+	}
 }
 
 func beginStoreMutationTx(
@@ -3084,8 +3697,90 @@ func beginStoreMutationTx(
 		return txCtx, commitFn, rollbackFn, nil
 
 	default:
+		pool := unwrapStorePool(store)
+		if pool == nil {
+			return ctx, nil, nil, fmt.Errorf("%w: store does not support atomic idempotent transactions", ErrInvalidInput)
+		}
+		var principalWS, userID string
+		requireMembership := true
+		if principal, ok := transportauth.PrincipalFromContext(txCtx); ok && strings.TrimSpace(principal.UserID) != "" && strings.TrimSpace(principal.WorkspaceID) != "" {
+			principalWS = strings.TrimSpace(principal.WorkspaceID)
+			userID = strings.TrimSpace(principal.UserID)
+			requireMembership = !principal.InternalAdmin
+		} else if pctx, ok := rbac.PolicyContextFromContext(txCtx); ok && strings.TrimSpace(pctx.ActorUserID) != "" && strings.TrimSpace(pctx.WorkspaceID) != "" {
+			principalWS = strings.TrimSpace(pctx.WorkspaceID)
+			userID = strings.TrimSpace(pctx.ActorUserID)
+		} else {
+			return ctx, nil, nil, errors.New("unauthenticated workspace context")
+		}
+		if workspaceID != "" && principalWS != workspaceID {
+			return ctx, nil, nil, ErrProductNotFound
+		}
+		if !tenantdb.IsValidNonZeroUUID(principalWS) || !tenantdb.IsValidNonZeroUUID(userID) {
+			return ctx, nil, nil, fmt.Errorf("%w: workspace=%q user=%q", tenantdb.ErrInvalidTenantScope, principalWS, userID)
+		}
+
+		tx, err := pool.Begin(txCtx)
+		if err != nil {
+			return ctx, nil, nil, fmt.Errorf("tenantdb: begin transaction: %w", err)
+		}
+		if _, err := tx.Exec(txCtx, `SET LOCAL ROLE app_user`); err != nil {
+			_ = tx.Rollback(txCtx)
+			return ctx, nil, nil, fmt.Errorf("tenantdb: set local role app_user: %w", err)
+		}
+		var configuredTenant, configuredUser, configuredWS string
+		if err := tx.QueryRow(txCtx, `
+			SELECT
+				set_config('app.current_tenant_id', $1, true),
+				set_config('app.current_user_id', $2, true),
+				set_config('app.current_workspace_id', $1, true)
+		`, principalWS, userID).Scan(&configuredTenant, &configuredUser, &configuredWS); err != nil {
+			_ = tx.Rollback(txCtx)
+			return ctx, nil, nil, fmt.Errorf("tenantdb: set local tenant context: %w", err)
+		}
+		if configuredTenant != principalWS || configuredUser != userID || configuredWS != principalWS {
+			_ = tx.Rollback(txCtx)
+			return ctx, nil, nil, fmt.Errorf("%w: set_config verification mismatch", tenantdb.ErrInvalidTenantScope)
+		}
+		if requireMembership {
+			var memberID, role string
+			if err := tx.QueryRow(txCtx, `
+				SELECT wm.member_id::text, wm.role
+				FROM workspace_members wm
+				JOIN workspaces w ON w.workspace_id = wm.workspace_id
+				JOIN users u ON u.user_id = wm.user_id
+				WHERE wm.workspace_id = $1::uuid
+				  AND wm.user_id = $2::uuid
+				  AND wm.status = 'active'
+				  AND w.status = 'active'
+				  AND u.status = 'active'
+				LIMIT 1
+			`, principalWS, userID).Scan(&memberID, &role); err != nil {
+				_ = tx.Rollback(txCtx)
+				if errors.Is(err, pgx.ErrNoRows) {
+					return ctx, nil, nil, tenantdb.ErrMembershipRevokedOrMissing
+				}
+				return ctx, nil, nil, fmt.Errorf("tenantdb: verify active membership: %w", err)
+			}
+		}
+		lockKey := principalWS + ":" + idempotencyKey
+		if _, err := tx.Exec(txCtx, "SELECT pg_advisory_xact_lock(hashtext($1))", lockKey); err != nil {
+			_ = tx.Rollback(txCtx)
+			return ctx, nil, nil, fmt.Errorf("acquire idempotency advisory lock: %w", err)
+		}
+		txStore := &txPoolProductStore{
+			PostgresStore: NewPostgresStoreTx(tx),
+			tx:            tx,
+			workspaceID:   principalWS,
+			actorUserID:   userID,
+		}
+		txCtx = context.WithValue(txCtx, txStoreContextKey{}, Store(txStore))
+		txCtx = context.WithValue(txCtx, pgTxContextKey{}, DBTX(tx))
 		committed := false
 		commitFn := func() error {
+			if err := tx.Commit(txCtx); err != nil {
+				return err
+			}
 			committed = true
 			return nil
 		}
@@ -3094,6 +3789,7 @@ func beginStoreMutationTx(
 				evtBuf.mu.Lock()
 				evtBuf.events = nil
 				evtBuf.mu.Unlock()
+				_ = tx.Rollback(context.Background())
 			}
 		}
 		return txCtx, commitFn, rollbackFn, nil
