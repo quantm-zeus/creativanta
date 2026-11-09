@@ -100,6 +100,14 @@ func cloneOrder(o *Order) *Order {
 		return nil
 	}
 	cp := *o
+	if o.RecognizedAt != nil {
+		t := *o.RecognizedAt
+		cp.RecognizedAt = &t
+	}
+	if o.SourceUpdatedAt != nil {
+		t := *o.SourceUpdatedAt
+		cp.SourceUpdatedAt = &t
+	}
 	if len(o.Items) > 0 {
 		cp.Items = make([]OrderItem, len(o.Items))
 		copy(cp.Items, o.Items)
@@ -1233,9 +1241,12 @@ func (s *PostgresStore) UpdateOrder(ctx context.Context, o *Order) error {
 		    fee_breakdown = $2,
 		    items = $3,
 		    amount = $4,
-		    metadata = jsonb_set(COALESCE($5::jsonb, '{}'::jsonb), '{refunded_amount}', to_jsonb($6::text)),
+		    tax_amount = $5,
+		    recognized_at = $6,
+		    source_updated_at = $7,
+		    metadata = jsonb_set(COALESCE($8::jsonb, '{}'::jsonb), '{refunded_amount}', to_jsonb($9::text)),
 		    updated_at = NOW()
-		WHERE workspace_id = $7 AND order_id = $8 AND deleted_at IS NULL;
+		WHERE workspace_id = $10 AND order_id = $11 AND deleted_at IS NULL;
 	`
 	return s.withTenantTx(ctx, o.WorkspaceID, func(txCtx context.Context, tx pgx.Tx) error {
 		tag, err := tx.Exec(txCtx, q,
@@ -1243,6 +1254,9 @@ func (s *PostgresStore) UpdateOrder(ctx context.Context, o *Order) error {
 			feeJSON,
 			itemsJSON,
 			o.Amount.ToPgNumeric(),
+			o.TaxAmount.ToPgNumeric(),
+			o.RecognizedAt,
+			o.SourceUpdatedAt,
 			metaJSON,
 			o.RefundedAmount.Fixed6String(),
 			o.WorkspaceID,

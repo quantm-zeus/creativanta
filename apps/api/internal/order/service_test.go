@@ -1979,3 +1979,248 @@ func TestR06_ConfirmFulfillCompleteAfterReserveCrashRecoversLocationAndDeductsSt
 		t.Fatalf("R06 violation: expected OnHand=7 Reserved=0 after Confirm/Fulfill/Complete recovery, got OnHand=%d Reserved=%d", bal.OnHand, bal.Reserved)
 	}
 }
+
+// Codex HIGH H04 & MEDIUM M02:
+//   - Newer economic revisions on an order in the same lifecycle state (e.g. completed -> completed,
+//     confirmed -> confirmed) must update order amounts/fees/items/timestamps, emit versioned correcting
+//     finance postings (preserving idempotent replay and rejecting stale out-of-order revisions), and sync affiliate.
+//   - PaymentFee must be included in initial order postings and preserved/corrected in UpdateFeeBreakdown.
+func TestH04_SameLifecycleEconomicRevisionUpdatesOrderLedgerAndAffiliate(t *testing.T) {
+	ctx := context.Background()
+	orderSvc, invSvc, orderStore, _, _ := setupTestHarness()
+	finStore := finance.NewMemoryStore()
+	finSvc := finance.NewService(finStore, nil, nil)
+
+	t0 := time.Date(2026, 3, 25, 10, 0, 0, 0, time.UTC)
+	affStore := affiliate.NewMemoryStore()
+	affSvc := affiliate.NewService(affStore, nil, nil, func() time.Time { return t0 })
+
+	orderSvc.WithFinance(finSvc).WithAffiliateVerifier(affSvc)
+
+	wsID := "00000000-0000-0000-0000-000000000001"
+	locID := "00000000-0000-0000-0000-000000000010"
+	skuID := "SKU-H04-01"
+
+	if err := invSvc.RecordOpeningBaseline(ctx, wsID, skuID, locID, 50, t0); err != nil {
+		t.Fatalf("RecordOpeningBaseline: %v", err)
+	}
+
+	t1 := t0.Add(1 * time.Hour)
+	t2 := t0.Add(2 * time.Hour)
+	t3 := t0.Add(3 * time.Hour)
+
+	// 1. Ingest initial completed order at t1
+	ordV1, created, err := orderSvc.IngestOrder(ctx, &order.Order{
+		OrderID:         "ord-h04-rev-1",
+		WorkspaceID:     wsID,
+		SourceClass:     order.SourceClassOfficial,
+		SourcePlatform:  "tiktok",
+		ExternalOrderID: "tt-h04-rev-1",
+		LifecycleState:  order.StateCompleted,
+		Amount:          tenantdb.MustParseExactDecimal("1000000.000000"),
+		Currency:        "VND",
+		OrderedAt:       t1,
+		SourceUpdatedAt: &t1,
+		FeeBreakdown: order.FeeBreakdown{
+			PlatformFee:         tenantdb.MustParseExactDecimal("50000.000000"),
+			PaymentFee:          tenantdb.MustParseExactDecimal("10000.000000"),
+			ShippingCost:        tenantdb.MustParseExactDecimal("20000.000000"),
+			AffiliateCommission: tenantdb.MustParseExactDecimal("30000.000000"),
+		},
+		Items: []order.OrderItem{
+			{
+				Sku:       skuID,
+				Name:      "H04 Item",
+				Quantity:  2,
+				UnitPrice: tenantdb.MustParseExactDecimal("500000.000000"),
+				Total:     tenantdb.MustParseExactDecimal("1000000.000000"),
+				UnitCogs:  tenantdb.MustParseExactDecimal("100000.000000"),
+			},
+		},
+	}, locID)
+	if err != nil || !created {
+		t.Fatalf("initial IngestOrder failed: created=%v err=%v", created, err)
+	}
+
+	sumOrderLedger := func(orderID string) (tenantdb.ExactDecimal, int) {
+		entries, err := finStore.ListPostings(ctx, wsID, finance.PostingFilter{
+			OriginType: "order",
+			OriginID:   orderID,
+		})
+		if err != nil {
+			t.Fatalf("ListPostings: %v", err)
+		}
+		sum := tenantdb.ZeroDecimal()
+		for _, e := range entries {
+			sum, _ = sum.Add(e.Amount)
+		}
+		return sum, len(entries)
+	}
+
+	// Net v1 = 1,000,000 - (50,000 + 10,000) - 20,000 - 30,000 - 200,000 = 690,000
+	netV1, countV1 := sumOrderLedger(ordV1.OrderID)
+	if netV1.Cmp(tenantdb.MustParseExactDecimal("690000.000000")) != 0 {
+		t.Fatalf("expected initial net ledger 690000.000000 (including PaymentFee), got %s (entries=%d)", netV1.String(), countV1)
+	}
+
+	// 2. Ingest newer revision at t2 in the SAME lifecycle state (completed -> completed)
+	revisedPayload := &order.Order{
+		WorkspaceID:     wsID,
+		SourceClass:     order.SourceClassOfficial,
+		SourcePlatform:  "tiktok",
+		ExternalOrderID: "tt-h04-rev-1",
+		LifecycleState:  order.StateCompleted,
+		Amount:          tenantdb.MustParseExactDecimal("900000.000000"),
+		Currency:        "VND",
+		OrderedAt:       t1,
+		SourceUpdatedAt: &t2,
+		FeeBreakdown: order.FeeBreakdown{
+			PlatformFee:         tenantdb.MustParseExactDecimal("45000.000000"),
+			PaymentFee:          tenantdb.MustParseExactDecimal("12000.000000"),
+			ShippingCost:        tenantdb.MustParseExactDecimal("25000.000000"),
+			AffiliateCommission: tenantdb.MustParseExactDecimal("27000.000000"),
+		},
+		Items: []order.OrderItem{
+			{
+				Sku:       skuID,
+				Name:      "H04 Item",
+				Quantity:  2,
+				UnitPrice: tenantdb.MustParseExactDecimal("450000.000000"),
+				Total:     tenantdb.MustParseExactDecimal("900000.000000"),
+				UnitCogs:  tenantdb.MustParseExactDecimal("110000.000000"),
+			},
+		},
+	}
+	ordV2, createdV2, err := orderSvc.IngestOrder(ctx, revisedPayload, locID)
+	if err != nil || createdV2 {
+		t.Fatalf("revised IngestOrder failed: created=%v err=%v", createdV2, err)
+	}
+	if ordV2.Amount.Cmp(tenantdb.MustParseExactDecimal("900000.000000")) != 0 {
+		t.Fatalf("H04 violation: expected updated order Amount=900000.000000, got %s", ordV2.Amount.String())
+	}
+	if ordV2.FeeBreakdown.PlatformFee.Cmp(tenantdb.MustParseExactDecimal("45000.000000")) != 0 ||
+		ordV2.FeeBreakdown.PaymentFee.Cmp(tenantdb.MustParseExactDecimal("12000.000000")) != 0 {
+		t.Fatalf("H04 violation: expected updated FeeBreakdown (45k, 12k), got (%s, %s)",
+			ordV2.FeeBreakdown.PlatformFee.String(), ordV2.FeeBreakdown.PaymentFee.String())
+	}
+
+	// Net v2 = 900,000 - (45,000 + 12,000) - 25,000 - 27,000 - 220,000 = 571,000
+	netV2, countV2 := sumOrderLedger(ordV1.OrderID)
+	if netV2.Cmp(tenantdb.MustParseExactDecimal("571000.000000")) != 0 {
+		t.Fatalf("H04 violation: expected net ledger 571000.000000 after same-lifecycle revision, got %s (entries=%d)", netV2.String(), countV2)
+	}
+
+	// Verify Affiliate VerifiedOrder was synced with revised GrossAmount = 900,000
+	verOrd, err := affStore.GetVerifiedOrder(ctx, wsID, ordV1.OrderID)
+	if err != nil {
+		t.Fatalf("GetVerifiedOrder: %v", err)
+	}
+	if verOrd.GrossAmount.Cmp(tenantdb.MustParseExactDecimal("900000.000000")) != 0 {
+		t.Fatalf("H04 violation: expected affiliate VerifiedOrder GrossAmount=900000.000000, got %s", verOrd.GrossAmount.String())
+	}
+
+	// 3. Idempotent replay of the exact same t2 revision must NOT add duplicate ledger entries
+	if _, _, err := orderSvc.IngestOrder(ctx, revisedPayload, locID); err != nil {
+		t.Fatalf("replay revised IngestOrder: %v", err)
+	}
+	netReplay, countReplay := sumOrderLedger(ordV1.OrderID)
+	if netReplay.Cmp(tenantdb.MustParseExactDecimal("571000.000000")) != 0 || countReplay != countV2 {
+		t.Fatalf("expected idempotent replay to keep net=571000 and entries=%d, got net=%s entries=%d", countV2, netReplay.String(), countReplay)
+	}
+
+	// 4. Stale t1 revision (and untimestamped stale payload with different amount) must be ignored
+	stalePayload := *revisedPayload
+	stalePayload.SourceUpdatedAt = &t1
+	stalePayload.Amount = tenantdb.MustParseExactDecimal("1000000.000000")
+	ordAfterStale, _, err := orderSvc.IngestOrder(ctx, &stalePayload, locID)
+	if err != nil {
+		t.Fatalf("stale IngestOrder: %v", err)
+	}
+	if ordAfterStale.Amount.Cmp(tenantdb.MustParseExactDecimal("900000.000000")) != 0 {
+		t.Fatalf("stale webhook overwrote newer revision: got %s", ordAfterStale.Amount.String())
+	}
+
+	// 5. Third revision at t3 changing Amount to 950,000 must advance to v3 and update ledger
+	rev3Payload := *revisedPayload
+	rev3Payload.SourceUpdatedAt = &t3
+	rev3Payload.Amount = tenantdb.MustParseExactDecimal("950000.000000")
+	if _, _, err := orderSvc.IngestOrder(ctx, &rev3Payload, locID); err != nil {
+		t.Fatalf("rev3 IngestOrder: %v", err)
+	}
+	netV3, _ := sumOrderLedger(ordV1.OrderID)
+	if netV3.Cmp(tenantdb.MustParseExactDecimal("621000.000000")) != 0 {
+		t.Fatalf("expected net ledger 621000.000000 after rev3, got %s", netV3.String())
+	}
+
+	// 6. UpdateFeeBreakdown must preserve PaymentFee when PlatformFee updates, and handle PaymentFee-only updates
+	_, err = orderSvc.UpdateFeeBreakdown(ctx, wsID, ordV1.OrderID, order.FeeBreakdown{
+		PlatformFee:         tenantdb.MustParseExactDecimal("45000.000000"),
+		PaymentFee:          tenantdb.MustParseExactDecimal("20000.000000"), // +8,000 fee increase
+		ShippingCost:        tenantdb.MustParseExactDecimal("25000.000000"),
+		AffiliateCommission: tenantdb.MustParseExactDecimal("27000.000000"),
+	}, "v4-fees", "ev-fee-1", "payment gateway settlement adjustment")
+	if err != nil {
+		t.Fatalf("UpdateFeeBreakdown failed: %v", err)
+	}
+	netAfterFeeUpdate, _ := sumOrderLedger(ordV1.OrderID)
+	if netAfterFeeUpdate.Cmp(tenantdb.MustParseExactDecimal("613000.000000")) != 0 {
+		t.Fatalf("M02 violation: expected net ledger 613000.000000 after PaymentFee update, got %s", netAfterFeeUpdate.String())
+	}
+
+	// 7. Same-lifecycle revision on an unrecognized order (confirmed -> confirmed) followed by completion
+	ordConf, _, err := orderSvc.IngestOrder(ctx, &order.Order{
+		OrderID:         "ord-h04-conf-1",
+		WorkspaceID:     wsID,
+		SourceClass:     order.SourceClassOfficial,
+		SourcePlatform:  "shopee",
+		ExternalOrderID: "sp-h04-conf-1",
+		LifecycleState:  order.StateConfirmed,
+		Amount:          tenantdb.MustParseExactDecimal("500000.000000"),
+		Currency:        "VND",
+		OrderedAt:       t1,
+		SourceUpdatedAt: &t1,
+		FeeBreakdown: order.FeeBreakdown{
+			PlatformFee: tenantdb.MustParseExactDecimal("20000.000000"),
+			PaymentFee:  tenantdb.MustParseExactDecimal("5000.000000"),
+		},
+		Items: []order.OrderItem{
+			{Sku: skuID, Name: "Conf Item", Quantity: 1, UnitPrice: tenantdb.MustParseExactDecimal("500000.000000"), UnitCogs: tenantdb.MustParseExactDecimal("80000.000000")},
+		},
+	}, locID)
+	if err != nil {
+		t.Fatalf("IngestOrder confirmed: %v", err)
+	}
+	// Revise while still in StateConfirmed at t2
+	if _, _, err := orderSvc.IngestOrder(ctx, &order.Order{
+		WorkspaceID:     wsID,
+		SourceClass:     order.SourceClassOfficial,
+		SourcePlatform:  "shopee",
+		ExternalOrderID: "sp-h04-conf-1",
+		LifecycleState:  order.StateConfirmed,
+		Amount:          tenantdb.MustParseExactDecimal("450000.000000"),
+		Currency:        "VND",
+		OrderedAt:       t1,
+		SourceUpdatedAt: &t2,
+		FeeBreakdown: order.FeeBreakdown{
+			PlatformFee: tenantdb.MustParseExactDecimal("18000.000000"),
+			PaymentFee:  tenantdb.MustParseExactDecimal("4000.000000"),
+		},
+		Items: []order.OrderItem{
+			{Sku: skuID, Name: "Conf Item", Quantity: 1, UnitPrice: tenantdb.MustParseExactDecimal("450000.000000"), UnitCogs: tenantdb.MustParseExactDecimal("80000.000000")},
+		},
+	}, locID); err != nil {
+		t.Fatalf("IngestOrder confirmed revision: %v", err)
+	}
+	if _, err := orderSvc.FulfillOrder(ctx, wsID, ordConf.OrderID); err != nil {
+		t.Fatalf("FulfillOrder: %v", err)
+	}
+	if _, err := orderSvc.CompleteOrder(ctx, wsID, ordConf.OrderID); err != nil {
+		t.Fatalf("CompleteOrder: %v", err)
+	}
+	// Net = 450,000 - (18,000 + 4,000) - 80,000 = 348,000
+	netConfCompleted, _ := sumOrderLedger(ordConf.OrderID)
+	if netConfCompleted.Cmp(tenantdb.MustParseExactDecimal("348000.000000")) != 0 {
+		t.Fatalf("expected net ledger 348000.000000 after completing revised confirmed order, got %s", netConfCompleted.String())
+	}
+	_ = orderStore
+}

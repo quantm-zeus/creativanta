@@ -1503,3 +1503,145 @@ func TestR10_CreatePayoutBatchPartialFailureRollsBackCommissionBindings(t *testi
 		t.Fatalf("expected batch TotalAmount=300000, got %s", batch.TotalAmount.String())
 	}
 }
+
+// Codex MEDIUM M03: Partial-refund commission reconciliation must use the commission obligation/rate
+// locked when the commission was calculated, NOT the mutable current link.CommissionRate.
+func TestM03_PartialRefundUsesLockedCommissionObligationAfterLinkRateChange(t *testing.T) {
+	ctx := context.Background()
+	store := NewMemoryStore()
+	ledger := NewDefaultLedgerRecorder()
+	now := time.Date(2026, 11, 5, 10, 0, 0, 0, time.UTC)
+	svc := NewService(store, ledger, nil, func() time.Time { return now })
+
+	wsID := "019086a1-7c3e-7000-8000-000000000010"
+	creatorID := newUUID()
+
+	// Case A: Link rate increases from 10% to 20% after commission calculation, then 50% partial refund occurs.
+	// Obligation on remaining 500k must be 50k (10% of 500k), NOT 100k (20% of 500k leaving commission unreduced!).
+	linkInc, err := svc.CreateLink(ctx, &AffiliateLink{
+		WorkspaceID:    wsID,
+		Platform:       "tiktok",
+		OriginalURL:    "https://shop.tiktok.com/product/m03-inc",
+		CommissionRate: mustDecimal(t, "10.000000"),
+	})
+	if err != nil {
+		t.Fatalf("CreateLink linkInc: %v", err)
+	}
+
+	if err := svc.RegisterVerifiedOrder(ctx, &VerifiedOrder{
+		OrderID:        "ord-m03-inc",
+		WorkspaceID:    wsID,
+		GrossAmount:    mustDecimal(t, "1000000.000000"),
+		RefundedAmount: tenantdb.ZeroDecimal(),
+		Currency:       "VND",
+		LifecycleState: "completed",
+	}); err != nil {
+		t.Fatalf("RegisterVerifiedOrder ord-m03-inc: %v", err)
+	}
+
+	commInc, err := svc.CalculateCommission(ctx, wsID, linkInc.AffiliateLinkID, "ord-m03-inc", &creatorID, mustDecimal(t, "1000000.000000"), "VND", 15)
+	if err != nil {
+		t.Fatalf("CalculateCommission commInc: %v", err)
+	}
+	now = now.Add(16 * 24 * time.Hour)
+	if _, err := svc.ConfirmCommission(ctx, wsID, commInc.CommissionID); err != nil {
+		t.Fatalf("ConfirmCommission commInc: %v", err)
+	}
+	if _, err := svc.PostCommissionToLedger(ctx, wsID, commInc.CommissionID, EconomicRoleCreator); err != nil {
+		t.Fatalf("PostCommissionToLedger commInc: %v", err)
+	}
+
+	// Merchant increases link rate from 10% to 20% for future orders
+	if _, err := svc.UpdateLink(ctx, wsID, linkInc.AffiliateLinkID, "20.000000", "", nil); err != nil {
+		t.Fatalf("UpdateLink to 20%%: %v", err)
+	}
+
+	// 50% partial refund arrives on ord-m03-inc
+	if err := svc.RegisterVerifiedOrder(ctx, &VerifiedOrder{
+		OrderID:        "ord-m03-inc",
+		WorkspaceID:    wsID,
+		GrossAmount:    mustDecimal(t, "1000000.000000"),
+		RefundedAmount: mustDecimal(t, "500000.000000"),
+		Currency:       "VND",
+		LifecycleState: "partially_refunded",
+	}); err != nil {
+		t.Fatalf("RegisterVerifiedOrder partial refund ord-m03-inc: %v", err)
+	}
+
+	commIncAfter, err := store.GetCommission(ctx, wsID, commInc.CommissionID)
+	if err != nil {
+		t.Fatalf("GetCommission commIncAfter: %v", err)
+	}
+	if commIncAfter.CommissionAmount.Cmp(mustDecimal(t, "50000.000000")) != 0 {
+		t.Fatalf("M03 violation (rate increased 10%%->20%%): expected commission reduced to 50000.000000 after 50%% refund, got %s", commIncAfter.CommissionAmount.String())
+	}
+	if commIncAfter.ClawbackAmount == nil || commIncAfter.ClawbackAmount.Cmp(mustDecimal(t, "50000.000000")) != 0 {
+		t.Fatalf("M03 violation: expected ClawbackAmount=50000.000000, got %v", commIncAfter.ClawbackAmount)
+	}
+
+	// Case B: Link rate decreases from 10% to 2% after commission calculation, then 50% partial refund occurs.
+	// Obligation on remaining 500k must be 50k (10% locked rate), NOT over-clawed back to 10k (2% of 500k)!
+	linkDec, err := svc.CreateLink(ctx, &AffiliateLink{
+		WorkspaceID:    wsID,
+		Platform:       "tiktok",
+		OriginalURL:    "https://shop.tiktok.com/product/m03-dec",
+		CommissionRate: mustDecimal(t, "10.000000"),
+	})
+	if err != nil {
+		t.Fatalf("CreateLink linkDec: %v", err)
+	}
+	if err := svc.RegisterVerifiedOrder(ctx, &VerifiedOrder{
+		OrderID:        "ord-m03-dec",
+		WorkspaceID:    wsID,
+		GrossAmount:    mustDecimal(t, "1000000.000000"),
+		RefundedAmount: tenantdb.ZeroDecimal(),
+		Currency:       "VND",
+		LifecycleState: "completed",
+	}); err != nil {
+		t.Fatalf("RegisterVerifiedOrder ord-m03-dec: %v", err)
+	}
+	commDec, err := svc.CalculateCommission(ctx, wsID, linkDec.AffiliateLinkID, "ord-m03-dec", &creatorID, mustDecimal(t, "1000000.000000"), "VND", 15)
+	if err != nil {
+		t.Fatalf("CalculateCommission commDec: %v", err)
+	}
+
+	// Merchant lowers link rate from 10% to 2%
+	if _, err := svc.UpdateLink(ctx, wsID, linkDec.AffiliateLinkID, "2.000000", "", nil); err != nil {
+		t.Fatalf("UpdateLink to 2%%: %v", err)
+	}
+
+	// 50% partial refund arrives
+	if err := svc.RegisterVerifiedOrder(ctx, &VerifiedOrder{
+		OrderID:        "ord-m03-dec",
+		WorkspaceID:    wsID,
+		GrossAmount:    mustDecimal(t, "1000000.000000"),
+		RefundedAmount: mustDecimal(t, "500000.000000"),
+		Currency:       "VND",
+		LifecycleState: "partially_refunded",
+	}); err != nil {
+		t.Fatalf("RegisterVerifiedOrder partial refund ord-m03-dec: %v", err)
+	}
+	commDecAfter1, _ := store.GetCommission(ctx, wsID, commDec.CommissionID)
+	if commDecAfter1.CommissionAmount.Cmp(mustDecimal(t, "50000.000000")) != 0 {
+		t.Fatalf("M03 violation (rate decreased 10%%->2%%): expected commission 50000.000000 (not over-clawed to 10000), got %s", commDecAfter1.CommissionAmount.String())
+	}
+
+	// Second sequential partial refund of another 200k (cumulative 700k refunded, 300k remaining eligible)
+	if err := svc.RegisterVerifiedOrder(ctx, &VerifiedOrder{
+		OrderID:        "ord-m03-dec",
+		WorkspaceID:    wsID,
+		GrossAmount:    mustDecimal(t, "1000000.000000"),
+		RefundedAmount: mustDecimal(t, "700000.000000"),
+		Currency:       "VND",
+		LifecycleState: "partially_refunded",
+	}); err != nil {
+		t.Fatalf("RegisterVerifiedOrder second partial refund ord-m03-dec: %v", err)
+	}
+	commDecAfter2, _ := store.GetCommission(ctx, wsID, commDec.CommissionID)
+	if commDecAfter2.CommissionAmount.Cmp(mustDecimal(t, "30000.000000")) != 0 {
+		t.Fatalf("M03 violation on sequential partial refund: expected commission 30000.000000, got %s", commDecAfter2.CommissionAmount.String())
+	}
+	if commDecAfter2.ClawbackAmount == nil || commDecAfter2.ClawbackAmount.Cmp(mustDecimal(t, "70000.000000")) != 0 {
+		t.Fatalf("expected cumulative ClawbackAmount=70000.000000, got %v", commDecAfter2.ClawbackAmount)
+	}
+}
