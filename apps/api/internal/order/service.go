@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 	"sync"
 	"time"
@@ -202,6 +203,22 @@ func orderCogsTotal(items []OrderItem) (tenantdb.ExactDecimal, bool, error) {
 	return cogsTotal, hasCogs, nil
 }
 
+func isExplicitDecimal(d tenantdb.ExactDecimal) bool {
+	return !reflect.ValueOf(d).IsZero()
+}
+
+func hasExplicitFeeBreakdown(fb FeeBreakdown) bool {
+	if isExplicitDecimal(fb.PlatformFee) ||
+		isExplicitDecimal(fb.PaymentFee) ||
+		isExplicitDecimal(fb.ShippingCost) ||
+		isExplicitDecimal(fb.AffiliateCommission) ||
+		isExplicitDecimal(fb.VatAmount) ||
+		fb.OtherFees != nil {
+		return true
+	}
+	return false
+}
+
 func isZeroFeeBreakdown(fb FeeBreakdown) bool {
 	if !fb.PlatformFee.IsZero() ||
 		!fb.PaymentFee.IsZero() ||
@@ -236,6 +253,65 @@ func feeBreakdownEqual(a, b FeeBreakdown) bool {
 	return true
 }
 
+func ensureFinanceSyncedBaseline(o *Order) {
+	if o == nil {
+		return
+	}
+	if o.Metadata == nil {
+		o.Metadata = make(map[string]any)
+	}
+	if _, ok := o.Metadata["finance_synced_platform_fee"]; ok {
+		return
+	}
+	combinedFee, _ := o.FeeBreakdown.PlatformFee.Add(o.FeeBreakdown.PaymentFee)
+	o.Metadata["finance_synced_revenue"] = o.Amount.Fixed6String()
+	o.Metadata["finance_synced_platform_fee"] = combinedFee.Fixed6String()
+	o.Metadata["finance_synced_shipping_cost"] = o.FeeBreakdown.ShippingCost.Fixed6String()
+	o.Metadata["finance_synced_commission"] = o.FeeBreakdown.AffiliateCommission.Fixed6String()
+	cogsTotal, hasCogs, err := orderCogsTotal(o.Items)
+	if err == nil && hasCogs {
+		o.Metadata["finance_synced_cogs"] = cogsTotal.Fixed6String()
+		o.Metadata["finance_synced_has_cogs"] = true
+	} else {
+		o.Metadata["finance_synced_cogs"] = tenantdb.ZeroDecimal().Fixed6String()
+		o.Metadata["finance_synced_has_cogs"] = false
+	}
+}
+
+func setFinanceSyncedBaselineFromOrder(o *Order) {
+	if o == nil {
+		return
+	}
+	if o.Metadata == nil {
+		o.Metadata = make(map[string]any)
+	}
+	combinedFee, _ := o.FeeBreakdown.PlatformFee.Add(o.FeeBreakdown.PaymentFee)
+	o.Metadata["finance_synced_revenue"] = o.Amount.Fixed6String()
+	o.Metadata["finance_synced_platform_fee"] = combinedFee.Fixed6String()
+	o.Metadata["finance_synced_shipping_cost"] = o.FeeBreakdown.ShippingCost.Fixed6String()
+	o.Metadata["finance_synced_commission"] = o.FeeBreakdown.AffiliateCommission.Fixed6String()
+	cogsTotal, hasCogs, err := orderCogsTotal(o.Items)
+	if err == nil && hasCogs {
+		o.Metadata["finance_synced_cogs"] = cogsTotal.Fixed6String()
+		o.Metadata["finance_synced_has_cogs"] = true
+	} else {
+		o.Metadata["finance_synced_cogs"] = tenantdb.ZeroDecimal().Fixed6String()
+		o.Metadata["finance_synced_has_cogs"] = false
+	}
+}
+
+func getSyncedDecimal(o *Order, key string, fallback tenantdb.ExactDecimal) tenantdb.ExactDecimal {
+	if o == nil || o.Metadata == nil {
+		return fallback
+	}
+	if raw, ok := o.Metadata[key].(string); ok && strings.TrimSpace(raw) != "" {
+		if parsed, err := tenantdb.ParseExactDecimal(raw); err == nil {
+			return parsed
+		}
+	}
+	return fallback
+}
+
 func orderItemsEqual(a, b []OrderItem) bool {
 	if len(a) != len(b) {
 		return false
@@ -256,20 +332,54 @@ func orderItemsEqual(a, b []OrderItem) bool {
 	return true
 }
 
+func hasUnsyncedFinanceState(o *Order) bool {
+	if o == nil || o.Metadata == nil || !isRecognizedOrderState(o.LifecycleState) {
+		return false
+	}
+	if pending, ok := o.Metadata["finance_pending_fee_version"].(string); ok && strings.TrimSpace(pending) != "" {
+		return true
+	}
+	if _, ok := o.Metadata["finance_synced_platform_fee"]; !ok {
+		return false
+	}
+	if o.Amount.Cmp(getSyncedDecimal(o, "finance_synced_revenue", o.Amount)) != 0 {
+		return true
+	}
+	combinedFee, _ := o.FeeBreakdown.PlatformFee.Add(o.FeeBreakdown.PaymentFee)
+	if combinedFee.Cmp(getSyncedDecimal(o, "finance_synced_platform_fee", combinedFee)) != 0 {
+		return true
+	}
+	if o.FeeBreakdown.ShippingCost.Cmp(getSyncedDecimal(o, "finance_synced_shipping_cost", o.FeeBreakdown.ShippingCost)) != 0 {
+		return true
+	}
+	if o.FeeBreakdown.AffiliateCommission.Cmp(getSyncedDecimal(o, "finance_synced_commission", o.FeeBreakdown.AffiliateCommission)) != 0 {
+		return true
+	}
+	if cogsTotal, hasCogs, err := orderCogsTotal(o.Items); err == nil && hasCogs {
+		if cogsTotal.Cmp(getSyncedDecimal(o, "finance_synced_cogs", cogsTotal)) != 0 {
+			return true
+		}
+	}
+	return false
+}
+
 func hasOrderEconomicRevision(existing, incoming *Order) bool {
 	if existing == nil || incoming == nil {
 		return false
 	}
+	if hasUnsyncedFinanceState(existing) {
+		return true
+	}
 	if !incoming.Amount.IsZero() && incoming.Amount.Cmp(existing.Amount) != 0 {
 		return true
 	}
-	if !isZeroFeeBreakdown(incoming.FeeBreakdown) && !feeBreakdownEqual(existing.FeeBreakdown, incoming.FeeBreakdown) {
+	if hasExplicitFeeBreakdown(incoming.FeeBreakdown) && !feeBreakdownEqual(existing.FeeBreakdown, incoming.FeeBreakdown) {
 		return true
 	}
 	if len(incoming.Items) > 0 && !orderItemsEqual(existing.Items, incoming.Items) {
 		return true
 	}
-	if !incoming.TaxAmount.IsZero() && incoming.TaxAmount.Cmp(existing.TaxAmount) != 0 {
+	if isExplicitDecimal(incoming.TaxAmount) && incoming.TaxAmount.Cmp(existing.TaxAmount) != 0 {
 		return true
 	}
 	return false
@@ -288,7 +398,7 @@ func (s *Service) recordOrderPosting(ctx context.Context, o *Order) error {
 		cogsPtr = &cogsTotal
 	}
 
-	return s.finance.RecordOrderPosting(ctx, finance.OrderPostingInput{
+	if err := s.finance.RecordOrderPosting(ctx, finance.OrderPostingInput{
 		WorkspaceID:      o.WorkspaceID,
 		OrderID:          o.OrderID,
 		OrderVersion:     "v1",
@@ -316,10 +426,15 @@ func (s *Service) recordOrderPosting(ctx context.Context, o *Order) error {
 		RecognizedAt:    o.RecognizedAt,
 		OrderedAt:       o.OrderedAt,
 		SourceUpdatedAt: o.SourceUpdatedAt,
-	})
+	}); err != nil {
+		return err
+	}
+	setFinanceSyncedBaselineFromOrder(o)
+	_ = s.store.UpdateOrder(ctx, o)
+	return nil
 }
 
-func (s *Service) applyOrderEconomicRevision(ctx context.Context, existing, incoming *Order) (bool, error) {
+func (s *Service) applyOrderEconomicRevision(ctx context.Context, existing, incoming *Order, defaultLocationID string) (bool, error) {
 	if existing == nil || incoming == nil {
 		return false, nil
 	}
@@ -340,18 +455,32 @@ func (s *Service) applyOrderEconomicRevision(ctx context.Context, existing, inco
 		newAmount = incoming.Amount
 	}
 	newFees := existing.FeeBreakdown
-	if !isZeroFeeBreakdown(incoming.FeeBreakdown) {
+	if hasExplicitFeeBreakdown(incoming.FeeBreakdown) {
 		newFees = incoming.FeeBreakdown
 	}
 	newItems := existing.Items
+	itemsChanged := false
 	if len(incoming.Items) > 0 {
+		itemsChanged = !orderItemsEqual(existing.Items, incoming.Items)
 		newItems = make([]OrderItem, len(incoming.Items))
 		copy(newItems, incoming.Items)
 	}
 	newTax := existing.TaxAmount
-	if !incoming.TaxAmount.IsZero() {
+	if isExplicitDecimal(incoming.TaxAmount) {
 		newTax = incoming.TaxAmount
 	}
+
+	// Reconcile stock delta BEFORE mutating persisted order items or posting finance corrections
+	// so insufficient sellable stock fails closed without corrupting order state (Billing N02).
+	if itemsChanged && s.inventory != nil && existing.LifecycleState != StateCancelled && existing.LifecycleState != StateReturned {
+		candidate := *existing
+		candidate.Items = newItems
+		if err := s.ensureOrderStockEffects(ctx, &candidate, existing.LifecycleState, defaultLocationID); err != nil {
+			return false, err
+		}
+	}
+
+	ensureFinanceSyncedBaseline(existing)
 
 	nextVer := orderEconomicVersion(existing)
 	if hasEconChange && isRecognizedOrderState(existing.LifecycleState) {
@@ -360,8 +489,20 @@ func (s *Service) applyOrderEconomicRevision(ctx context.Context, existing, inco
 				return false, fmt.Errorf("record initial order finance posting before revision: %w", err)
 			}
 		}
-		nextVer++
-		verStr := fmt.Sprintf("v%d", nextVer)
+		verStr := ""
+		if existing.Metadata != nil {
+			if pending, ok := existing.Metadata["finance_pending_fee_version"].(string); ok && strings.TrimSpace(pending) != "" {
+				verStr = strings.TrimSpace(pending)
+			}
+		}
+		if verStr == "" {
+			nextVer++
+			verStr = fmt.Sprintf("v%d", nextVer)
+		}
+		if existing.Metadata == nil {
+			existing.Metadata = make(map[string]any)
+		}
+		existing.Metadata["finance_pending_fee_version"] = verStr
 		if s.finance != nil {
 			fx := finance.ExchangeRateSnapshot{
 				BaseCurrency:  existing.Currency,
@@ -369,30 +510,42 @@ func (s *Service) applyOrderEconomicRevision(ctx context.Context, existing, inco
 				RateToBase:    "1",
 				SourceClass:   string(existing.SourceClass),
 			}
-			if newAmount.Cmp(existing.Amount) != 0 {
+			syncedRevenue := getSyncedDecimal(existing, "finance_synced_revenue", existing.Amount)
+			if newAmount.Cmp(syncedRevenue) != 0 {
 				if err := s.finance.RecordOrderCorrection(ctx, existing.WorkspaceID, existing.OrderID, finance.ComponentRevenue, newAmount, verStr, string(existing.SourceClass), string(finance.ConfidenceHigh), fx); err != nil {
+					_ = s.store.UpdateOrder(ctx, existing)
 					return false, fmt.Errorf("record revenue correction: %w", err)
 				}
+				existing.Metadata["finance_synced_revenue"] = newAmount.Fixed6String()
 			}
 			oldCombinedFee, _ := existing.FeeBreakdown.PlatformFee.Add(existing.FeeBreakdown.PaymentFee)
+			syncedCombinedFee := getSyncedDecimal(existing, "finance_synced_platform_fee", oldCombinedFee)
 			newCombinedFee, _ := newFees.PlatformFee.Add(newFees.PaymentFee)
-			if newCombinedFee.Cmp(oldCombinedFee) != 0 {
+			if newCombinedFee.Cmp(syncedCombinedFee) != 0 {
 				negFee, _ := tenantdb.ZeroDecimal().Sub(newCombinedFee)
 				if err := s.finance.RecordOrderCorrection(ctx, existing.WorkspaceID, existing.OrderID, finance.ComponentPlatformFee, negFee, verStr, string(existing.SourceClass), string(finance.ConfidenceHigh), fx); err != nil {
+					_ = s.store.UpdateOrder(ctx, existing)
 					return false, fmt.Errorf("record platform fee correction: %w", err)
 				}
+				existing.Metadata["finance_synced_platform_fee"] = newCombinedFee.Fixed6String()
 			}
-			if newFees.ShippingCost.Cmp(existing.FeeBreakdown.ShippingCost) != 0 {
+			syncedShipping := getSyncedDecimal(existing, "finance_synced_shipping_cost", existing.FeeBreakdown.ShippingCost)
+			if newFees.ShippingCost.Cmp(syncedShipping) != 0 {
 				negShip, _ := tenantdb.ZeroDecimal().Sub(newFees.ShippingCost)
 				if err := s.finance.RecordOrderCorrection(ctx, existing.WorkspaceID, existing.OrderID, finance.ComponentShipping, negShip, verStr, string(existing.SourceClass), string(finance.ConfidenceHigh), fx); err != nil {
+					_ = s.store.UpdateOrder(ctx, existing)
 					return false, fmt.Errorf("record shipping cost correction: %w", err)
 				}
+				existing.Metadata["finance_synced_shipping_cost"] = newFees.ShippingCost.Fixed6String()
 			}
-			if newFees.AffiliateCommission.Cmp(existing.FeeBreakdown.AffiliateCommission) != 0 {
+			syncedCommission := getSyncedDecimal(existing, "finance_synced_commission", existing.FeeBreakdown.AffiliateCommission)
+			if newFees.AffiliateCommission.Cmp(syncedCommission) != 0 {
 				negComm, _ := tenantdb.ZeroDecimal().Sub(newFees.AffiliateCommission)
 				if err := s.finance.RecordOrderCorrection(ctx, existing.WorkspaceID, existing.OrderID, finance.ComponentCommission, negComm, verStr, string(existing.SourceClass), string(finance.ConfidenceHigh), fx); err != nil {
+					_ = s.store.UpdateOrder(ctx, existing)
 					return false, fmt.Errorf("record affiliate commission correction: %w", err)
 				}
+				existing.Metadata["finance_synced_commission"] = newFees.AffiliateCommission.Fixed6String()
 			}
 			oldCogs, oldHasCogs, err := orderCogsTotal(existing.Items)
 			if err != nil {
@@ -402,16 +555,18 @@ func (s *Service) applyOrderEconomicRevision(ctx context.Context, existing, inco
 			if err != nil {
 				return false, err
 			}
-			if (oldHasCogs || newHasCogs) && newCogs.Cmp(oldCogs) != 0 {
+			syncedCogs := getSyncedDecimal(existing, "finance_synced_cogs", oldCogs)
+			if (oldHasCogs || newHasCogs) && newCogs.Cmp(syncedCogs) != 0 {
 				negCogs, _ := tenantdb.ZeroDecimal().Sub(newCogs)
 				if err := s.finance.RecordOrderCorrection(ctx, existing.WorkspaceID, existing.OrderID, finance.ComponentCOGS, negCogs, verStr, string(existing.SourceClass), string(finance.ConfidenceHigh), fx); err != nil {
+					_ = s.store.UpdateOrder(ctx, existing)
 					return false, fmt.Errorf("record cogs correction: %w", err)
 				}
+				existing.Metadata["finance_synced_cogs"] = newCogs.Fixed6String()
+				existing.Metadata["finance_synced_has_cogs"] = newHasCogs
 			}
 		}
-		if existing.Metadata == nil {
-			existing.Metadata = make(map[string]any)
-		}
+		delete(existing.Metadata, "finance_pending_fee_version")
 		existing.Metadata["economic_version"] = nextVer
 	}
 
@@ -512,6 +667,328 @@ func (s *Service) buildReservationItems(ctx context.Context, o *Order, defaultLo
 	return reservationItems, nil
 }
 
+func (s *Service) reconcileOrderStockDelta(ctx context.Context, o *Order, effectiveState LifecycleState, reservationItems []inventory.ReservationItem) error {
+	invStore := s.resolveInventoryStore()
+	if invStore == nil || o == nil {
+		return nil
+	}
+	isCreatedState := effectiveState == StateCreated
+	isConsumedState := effectiveState == StateConfirmed || effectiveState == StateFulfilled ||
+		effectiveState == StateCompleted || effectiveState == StatePartiallyRefunded || effectiveState == StateRefunded
+	if !isCreatedState && !isConsumedState {
+		return nil
+	}
+
+	targetByKey := make(map[string]int32, len(reservationItems))
+	pairByKey := make(map[string]inventory.SkuLocPair, len(reservationItems))
+	var pairs []inventory.SkuLocPair
+	for _, it := range reservationItems {
+		if it.SkuID == "" || it.LocationID == "" || it.Quantity <= 0 {
+			continue
+		}
+		k := it.SkuID + ":" + it.LocationID
+		if _, seen := pairByKey[k]; !seen {
+			pair := inventory.SkuLocPair{SkuID: it.SkuID, LocationID: it.LocationID}
+			pairByKey[k] = pair
+			pairs = append(pairs, pair)
+		}
+		targetByKey[k] += it.Quantity
+	}
+
+	existingResList, err := invStore.ListReservationsByOrder(ctx, o.WorkspaceID, o.OrderID)
+	if err != nil {
+		return err
+	}
+	existingByKey := make(map[string]*inventory.Reservation, len(existingResList))
+	for _, r := range existingResList {
+		if r == nil {
+			continue
+		}
+		k := r.SkuID + ":" + r.LocationID
+		existingByKey[k] = r
+		if _, seen := pairByKey[k]; !seen {
+			pair := inventory.SkuLocPair{SkuID: r.SkuID, LocationID: r.LocationID}
+			pairByKey[k] = pair
+			pairs = append(pairs, pair)
+		}
+	}
+	if len(pairs) == 0 {
+		return nil
+	}
+
+	// Fast path: check if current reservations already match target state and quantities.
+	needsReconcile := false
+	for _, p := range pairs {
+		k := p.SkuID + ":" + p.LocationID
+		targetQty := targetByKey[k]
+		r := existingByKey[k]
+		if isCreatedState {
+			var curHeld int32
+			if r != nil && r.Status == inventory.ResHeld {
+				curHeld = r.Quantity
+			}
+			if curHeld != targetQty {
+				needsReconcile = true
+				break
+			}
+		} else if isConsumedState {
+			var curConsumed, curHeld int32
+			if r != nil {
+				if r.Status == inventory.ResConsumed {
+					curConsumed = r.Quantity
+				} else if r.Status == inventory.ResHeld {
+					curHeld = r.Quantity
+				}
+			}
+			if curConsumed != targetQty || curHeld != 0 {
+				needsReconcile = true
+				break
+			}
+		}
+	}
+	if !needsReconcile {
+		return nil
+	}
+
+	now := s.clock().UTC()
+	var appendedMovements []*inventory.Movement
+
+	err = invStore.AtomicExecute(ctx, o.WorkspaceID, pairs, func(tx inventory.StoreTx) error {
+		activeResList, err := tx.ListReservationsByOrder(ctx, o.WorkspaceID, o.OrderID)
+		if err != nil {
+			return err
+		}
+		resByKey := make(map[string]*inventory.Reservation, len(activeResList))
+		for _, r := range activeResList {
+			if r != nil {
+				resByKey[r.SkuID+":"+r.LocationID] = r
+			}
+		}
+
+		// Pass 1: Verify sellable stock across all lines before mutating any balance/reservation.
+		for _, p := range pairs {
+			k := p.SkuID + ":" + p.LocationID
+			targetQty := targetByKey[k]
+			r := resByKey[k]
+			var needFromSellable int32
+			if isCreatedState {
+				var curHeld int32
+				if r != nil && r.Status == inventory.ResHeld {
+					curHeld = r.Quantity
+				}
+				needFromSellable = targetQty - curHeld
+			} else {
+				var curConsumed, curHeld int32
+				if r != nil {
+					if r.Status == inventory.ResConsumed {
+						curConsumed = r.Quantity
+					} else if r.Status == inventory.ResHeld {
+						curHeld = r.Quantity
+					}
+				}
+				needFromSellable = targetQty - (curConsumed + curHeld)
+			}
+			if needFromSellable > 0 {
+				bal, err := tx.GetBalanceForUpdate(ctx, o.WorkspaceID, p.SkuID, p.LocationID)
+				if err != nil {
+					return err
+				}
+				sellable := bal.OnHand - bal.Reserved
+				if sellable < needFromSellable {
+					return fmt.Errorf("%w: sku %s requested additional %d, sellable %d", inventory.ErrInsufficientStock, p.SkuID, needFromSellable, sellable)
+				}
+			}
+		}
+
+		// Pass 2: Apply balance, movement, and reservation updates atomically.
+		for _, p := range pairs {
+			k := p.SkuID + ":" + p.LocationID
+			targetQty := targetByKey[k]
+			r := resByKey[k]
+			resKey := fmt.Sprintf("res_%s_%s_%s", o.OrderID, p.SkuID, p.LocationID)
+
+			if isCreatedState {
+				var curHeld int32
+				if r != nil && r.Status == inventory.ResHeld {
+					curHeld = r.Quantity
+				}
+				deltaHeld := targetQty - curHeld
+				if deltaHeld == 0 {
+					continue
+				}
+				bal, err := tx.GetBalanceForUpdate(ctx, o.WorkspaceID, p.SkuID, p.LocationID)
+				if err != nil {
+					return err
+				}
+				bal.Reserved += deltaHeld
+				if bal.Reserved < 0 {
+					bal.Reserved = 0
+				}
+				if err := tx.UpdateBalance(ctx, bal); err != nil {
+					return err
+				}
+				if targetQty == 0 {
+					if r != nil && r.Status != inventory.ResReleased {
+						if err := tx.UpdateReservationStatus(ctx, o.WorkspaceID, r.ReservationID, inventory.ResReleased); err != nil {
+							return err
+						}
+					}
+				} else {
+					resID := newUUID()
+					createdAt := now
+					if r != nil {
+						resID = r.ReservationID
+						createdAt = r.CreatedAt
+						if r.Status != inventory.ResReleased && r.Status != inventory.ResExpired {
+							if err := tx.UpdateReservationStatus(ctx, o.WorkspaceID, r.ReservationID, inventory.ResReleased); err != nil {
+								return err
+							}
+						}
+					}
+					expAt := now.Add(30 * time.Minute)
+					if err := tx.CreateReservation(ctx, &inventory.Reservation{
+						ReservationID:  resID,
+						WorkspaceID:    o.WorkspaceID,
+						OrderID:        o.OrderID,
+						SkuID:          p.SkuID,
+						LocationID:     p.LocationID,
+						ReservationKey: resKey,
+						Quantity:       targetQty,
+						Status:         inventory.ResHeld,
+						ExpiresAt:      &expAt,
+						CreatedAt:      createdAt,
+						UpdatedAt:      now,
+					}); err != nil {
+						return err
+					}
+				}
+				continue
+			}
+
+			// Consumed state reconciliation
+			var curConsumed, curHeld int32
+			if r != nil {
+				if r.Status == inventory.ResConsumed {
+					curConsumed = r.Quantity
+				} else if r.Status == inventory.ResHeld {
+					curHeld = r.Quantity
+				}
+			}
+			movQty := curConsumed - targetQty // negative = additional sale deduction, positive = downward revision restoration
+			if movQty == 0 && curHeld == 0 {
+				continue
+			}
+
+			bal, err := tx.GetBalanceForUpdate(ctx, o.WorkspaceID, p.SkuID, p.LocationID)
+			if err != nil {
+				return err
+			}
+			if curHeld > 0 {
+				bal.Reserved -= curHeld
+				if bal.Reserved < 0 {
+					bal.Reserved = 0
+				}
+			}
+			if movQty != 0 {
+				saleMovKey := fmt.Sprintf("mov_sale_%s_%s_%s", o.OrderID, p.SkuID, p.LocationID)
+				existingSaleMov, err := tx.FindMovementByKey(ctx, o.WorkspaceID, saleMovKey)
+				if err != nil {
+					return err
+				}
+				movKey := saleMovKey
+				movType := inventory.MovementSale
+				refType := "order"
+				reason := "Order fulfillment"
+				if existingSaleMov != nil || movQty > 0 {
+					if movQty > 0 {
+						movType = inventory.MovementAdjustment
+						reason = "Order revision stock restoration"
+					} else {
+						movType = inventory.MovementSale
+						reason = "Order revision additional sale deduction"
+					}
+					refType = "order_revision"
+					for seq := 1; ; seq++ {
+						candidateKey := fmt.Sprintf("mov_rev_%s_%s_%s_%d", o.OrderID, p.SkuID, p.LocationID, seq)
+						exMov, fErr := tx.FindMovementByKey(ctx, o.WorkspaceID, candidateKey)
+						if fErr != nil {
+							return fErr
+						}
+						if exMov == nil {
+							movKey = candidateKey
+							break
+						}
+					}
+				}
+				mov := &inventory.Movement{
+					MovementID:    newUUID(),
+					WorkspaceID:   o.WorkspaceID,
+					SkuID:         p.SkuID,
+					LocationID:    p.LocationID,
+					MovementType:  movType,
+					MovementKey:   movKey,
+					Quantity:      movQty,
+					ReferenceType: refType,
+					ReferenceID:   o.OrderID,
+					Reason:        reason,
+					CreatedAt:     now,
+				}
+				if err := tx.AppendMovement(ctx, mov); err != nil {
+					return err
+				}
+				appendedMovements = append(appendedMovements, mov)
+				bal.OnHand += movQty
+			}
+			if err := tx.UpdateBalance(ctx, bal); err != nil {
+				return err
+			}
+
+			if targetQty == 0 {
+				if r != nil && r.Status != inventory.ResReleased {
+					if err := tx.UpdateReservationStatus(ctx, o.WorkspaceID, r.ReservationID, inventory.ResReleased); err != nil {
+						return err
+					}
+				}
+			} else {
+				resID := newUUID()
+				createdAt := now
+				if r != nil {
+					resID = r.ReservationID
+					createdAt = r.CreatedAt
+					if r.Status != inventory.ResReleased && r.Status != inventory.ResExpired {
+						if err := tx.UpdateReservationStatus(ctx, o.WorkspaceID, r.ReservationID, inventory.ResReleased); err != nil {
+							return err
+						}
+					}
+				}
+				if err := tx.CreateReservation(ctx, &inventory.Reservation{
+					ReservationID:  resID,
+					WorkspaceID:    o.WorkspaceID,
+					OrderID:        o.OrderID,
+					SkuID:          p.SkuID,
+					LocationID:     p.LocationID,
+					ReservationKey: resKey,
+					Quantity:       targetQty,
+					Status:         inventory.ResConsumed,
+					CreatedAt:      createdAt,
+					UpdatedAt:      now,
+				}); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	for _, mov := range appendedMovements {
+		s.emitEvent(ctx, "inventory.stock_moved", "stock_movement", mov.MovementID, o.WorkspaceID, mov)
+	}
+	return nil
+}
+
 // ensureOrderStockEffects idempotently reconciles stock reservations and sale deductions for an order's
 // target/effective lifecycle state, recovering safely if a previous attempt crashed after persisting the order row.
 func (s *Service) ensureOrderStockEffects(ctx context.Context, o *Order, effectiveState LifecycleState, defaultLocationID string) error {
@@ -523,33 +1000,51 @@ func (s *Service) ensureOrderStockEffects(ctx context.Context, o *Order, effecti
 		return err
 	}
 	if len(reservationItems) == 0 {
-		return nil
+		return s.reconcileOrderStockDelta(ctx, o, effectiveState, nil)
+	}
+
+	var existingResList []*inventory.Reservation
+	if invStore := s.resolveInventoryStore(); invStore != nil {
+		existingResList, _ = invStore.ListReservationsByOrder(ctx, o.WorkspaceID, o.OrderID)
 	}
 
 	if effectiveState == StateCreated {
-		const holdTTL = 30 * time.Minute
-		_, err := s.inventory.ReserveStock(ctx, o.WorkspaceID, o.OrderID, reservationItems, holdTTL)
-		if err != nil && !errors.Is(err, inventory.ErrReservationConflict) {
-			return fmt.Errorf("reserve stock: %w", err)
+		if len(existingResList) == 0 {
+			const holdTTL = 30 * time.Minute
+			_, err := s.inventory.ReserveStock(ctx, o.WorkspaceID, o.OrderID, reservationItems, holdTTL)
+			if err != nil && !errors.Is(err, inventory.ErrReservationConflict) {
+				return fmt.Errorf("reserve stock: %w", err)
+			}
 		}
-		return nil
+		return s.reconcileOrderStockDelta(ctx, o, effectiveState, reservationItems)
 	}
 
 	if effectiveState == StateConfirmed || effectiveState == StateFulfilled || effectiveState == StateCompleted ||
 		effectiveState == StatePartiallyRefunded || effectiveState == StateRefunded {
+		hasConsumed := false
+		for _, r := range existingResList {
+			if r != nil && r.Status == inventory.ResConsumed {
+				hasConsumed = true
+				break
+			}
+		}
+		if hasConsumed {
+			return s.reconcileOrderStockDelta(ctx, o, effectiveState, reservationItems)
+		}
+
 		_, err := s.inventory.FulfillReservation(ctx, o.WorkspaceID, o.OrderID)
 		if err == nil {
-			return nil
+			return s.reconcileOrderStockDelta(ctx, o, effectiveState, reservationItems)
 		}
 		if errors.Is(err, inventory.ErrReservationNotFound) || errors.Is(err, inventory.ErrReservationExpired) || errors.Is(err, inventory.ErrReservationConflict) {
 			const holdTTL = 5 * time.Minute
 			if _, resErr := s.inventory.ReserveStock(ctx, o.WorkspaceID, o.OrderID, reservationItems, holdTTL); resErr != nil && !errors.Is(resErr, inventory.ErrReservationConflict) {
 				return fmt.Errorf("reserve stock for order %s: %w", o.OrderID, resErr)
 			}
-			if _, fulErr := s.inventory.FulfillReservation(ctx, o.WorkspaceID, o.OrderID); fulErr != nil {
+			if _, fulErr := s.inventory.FulfillReservation(ctx, o.WorkspaceID, o.OrderID); fulErr != nil && !errors.Is(fulErr, inventory.ErrReservationConflict) {
 				return fmt.Errorf("fulfill stock for order %s: %w", o.OrderID, fulErr)
 			}
-			return nil
+			return s.reconcileOrderStockDelta(ctx, o, effectiveState, reservationItems)
 		}
 		return fmt.Errorf("fulfill stock for order %s: %w", o.OrderID, err)
 	}
@@ -609,6 +1104,10 @@ func (s *Service) releaseOrCompensateOrderStockOnCancel(ctx context.Context, o *
 				continue
 			}
 
+			if r.Status != inventory.ResConsumed {
+				continue
+			}
+
 			// Pre-fulfillment cancellation compensation: check if a sale movement was recorded for this order line
 			saleMovKey := fmt.Sprintf("mov_sale_%s_%s_%s", o.OrderID, r.SkuID, r.LocationID)
 			saleMov, err := tx.FindMovementByKey(ctx, o.WorkspaceID, saleMovKey)
@@ -654,10 +1153,8 @@ func (s *Service) releaseOrCompensateOrderStockOnCancel(ctx context.Context, o *
 					return err
 				}
 			}
-			if r.Status == inventory.ResConsumed {
-				if err := tx.UpdateReservationStatus(ctx, o.WorkspaceID, r.ReservationID, inventory.ResReleased); err != nil {
-					return err
-				}
+			if err := tx.UpdateReservationStatus(ctx, o.WorkspaceID, r.ReservationID, inventory.ResReleased); err != nil {
+				return err
 			}
 		}
 		return nil
@@ -839,7 +1336,10 @@ func (s *Service) reconcileExistingOrderOnIngest(ctx context.Context, existing *
 				return nil, false, fmt.Errorf("record completed order finance posting: %w", err)
 			}
 		}
-		if _, err := s.applyOrderEconomicRevision(ctx, existing, incoming); err != nil {
+		if _, err := s.applyOrderEconomicRevision(ctx, existing, incoming, defaultLocationID); err != nil {
+			return nil, false, err
+		}
+		if err := s.ensureOrderStockEffects(ctx, existing, existing.LifecycleState, defaultLocationID); err != nil {
 			return nil, false, err
 		}
 		if isRecognizedOrderState(existing.LifecycleState) {
@@ -872,12 +1372,16 @@ func (s *Service) reconcileExistingOrderOnIngest(ctx context.Context, existing *
 		return existing, false, nil
 	}
 
-	// Merge any newer economic revision or source_updated_at before advancing forward.
-	if _, err := s.applyOrderEconomicRevision(ctx, existing, incoming); err != nil {
+	// Billing R06: Ensure stock effects for the existing state are reconciled before merging revisions or stepping forward.
+	if err := s.ensureOrderStockEffects(ctx, existing, existing.LifecycleState, defaultLocationID); err != nil {
 		return nil, false, err
 	}
 
-	// Billing R06: Ensure stock effects for the existing state are reconciled before stepping forward.
+	// Merge any newer economic revision or source_updated_at before advancing forward.
+	if _, err := s.applyOrderEconomicRevision(ctx, existing, incoming, defaultLocationID); err != nil {
+		return nil, false, err
+	}
+
 	if err := s.ensureOrderStockEffects(ctx, existing, existing.LifecycleState, defaultLocationID); err != nil {
 		return nil, false, err
 	}
@@ -1228,6 +1732,22 @@ func (s *Service) validateOrderInventoryEligibleForReturn(ctx context.Context, o
 		}
 	}
 
+	orderQtyBySku := make(map[string]int32, len(o.Items))
+	for _, it := range o.Items {
+		if it.Sku != "" && it.Quantity > 0 {
+			orderQtyBySku[it.Sku] += it.Quantity
+		}
+	}
+
+	resByKey := make(map[string]*inventory.Reservation)
+	if resList, err := invStore.ListReservationsByOrder(ctx, o.WorkspaceID, o.OrderID); err == nil {
+		for _, r := range resList {
+			if r != nil {
+				resByKey[r.SkuID+":"+r.LocationID] = r
+			}
+		}
+	}
+
 	locID := s.resolveOrderLocationID(ctx, o, locationID)
 	for _, item := range items {
 		if item.Sku == "" || item.Quantity <= 0 {
@@ -1254,6 +1774,15 @@ func (s *Service) validateOrderInventoryEligibleForReturn(ctx context.Context, o
 			return fmt.Errorf("%w: order %s has no recorded sale stock deduction for sku %s", ErrInvalidReturnTransition, o.OrderID, item.Sku)
 		}
 		fulfilledQty := -saleMov.Quantity
+		if r := resByKey[item.Sku+":"+locID]; r != nil {
+			if r.Status != inventory.ResConsumed {
+				if orderQtyBySku[item.Sku] == 0 {
+					return fmt.Errorf("%w: sku %s was removed by order revision on order %s", ErrReturnExceedsOrderQuantity, item.Sku, o.OrderID)
+				}
+				return fmt.Errorf("%w: order %s reservation is not consumed for sku %s", ErrInvalidReturnTransition, o.OrderID, item.Sku)
+			}
+			fulfilledQty = r.Quantity
+		}
 		if cumRetQty[item.Sku] > fulfilledQty {
 			return fmt.Errorf("%w: sku %s cumulative returned %d exceeds fulfilled sale quantity %d", ErrReturnExceedsOrderQuantity, item.Sku, cumRetQty[item.Sku], fulfilledQty)
 		}
@@ -1484,6 +2013,9 @@ func (s *Service) ReceiveReturn(ctx context.Context, workspaceID, returnID, rest
 // UpdateFeeBreakdown updates an order's fee breakdown (e.g. from platform settlement)
 // and records correcting postings in Finance while preserving proof and audit trail.
 func (s *Service) UpdateFeeBreakdown(ctx context.Context, workspaceID, orderID string, newFees FeeBreakdown, version, evidenceRef, reason string) (*Order, error) {
+	unlock := s.lockEntity("order", workspaceID, orderID)
+	defer unlock()
+
 	o, err := s.store.GetOrder(ctx, workspaceID, orderID)
 	if err != nil {
 		return nil, err
@@ -1491,7 +2023,12 @@ func (s *Service) UpdateFeeBreakdown(ctx context.Context, workspaceID, orderID s
 
 	oldFees := o.FeeBreakdown
 	oldEconVer := orderEconomicVersion(o)
-	nextEconVer := oldEconVer + 1
+	ensureFinanceSyncedBaseline(o)
+
+	nextEconVer := oldEconVer
+	if !feeBreakdownEqual(oldFees, newFees) {
+		nextEconVer = oldEconVer + 1
+	}
 	var parsedVer int
 	if _, err := fmt.Sscanf(strings.TrimPrefix(strings.ToLower(strings.TrimSpace(version)), "v"), "%d", &parsedVer); err == nil && parsedVer > nextEconVer {
 		nextEconVer = parsedVer
@@ -1499,16 +2036,25 @@ func (s *Service) UpdateFeeBreakdown(ctx context.Context, workspaceID, orderID s
 	if o.Metadata == nil {
 		o.Metadata = make(map[string]any)
 	}
+	corrVersion := strings.TrimSpace(version)
+	if corrVersion == "" {
+		if pending, ok := o.Metadata["finance_pending_fee_version"].(string); ok && strings.TrimSpace(pending) != "" {
+			corrVersion = strings.TrimSpace(pending)
+		} else {
+			corrVersion = fmt.Sprintf("v%d", nextEconVer)
+		}
+	}
+	o.Metadata["finance_pending_fee_version"] = corrVersion
 	o.Metadata["economic_version"] = nextEconVer
 	o.FeeBreakdown = newFees
 	o.UpdatedAt = s.clock().UTC()
 
-	// Persist order with updated fee breakdown
+	// Persist order with updated fee breakdown and durable finance_synced_* baseline
 	if err := s.store.UpdateOrder(ctx, o); err != nil {
 		return nil, err
 	}
 
-	// If finance service is wired and order is completed, correct postings
+	// If finance service is wired and order is completed, correct postings against finance_synced_* baseline
 	if s.finance != nil && (o.LifecycleState == StateCompleted || o.LifecycleState == StatePartiallyRefunded || o.LifecycleState == StateRefunded) {
 		fx := finance.ExchangeRateSnapshot{
 			BaseCurrency:  o.Currency,
@@ -1525,37 +2071,45 @@ func (s *Service) UpdateFeeBreakdown(ctx context.Context, workspaceID, orderID s
 
 		// Platform + payment fee correction
 		oldCombinedFee, _ := oldFees.PlatformFee.Add(oldFees.PaymentFee)
+		syncedCombinedFee := getSyncedDecimal(o, "finance_synced_platform_fee", oldCombinedFee)
 		newCombinedFee, _ := newFees.PlatformFee.Add(newFees.PaymentFee)
-		if newCombinedFee.Cmp(oldCombinedFee) != 0 {
+		if newCombinedFee.Cmp(syncedCombinedFee) != 0 {
 			negFee, _ := tenantdb.ZeroDecimal().Sub(newCombinedFee)
-			if err := s.finance.RecordOrderCorrection(ctx, workspaceID, orderID, finance.ComponentPlatformFee, negFee, version, string(o.SourceClass), string(finance.ConfidenceHigh), fx); err != nil {
+			if err := s.finance.RecordOrderCorrection(ctx, workspaceID, orderID, finance.ComponentPlatformFee, negFee, corrVersion, string(o.SourceClass), string(finance.ConfidenceHigh), fx); err != nil {
 				rollbackFees()
 				return nil, fmt.Errorf("record platform fee correction: %w", err)
 			}
+			o.Metadata["finance_synced_platform_fee"] = newCombinedFee.Fixed6String()
 		}
 		// Shipping cost correction
-		if newFees.ShippingCost.Cmp(oldFees.ShippingCost) != 0 {
+		syncedShipping := getSyncedDecimal(o, "finance_synced_shipping_cost", oldFees.ShippingCost)
+		if newFees.ShippingCost.Cmp(syncedShipping) != 0 {
 			negShip, _ := tenantdb.ZeroDecimal().Sub(newFees.ShippingCost)
-			if err := s.finance.RecordOrderCorrection(ctx, workspaceID, orderID, finance.ComponentShipping, negShip, version, string(o.SourceClass), string(finance.ConfidenceHigh), fx); err != nil {
+			if err := s.finance.RecordOrderCorrection(ctx, workspaceID, orderID, finance.ComponentShipping, negShip, corrVersion, string(o.SourceClass), string(finance.ConfidenceHigh), fx); err != nil {
 				rollbackFees()
 				return nil, fmt.Errorf("record shipping cost correction: %w", err)
 			}
+			o.Metadata["finance_synced_shipping_cost"] = newFees.ShippingCost.Fixed6String()
 		}
 		// Affiliate commission correction
-		if newFees.AffiliateCommission.Cmp(oldFees.AffiliateCommission) != 0 {
+		syncedCommission := getSyncedDecimal(o, "finance_synced_commission", oldFees.AffiliateCommission)
+		if newFees.AffiliateCommission.Cmp(syncedCommission) != 0 {
 			negComm, _ := tenantdb.ZeroDecimal().Sub(newFees.AffiliateCommission)
-			if err := s.finance.RecordOrderCorrection(ctx, workspaceID, orderID, finance.ComponentCommission, negComm, version, string(o.SourceClass), string(finance.ConfidenceHigh), fx); err != nil {
+			if err := s.finance.RecordOrderCorrection(ctx, workspaceID, orderID, finance.ComponentCommission, negComm, corrVersion, string(o.SourceClass), string(finance.ConfidenceHigh), fx); err != nil {
 				rollbackFees()
 				return nil, fmt.Errorf("record affiliate commission correction: %w", err)
 			}
+			o.Metadata["finance_synced_commission"] = newFees.AffiliateCommission.Fixed6String()
 		}
+		delete(o.Metadata, "finance_pending_fee_version")
+		_ = s.store.UpdateOrder(ctx, o)
 	}
 
 	s.emitEvent(ctx, "commerce.order.fee_corrected", "order", orderID, workspaceID, map[string]any{
 		"order_id":     orderID,
 		"evidence_ref": evidenceRef,
 		"reason":       reason,
-		"version":      version,
+		"version":      corrVersion,
 	})
 
 	return o, nil
