@@ -891,13 +891,14 @@ func TestRound2_LivePostgres_AllFindingsEndToEnd(t *testing.T) {
 		t.Fatalf("PG M04 CreateCostItem: %v", err)
 	}
 	var wg sync.WaitGroup
+	updateErrCh := make(chan error, 3)
 	for _, amt := range []string{"150000.000000", "175000.000000", "200000.000000"} {
 		amt := amt
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			sInst := finance.NewService(pgStore, nil, nil)
-			_, _ = sInst.UpdateCostItem(ctx, &finance.CostItem{
+			_, uErr := sInst.UpdateCostItem(ctx, &finance.CostItem{
 				WorkspaceID:   wsA,
 				CostItemID:    ci.CostItemID,
 				CostType:      "ads_spend",
@@ -906,9 +907,16 @@ func TestRound2_LivePostgres_AllFindingsEndToEnd(t *testing.T) {
 				SourceClass:   finance.SourceClassOfficial,
 				EffectiveDate: "2026-11-06",
 			})
+			updateErrCh <- uErr
 		}()
 	}
 	wg.Wait()
+	close(updateErrCh)
+	for uErr := range updateErrCh {
+		if uErr != nil {
+			t.Fatalf("PG M04 concurrent UpdateCostItem failed: %v", uErr)
+		}
+	}
 
 	finalCI, err := pgStore.GetCostItem(ctx, wsA, ci.CostItemID)
 	if err != nil {

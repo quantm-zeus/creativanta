@@ -476,6 +476,104 @@ func (s *Service) RecordOrderPosting(ctx context.Context, input OrderPostingInpu
 		return nil
 	}
 
+	existingOrderPostings, _ := s.store.ListPostings(ctx, input.WorkspaceID, PostingFilter{
+		OriginType: "order",
+		OriginID:   input.OrderID,
+	})
+	hasPriorOrderPostings := false
+	platformFeeSuperseded := false
+	for _, ep := range existingOrderPostings {
+		if ep.ReversalOf == nil || *ep.ReversalOf == "" {
+			if ep.OriginVersion != input.OrderVersion {
+				hasPriorOrderPostings = true
+			}
+		} else if ep.Component == ComponentPlatformFee && strings.HasSuffix(strings.ToLower(ep.OriginVersion), "-superseded") {
+			platformFeeSuperseded = true
+		}
+	}
+
+	if input.OrderVersion != "v1" && hasPriorOrderPostings {
+		baseFX := input.ExchangeRateSnapshot
+		baseFX.BaseCurrency = baseCurrency
+		baseFX.QuoteCurrency = baseCurrency
+		baseFX.RateToBase = "1"
+
+		negFee, _ := tenantdb.ZeroDecimal().Sub(baseFee)
+		negShip, _ := tenantdb.ZeroDecimal().Sub(baseShip)
+		negComm, _ := tenantdb.ZeroDecimal().Sub(baseComm)
+		negCOGS := tenantdb.ZeroDecimal()
+		if baseCOGS != nil && !baseCOGS.IsZero() {
+			negCOGS, _ = tenantdb.ZeroDecimal().Sub(*baseCOGS)
+		}
+
+		type compTarget struct {
+			comp   string
+			signed tenantdb.ExactDecimal
+			skip   bool
+		}
+		targets := []compTarget{
+			{comp: ComponentRevenue, signed: baseRevenue},
+			{comp: ComponentPlatformFee, signed: negFee, skip: platformFeeSuperseded},
+			{comp: ComponentShipping, signed: negShip},
+			{comp: ComponentCOGS, signed: negCOGS, skip: baseCOGS == nil},
+			{comp: ComponentCommission, signed: negComm},
+		}
+		for _, t := range targets {
+			if t.skip {
+				continue
+			}
+			alreadyAtVer := false
+			for _, ep := range existingOrderPostings {
+				if (ep.ReversalOf == nil || *ep.ReversalOf == "") && ep.Component == t.comp && ep.OriginVersion == input.OrderVersion {
+					if ep.Amount.Cmp(t.signed) != 0 || !strings.EqualFold(ep.Currency, baseCurrency) {
+						return fmt.Errorf("%w: conflicting order %s payload for order %s version %s", ErrDuplicatePosting, t.comp, input.OrderID, input.OrderVersion)
+					}
+					alreadyAtVer = true
+					break
+				}
+			}
+			if alreadyAtVer {
+				continue
+			}
+			active, fErr := s.store.FindPostingByOrigin(ctx, input.WorkspaceID, "order", input.OrderID, t.comp)
+			if fErr != nil && !errors.Is(fErr, ErrPostingNotFound) {
+				return fErr
+			}
+			if active == nil && t.signed.IsZero() {
+				continue
+			}
+			if active != nil && active.Amount.Cmp(t.signed) == 0 && strings.EqualFold(active.Currency, baseCurrency) {
+				continue
+			}
+			if err := s.recordOrderComponentCorrection(ctx, input.WorkspaceID, input.OrderID, t.comp, t.signed, input.OrderVersion, input.SourceClass, input.Confidence, baseFX); err != nil {
+				return err
+			}
+		}
+
+		s.mu.Lock()
+		delete(s.pendingOrders, pendingKey)
+		delete(s.pendingOrders, input.OrderID)
+		s.mu.Unlock()
+
+		orderModel.HasExplicitFees = true
+		orderModel.PendingFeeVersion = ""
+		_ = s.store.CreateOrder(ctx, orderModel)
+
+		s.AttributionEngine().SeedCanonicalOrder(CanonicalOrderRecord{
+			OrderID:           input.OrderID,
+			WorkspaceID:       input.WorkspaceID,
+			GrossRevenue:      baseRevenue,
+			RefundDeduction:   tenantdb.ZeroDecimal(),
+			NetRevenue:        baseRevenue,
+			Currency:          baseCurrency,
+			SourceClass:       input.SourceClass,
+			Confidence:        input.Confidence,
+			LifecycleState:    input.LifecycleState,
+			IsRecognizedOrder: true,
+		})
+		return nil
+	}
+
 	postComponentIdempotent := func(comp string, signedAmount tenantdb.ExactDecimal) error {
 		posting := &FinancialPosting{
 			WorkspaceID:          input.WorkspaceID,
@@ -619,6 +717,15 @@ func (s *Service) RecordOrderFeeBreakdownCorrection(
 	if s.store != nil {
 		existingOrd, _ = s.store.GetOrder(ctx, workspaceID, orderID)
 	}
+	normVersion := strings.TrimSpace(newVersion)
+	if normVersion == "" && existingOrd != nil && strings.TrimSpace(existingOrd.PendingFeeVersion) != "" {
+		normVersion = strings.TrimSpace(existingOrd.PendingFeeVersion)
+	}
+	if normVersion == "" ||
+		strings.HasSuffix(strings.ToLower(normVersion), "-reversal") ||
+		strings.HasSuffix(strings.ToLower(normVersion), "-superseded") {
+		return fmt.Errorf("%w: invalid order fee breakdown correction version %q", ErrInvalidAmount, newVersion)
+	}
 
 	var basePlat tenantdb.ExactDecimal
 	if newPlatformFee != nil {
@@ -661,13 +768,21 @@ func (s *Service) RecordOrderFeeBreakdownCorrection(
 	baseFX.BaseCurrency = baseCurr
 	baseFX.QuoteCurrency = baseCurr
 	baseFX.RateToBase = "1"
-	if err := s.recordOrderComponentCorrection(ctx, workspaceID, orderID, ComponentPlatformFee, negCombined, newVersion, sourceClass, confidence, baseFX); err != nil {
+	if err := s.recordOrderComponentCorrection(ctx, workspaceID, orderID, ComponentPlatformFee, negCombined, normVersion, sourceClass, confidence, baseFX); err != nil {
 		return err
 	}
-	if existingOrd != nil {
-		existingOrd.PlatformFeeAmount = basePlat
-		existingOrd.PaymentFeeAmount = basePay
-		_ = s.store.CreateOrder(ctx, existingOrd)
+	if s.store != nil {
+		ordToSave := existingOrd
+		if refreshed, rErr := s.store.GetOrder(ctx, workspaceID, orderID); rErr == nil && refreshed != nil {
+			ordToSave = refreshed
+		}
+		if ordToSave != nil {
+			ordToSave.PlatformFeeAmount = basePlat
+			ordToSave.PaymentFeeAmount = basePay
+			ordToSave.HasExplicitFees = true
+			ordToSave.SyncedPlatformFee = &combinedBase
+			_ = s.store.CreateOrder(ctx, ordToSave)
+		}
 	}
 	return nil
 }
@@ -1602,6 +1717,185 @@ func (s *Service) resolveRefundPostingOrderID(ctx context.Context, workspaceID s
 	return ""
 }
 
+func (s *Service) reconcilePendingOrderRevisions(
+	ctx context.Context,
+	workspaceID string,
+	storedOrders []Order,
+	allPostings []FinancialPosting,
+) bool {
+	if len(storedOrders) == 0 {
+		return false
+	}
+
+	postingsByOrder := make(map[string][]FinancialPosting)
+	supersededFeeOrders := make(map[string]bool)
+	for _, p := range allPostings {
+		if p.OriginType == "order" {
+			postingsByOrder[p.OriginID] = append(postingsByOrder[p.OriginID], p)
+			if p.Component == ComponentPlatformFee &&
+				p.ReversalOf != nil && *p.ReversalOf != "" &&
+				strings.HasSuffix(strings.ToLower(p.OriginVersion), "-superseded") {
+				supersededFeeOrders[p.OriginID] = true
+			}
+		} else if p.OriginType == "settlement_line" && p.Component == ComponentPlatformFee && p.RelatedOrderID != "" {
+			supersededFeeOrders[p.RelatedOrderID] = true
+		}
+	}
+
+	reconciledAny := false
+	for _, o := range storedOrders {
+		state := strings.ToLower(strings.TrimSpace(o.LifecycleState))
+		if state != "completed" && state != "partially_refunded" && state != "refunded" {
+			continue
+		}
+		hasUnsynced := strings.TrimSpace(o.PendingFeeVersion) != ""
+		if !hasUnsynced && o.EconomicVersion > 1 {
+			combFee, _ := o.PlatformFeeAmount.Add(o.PaymentFeeAmount)
+			if (o.SyncedRevenue != nil && o.Amount.Cmp(*o.SyncedRevenue) != 0) ||
+				(o.SyncedPlatformFee != nil && combFee.Cmp(*o.SyncedPlatformFee) != 0) ||
+				(o.SyncedShippingCost != nil && o.ShippingFeeAmount.Cmp(*o.SyncedShippingCost) != 0) ||
+				(o.SyncedCommission != nil && o.CommissionAmount.Cmp(*o.SyncedCommission) != 0) ||
+				(o.SyncedCOGS != nil && o.COGSAmount != nil && o.COGSAmount.Cmp(*o.SyncedCOGS) != 0) {
+				hasUnsynced = true
+			}
+		}
+		if !hasUnsynced {
+			continue
+		}
+
+		orderPostings := postingsByOrder[o.OrderID]
+		if len(orderPostings) == 0 {
+			continue
+		}
+
+		targetVer := strings.TrimSpace(o.PendingFeeVersion)
+		if targetVer == "" {
+			if o.EconomicVersion > 1 {
+				targetVer = fmt.Sprintf("v%d", o.EconomicVersion)
+			} else {
+				targetVer = "v2"
+			}
+		}
+
+		baseCurr := strings.TrimSpace(o.Currency)
+		if baseCurr == "" {
+			baseCurr = "VND"
+		}
+		toBase := func(val tenantdb.ExactDecimal) tenantdb.ExactDecimal {
+			if !o.ExchangeRateSnapshot.IsEmpty() &&
+				strings.EqualFold(baseCurr, strings.TrimSpace(o.ExchangeRateSnapshot.QuoteCurrency)) &&
+				!strings.EqualFold(strings.TrimSpace(o.ExchangeRateSnapshot.BaseCurrency), strings.TrimSpace(o.ExchangeRateSnapshot.QuoteCurrency)) {
+				if conv, err := ComputeBaseAmount(val, o.ExchangeRateSnapshot); err == nil {
+					return conv
+				}
+			}
+			return val
+		}
+		if !o.ExchangeRateSnapshot.IsEmpty() && strings.TrimSpace(o.ExchangeRateSnapshot.BaseCurrency) != "" {
+			baseCurr = strings.ToUpper(strings.TrimSpace(o.ExchangeRateSnapshot.BaseCurrency))
+		}
+		baseFX := ExchangeRateSnapshot{
+			BaseCurrency:  baseCurr,
+			QuoteCurrency: baseCurr,
+			RateToBase:    "1",
+			SourceClass:   SourceClassOfficial,
+			EffectiveAt:   o.EffectiveTime(),
+		}
+
+		revBase := toBase(o.Amount)
+		platBase := toBase(o.PlatformFeeAmount)
+		payBase := toBase(o.PaymentFeeAmount)
+		combFeeBase, _ := platBase.Add(payBase)
+		shipBase := toBase(o.ShippingFeeAmount)
+		commBase := toBase(o.CommissionAmount)
+
+		negFee, _ := tenantdb.ZeroDecimal().Sub(combFeeBase)
+		negShip, _ := tenantdb.ZeroDecimal().Sub(shipBase)
+		negComm, _ := tenantdb.ZeroDecimal().Sub(commBase)
+		var cogsBasePtr *tenantdb.ExactDecimal
+		negCOGS := tenantdb.ZeroDecimal()
+		if o.COGSAmount != nil {
+			cb := toBase(*o.COGSAmount)
+			cogsBasePtr = &cb
+			if !cb.IsZero() {
+				negCOGS, _ = tenantdb.ZeroDecimal().Sub(cb)
+			}
+		}
+
+		type compTarget struct {
+			comp   string
+			signed tenantdb.ExactDecimal
+			skip   bool
+		}
+		targets := []compTarget{
+			{comp: ComponentRevenue, signed: revBase},
+			{comp: ComponentPlatformFee, signed: negFee, skip: supersededFeeOrders[o.OrderID]},
+			{comp: ComponentShipping, signed: negShip},
+			{comp: ComponentCommission, signed: negComm},
+			{comp: ComponentCOGS, signed: negCOGS, skip: cogsBasePtr == nil},
+		}
+
+		orderChanged := false
+		for _, t := range targets {
+			if t.skip {
+				continue
+			}
+			active, fErr := s.store.FindPostingByOrigin(ctx, workspaceID, "order", o.OrderID, t.comp)
+			if fErr != nil && !errors.Is(fErr, ErrPostingNotFound) {
+				continue
+			}
+			if active == nil && t.signed.IsZero() {
+				continue
+			}
+			if active != nil && active.Amount.Cmp(t.signed) == 0 {
+				continue
+			}
+
+			verToUse := targetVer
+			for bump := 2; bump < 100; bump++ {
+				conflict := false
+				for _, ep := range orderPostings {
+					if (ep.ReversalOf == nil || *ep.ReversalOf == "") &&
+						ep.Component == t.comp &&
+						ep.OriginVersion == verToUse &&
+						ep.Amount.Cmp(t.signed) != 0 {
+						conflict = true
+						break
+					}
+				}
+				if !conflict {
+					break
+				}
+				verToUse = fmt.Sprintf("v%d", bump)
+			}
+
+			if err := s.recordOrderComponentCorrection(ctx, workspaceID, o.OrderID, t.comp, t.signed, verToUse, SourceClassOfficial, ConfidenceHigh, baseFX); err == nil {
+				orderChanged = true
+			}
+		}
+
+		ordCopy := o
+		ordCopy.PlatformFeeAmount = platBase
+		ordCopy.PaymentFeeAmount = payBase
+		ordCopy.ShippingFeeAmount = shipBase
+		ordCopy.CommissionAmount = commBase
+		ordCopy.HasExplicitFees = true
+		ordCopy.PendingFeeVersion = ""
+		ordCopy.SyncedRevenue = &revBase
+		ordCopy.SyncedPlatformFee = &combFeeBase
+		ordCopy.SyncedShippingCost = &shipBase
+		ordCopy.SyncedCommission = &commBase
+		if cogsBasePtr != nil {
+			ordCopy.SyncedCOGS = cogsBasePtr
+		}
+		_ = s.store.CreateOrder(ctx, &ordCopy)
+		if orderChanged {
+			reconciledAny = true
+		}
+	}
+	return reconciledAny
+}
+
 // GetOrComputeProfitSnapshot retrieves the latest snapshot or computes a fresh one from postings.
 func (s *Service) GetOrComputeProfitSnapshot(
 	ctx context.Context,
@@ -1699,6 +1993,23 @@ func (s *Service) GetOrComputeProfitSnapshot(
 		storedOrders, err = lister.ListOrders(ctx, workspaceID)
 		if err != nil {
 			return nil, err
+		}
+	}
+	if s.reconcilePendingOrderRevisions(ctx, workspaceID, storedOrders, allPostings) {
+		allPostings, err = s.store.ListPostings(ctx, workspaceID, PostingFilter{})
+		if err != nil {
+			return nil, err
+		}
+		reversedIDs = make(map[string]bool)
+		for _, p := range allPostings {
+			if p.ReversalOf != nil && *p.ReversalOf != "" {
+				reversedIDs[*p.ReversalOf] = true
+			}
+		}
+		if lister, ok := s.store.(workspaceOrderLister); ok {
+			if refreshedOrders, rErr := lister.ListOrders(ctx, workspaceID); rErr == nil {
+				storedOrders = refreshedOrders
+			}
 		}
 	}
 	ordersByID := make(map[string]Order, len(storedOrders))

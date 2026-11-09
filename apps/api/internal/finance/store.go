@@ -286,7 +286,7 @@ func applyOrderCorrectionToModel(ord *Order, component string, baseNewAmount ten
 	case ComponentRevenue:
 		ord.Amount = baseNewAmount
 	case ComponentCOGS:
-		if !absVal.IsZero() {
+		if !absVal.IsZero() || ord.ZeroCOGSWithReason {
 			ord.COGSAmount = &absVal
 		}
 	case ComponentPlatformFee:
@@ -297,10 +297,13 @@ func applyOrderCorrectionToModel(ord *Order, component string, baseNewAmount ten
 			ord.PlatformFeeAmount = absVal
 			ord.PaymentFeeAmount = tenantdb.ZeroDecimal()
 		}
+		ord.HasExplicitFees = true
 	case ComponentShipping:
 		ord.ShippingFeeAmount = absVal
+		ord.HasExplicitFees = true
 	case ComponentCommission:
 		ord.CommissionAmount = absVal
+		ord.HasExplicitFees = true
 	}
 }
 
@@ -894,6 +897,18 @@ func cloneOrder(o *Order) Order {
 	if len(o.ContentIDs) > 0 {
 		cp.ContentIDs = append([]string(nil), o.ContentIDs...)
 	}
+	cloneDecPtr := func(src *tenantdb.ExactDecimal) *tenantdb.ExactDecimal {
+		if src == nil {
+			return nil
+		}
+		v := *src
+		return &v
+	}
+	cp.SyncedRevenue = cloneDecPtr(o.SyncedRevenue)
+	cp.SyncedPlatformFee = cloneDecPtr(o.SyncedPlatformFee)
+	cp.SyncedShippingCost = cloneDecPtr(o.SyncedShippingCost)
+	cp.SyncedCommission = cloneDecPtr(o.SyncedCommission)
+	cp.SyncedCOGS = cloneDecPtr(o.SyncedCOGS)
 	return cp
 }
 
@@ -923,17 +938,22 @@ func (m *MemoryStore) CreateOrder(_ context.Context, o *Order) error {
 		if cp.COGSReason == "" {
 			cp.COGSReason = existing.COGSReason
 		}
-		if cp.PlatformFeeAmount.IsZero() && !existing.PlatformFeeAmount.IsZero() {
-			cp.PlatformFeeAmount = existing.PlatformFeeAmount
+		if !cp.HasExplicitFees {
+			if cp.PlatformFeeAmount.IsZero() && !existing.PlatformFeeAmount.IsZero() {
+				cp.PlatformFeeAmount = existing.PlatformFeeAmount
+			}
+			if cp.PaymentFeeAmount.IsZero() && !existing.PaymentFeeAmount.IsZero() {
+				cp.PaymentFeeAmount = existing.PaymentFeeAmount
+			}
+			if cp.ShippingFeeAmount.IsZero() && !existing.ShippingFeeAmount.IsZero() {
+				cp.ShippingFeeAmount = existing.ShippingFeeAmount
+			}
+			if cp.CommissionAmount.IsZero() && !existing.CommissionAmount.IsZero() {
+				cp.CommissionAmount = existing.CommissionAmount
+			}
 		}
-		if cp.PaymentFeeAmount.IsZero() && !existing.PaymentFeeAmount.IsZero() {
-			cp.PaymentFeeAmount = existing.PaymentFeeAmount
-		}
-		if cp.ShippingFeeAmount.IsZero() && !existing.ShippingFeeAmount.IsZero() {
-			cp.ShippingFeeAmount = existing.ShippingFeeAmount
-		}
-		if cp.CommissionAmount.IsZero() && !existing.CommissionAmount.IsZero() {
-			cp.CommissionAmount = existing.CommissionAmount
+		if cp.EconomicVersion == 0 && existing.EconomicVersion > 0 {
+			cp.EconomicVersion = existing.EconomicVersion
 		}
 		if cp.ExchangeRateSnapshot.IsEmpty() && !existing.ExchangeRateSnapshot.IsEmpty() {
 			cp.ExchangeRateSnapshot = existing.ExchangeRateSnapshot
@@ -3412,6 +3432,39 @@ func hydrateOrderDetails(o *Order, itemsBytes, feeBytes, metaBytes []byte) {
 					}
 				}
 			}
+			switch ev := meta["economic_version"].(type) {
+			case float64:
+				if int(ev) > 0 {
+					o.EconomicVersion = int(ev)
+				}
+			case int:
+				if ev > 0 {
+					o.EconomicVersion = ev
+				}
+			case string:
+				var parsed int
+				if _, err := fmt.Sscanf(strings.TrimPrefix(strings.ToLower(strings.TrimSpace(ev)), "v"), "%d", &parsed); err == nil && parsed > 0 {
+					o.EconomicVersion = parsed
+				}
+			}
+			if pv, ok := meta["finance_pending_fee_version"].(string); ok && strings.TrimSpace(pv) != "" {
+				o.PendingFeeVersion = strings.TrimSpace(pv)
+			}
+			if d, ok := parseMapDecimal(meta, "finance_synced_revenue"); ok {
+				o.SyncedRevenue = &d
+			}
+			if d, ok := parseMapDecimal(meta, "finance_synced_platform_fee"); ok {
+				o.SyncedPlatformFee = &d
+			}
+			if d, ok := parseMapDecimal(meta, "finance_synced_shipping_cost"); ok {
+				o.SyncedShippingCost = &d
+			}
+			if d, ok := parseMapDecimal(meta, "finance_synced_commission"); ok {
+				o.SyncedCommission = &d
+			}
+			if d, ok := parseMapDecimal(meta, "finance_synced_cogs"); ok {
+				o.SyncedCOGS = &d
+			}
 		}
 	}
 	if len(feeBytes) > 0 {
@@ -3426,17 +3479,21 @@ func hydrateOrderDetails(o *Order, itemsBytes, feeBytes, metaBytes []byte) {
 			if r, ok := fees["cogs_reason"].(string); ok && strings.TrimSpace(r) != "" && o.COGSReason == "" {
 				o.COGSReason = strings.TrimSpace(r)
 			}
-			if d, ok := parseMapDecimal(fees, "platform_fee"); ok && !d.IsZero() && o.PlatformFeeAmount.IsZero() {
+			if d, ok := parseMapDecimal(fees, "platform_fee"); ok && o.PlatformFeeAmount.IsZero() {
 				o.PlatformFeeAmount = d
+				o.HasExplicitFees = true
 			}
-			if d, ok := parseMapDecimal(fees, "payment_fee", "transaction_fee"); ok && !d.IsZero() && o.PaymentFeeAmount.IsZero() {
+			if d, ok := parseMapDecimal(fees, "payment_fee", "transaction_fee"); ok && o.PaymentFeeAmount.IsZero() {
 				o.PaymentFeeAmount = d
+				o.HasExplicitFees = true
 			}
-			if d, ok := parseMapDecimal(fees, "shipping_cost", "shipping_fee"); ok && !d.IsZero() && o.ShippingFeeAmount.IsZero() {
+			if d, ok := parseMapDecimal(fees, "shipping_cost", "shipping_fee"); ok && o.ShippingFeeAmount.IsZero() {
 				o.ShippingFeeAmount = d
+				o.HasExplicitFees = true
 			}
-			if d, ok := parseMapDecimal(fees, "affiliate_commission", "commission"); ok && !d.IsZero() && o.CommissionAmount.IsZero() {
+			if d, ok := parseMapDecimal(fees, "affiliate_commission", "commission"); ok && o.CommissionAmount.IsZero() {
 				o.CommissionAmount = d
+				o.HasExplicitFees = true
 			}
 		}
 	}
@@ -3619,16 +3676,16 @@ func (p *PostgresStore) CreateOrder(ctx context.Context, o *Order) error {
 	if o.COGSReason != "" {
 		feeMap["cogs_reason"] = o.COGSReason
 	}
-	if !o.PlatformFeeAmount.IsZero() {
+	if o.HasExplicitFees || !o.PlatformFeeAmount.IsZero() {
 		feeMap["platform_fee"] = o.PlatformFeeAmount.Fixed6String()
 	}
-	if !o.PaymentFeeAmount.IsZero() {
+	if o.HasExplicitFees || !o.PaymentFeeAmount.IsZero() {
 		feeMap["payment_fee"] = o.PaymentFeeAmount.Fixed6String()
 	}
-	if !o.ShippingFeeAmount.IsZero() {
+	if o.HasExplicitFees || !o.ShippingFeeAmount.IsZero() {
 		feeMap["shipping_cost"] = o.ShippingFeeAmount.Fixed6String()
 	}
-	if !o.CommissionAmount.IsZero() {
+	if o.HasExplicitFees || !o.CommissionAmount.IsZero() {
 		feeMap["affiliate_commission"] = o.CommissionAmount.Fixed6String()
 	}
 	feeJSON, _ := json.Marshal(feeMap)
@@ -3673,6 +3730,27 @@ func (p *PostgresStore) CreateOrder(ctx context.Context, o *Order) error {
 	if !o.ExchangeRateSnapshot.IsEmpty() {
 		metaMap["exchange_rate_snapshot"] = o.ExchangeRateSnapshot
 	}
+	if o.EconomicVersion > 0 {
+		metaMap["economic_version"] = o.EconomicVersion
+	}
+	if strings.TrimSpace(o.PendingFeeVersion) != "" {
+		metaMap["finance_pending_fee_version"] = strings.TrimSpace(o.PendingFeeVersion)
+	}
+	if o.SyncedRevenue != nil {
+		metaMap["finance_synced_revenue"] = o.SyncedRevenue.Fixed6String()
+	}
+	if o.SyncedPlatformFee != nil {
+		metaMap["finance_synced_platform_fee"] = o.SyncedPlatformFee.Fixed6String()
+	}
+	if o.SyncedShippingCost != nil {
+		metaMap["finance_synced_shipping_cost"] = o.SyncedShippingCost.Fixed6String()
+	}
+	if o.SyncedCommission != nil {
+		metaMap["finance_synced_commission"] = o.SyncedCommission.Fixed6String()
+	}
+	if o.SyncedCOGS != nil {
+		metaMap["finance_synced_cogs"] = o.SyncedCOGS.Fixed6String()
+	}
 	metaJSON, _ := json.Marshal(metaMap)
 
 	pgRecState := toPgReconciliationState(o.ReconciliationState)
@@ -3694,7 +3772,7 @@ func (p *PostgresStore) CreateOrder(ctx context.Context, o *Order) error {
 			recognized_at = COALESCE(EXCLUDED.recognized_at, orders.recognized_at),
 			source_platform = COALESCE(NULLIF(EXCLUDED.source_platform, ''), orders.source_platform),
 			fee_breakdown = COALESCE(orders.fee_breakdown, '{}'::jsonb) || EXCLUDED.fee_breakdown,
-			metadata = COALESCE(orders.metadata, '{}'::jsonb) || EXCLUDED.metadata,
+			metadata = (COALESCE(orders.metadata, '{}'::jsonb) - 'finance_pending_fee_version') || EXCLUDED.metadata,
 			updated_at = NOW()
 	`
 	return p.withTenantTx(ctx, o.WorkspaceID, func(txCtx context.Context, tx pgx.Tx) error {
