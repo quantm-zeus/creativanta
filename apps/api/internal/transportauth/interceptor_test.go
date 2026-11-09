@@ -246,12 +246,18 @@ func TestKnownConnectErrorsMappedToCatalog(t *testing.T) {
 		{connect.NewError(connect.CodeInvalidArgument, errors.New("malicious input")), connect.CodeInvalidArgument, "SYSTEM_INVALID_001"},
 		{connect.NewError(connect.CodeNotFound, errors.New("foreign row 42")), connect.CodeNotFound, "SYSTEM_NOTFOUND_001"},
 		{connect.NewError(connect.CodeResourceExhausted, errors.New("burst key")), connect.CodeResourceExhausted, "SYSTEM_LIMIT_001"},
+		{connect.NewError(connect.CodeFailedPrecondition, errors.New("stale expected_updated_at or insufficient stock")), connect.CodeFailedPrecondition, "COMMERCE_CONFLICT_001"},
 		{context.DeadlineExceeded, connect.CodeDeadlineExceeded, "SYSTEM_TIMEOUT_001"},
 		{context.Canceled, connect.CodeCanceled, "SYSTEM_CANCELED_001"},
 	} {
 		_, err := call(intercept(t, ModeAPI, verified()), reqWith(authHeader()), func(context.Context, connect.AnyRequest) (connect.AnyResponse, error) { return nil, tc.input })
 		requireError(t, err, tc.code, tc.catalog)
 	}
+	adminVerifier := &fixedVerifier{sess: Session{UserID: userUUID, InternalAdmin: true}}
+	_, adminPrecondErr := call(intercept(t, ModeAdminAPI, adminVerifier), reqWith(authHeader()), func(context.Context, connect.AnyRequest) (connect.AnyResponse, error) {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("admin policy precondition failed"))
+	})
+	requireError(t, adminPrecondErr, connect.CodeFailedPrecondition, "ADMIN_CONFLICT_001")
 }
 
 type fakeStream struct {

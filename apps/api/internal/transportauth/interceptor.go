@@ -264,16 +264,18 @@ func correlation(h http.Header) (string, error) {
 }
 
 var publicErrors = map[string]string{
-	"AUTH_FORBIDDEN_001":   "Phiên đăng nhập chưa hợp lệ.",
-	"ADMIN_FORBIDDEN_001":  "Bạn không có quyền quản trị cho thao tác này.",
-	"SYSTEM_INVALID_001":   "Dữ liệu yêu cầu không hợp lệ.",
-	"SYSTEM_NOTFOUND_001":  "Không tìm thấy tài nguyên.",
-	"SYSTEM_FORBIDDEN_001": "Bạn không có quyền truy cập.",
-	"SYSTEM_INTERNAL_001":  "Lỗi hệ thống. Vui lòng thử lại sau.",
-	"SYSTEM_TIMEOUT_001":   "Yêu cầu hết thời gian chờ.",
-	"SYSTEM_CANCELED_001":  "Yêu cầu đã bị hủy.",
-	"SYSTEM_LIMIT_001":     "Quá nhiều yêu cầu. Vui lòng chờ.",
-	"SYSTEM_CONFLICT_001":  "Mã yêu cầu đã dùng cho nội dung khác. Vui lòng tải lại.",
+	"AUTH_FORBIDDEN_001":    "Phiên đăng nhập chưa hợp lệ.",
+	"ADMIN_FORBIDDEN_001":   "Bạn không có quyền quản trị cho thao tác này.",
+	"ADMIN_CONFLICT_001":    "Thao tác quản trị bị chặn bởi chính sách hoặc trạng thái hiện tại.",
+	"COMMERCE_CONFLICT_001": "Không thể thay đổi trạng thái đơn hàng.",
+	"SYSTEM_INVALID_001":    "Dữ liệu yêu cầu không hợp lệ.",
+	"SYSTEM_NOTFOUND_001":   "Không tìm thấy tài nguyên.",
+	"SYSTEM_FORBIDDEN_001":  "Bạn không có quyền truy cập.",
+	"SYSTEM_INTERNAL_001":   "Lỗi hệ thống. Vui lòng thử lại sau.",
+	"SYSTEM_TIMEOUT_001":    "Yêu cầu hết thời gian chờ.",
+	"SYSTEM_CANCELED_001":   "Yêu cầu đã bị hủy.",
+	"SYSTEM_LIMIT_001":      "Quá nhiều yêu cầu. Vui lòng chờ.",
+	"SYSTEM_CONFLICT_001":   "Mã yêu cầu đã dùng cho nội dung khác. Vui lòng tải lại.",
 }
 
 func safeError(code connect.Code, key, id string) *connect.Error {
@@ -324,6 +326,11 @@ func sanitize(err error, id string, mode Mode) error {
 		return safeError(code, "SYSTEM_LIMIT_001", id)
 	case connect.CodeAlreadyExists:
 		return safeError(code, "SYSTEM_CONFLICT_001", id)
+	case connect.CodeFailedPrecondition:
+		if mode == ModeAdminAPI {
+			return safeError(code, "ADMIN_CONFLICT_001", id)
+		}
+		return safeError(code, "COMMERCE_CONFLICT_001", id)
 	default:
 		return safeError(connect.CodeInternal, "SYSTEM_INTERNAL_001", id)
 	}

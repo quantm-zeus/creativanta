@@ -2171,3 +2171,152 @@ func TestP808ThirdPassRegression_ReleaseF1F2F3_AuditIntegrityRollbackAndMigrateC
 		}
 	}
 }
+
+func TestP808Round02CodexRegression_NilNetProfitNoPanicAndUnverifiedRollbackSlotNotPersisted(t *testing.T) {
+	reg, err := rbac.LoadCanonicalBindings(repoRoot(t))
+	if err != nil {
+		t.Fatalf("LoadCanonicalBindings: %v", err)
+	}
+	svc := internaladmin.NewService(reg)
+	const (
+		superAdminID = "90000000-0000-4000-8000-000000000011"
+		wsA          = "22222222-2222-4222-8222-222222222211"
+		greenDigest  = "sha256:cccc3333cccc3333cccc3333cccc3333cccc3333cccc3333cccc3333cccc3333"
+		blueDigest   = "sha256:dddd4444dddd4444dddd4444dddd4444dddd4444dddd4444dddd4444dddd4444"
+	)
+	if err := svc.RegisterAdmin(internaladmin.InternalAdminRecord{
+		AdminID:      superAdminID,
+		Email:        "super-r02@internal.creativanta.vn",
+		FullName:     "Super Admin R02",
+		PasswordHash: internaladmin.HashAdminPassword("Super-Restore-2026!"),
+		AdminRole:    rbac.AdminRoleSuper,
+		MFASecret:    "JBSWY3DPEHPK3PXP",
+		MFAEnabled:   true,
+		Status:       "active",
+	}); err != nil {
+		t.Fatalf("RegisterAdmin: %v", err)
+	}
+
+	var profitPayload string
+	candidateSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/healthz":
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"status":"alive","role":"api"}`))
+		case "/readyz":
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"status":"ready","role":"api"}`))
+		case "/api/workspaces/discovery":
+			if r.Header.Get("Authorization") != "Bearer valid-smoke-token" {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"workspaces":[{"workspace_id":"` + wsA + `","name":"Primary"}]}`))
+		case "/creativanta.admin.v1.DiagnosticsService/GetOverview":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"workspaceId":{"value":"` + wsA + `"},"overallStatus":"DIAGNOSTIC_HEALTH_STATUS_HEALTHY","totalCategoriesCount":4,"healthyCategoriesCount":4}`))
+		case "/creativanta.finance.v1.ProfitService/GetSummary":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(profitPayload))
+		case "/creativanta.admin.v1.AdminBillingService/GetCreditBalance":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"balance":{"workspaceId":{"value":"` + wsA + `"},"totalRemaining":"2420"}}`))
+		case "/creativanta.admin.v1.SystemConfigService/GetDashboard":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"maintenanceMode":false,"activeKillSwitchesCount":0,"auditLogEntriesCount":2,"auditSequenceIntact":true}`))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer candidateSrv.Close()
+
+	// 1. Codex F1 / N6: ProfitService/GetSummary returning HTTP 200 with omitted or null netProfit
+	// must NOT panic; it must fail closed with SMOKE_METRICS_UNOBSERVED and never promote candidate.
+	for _, body := range []string{
+		`{"snapshot":{"workspaceId":"` + wsA + `"}}`,
+		`{"snapshot":{"workspaceId":"` + wsA + `","isIncomplete":false,"unknownRequiredComponentsCount":0,"netProfit":null}}`,
+		`{"snapshot":null}`,
+	} {
+		profitPayload = body
+		proxy := &mockDisposableProxyTarget{}
+		verdict, err := svc.ExecuteLiveBlueGreenReleaseSmokeRehearsal(
+			context.Background(),
+			superAdminID,
+			"green",
+			greenDigest,
+			candidateSrv.URL,
+			"valid-smoke-token",
+			wsA,
+			15000000000,
+			2420,
+			proxy,
+		)
+		if !errors.Is(err, internaladmin.ErrReleaseSmokeFailed) || verdict.FailureCode != "SMOKE_METRICS_UNOBSERVED" || verdict.CandidatePromoted || proxy.switchedSlot != "" {
+			t.Fatalf("Codex F1/N6 regression (body=%s): expected SMOKE_METRICS_UNOBSERVED without promotion, got err=%v verdict=%+v proxy=%+v", body, err, verdict, proxy)
+		}
+	}
+
+	// 2. Codex F2: When RollbackUpstream succeeds but VerifiedActiveUpstream returns verifyErr != nil
+	// along with non-empty stale obsSlot/obsDigest ("green", greenDigest), failAndRollback must clear
+	// ActiveSlot/ActiveSlotDigest and s.activeSlot/s.activeSlotDigest to "" rather than recording the
+	// unverified "green" slot as the current active slot for future rollbacks.
+	profitPayload = `{"snapshot":{"workspaceId":"` + wsA + `","isIncomplete":false,"unknownRequiredComponentsCount":0,"netProfit":{"currencyCode":"VND","amount":"15000.00"}}}`
+	unverifiedRollbackProxy := &verifiedProxyTarget{
+		failingRollbackProxyTarget: failingRollbackProxyTarget{
+			switchErr:        errors.New("switch to green failed mid-reload"),
+			rollbackErr:      nil,
+			verifyActiveSlot: "green",
+			verifyDigest:     greenDigest,
+			verifyErr:        errors.New("active upstream probe timed out after rollback"),
+		},
+	}
+	f2Verdict, f2Err := svc.ExecuteLiveBlueGreenReleaseSmokeRehearsal(
+		context.Background(),
+		superAdminID,
+		"green",
+		greenDigest,
+		candidateSrv.URL,
+		"valid-smoke-token",
+		wsA,
+		15000000000,
+		2420,
+		unverifiedRollbackProxy,
+	)
+	if !errors.Is(f2Err, internaladmin.ErrReleaseSmokeFailed) {
+		t.Fatalf("Codex F2 regression: expected ErrReleaseSmokeFailed, got %v", f2Err)
+	}
+	if !f2Verdict.RollbackTriggered || f2Verdict.RollbackSucceeded {
+		t.Fatalf("Codex F2 regression: expected RollbackTriggered=true and RollbackSucceeded=false, got %+v", f2Verdict)
+	}
+	if f2Verdict.ActiveSlot != "" || f2Verdict.ActiveSlotDigest != "" {
+		t.Fatalf("Codex F2 regression: when verifyErr != nil, ActiveSlot/ActiveSlotDigest must be cleared to empty, got ActiveSlot=%q ActiveSlotDigest=%q",
+			f2Verdict.ActiveSlot, f2Verdict.ActiveSlotDigest)
+	}
+
+	// Subsequent failing rehearsal must NOT roll back to the unverified "green" slot.
+	nextFailingProxy := &failingRollbackProxyTarget{
+		switchErr: errors.New("subsequent switch failure"),
+	}
+	nextVerdict, nextErr := svc.ExecuteLiveBlueGreenReleaseSmokeRehearsal(
+		context.Background(),
+		superAdminID,
+		"blue",
+		blueDigest,
+		candidateSrv.URL,
+		"valid-smoke-token",
+		wsA,
+		15000000000,
+		2420,
+		nextFailingProxy,
+	)
+	if !errors.Is(nextErr, internaladmin.ErrReleaseSmokeFailed) || nextVerdict.CandidatePromoted {
+		t.Fatalf("Codex F2 regression: expected subsequent rehearsal to fail closed, got err=%v verdict=%+v", nextErr, nextVerdict)
+	}
+	if nextFailingProxy.rolledBackSlot == "green" || nextFailingProxy.rolledBackSlot != "" {
+		t.Fatalf("Codex F2 regression: unverified 'green' slot was used as rollback target on subsequent rehearsal (rolledBackSlot=%q)", nextFailingProxy.rolledBackSlot)
+	}
+	if nextVerdict.RollbackSucceeded || nextVerdict.ActiveSlot != "" {
+		t.Fatalf("Codex F2 regression: rollback with unverified previous slot must report RollbackSucceeded=false and ActiveSlot=\"\", got %+v", nextVerdict)
+	}
+}
