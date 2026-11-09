@@ -1,6 +1,21 @@
 import { defineConfig } from '@playwright/test';
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+
+const repoRootDir = path.resolve(__dirname, '../../..');
+const fingerprintScript = path.resolve(__dirname, 'build_fingerprint.mjs');
+for (const app of ['web', 'admin'] as const) {
+  try {
+    execFileSync(process.execPath, [fingerprintScript, 'verify', app, repoRootDir], {
+      stdio: 'pipe',
+      encoding: 'utf8',
+    });
+  } catch (err: any) {
+    const detail = String(err?.stderr || err?.message || err).trim();
+    throw new Error(`FATAL: Refusing to run Playwright against stale or unverified apps/${app}/build artifact: ${detail}`);
+  }
+}
 
 // Ports for Web and Admin servers during local QA
 const WEB_PORT = process.env.BROWSER_QA_WEB_PORT || '41731';

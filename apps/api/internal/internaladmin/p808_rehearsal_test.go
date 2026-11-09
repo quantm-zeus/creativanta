@@ -15,6 +15,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -1737,9 +1738,15 @@ func (f *failingRollbackProxyTarget) RollbackUpstream(_ context.Context, previou
 
 type verifiedProxyTarget struct {
 	failingRollbackProxyTarget
+	preSwitchActiveSlot string
+	preSwitchDigest     string
+	preSwitchErr        error
 }
 
 func (v *verifiedProxyTarget) VerifiedActiveUpstream(_ context.Context) (string, string, error) {
+	if v.switchedSlot == "" && (v.preSwitchActiveSlot != "" || v.preSwitchDigest != "" || v.preSwitchErr != nil) {
+		return v.preSwitchActiveSlot, v.preSwitchDigest, v.preSwitchErr
+	}
 	return v.verifyActiveSlot, v.verifyDigest, v.verifyErr
 }
 
@@ -2263,6 +2270,8 @@ func TestP808Round02CodexRegression_NilNetProfitNoPanicAndUnverifiedRollbackSlot
 	// unverified "green" slot as the current active slot for future rollbacks.
 	profitPayload = `{"snapshot":{"workspaceId":"` + wsA + `","isIncomplete":false,"unknownRequiredComponentsCount":0,"netProfit":{"currencyCode":"VND","amount":"15000.00"}}}`
 	unverifiedRollbackProxy := &verifiedProxyTarget{
+		preSwitchActiveSlot: "blue",
+		preSwitchDigest:     blueDigest,
 		failingRollbackProxyTarget: failingRollbackProxyTarget{
 			switchErr:        errors.New("switch to green failed mid-reload"),
 			rollbackErr:      nil,
@@ -2318,5 +2327,533 @@ func TestP808Round02CodexRegression_NilNetProfitNoPanicAndUnverifiedRollbackSlot
 	}
 	if nextVerdict.RollbackSucceeded || nextVerdict.ActiveSlot != "" {
 		t.Fatalf("Codex F2 regression: rollback with unverified previous slot must report RollbackSucceeded=false and ActiveSlot=\"\", got %+v", nextVerdict)
+	}
+}
+
+type statefulDisposableProxyTarget struct {
+	activeSlot         string
+	activeDigest       string
+	switchCalls        int
+	rollbackCalls      int
+	rolledBackToSlot   string
+	rolledBackToDigest string
+	switchErr          error
+	rollbackErr        error
+	verifyErr          error
+}
+
+func (p *statefulDisposableProxyTarget) SwitchUpstream(_ context.Context, slot, imageDigest string) error {
+	p.switchCalls++
+	if p.switchErr != nil {
+		return p.switchErr
+	}
+	p.activeSlot = slot
+	p.activeDigest = imageDigest
+	return nil
+}
+
+func (p *statefulDisposableProxyTarget) RollbackUpstream(_ context.Context, previousSlot, previousDigest string) error {
+	p.rollbackCalls++
+	p.rolledBackToSlot = previousSlot
+	p.rolledBackToDigest = previousDigest
+	if p.rollbackErr != nil {
+		return p.rollbackErr
+	}
+	p.activeSlot = previousSlot
+	p.activeDigest = previousDigest
+	return nil
+}
+
+func (p *statefulDisposableProxyTarget) VerifiedActiveUpstream(_ context.Context) (string, string, error) {
+	if p.verifyErr != nil {
+		return p.activeSlot, p.activeDigest, p.verifyErr
+	}
+	return p.activeSlot, p.activeDigest, nil
+}
+
+func TestP808Round03CodexRegression_N1_VerifiedProxyRollbackAndNoPreSwitchRollback(t *testing.T) {
+	reg, err := rbac.LoadCanonicalBindings(repoRoot(t))
+	if err != nil {
+		t.Fatalf("LoadCanonicalBindings: %v", err)
+	}
+	svc := internaladmin.NewService(reg)
+	const (
+		superAdminID  = "90000000-0000-4000-8000-000000000031"
+		wsA           = "22222222-2222-4222-8222-222222222231"
+		greenDigest   = "sha256:aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111"
+		blueDigest    = "sha256:bbbb2222bbbb2222bbbb2222bbbb2222bbbb2222bbbb2222bbbb2222bbbb2222"
+		simBlueDigest = "sha256:cccc3333cccc3333cccc3333cccc3333cccc3333cccc3333cccc3333cccc3333"
+	)
+	if err := svc.RegisterAdmin(internaladmin.InternalAdminRecord{
+		AdminID:      superAdminID,
+		Email:        "super-r03@internal.creativanta.vn",
+		FullName:     "Super Admin R03",
+		PasswordHash: internaladmin.HashAdminPassword("Super-Restore-2026!"),
+		AdminRole:    rbac.AdminRoleSuper,
+		MFASecret:    "JBSWY3DPEHPK3PXP",
+		MFAEnabled:   true,
+		Status:       "active",
+	}); err != nil {
+		t.Fatalf("RegisterAdmin: %v", err)
+	}
+
+	healthStatus := http.StatusServiceUnavailable
+	candidateSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/healthz":
+			w.WriteHeader(healthStatus)
+			if healthStatus == http.StatusOK {
+				_, _ = w.Write([]byte(`{"status":"alive","role":"api"}`))
+			} else {
+				_, _ = w.Write([]byte(`{"status":"degraded","role":"api"}`))
+			}
+		case "/readyz":
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"status":"ready","role":"api"}`))
+		case "/api/workspaces/discovery":
+			if r.Header.Get("Authorization") != "Bearer valid-smoke-token" {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"workspaces":[{"workspace_id":"` + wsA + `","name":"Primary"}]}`))
+		case "/creativanta.admin.v1.DiagnosticsService/GetOverview":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"workspaceId":{"value":"` + wsA + `"},"overallStatus":"DIAGNOSTIC_HEALTH_STATUS_HEALTHY","totalCategoriesCount":4,"healthyCategoriesCount":4}`))
+		case "/creativanta.finance.v1.ProfitService/GetSummary":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"snapshot":{"workspaceId":"` + wsA + `","isIncomplete":false,"unknownRequiredComponentsCount":0,"netProfit":{"currencyCode":"VND","amount":"15000.00"}}}`))
+		case "/creativanta.admin.v1.AdminBillingService/GetCreditBalance":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"balance":{"workspaceId":{"value":"` + wsA + `"},"totalRemaining":"2420"}}`))
+		case "/creativanta.admin.v1.SystemConfigService/GetDashboard":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"maintenanceMode":false,"activeKillSwitchesCount":0,"auditLogEntriesCount":2,"auditSequenceIntact":true}`))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer candidateSrv.Close()
+
+	// 1. Fresh Service (where NewService sets default simulation slot to "blue"), while live disposable proxy
+	// is actually running "green" / greenDigest. Candidate /healthz returns HTTP 503 before any switch.
+	// Must NOT call RollbackUpstream and must keep proxy on "green" / greenDigest!
+	liveProxy := &statefulDisposableProxyTarget{
+		activeSlot:   "green",
+		activeDigest: greenDigest,
+	}
+	v1, err1 := svc.ExecuteLiveBlueGreenReleaseSmokeRehearsal(
+		context.Background(),
+		superAdminID,
+		"blue",
+		blueDigest,
+		candidateSrv.URL,
+		"valid-smoke-token",
+		wsA,
+		15000000000,
+		2420,
+		liveProxy,
+	)
+	if !errors.Is(err1, internaladmin.ErrReleaseSmokeFailed) || v1.FailureCode != "SMOKE_HEALTHZ_FAILED" || v1.CandidatePromoted {
+		t.Fatalf("N1 case 1: expected SMOKE_HEALTHZ_FAILED without promotion, got err=%v verdict=%+v", err1, v1)
+	}
+	if liveProxy.switchCalls != 0 || liveProxy.rollbackCalls != 0 {
+		t.Fatalf("N1 case 1: pre-switch smoke failure must NOT call SwitchUpstream or RollbackUpstream, got switchCalls=%d rollbackCalls=%d (rolledBackTo=%s/%s)",
+			liveProxy.switchCalls, liveProxy.rollbackCalls, liveProxy.rolledBackToSlot, liveProxy.rolledBackToDigest)
+	}
+	if liveProxy.activeSlot != "green" || liveProxy.activeDigest != greenDigest {
+		t.Fatalf("N1 case 1: proxy upstream was mutated on pre-switch smoke failure: got %s (%s), want green (%s)",
+			liveProxy.activeSlot, liveProxy.activeDigest, greenDigest)
+	}
+	if v1.ActiveSlot != "green" || v1.ActiveSlotDigest != greenDigest || v1.RetainedRollbackDigest != greenDigest {
+		t.Fatalf("N1 case 1: expected verdict to preserve verified proxy slot green (%s), got ActiveSlot=%q ActiveSlotDigest=%q RetainedRollbackDigest=%q",
+			greenDigest, v1.ActiveSlot, v1.ActiveSlotDigest, v1.RetainedRollbackDigest)
+	}
+
+	// 2. Simulation rehearsal succeeds and promotes "blue" / simBlueDigest in memory.
+	// Subsequent live rehearsal fails during SwitchUpstream: rollback MUST target the real verified
+	// proxy upstream ("green" / greenDigest), NEVER the simulation state ("blue" / simBlueDigest).
+	simProbe := internaladmin.CandidateSlotProbeInput{
+		CandidateSlot:               "blue",
+		CandidateImageDigest:        simBlueDigest,
+		HealthzHTTPStatus:           200,
+		HealthzStatusField:          "ok",
+		ReadyzHTTPStatus:            200,
+		ReadyzStatusField:           "ready",
+		DatabaseReady:               true,
+		RedisReady:                  true,
+		NATSReady:                   true,
+		SmokeAuthValid:              true,
+		SmokeWorkspaceID:            wsA,
+		SmokeResponseValidJSON:      true,
+		SmokeExpectedNetProfitMicro: 15000000000,
+		SmokeObservedNetProfitMicro: 15000000000,
+		SmokeExpectedCreditsBalance: 2420,
+		SmokeObservedCreditsBalance: 2420,
+		SmokeAuditSequenceIntact:    true,
+	}
+	simVerdict, simErr := svc.ExecuteBlueGreenReleaseSmokeRehearsal(context.Background(), superAdminID, simProbe)
+	if simErr != nil || !simVerdict.IsSimulation || simVerdict.ActiveSlot != "blue" || simVerdict.ActiveSlotDigest != simBlueDigest {
+		t.Fatalf("N1 case 2 setup: expected simulation promotion to blue/simBlueDigest, got err=%v verdict=%+v", simErr, simVerdict)
+	}
+
+	healthStatus = http.StatusOK
+	liveProxy.switchErr = errors.New("proxy reload failed while switching to candidate blue")
+	v2, err2 := svc.ExecuteLiveBlueGreenReleaseSmokeRehearsal(
+		context.Background(),
+		superAdminID,
+		"blue",
+		blueDigest,
+		candidateSrv.URL,
+		"valid-smoke-token",
+		wsA,
+		15000000000,
+		2420,
+		liveProxy,
+	)
+	if !errors.Is(err2, internaladmin.ErrReleaseSmokeFailed) || v2.FailureCode != "SMOKE_PROXY_SWITCH_FAILED" || v2.CandidatePromoted {
+		t.Fatalf("N1 case 2: expected SMOKE_PROXY_SWITCH_FAILED, got err=%v verdict=%+v", err2, v2)
+	}
+	if liveProxy.switchCalls != 1 || liveProxy.rollbackCalls != 1 {
+		t.Fatalf("N1 case 2: expected 1 switch attempt and 1 rollback call after switch failure, got switchCalls=%d rollbackCalls=%d",
+			liveProxy.switchCalls, liveProxy.rollbackCalls)
+	}
+	if liveProxy.rolledBackToSlot != "green" || liveProxy.rolledBackToDigest != greenDigest {
+		t.Fatalf("N1 case 2: expected rollback to verified proxy upstream green (%s), got %s (%s)",
+			greenDigest, liveProxy.rolledBackToSlot, liveProxy.rolledBackToDigest)
+	}
+	if !v2.RollbackSucceeded || v2.ActiveSlot != "green" || v2.ActiveSlotDigest != greenDigest {
+		t.Fatalf("N1 case 2: expected RollbackSucceeded=true and ActiveSlot=green (%s), got %+v", greenDigest, v2)
+	}
+
+	// 3. Fresh Service where ONLY simulation ran, followed by live switch failure on a proxy target
+	// that does NOT implement DisposableProxyActiveStateVerifier: must NOT roll back to simulation state
+	// or NewService default state.
+	freshSvc := internaladmin.NewService(reg)
+	if err := freshSvc.RegisterAdmin(internaladmin.InternalAdminRecord{
+		AdminID:      superAdminID,
+		Email:        "super-r03-fresh@internal.creativanta.vn",
+		FullName:     "Super Admin R03 Fresh",
+		PasswordHash: internaladmin.HashAdminPassword("Super-Restore-2026!"),
+		AdminRole:    rbac.AdminRoleSuper,
+		MFASecret:    "JBSWY3DPEHPK3PXP",
+		MFAEnabled:   true,
+		Status:       "active",
+	}); err != nil {
+		t.Fatalf("RegisterAdmin freshSvc: %v", err)
+	}
+	if _, err := freshSvc.ExecuteBlueGreenReleaseSmokeRehearsal(context.Background(), superAdminID, simProbe); err != nil {
+		t.Fatalf("freshSvc simulation rehearsal: %v", err)
+	}
+	unverifiedProxy := &failingRollbackProxyTarget{
+		switchErr: errors.New("live switch failed without verifier"),
+	}
+	v3, err3 := freshSvc.ExecuteLiveBlueGreenReleaseSmokeRehearsal(
+		context.Background(),
+		superAdminID,
+		"green",
+		greenDigest,
+		candidateSrv.URL,
+		"valid-smoke-token",
+		wsA,
+		15000000000,
+		2420,
+		unverifiedProxy,
+	)
+	if !errors.Is(err3, internaladmin.ErrReleaseSmokeFailed) || v3.CandidatePromoted {
+		t.Fatalf("N1 case 3: expected ErrReleaseSmokeFailed, got err=%v verdict=%+v", err3, v3)
+	}
+	if unverifiedProxy.rolledBackSlot != "" || v3.RollbackSucceeded || v3.ActiveSlot != "" {
+		t.Fatalf("N1 case 3: must not roll back to simulation/default slot when live proxy slot was never verified, got rolledBackSlot=%q verdict=%+v",
+			unverifiedProxy.rolledBackSlot, v3)
+	}
+
+	// 4. Negative security & boundary checks: invalid/suspended admin credentials, unauthorized admin role,
+	// tenant workspace mismatch, external unknown effect, and 1-micro-unit exact money mismatch before switch
+	// must all fail closed without calling SwitchUpstream or RollbackUpstream.
+	supportAdminID := "90000000-0000-4000-8000-000000000032"
+	if err := svc.RegisterAdmin(internaladmin.InternalAdminRecord{
+		AdminID:      supportAdminID,
+		Email:        "support-r03@internal.creativanta.vn",
+		FullName:     "Support Admin R03",
+		PasswordHash: internaladmin.HashAdminPassword("Support-Restore-2026!"),
+		AdminRole:    rbac.AdminRoleSupport,
+		MFASecret:    "JBSWY3DPEHPK3PXP",
+		MFAEnabled:   true,
+		Status:       "active",
+	}); err != nil {
+		t.Fatalf("RegisterAdmin support: %v", err)
+	}
+
+	guardProxy := &statefulDisposableProxyTarget{
+		activeSlot:   "green",
+		activeDigest: greenDigest,
+	}
+	if _, err := svc.ExecuteLiveBlueGreenReleaseSmokeRehearsal(
+		context.Background(),
+		"90000000-0000-4000-8000-999999999999",
+		"blue",
+		blueDigest,
+		candidateSrv.URL,
+		"valid-smoke-token",
+		wsA,
+		15000000000,
+		2420,
+		guardProxy,
+	); !errors.Is(err, internaladmin.ErrInvalidAdminCredentials) {
+		t.Fatalf("N1 case 4a: expected ErrInvalidAdminCredentials for unknown admin, got %v", err)
+	}
+	if _, err := svc.ExecuteLiveBlueGreenReleaseSmokeRehearsal(
+		context.Background(),
+		supportAdminID,
+		"blue",
+		blueDigest,
+		candidateSrv.URL,
+		"valid-smoke-token",
+		wsA,
+		15000000000,
+		2420,
+		guardProxy,
+	); !errors.Is(err, internaladmin.ErrPrivilegedRoleBoundaryViolation) {
+		t.Fatalf("N1 case 4b: expected ErrPrivilegedRoleBoundaryViolation for support_admin role, got %v", err)
+	}
+	// Off-by-1 micro-unit exact money mismatch (expected 15000000001 vs observed 15000000000) before switch:
+	vMoney, errMoney := svc.ExecuteLiveBlueGreenReleaseSmokeRehearsal(
+		context.Background(),
+		superAdminID,
+		"blue",
+		blueDigest,
+		candidateSrv.URL,
+		"valid-smoke-token",
+		wsA,
+		15000000001,
+		2420,
+		guardProxy,
+	)
+	if !errors.Is(errMoney, internaladmin.ErrReleaseSmokeFailed) || vMoney.FailureCode != "SMOKE_PROFIT_LEDGER_MISMATCH" {
+		t.Fatalf("N1 case 4c: expected SMOKE_PROFIT_LEDGER_MISMATCH on 1-micro-unit diff, got err=%v verdict=%+v", errMoney, vMoney)
+	}
+	// Cross-tenant workspace mismatch before switch:
+	vTenant, errTenant := svc.ExecuteLiveBlueGreenReleaseSmokeRehearsal(
+		context.Background(),
+		superAdminID,
+		"blue",
+		blueDigest,
+		candidateSrv.URL,
+		"valid-smoke-token",
+		"22222222-2222-4222-8222-222222222299",
+		15000000000,
+		2420,
+		guardProxy,
+	)
+	if !errors.Is(errTenant, internaladmin.ErrReleaseSmokeFailed) || vTenant.FailureCode != "SMOKE_WORKSPACE_MISMATCH" {
+		t.Fatalf("N1 case 4d: expected SMOKE_WORKSPACE_MISMATCH on tenant mismatch, got err=%v verdict=%+v", errTenant, vTenant)
+	}
+	if guardProxy.switchCalls != 0 || guardProxy.rollbackCalls != 0 || guardProxy.activeSlot != "green" {
+		t.Fatalf("N1 case 4: guardProxy must have 0 switch/rollback calls and remain green, got %+v", guardProxy)
+	}
+
+	// 5. Concurrent simulation and live rehearsals on the same Service must be race-free and never allow
+	// simulation state to overwrite the verified live rollback target.
+	var wg sync.WaitGroup
+	for i := 0; i < 8; i++ {
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			_, _ = svc.ExecuteBlueGreenReleaseSmokeRehearsal(context.Background(), superAdminID, simProbe)
+		}()
+		go func() {
+			defer wg.Done()
+			p := &statefulDisposableProxyTarget{
+				activeSlot:   "green",
+				activeDigest: greenDigest,
+				switchErr:    errors.New("concurrent switch failure"),
+			}
+			v, _ := svc.ExecuteLiveBlueGreenReleaseSmokeRehearsal(
+				context.Background(),
+				superAdminID,
+				"blue",
+				blueDigest,
+				candidateSrv.URL,
+				"valid-smoke-token",
+				wsA,
+				15000000000,
+				2420,
+				p,
+			)
+			if p.rolledBackToSlot != "green" || p.rolledBackToDigest != greenDigest || v.ActiveSlot != "green" {
+				t.Errorf("concurrent N1 violation: expected rollback to green (%s), got slot=%q digest=%q verdict=%+v",
+					greenDigest, p.rolledBackToSlot, p.rolledBackToDigest, v)
+			}
+		}()
+	}
+	wg.Wait()
+}
+
+func TestP808Round03CodexRegression_N2_BrowserRunnerRebuildsOrRejectsStaleArtifact(t *testing.T) {
+	root := repoRoot(t)
+	tmpRepo := t.TempDir()
+	tmpBin := filepath.Join(tmpRepo, "mock_bin")
+	if err := os.MkdirAll(tmpBin, 0o755); err != nil {
+		t.Fatalf("mkdir mock_bin: %v", err)
+	}
+
+	browserDir := filepath.Join(tmpRepo, "tooling", "readiness", "browser")
+	if err := os.MkdirAll(browserDir, 0o755); err != nil {
+		t.Fatalf("mkdir browserDir: %v", err)
+	}
+	runnerSrc, err := os.ReadFile(filepath.Join(root, "tooling", "readiness", "browser", "run_browser_qa.sh"))
+	if err != nil {
+		t.Fatalf("read run_browser_qa.sh: %v", err)
+	}
+	runnerDst := filepath.Join(browserDir, "run_browser_qa.sh")
+	if err := os.WriteFile(runnerDst, runnerSrc, 0o755); err != nil {
+		t.Fatalf("write runnerDst: %v", err)
+	}
+	fpHelperPath := filepath.Join(root, "tooling", "readiness", "browser", "build_fingerprint.mjs")
+	if fpSrc, err := os.ReadFile(fpHelperPath); err == nil {
+		if err := os.WriteFile(filepath.Join(browserDir, "build_fingerprint.mjs"), fpSrc, 0o755); err != nil {
+			t.Fatalf("write build_fingerprint.mjs: %v", err)
+		}
+	}
+
+	for _, dir := range []string{
+		filepath.Join(tmpRepo, "apps", "web", "src", "routes"),
+		filepath.Join(tmpRepo, "apps", "admin", "src", "routes"),
+	} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatalf("mkdir %s: %v", dir, err)
+		}
+	}
+	for rel, content := range map[string]string{
+		"package.json":                       `{"name":"creativanta","private":true}`,
+		"pnpm-lock.yaml":                     "lockfileVersion: '9.0'\n",
+		"apps/web/package.json":              `{"name":"@creativanta/web","version":"0.1.0"}`,
+		"apps/web/svelte.config.js":          "export default {};\n",
+		"apps/web/vite.config.ts":            "export default {};\n",
+		"apps/web/src/routes/+page.svelte":   "<h1>REVISION_A</h1>\n",
+		"apps/admin/package.json":            `{"name":"@creativanta/admin","version":"0.1.0"}`,
+		"apps/admin/svelte.config.js":        "export default {};\n",
+		"apps/admin/vite.config.ts":          "export default {};\n",
+		"apps/admin/src/routes/+page.svelte": "<h1>ADMIN_REV_A</h1>\n",
+	} {
+		if err := os.WriteFile(filepath.Join(tmpRepo, rel), []byte(content), 0o644); err != nil {
+			t.Fatalf("write %s: %v", rel, err)
+		}
+	}
+
+	fakeShell := filepath.Join(tmpBin, "headless_shell")
+	if err := os.WriteFile(fakeShell, []byte("#!/usr/bin/env bash\necho 'HeadlessChrome/133.0.6943.16'\n"), 0o755); err != nil {
+		t.Fatalf("write headless_shell: %v", err)
+	}
+	fakePnpm := filepath.Join(tmpBin, "pnpm")
+	fakePnpmScript := `#!/usr/bin/env bash
+set -euo pipefail
+if [[ "${1:-}" == "-v" ]]; then
+  echo "10.34.9"
+  exit 0
+fi
+if [[ "${1:-}" == "build:web" ]]; then
+  mkdir -p apps/web/build
+  cat apps/web/src/routes/+page.svelte > apps/web/build/index.js
+  echo "build:web" >> pnpm_builds.log
+  exit 0
+fi
+if [[ "${1:-}" == "build:admin" ]]; then
+  mkdir -p apps/admin/build
+  cat apps/admin/src/routes/+page.svelte > apps/admin/build/index.js
+  echo "build:admin" >> pnpm_builds.log
+  exit 0
+fi
+if [[ "${1:-}" == "exec" && "${2:-}" == "playwright" && "${3:-}" == "test" ]]; then
+  cp apps/web/build/index.js playwright_observed_web_build.txt
+  mkdir -p build/readiness/2026-11-05
+  printf '{"stats":{"expected":18,"unexpected":0,"flaky":0,"skipped":0}}\n' > build/readiness/2026-11-05/browser_results.json
+  exit 0
+fi
+exit 1
+`
+	if err := os.WriteFile(fakePnpm, []byte(fakePnpmScript), 0o755); err != nil {
+		t.Fatalf("write fake pnpm: %v", err)
+	}
+
+	runQA := func(extraEnv ...string) (string, error) {
+		cmd := exec.Command("bash", runnerDst)
+		cmd.Dir = tmpRepo
+		env := append(os.Environ(),
+			"PATH="+tmpBin+":"+os.Getenv("PATH"),
+			"CHROMIUM_EXECUTABLE_PATH="+fakeShell,
+		)
+		env = append(env, extraEnv...)
+		cmd.Env = env
+		out, err := cmd.CombinedOutput()
+		return string(out), err
+	}
+
+	// 1. Run 1 builds Revision A and executes Playwright against Revision A.
+	if out, err := runQA(); err != nil {
+		t.Fatalf("N2 run 1 (Revision A) failed: %v\n%s", err, out)
+	}
+	obs1, err := os.ReadFile(filepath.Join(tmpRepo, "playwright_observed_web_build.txt"))
+	if err != nil || !strings.Contains(string(obs1), "REVISION_A") {
+		t.Fatalf("N2 run 1: expected Playwright to observe REVISION_A, got %q (err=%v)", string(obs1), err)
+	}
+
+	// 2. Update apps/web source to REVISION_B while keeping the old apps/web/build/index.js ("REVISION_A") on disk.
+	if err := os.WriteFile(filepath.Join(tmpRepo, "apps/web/src/routes/+page.svelte"), []byte("<h1>REVISION_B</h1>\n"), 0o644); err != nil {
+		t.Fatalf("update web +page.svelte to REVISION_B: %v", err)
+	}
+	_ = os.Remove(filepath.Join(tmpRepo, "playwright_observed_web_build.txt"))
+
+	// 2a. With BROWSER_QA_REJECT_STALE_BUILD=1, runner must reject the stale build before Playwright runs.
+	if out, err := runQA("BROWSER_QA_REJECT_STALE_BUILD=1"); err == nil {
+		t.Fatalf("N2 regression: expected BROWSER_QA_REJECT_STALE_BUILD=1 to fail closed on stale Revision A artifact after source changed to Revision B, but it succeeded:\n%s", out)
+	}
+	if _, err := os.Stat(filepath.Join(tmpRepo, "playwright_observed_web_build.txt")); err == nil {
+		t.Fatalf("N2 regression: Playwright must not execute when stale build is rejected")
+	}
+
+	// 2b. In default mode, runner must detect the stale artifact, rebuild apps/web from Revision B, and serve REVISION_B to Playwright.
+	if out, err := runQA(); err != nil {
+		t.Fatalf("N2 run 2 (Revision B) failed: %v\n%s", err, out)
+	}
+	obs2, err := os.ReadFile(filepath.Join(tmpRepo, "playwright_observed_web_build.txt"))
+	if err != nil || !strings.Contains(string(obs2), "REVISION_B") {
+		t.Fatalf("N2 regression: runner reused stale build artifact instead of rebuilding Revision B! Playwright observed %q", string(obs2))
+	}
+
+	// 3. Overwrite apps/web/build/index.js with a tampered/older artifact while keeping the fingerprint file on disk.
+	if err := os.WriteFile(filepath.Join(tmpRepo, "apps/web/build/index.js"), []byte("<h1>TAMPERED_OLD_ARTIFACT</h1>\n"), 0o644); err != nil {
+		t.Fatalf("tamper build/index.js: %v", err)
+	}
+	_ = os.Remove(filepath.Join(tmpRepo, "playwright_observed_web_build.txt"))
+	if out, err := runQA("BROWSER_QA_REJECT_STALE_BUILD=1"); err == nil {
+		t.Fatalf("N2 regression: expected BROWSER_QA_REJECT_STALE_BUILD=1 to reject tampered build/index.js, but it succeeded:\n%s", out)
+	}
+	if out, err := runQA(); err != nil {
+		t.Fatalf("N2 run 3 (rebuild after tampered artifact) failed: %v\n%s", err, out)
+	}
+	obs3, err := os.ReadFile(filepath.Join(tmpRepo, "playwright_observed_web_build.txt"))
+	if err != nil || !strings.Contains(string(obs3), "REVISION_B") {
+		t.Fatalf("N2 regression: expected tampered artifact to be rebuilt to REVISION_B, got %q", string(obs3))
+	}
+
+	// 4. Deleting .creativanta_source_fingerprint (simulating an unstamped legacy build) or modifying pnpm-lock.yaml
+	// must also be rejected when BROWSER_QA_REJECT_STALE_BUILD=1 and rebuilt in default mode.
+	_ = os.Remove(filepath.Join(tmpRepo, "apps/web/build/.creativanta_source_fingerprint"))
+	if out, err := runQA("BROWSER_QA_REJECT_STALE_BUILD=1"); err == nil {
+		t.Fatalf("N2 regression: expected unstamped build (missing .creativanta_source_fingerprint) to be rejected, but succeeded:\n%s", out)
+	}
+	if out, err := runQA(); err != nil {
+		t.Fatalf("N2 run 4 (rebuild unstamped artifact) failed: %v\n%s", err, out)
+	}
+	if err := os.WriteFile(filepath.Join(tmpRepo, "pnpm-lock.yaml"), []byte("lockfileVersion: '9.0'\n# updated lockfile\n"), 0o644); err != nil {
+		t.Fatalf("update pnpm-lock.yaml: %v", err)
+	}
+	if out, err := runQA("BROWSER_QA_REJECT_STALE_BUILD=1"); err == nil {
+		t.Fatalf("N2 regression: expected lockfile change to invalidate build fingerprint, but succeeded:\n%s", out)
+	}
+	if out, err := runQA(); err != nil {
+		t.Fatalf("N2 run 5 (rebuild after lockfile change) failed: %v\n%s", err, out)
 	}
 }
