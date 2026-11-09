@@ -205,6 +205,10 @@ func (r *PipelineRouter) ExecuteRoutedJob(ctx context.Context, req ProviderGenRe
 		return nil, fmt.Errorf("production generation failed across available providers: %w", err)
 	}
 
+	if req.OnProviderAccepted != nil && resp != nil && resp.ProviderJobID != "" {
+		req.OnProviderAccepted(activeProvider.Name(), resp.ProviderJobID)
+	}
+
 	// Poll or retrieve status
 	status, err := activeProvider.CheckStatus(ctx, resp.ProviderJobID)
 	if err != nil {

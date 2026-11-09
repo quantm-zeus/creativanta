@@ -44,6 +44,7 @@ func TestAcceptanceTarget1_DelegatedPermissionCheck(t *testing.T) {
 		WorkspaceID:   workspaceID,
 		WorkspaceRole: "editor",
 	}
+	store.SetMemberRole(workspaceID, editorCaller.UserID, editorCaller.WorkspaceRole, true)
 
 	// Let's create a custom plan where Step 2 requires product:delete
 	customRun := &AgentRun{
@@ -136,6 +137,7 @@ func TestAcceptanceTarget2_BudgetCeilingPauses(t *testing.T) {
 		WorkspaceID:   workspaceID,
 		WorkspaceRole: "editor",
 	}
+	store.SetMemberRole(workspaceID, editorCaller.UserID, editorCaller.WorkspaceRole, true)
 
 	// Set a tight budget ceiling of 6.000000 credits for a Video Agent run
 	// Step 1: Script gen (5 cr) -> Total 5 cr (within 6 cr ceiling)
@@ -252,6 +254,7 @@ func TestAcceptanceTarget3_PartialFailureAuditedHandoff(t *testing.T) {
 		WorkspaceID:   workspaceID,
 		WorkspaceRole: "editor",
 	}
+	store.SetMemberRole(workspaceID, editorCaller.UserID, editorCaller.WorkspaceRole, true)
 
 	// Launch 1-Click Video Agent (6 steps)
 	run, _, _, err := svc.LaunchAgent(ctx, editorCaller, AgentTypeVideoAgent, "Serum vitamin C ad", "", "", "80.000000", "", false, nil)
@@ -363,6 +366,7 @@ func TestVideoAgent_FullPipelineSuccess(t *testing.T) {
 		WorkspaceID:   workspaceID,
 		WorkspaceRole: "editor",
 	}
+	store.SetMemberRole(workspaceID, editorCaller.UserID, editorCaller.WorkspaceRole, true)
 
 	// Launch Video Agent with standard quality (~50 credits)
 	run, warnings, requiresApproval, err := svc.LaunchAgent(
@@ -439,6 +443,7 @@ func TestCopilotAction_CrossModuleChainWithApproval(t *testing.T) {
 		WorkspaceID:   workspaceID,
 		WorkspaceRole: "editor",
 	}
+	store.SetMemberRole(workspaceID, editorCaller.UserID, editorCaller.WorkspaceRole, true)
 
 	// Launch copilot multi-step chain including publish step
 	run, _, requiresApproval, err := svc.LaunchAgent(
@@ -826,6 +831,7 @@ func TestR4_Agent_ActualBudgetOverrunRecordsSpendPreservesOutputAndNeverReplaysE
 		WorkspaceID:   wsID,
 		WorkspaceRole: "manager",
 	}
+	store.SetMemberRole(wsID, caller.UserID, caller.WorkspaceRole, true)
 
 	// Launch with a 6.000000 ceiling. Step 1 estimates 2.000000 (so pre-step check passes),
 	// but Step 1 actual spend is 9.000000 (> 6.000000 ceiling).
@@ -941,5 +947,89 @@ func TestS5_F13_NegativeOrZeroBudgetCeilingIncrease_Rejected(t *testing.T) {
 	_, resumeRevokedErr := svc.ProvideInput(ctx, manager, pausedPublishRun.AgentRunID, "", "", true, "", "")
 	if !errors.Is(resumeRevokedErr, ErrPermissionDenied) {
 		t.Fatalf("expected ProvideInput approval after initiator access revocation to fail with ErrPermissionDenied, got: %v", resumeRevokedErr)
+	}
+}
+
+func TestR3_AgentLiveMembership_FailsClosedWithoutResolverAndHonorsAuthoritativeStore(t *testing.T) {
+	ctx := context.Background()
+	wsID := "11111111-1111-4111-8111-111111111193"
+	editor := CallerContext{UserID: "user-editor-r3", WorkspaceID: wsID, WorkspaceRole: "editor"}
+	manager := CallerContext{UserID: "user-mgr-r3", WorkspaceID: wsID, WorkspaceRole: "manager"}
+
+	// 1. Cross-actor approval without authoritative membership in store or resolver MUST fail closed (no fallback to launch/observed role).
+	{
+		store := NewMemStore()
+		svc := NewService(store)
+		svc.SetStepExecutor(NewSimulatedStepExecutor())
+
+		run, _, reqApp, err := svc.LaunchAgent(ctx, editor, AgentTypeCopilotAction, "Create and publish TikTok ad", "", "", "50.000000", "", false, nil)
+		if err != nil || !reqApp {
+			t.Fatalf("expected copilot publish run to pause for approval, got reqApp=%v err=%v", reqApp, err)
+		}
+		_, approveErr := svc.ProvideInput(ctx, manager, run.AgentRunID, "", "", true, "", "")
+		if !errors.Is(approveErr, ErrPermissionDenied) {
+			t.Fatalf("R3 VIOLATION: expected cross-actor ProvideInput without authoritative initiator membership to fail with ErrPermissionDenied, got: %v", approveErr)
+		}
+	}
+
+	// 2. Authoritative store membership demoted directly (without calling svc.SetMemberRole) MUST block execution on manager approval.
+	{
+		store := NewMemStore()
+		svc := NewService(store)
+		svc.SetStepExecutor(NewSimulatedStepExecutor())
+
+		store.SetMemberRole(wsID, editor.UserID, "editor", true)
+		store.SetMemberRole(wsID, manager.UserID, "manager", true)
+
+		run, _, reqApp, err := svc.LaunchAgent(ctx, editor, AgentTypeCopilotAction, "Create and publish TikTok ad", "", "", "50.000000", "", false, nil)
+		if err != nil || !reqApp {
+			t.Fatalf("expected copilot publish run to pause for approval, got reqApp=%v err=%v", reqApp, err)
+		}
+
+		// Demote initiator in authoritative store directly (do NOT call svc.SetMemberRole)
+		store.SetMemberRole(wsID, editor.UserID, "viewer", true)
+
+		_, approveErr := svc.ProvideInput(ctx, manager, run.AgentRunID, "", "", true, "", "")
+		if !errors.Is(approveErr, ErrPermissionDenied) {
+			t.Fatalf("R3 VIOLATION: expected authoritative store demotion (without svc.SetMemberRole) to block execution with ErrPermissionDenied, got: %v", approveErr)
+		}
+	}
+
+	// 3. Same-actor resume via ProvideInput without authoritative membership in store or resolver MUST also fail closed.
+	{
+		store := NewMemStore()
+		svc := NewService(store)
+		svc.SetStepExecutor(NewSimulatedStepExecutor())
+
+		run, _, _, err := svc.LaunchAgent(ctx, editor, AgentTypeVideoAgent, "Budget pause test", "", "", "6.000000", "", true, nil)
+		if !errors.Is(err, ErrBudgetCeilingExceeded) {
+			t.Fatalf("expected budget ceiling pause after step 1, got: %v", err)
+		}
+		_, resumeErr := svc.ProvideInput(ctx, editor, run.AgentRunID, "", "", false, "50.000000", "")
+		if !errors.Is(resumeErr, ErrPermissionDenied) {
+			t.Fatalf("R3 VIOLATION: expected same-actor ProvideInput resume without authoritative membership to fail with ErrPermissionDenied, got: %v", resumeErr)
+		}
+	}
+
+	// 4. ConnectRPC AgentHandler without explicit roleResolver honors authoritative store membership revocations/demotions.
+	{
+		store := NewMemStore()
+		svc := NewService(store)
+		h := NewAgentHandler(svc)
+
+		store.SetMemberRole(wsID, editor.UserID, "viewer", true)
+		staleEditorSessionCtx := transportauth.WithPrincipal(ctx, transportauth.Session{
+			UserID:      editor.UserID,
+			WorkspaceID: wsID,
+			Role:        "editor", // Stale token role; authoritative store says "viewer"
+		})
+		_, err := h.LaunchAgent(staleEditorSessionCtx, connect.NewRequest(&automationv1.AgentServiceLaunchAgentRequest{
+			WorkspaceId: wsID,
+			AgentType:   automationv1.AgentType_AGENT_TYPE_GENERIC,
+			TaskPrompt:  "Attempt launch with stale token after store demotion",
+		}))
+		if connect.CodeOf(err) != connect.CodePermissionDenied {
+			t.Fatalf("R3 VIOLATION: expected AgentHandler to honor authoritative store demotion to viewer, got: %v", err)
+		}
 	}
 }

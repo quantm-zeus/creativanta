@@ -495,7 +495,7 @@ func (s *MemoryStore) SyncJobAndAsset(
 	if errorMsg != "" {
 		job.ErrorMessage = errorMsg
 	}
-	if resultURL != "" {
+	if resultURL != "" || jobStatus == "cancelled" || jobStatus == "failed" {
 		job.ResultURL = resultURL
 	}
 	if jobStatus == "completed" || jobStatus == "failed" || jobStatus == "cancelled" {
@@ -511,7 +511,7 @@ func (s *MemoryStore) SyncJobAndAsset(
 			if errorMsg != "" {
 				asset.ErrorMessage = errorMsg
 			}
-			if resultURL != "" {
+			if resultURL != "" || jobStatus == "cancelled" || jobStatus == "failed" || assetState == "cancelled" || assetState == "failed" {
 				asset.FileURL = resultURL
 			}
 		}

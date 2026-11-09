@@ -2,6 +2,7 @@ package production
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -23,7 +24,8 @@ func setupLocalizationService(t *testing.T) (*Service, Store) {
 	t.Helper()
 	store := NewMemoryStore()
 	svc := NewService(ServiceConfig{
-		Store: store,
+		Store:              store,
+		VoiceCloneProvider: NewMockVoiceCloneProvider(),
 	})
 	return svc, store
 }
@@ -709,5 +711,151 @@ func TestS6_F9_VoiceCloneConsentKindSubjectAndOwnerBinding(t *testing.T) {
 	}))
 	if err == nil || connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("F9 VIOLATION: expected reusing consent with swapped sample audio source to fail with FailedPrecondition, got: %v", err)
+	}
+}
+
+type failingVoiceCloneStore struct {
+	Store
+	failCreateVoiceClone bool
+	failCreateAsset      bool
+}
+
+func (f *failingVoiceCloneStore) CreateVoiceClone(ctx context.Context, record *VoiceCloneRecord) error {
+	if f.failCreateVoiceClone {
+		return fmt.Errorf("simulated store CreateVoiceClone error")
+	}
+	return f.Store.CreateVoiceClone(ctx, record)
+}
+
+func (f *failingVoiceCloneStore) CreateAsset(ctx context.Context, asset *Asset) error {
+	if f.failCreateAsset {
+		return fmt.Errorf("simulated store CreateAsset error")
+	}
+	return f.Store.CreateAsset(ctx, asset)
+}
+
+func TestR8_VoiceCloneAndVoiceover_FailClosedWithoutProvider_And_NoChargeOnStoreError(t *testing.T) {
+	ctx := context.Background()
+	wsID := "01908700-0008-7000-8000-000000000088"
+	ctxManager := createLocalizationTestContext(wsID, "Manager")
+	initialBal := tenantdb.MustParseExactDecimal("500.00")
+
+	// 1. Default NewService without VoiceCloneProvider MUST fail closed on Create and GenerateVoiceover without charging credits!
+	{
+		store := NewMemoryStore()
+		svc := NewService(ServiceConfig{Store: store})
+		svc.SetWorkspaceBalance(wsID, initialBal)
+		vcMgr := svc.VoiceClone
+		vcMgr.SetWorkspaceTier(wsID, "pro")
+		_ = store.SaveConsentRecord(ctx, &ProductionConsentRecord{
+			ConsentID:   "consent-r8-unconfigured",
+			WorkspaceID: wsID,
+			CharacterID: "char-r8",
+			UserID:      "test-user-001",
+			ConsentType: "voice_likeness",
+			Granted:     true,
+		})
+
+		_, err := vcMgr.Create(ctxManager, connect.NewRequest(&productionv1.VoiceCloneServiceCreateRequest{
+			Context:          &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: wsID}},
+			CharacterId:      "char-r8",
+			Name:             "Unconfigured Provider Clone",
+			SampleAudioUrls:  []string{"https://assets.creativanta.com/r8-sample.mp3"},
+			ConsentRecordId:  "consent-r8-unconfigured",
+			ConsentConfirmed: true,
+		}))
+		if err == nil || connect.CodeOf(err) != connect.CodeFailedPrecondition {
+			t.Fatalf("R8 VIOLATION: expected VoiceClone.Create without provider to fail with FailedPrecondition, got: %v", err)
+		}
+		if bal := svc.GetWorkspaceBalance(wsID); bal.Cmp(initialBal) != 0 {
+			t.Fatalf("R8 VIOLATION: expected 0 credits deducted when provider unconfigured, got balance %s", bal.String())
+		}
+		if clones, total, _ := store.ListVoiceClones(ctx, wsID, "", 100, 0); total != 0 || len(clones) != 0 {
+			t.Fatalf("R8 VIOLATION: expected 0 voice clones created when provider unconfigured, got %d", total)
+		}
+	}
+
+	// 2. Store failure on CreateVoiceClone or CreateAsset MUST NOT deduct credits!
+	{
+		baseStore := NewMemoryStore()
+		fStore := &failingVoiceCloneStore{Store: baseStore, failCreateVoiceClone: true}
+		svc := NewService(ServiceConfig{
+			Store:              fStore,
+			VoiceCloneProvider: NewMockVoiceCloneProvider(),
+		})
+		svc.SetWorkspaceBalance(wsID, initialBal)
+		vcMgr := svc.VoiceClone
+		vcMgr.SetWorkspaceTier(wsID, "pro")
+		_ = baseStore.SaveConsentRecord(ctx, &ProductionConsentRecord{
+			ConsentID:   "consent-r8-store",
+			WorkspaceID: wsID,
+			CharacterID: "char-r8-store",
+			UserID:      "test-user-001",
+			ConsentType: "voice_likeness",
+			Granted:     true,
+		})
+
+		// 2a. CreateVoiceClone fails -> 0 credits deducted
+		_, err := vcMgr.Create(ctxManager, connect.NewRequest(&productionv1.VoiceCloneServiceCreateRequest{
+			Context:          &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: wsID}},
+			CharacterId:      "char-r8-store",
+			Name:             "Store Error Clone",
+			SampleAudioUrls:  []string{"https://assets.creativanta.com/r8-sample.mp3"},
+			ConsentRecordId:  "consent-r8-store",
+			ConsentConfirmed: true,
+		}))
+		if err == nil || connect.CodeOf(err) != connect.CodeInternal {
+			t.Fatalf("expected CreateVoiceClone store error to return CodeInternal, got: %v", err)
+		}
+		if bal := svc.GetWorkspaceBalance(wsID); bal.Cmp(initialBal) != 0 {
+			t.Fatalf("R8 VIOLATION: credits deducted despite CreateVoiceClone error! balance=%s", bal.String())
+		}
+
+		// 2b. Allow CreateVoiceClone to succeed (500 - 15 = 485), then fail CreateAsset on GenerateVoiceover
+		fStore.failCreateVoiceClone = false
+		createResp, err := vcMgr.Create(ctxManager, connect.NewRequest(&productionv1.VoiceCloneServiceCreateRequest{
+			Context:          &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: wsID}},
+			CharacterId:      "char-r8-store",
+			Name:             "Valid Clone",
+			SampleAudioUrls:  []string{"https://assets.creativanta.com/r8-sample.mp3"},
+			ConsentRecordId:  "consent-r8-store",
+			ConsentConfirmed: true,
+		}))
+		if err != nil {
+			t.Fatalf("Create failed: %v", err)
+		}
+		cloneID := createResp.Msg.GetRecord().GetVoiceCloneId()
+		balAfterClone := svc.GetWorkspaceBalance(wsID) // 485
+
+		// Unconfigure provider before GenerateVoiceover -> must fail closed with 0 credits deducted
+		vcMgr.SetProvider(nil)
+		_, err = vcMgr.GenerateVoiceover(ctxManager, connect.NewRequest(&productionv1.VoiceCloneServiceGenerateVoiceoverRequest{
+			Context:      &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: wsID}},
+			VoiceCloneId: cloneID,
+			Text:         "Voiceover without provider",
+			Language:     "en",
+		}))
+		if err == nil || connect.CodeOf(err) != connect.CodeFailedPrecondition {
+			t.Fatalf("R8 VIOLATION: expected GenerateVoiceover without provider to fail with FailedPrecondition, got: %v", err)
+		}
+		if bal := svc.GetWorkspaceBalance(wsID); bal.Cmp(balAfterClone) != 0 {
+			t.Fatalf("R8 VIOLATION: credits deducted on GenerateVoiceover without provider! balance=%s", bal.String())
+		}
+
+		// Restore provider, but fail CreateAsset -> must return CodeInternal and deduct 0 credits!
+		vcMgr.SetProvider(NewMockVoiceCloneProvider())
+		fStore.failCreateAsset = true
+		_, err = vcMgr.GenerateVoiceover(ctxManager, connect.NewRequest(&productionv1.VoiceCloneServiceGenerateVoiceoverRequest{
+			Context:      &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: wsID}},
+			VoiceCloneId: cloneID,
+			Text:         "Voiceover with store failure",
+			Language:     "en",
+		}))
+		if err == nil || connect.CodeOf(err) != connect.CodeInternal {
+			t.Fatalf("R8 VIOLATION: expected GenerateVoiceover to fail with CodeInternal when CreateAsset fails, got: %v", err)
+		}
+		if bal := svc.GetWorkspaceBalance(wsID); bal.Cmp(balAfterClone) != 0 {
+			t.Fatalf("R8 CRITICAL VIOLATION: credits deducted despite CreateAsset error! got balance=%s, expected %s", bal.String(), balAfterClone.String())
+		}
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -44,17 +45,29 @@ type Store interface {
 	UpdateDLQItem(ctx context.Context, item *DLQItem) error
 }
 
+// WorkspaceMembershipStore provides authoritative live membership resolution for a workspace member.
+type WorkspaceMembershipStore interface {
+	ResolveWorkspaceMemberRole(ctx context.Context, workspaceID, userID string) (role string, active bool, found bool, err error)
+}
+
+// WorkspaceMembershipMutator allows tests and administrative reconciliation to update workspace membership in a store.
+type WorkspaceMembershipMutator interface {
+	SetMemberRole(workspaceID, userID, role string, active bool)
+	RevokeMemberAccess(workspaceID, userID string)
+}
+
 // ----------------------------------------------------------------------------
 // MemoryStore (Thread-safe in-memory store for unit tests and deterministic fixtures)
 // ----------------------------------------------------------------------------
 
 type MemoryStore struct {
 	mu        sync.RWMutex
-	workflows map[string]*Workflow        // key: workspaceID:workflowID
-	runs      map[string]*WorkflowRun     // key: workspaceID:runID
-	steps     map[string]*WorkflowRunStep // key: workspaceID:stepID
-	approvals map[string]*ApprovalRequest // key: workspaceID:requestID
-	dlqItems  map[string]*DLQItem         // key: workspaceID:dlqID
+	workflows map[string]*Workflow             // key: workspaceID:workflowID
+	runs      map[string]*WorkflowRun          // key: workspaceID:runID
+	steps     map[string]*WorkflowRunStep      // key: workspaceID:stepID
+	approvals map[string]*ApprovalRequest      // key: workspaceID:requestID
+	dlqItems  map[string]*DLQItem              // key: workspaceID:dlqID
+	members   map[string]memberMembershipState // key: workspaceID:userID
 }
 
 func NewMemoryStore() *MemoryStore {
@@ -64,10 +77,49 @@ func NewMemoryStore() *MemoryStore {
 		steps:     make(map[string]*WorkflowRunStep),
 		approvals: make(map[string]*ApprovalRequest),
 		dlqItems:  make(map[string]*DLQItem),
+		members:   make(map[string]memberMembershipState),
 	}
 }
 
 var _ Store = (*MemoryStore)(nil)
+var _ WorkspaceMembershipStore = (*MemoryStore)(nil)
+var _ WorkspaceMembershipMutator = (*MemoryStore)(nil)
+
+func (s *MemoryStore) SetMemberRole(workspaceID, userID, role string, active bool) {
+	ws := strings.TrimSpace(workspaceID)
+	uid := strings.TrimSpace(userID)
+	if ws == "" || uid == "" {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.members == nil {
+		s.members = make(map[string]memberMembershipState)
+	}
+	s.members[ws+":"+uid] = memberMembershipState{
+		role:   strings.TrimSpace(role),
+		active: active,
+	}
+}
+
+func (s *MemoryStore) RevokeMemberAccess(workspaceID, userID string) {
+	s.SetMemberRole(workspaceID, userID, "", false)
+}
+
+func (s *MemoryStore) ResolveWorkspaceMemberRole(ctx context.Context, workspaceID, userID string) (string, bool, bool, error) {
+	ws := strings.TrimSpace(workspaceID)
+	uid := strings.TrimSpace(userID)
+	if ws == "" || uid == "" {
+		return "", false, false, nil
+	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	st, ok := s.members[ws+":"+uid]
+	if !ok {
+		return "", false, false, nil
+	}
+	return st.role, st.active, true, nil
+}
 
 func (s *MemoryStore) CreateWorkflow(ctx context.Context, w *Workflow) error {
 	s.mu.Lock()
@@ -466,6 +518,31 @@ func (p *PostgresStore) withTenantTx(ctx context.Context, workspaceID, actorHint
 }
 
 var _ Store = (*PostgresStore)(nil)
+var _ WorkspaceMembershipStore = (*PostgresStore)(nil)
+
+func (p *PostgresStore) ResolveWorkspaceMemberRole(ctx context.Context, workspaceID, userID string) (string, bool, bool, error) {
+	ws := strings.TrimSpace(workspaceID)
+	uid := strings.TrimSpace(userID)
+	if ws == "" || uid == "" {
+		return "", false, true, nil
+	}
+	var role, status string
+	err := p.withTenantTx(ctx, ws, uid, func(txCtx context.Context, tx pgx.Tx) error {
+		return tx.QueryRow(txCtx, `
+			SELECT COALESCE(role, ''), COALESCE(status, '')
+			FROM workspace_members
+			WHERE workspace_id = $1 AND user_id = $2
+		`, ws, uid).Scan(&role, &status)
+	})
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return "", false, true, nil
+		}
+		return "", false, true, err
+	}
+	active := strings.EqualFold(strings.TrimSpace(status), "active")
+	return strings.TrimSpace(role), active, true, nil
+}
 
 func (p *PostgresStore) CreateWorkflow(ctx context.Context, w *Workflow) error {
 	triggerJSON, err := json.Marshal(w.TriggerConfig)
