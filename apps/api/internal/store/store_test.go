@@ -1395,3 +1395,106 @@ func TestRemediation_R02_CrossInstanceCheckoutIdempotencyAndAtomicCompensation(t
 			len(unsettledSubs), len(unsettledDelivs), len(postingsAfterUnsettled), stockAfterUnsettled)
 	}
 }
+
+func TestRemediation_M01_MemoryStoreProcessCrashTakeover(t *testing.T) {
+	ctx := context.Background()
+	wsID := newUUID()
+	custID := newUUID()
+	prodID := newUUID()
+	compID := newUUID()
+
+	now := time.Date(2026, 3, 25, 16, 0, 0, 0, time.UTC)
+	currentNow := now
+	clockFn := func() time.Time { return currentNow }
+
+	mem := NewMemoryStore()
+	mem.SetCheckoutLeaseTTL(5 * time.Second)
+	svc := NewService(mem, &mockSink{}, clockFn)
+	_ = mem.SetProductStock(ctx, wsID, compID, 10)
+	_ = svc.UpsertProduct(ctx, &StoreProduct{
+		ProductID:   prodID,
+		WorkspaceID: wsID,
+		Title:       "M01 Unit Asset",
+		Price:       mustDecimal(t, "50000.000000"),
+		Currency:    "VND",
+		Status:      ProductStatusActive,
+	})
+	bundle, err := svc.CreateBundle(ctx, &Bundle{
+		WorkspaceID: wsID,
+		Title:       "M01 Unit Bundle",
+		BundlePrice: mustDecimal(t, "100000.000000"),
+		Currency:    "VND",
+		Items:       []BundleItem{{ProductID: compID, Quantity: 2, ProductTitle: "Comp"}},
+	})
+	if err != nil {
+		t.Fatalf("CreateBundle: %v", err)
+	}
+	plan, err := svc.CreatePlan(ctx, &MembershipPlan{
+		WorkspaceID:     wsID,
+		Title:           "M01 Unit Plan",
+		Price:           mustDecimal(t, "150000.000000"),
+		Currency:        "VND",
+		BillingInterval: "monthly",
+	})
+	if err != nil {
+		t.Fatalf("CreatePlan: %v", err)
+	}
+	_, _ = svc.PublishPlan(ctx, wsID, plan.PlanID)
+	svc.SetPaymentVerifier(func(_ context.Context, _ string, _ string, _ tenantdb.ExactDecimal, _ string) (PaymentStatus, error) {
+		return PaymentStatusSucceeded, nil
+	})
+
+	req := CheckoutRequest{
+		WorkspaceID:      wsID,
+		CustomerEntityID: custID,
+		IdempotencyKey:   "m01-unit-idem-1",
+		PaymentIntentID:  "pi_m01_unit_1",
+		BundleID:         bundle.BundleID,
+		MembershipPlanID: plan.PlanID,
+		ProductIDs:       []string{prodID},
+		OrderAmount:      mustDecimal(t, "300000.000000"),
+		Currency:         "VND",
+	}
+	fp := checkoutRequestFingerprint(req)
+
+	// Simulate Process 1 claiming the checkout and partially applying effects, then dying before SaveCheckoutResult.
+	_, orderID1, err := mem.ClaimCheckout(ctx, wsID, req.IdempotencyKey, req.PaymentIntentID, fp)
+	if err != nil || orderID1 == "" {
+		t.Fatalf("ClaimCheckout 1 failed: orderID=%q err=%v", orderID1, err)
+	}
+	orderCtx := withCheckoutOrderID(ctx, orderID1)
+	if err := mem.AtomicallyReserveBundleStock(orderCtx, wsID, bundle.BundleID, 1); err != nil {
+		t.Fatalf("AtomicallyReserveBundleStock 1: %v", err)
+	}
+	if err := mem.CreateSubscription(orderCtx, &MembershipSubscription{
+		MembershipID:           newUUID(),
+		WorkspaceID:            wsID,
+		PlanID:                 plan.PlanID,
+		CustomerEntityID:       custID,
+		Status:                 MembershipSubscriptionStatusActive,
+		ProviderSubscriptionID: req.PaymentIntentID,
+		CurrentPeriodStart:     now,
+		CurrentPeriodEnd:       now.AddDate(0, 1, 0),
+	}); err != nil {
+		t.Fatalf("CreateSubscription 1: %v", err)
+	}
+
+	// Advance clock past 5s lease TTL and retry via svc.Checkout.
+	currentNow = now.Add(6 * time.Second)
+	res, err := svc.Checkout(ctx, req)
+	if err != nil {
+		t.Fatalf("expected Checkout takeover after lease expiry to succeed, got %v", err)
+	}
+	if res == nil || !res.Success || res.OrderID != orderID1 {
+		t.Fatalf("expected recovered checkout to preserve OrderID %q, got %+v", orderID1, res)
+	}
+
+	stock, _ := mem.GetProductStock(ctx, wsID, compID)
+	subs, _ := mem.ListSubscriptionsByCustomer(ctx, wsID, custID)
+	delivs, _ := mem.ListDeliveriesByCustomer(ctx, wsID, custID)
+	postings, _ := mem.ListFinancialPostings(ctx, wsID)
+	if stock != 8 || len(subs) != 1 || len(delivs) != 1 || len(postings) != 1 {
+		t.Fatalf("expected reconciled single effects after takeover: stock=%d (want 8) subs=%d delivs=%d postings=%d",
+			stock, len(subs), len(delivs), len(postings))
+	}
+}

@@ -29,10 +29,14 @@ func buildAppUserStoreDSN(adminDSN string) (string, error) {
 type failingSavePostgresStore struct {
 	*PostgresStore
 	failSave bool
+	onFail   func()
 }
 
 func (f *failingSavePostgresStore) SaveCheckoutResult(ctx context.Context, workspaceID, idempotencyKey string, res *CheckoutResult) error {
 	if f.failSave {
+		if f.onFail != nil {
+			f.onFail()
+		}
 		return fmt.Errorf("simulated PostgresStore SaveCheckoutResult outage")
 	}
 	return f.PostgresStore.SaveCheckoutResult(ctx, workspaceID, idempotencyKey, res)
@@ -355,5 +359,371 @@ func TestPostgresLiveCrossInstanceCheckoutIdempotencyAndRLS(t *testing.T) {
 	}
 	if retryRes.IsReplayed {
 		t.Fatalf("expected first successful completion after rollback to have IsReplayed=false")
+	}
+}
+
+type killStage string
+
+const (
+	killAfterClaim         killStage = "after_claim"
+	killAfterBundleReserve killStage = "after_bundle_reserve"
+	killAfterSubscription  killStage = "after_subscription"
+	killAfterFirstDelivery killStage = "after_first_delivery"
+	killAfterAllDeliveries killStage = "after_all_deliveries"
+	killAfterPosting       killStage = "after_posting"
+)
+
+type processKillSentinel struct {
+	stage killStage
+}
+
+type crashInjectingPostgresStore struct {
+	*PostgresStore
+	stage         killStage
+	deliveryCount int
+}
+
+func (c *crashInjectingPostgresStore) ClaimCheckout(ctx context.Context, workspaceID, idempotencyKey, paymentIntentID, requestFingerprint string) (*CheckoutResult, string, error) {
+	res, orderID, err := c.PostgresStore.ClaimCheckout(ctx, workspaceID, idempotencyKey, paymentIntentID, requestFingerprint)
+	if err == nil && c.stage == killAfterClaim {
+		panic(processKillSentinel{stage: c.stage})
+	}
+	return res, orderID, err
+}
+
+func (c *crashInjectingPostgresStore) AtomicallyReserveBundleStock(ctx context.Context, workspaceID, bundleID string, quantity int32) error {
+	err := c.PostgresStore.AtomicallyReserveBundleStock(ctx, workspaceID, bundleID, quantity)
+	if err == nil && c.stage == killAfterBundleReserve {
+		panic(processKillSentinel{stage: c.stage})
+	}
+	return err
+}
+
+func (c *crashInjectingPostgresStore) CreateSubscription(ctx context.Context, sub *MembershipSubscription) error {
+	err := c.PostgresStore.CreateSubscription(ctx, sub)
+	if err == nil && c.stage == killAfterSubscription {
+		panic(processKillSentinel{stage: c.stage})
+	}
+	return err
+}
+
+func (c *crashInjectingPostgresStore) CreateDigitalDelivery(ctx context.Context, d *DigitalDelivery) error {
+	err := c.PostgresStore.CreateDigitalDelivery(ctx, d)
+	if err == nil {
+		c.deliveryCount++
+		if c.stage == killAfterFirstDelivery && c.deliveryCount == 1 {
+			panic(processKillSentinel{stage: c.stage})
+		}
+		if c.stage == killAfterAllDeliveries && c.deliveryCount == 2 {
+			panic(processKillSentinel{stage: c.stage})
+		}
+	}
+	return err
+}
+
+func (c *crashInjectingPostgresStore) RecordFinancialPosting(ctx context.Context, posting *FinancialPosting) error {
+	err := c.PostgresStore.RecordFinancialPosting(ctx, posting)
+	if err == nil && c.stage == killAfterPosting {
+		panic(processKillSentinel{stage: c.stage})
+	}
+	return err
+}
+
+func runCheckoutWithSimulatedKill(svc *Service, ctx context.Context, req CheckoutRequest) (killed bool, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			if _, ok := r.(processKillSentinel); ok {
+				killed = true
+				return
+			}
+			panic(r)
+		}
+	}()
+	_, err = svc.Checkout(ctx, req)
+	return false, err
+}
+
+func TestPostgresLiveM01_ProcessKillTakeoverAndEffectRecovery(t *testing.T) {
+	dsn := os.Getenv("CREATIVANTA_TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("CREATIVANTA_TEST_DATABASE_URL not set; live PostgreSQL M01 crash-recovery suite executes when DB is available")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+	defer cancel()
+
+	adminPool, err := pgxpool.New(ctx, dsn)
+	if err != nil {
+		t.Fatalf("connect adminPool: %v", err)
+	}
+	defer adminPool.Close()
+
+	dir := filepath.Join("..", "..", "..", "..", "infra", "migrations")
+	migConn, err := adminPool.Acquire(ctx)
+	if err != nil {
+		t.Fatalf("acquire migConn: %v", err)
+	}
+	if _, err := migConn.Exec(ctx, `SELECT pg_advisory_lock(77331100)`); err != nil {
+		migConn.Release()
+		t.Fatalf("pg_advisory_lock: %v", err)
+	}
+	_, migErr := migrate.Up(ctx, adminPool, dir)
+	_, roleErr := adminPool.Exec(ctx, `ALTER ROLE app_user WITH LOGIN PASSWORD 'app_user_test_pw' NOBYPASSRLS`)
+	_, _ = migConn.Exec(ctx, `SELECT pg_advisory_unlock(77331100)`)
+	migConn.Release()
+	if migErr != nil {
+		t.Fatalf("migrate.Up failed: %v", migErr)
+	}
+	if roleErr != nil {
+		t.Fatalf("configure app_user login: %v", roleErr)
+	}
+
+	const (
+		userA   = "11111111-1111-4111-8111-111111111311"
+		tenantA = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaa311"
+		prod1   = "dddddddd-dddd-4ddd-8ddd-ddddddddd311"
+		prod2   = "dddddddd-dddd-4ddd-8ddd-ddddddddd312"
+		comp1   = "dddddddd-dddd-4ddd-8ddd-ddddddddd313"
+	)
+
+	_, err = adminPool.Exec(ctx, `
+		INSERT INTO users (user_id, external_auth_id, email, display_name, status) VALUES
+		  ($1::uuid, 'm01_store_ext_a', 'm01_store_a@example.com', 'M01 Store User A', 'active')
+		ON CONFLICT (user_id) DO NOTHING
+	`, userA)
+	if err != nil {
+		t.Fatalf("seed user: %v", err)
+	}
+	_, err = adminPool.Exec(ctx, `
+		INSERT INTO workspaces (workspace_id, name, slug, owner_user_id, status) VALUES
+		  ($1::uuid, 'M01 Store Tenant A', 'm01-store-tenant-a', $2::uuid, 'active')
+		ON CONFLICT (workspace_id) DO NOTHING
+	`, tenantA, userA)
+	if err != nil {
+		t.Fatalf("seed workspace: %v", err)
+	}
+	_, err = adminPool.Exec(ctx, `
+		INSERT INTO workspace_members (workspace_id, user_id, role, status) VALUES
+		  ($1::uuid, $2::uuid, 'owner', 'active')
+		ON CONFLICT (workspace_id, user_id) DO NOTHING
+	`, tenantA, userA)
+	if err != nil {
+		t.Fatalf("seed workspace_member: %v", err)
+	}
+
+	appDSN, err := buildAppUserStoreDSN(dsn)
+	if err != nil {
+		t.Fatalf("buildAppUserStoreDSN: %v", err)
+	}
+	appPool, err := pgxpool.New(ctx, appDSN)
+	if err != nil {
+		t.Fatalf("connect appPool: %v", err)
+	}
+	defer appPool.Close()
+
+	stages := []killStage{
+		killAfterClaim,
+		killAfterBundleReserve,
+		killAfterSubscription,
+		killAfterFirstDelivery,
+		killAfterAllDeliveries,
+		killAfterPosting,
+	}
+
+	for idx, stage := range stages {
+		_, _ = adminPool.Exec(ctx, `DELETE FROM external_effects WHERE workspace_id = $1::uuid`, tenantA)
+
+		now := time.Date(2026, 11, 9, 6, 0, 0, 0, time.UTC)
+		currentNow := now
+		clockFn := func() time.Time { return currentNow }
+
+		customerID := fmt.Sprintf("cccccccc-cccc-4ccc-8ccc-ccccccccc3%02d", idx+10)
+		idemKey := fmt.Sprintf("m01-kill-%s-idem", stage)
+		piID := fmt.Sprintf("pi_m01_kill_%s", stage)
+
+		// Instance 1 (will be killed mid-checkout without running rollback/ReleaseCheckoutClaim)
+		pg1 := NewPostgresStore(appPool, NewMemoryStore())
+		crashStore1 := &crashInjectingPostgresStore{PostgresStore: pg1, stage: stage}
+		svc1 := NewService(crashStore1, &mockSink{}, clockFn)
+
+		seedM01Catalog := func(s *Service, st Store) (bundleID, planID string) {
+			_ = st.SetProductStock(ctx, tenantA, comp1, 10)
+			if err := s.UpsertProduct(ctx, &StoreProduct{
+				ProductID:   prod1,
+				WorkspaceID: tenantA,
+				Title:       "M01 Digital Asset 1",
+				Price:       mustDecimal(t, "50000.000000"),
+				Currency:    "VND",
+				Status:      ProductStatusActive,
+			}); err != nil {
+				t.Fatalf("UpsertProduct 1: %v", err)
+			}
+			if err := s.UpsertProduct(ctx, &StoreProduct{
+				ProductID:   prod2,
+				WorkspaceID: tenantA,
+				Title:       "M01 Digital Asset 2",
+				Price:       mustDecimal(t, "30000.000000"),
+				Currency:    "VND",
+				Status:      ProductStatusActive,
+			}); err != nil {
+				t.Fatalf("UpsertProduct 2: %v", err)
+			}
+			b, err := s.CreateBundle(ctx, &Bundle{
+				BundleID:    "eeeeeeee-eeee-4eee-8eee-eeeeeeeee311",
+				WorkspaceID: tenantA,
+				Title:       "M01 Creator Bundle",
+				BundlePrice: mustDecimal(t, "100000.000000"),
+				Currency:    "VND",
+				Status:      "active",
+				Items:       []BundleItem{{ProductID: comp1, Quantity: 2, ProductTitle: "Bundle Component"}},
+			})
+			if err != nil {
+				t.Fatalf("CreateBundle: %v", err)
+			}
+			p, err := s.CreatePlan(ctx, &MembershipPlan{
+				PlanID:          "ffffffff-ffff-4fff-8fff-fffffffff311",
+				WorkspaceID:     tenantA,
+				Title:           "M01 Creator Club",
+				Price:           mustDecimal(t, "120000.000000"),
+				Currency:        "VND",
+				BillingInterval: "monthly",
+				Status:          MembershipPlanStatusActive,
+			})
+			if err != nil {
+				t.Fatalf("CreatePlan: %v", err)
+			}
+			if _, err := s.PublishPlan(ctx, tenantA, p.PlanID); err != nil {
+				t.Fatalf("PublishPlan: %v", err)
+			}
+			s.SetPaymentVerifier(func(_ context.Context, _ string, _ string, _ tenantdb.ExactDecimal, _ string) (PaymentStatus, error) {
+				return PaymentStatusSucceeded, nil
+			})
+			return b.BundleID, p.PlanID
+		}
+
+		bundleID, planID := seedM01Catalog(svc1, pg1)
+		req := CheckoutRequest{
+			WorkspaceID:      tenantA,
+			CustomerEntityID: customerID,
+			IdempotencyKey:   idemKey,
+			PaymentIntentID:  piID,
+			BundleID:         bundleID,
+			MembershipPlanID: planID,
+			ProductIDs:       []string{prod1, prod2},
+			OrderAmount:      mustDecimal(t, "300000.000000"),
+			Currency:         "VND",
+		}
+
+		killed, err := runCheckoutWithSimulatedKill(svc1, ctx, req)
+		if !killed {
+			t.Fatalf("stage %s: expected simulated process kill, got killed=false err=%v", stage, err)
+		}
+
+		// Instance 2: Brand-new PostgresStore + Service (empty MemoryStore) retries after process 1 died.
+		// Notice we do NOT re-seed catalog or stock on pg2; pg2 must recover catalog, stock, and partial effects from PostgreSQL!
+		pg2 := NewPostgresStore(appPool, NewMemoryStore())
+		sink2 := &mockSink{}
+		svc2 := NewService(pg2, sink2, clockFn)
+		svc2.SetPaymentVerifier(func(_ context.Context, _ string, _ string, _ tenantdb.ExactDecimal, _ string) (PaymentStatus, error) {
+			return PaymentStatusSucceeded, nil
+		})
+
+		// Advance clock past checkout claim lease TTL so Instance 2 can take over the abandoned 'prepared' claim.
+		currentNow = now.Add(10 * time.Second)
+
+		// Negative check: Even after lease expiry, a DIFFERENT idempotency key attempting to hijack the same PaymentIntentID
+		// must still fail closed with ErrPaymentReplay.
+		hijackReq := req
+		hijackReq.IdempotencyKey = idemKey + "-hijack"
+		if _, hijackErr := svc2.Checkout(ctx, hijackReq); !errors.Is(hijackErr, ErrPaymentReplay) {
+			t.Fatalf("stage %s: expected ErrPaymentReplay when hijacking expired claim with different IdempotencyKey, got %v", stage, hijackErr)
+		}
+
+		// Also verify that if a zombie process (pg1) wakes up after a new owner claims it, its stale ReleaseCheckoutClaim is ignored.
+		retryCtx, retryCancel := context.WithTimeout(ctx, 250*time.Millisecond)
+		res2, err2 := svc2.Checkout(retryCtx, req)
+		retryCancel()
+		if err2 != nil {
+			t.Fatalf("stage %s: M01 BUG REPRODUCED — Instance 2 failed to recover checkout after Process 1 died: %v", stage, err2)
+		}
+		if res2 == nil || !res2.Success || res2.Status != "confirmed" || res2.IsReplayed {
+			t.Fatalf("stage %s: expected confirmed non-replayed checkout result on recovery completion, got %+v", stage, res2)
+		}
+		if len(res2.Deliveries) != 2 || res2.Subscription == nil {
+			t.Fatalf("stage %s: expected 2 deliveries and 1 subscription on recovered checkout, got delivs=%d sub=%+v",
+				stage, len(res2.Deliveries), res2.Subscription)
+		}
+
+		// Zombie pg1 calling ReleaseCheckoutClaim must not delete the confirmed checkout or a newer owner's claim.
+		_ = pg1.ReleaseCheckoutClaim(ctx, tenantA, idemKey, piID)
+
+		// Subsequent retry with same IdempotencyKey + PaymentIntentID replays the confirmed result.
+		replayRes, replayErr := svc2.Checkout(ctx, req)
+		if replayErr != nil || replayRes == nil || !replayRes.IsReplayed || replayRes.OrderID != res2.OrderID {
+			t.Fatalf("stage %s: expected deterministic replay after recovery, got res=%+v err=%v", stage, replayRes, replayErr)
+		}
+
+		// Verify across a 3rd fresh instance that effects were executed EXACTLY ONCE (no duplicates).
+		pg3 := NewPostgresStore(appPool, NewMemoryStore())
+		delivs3, err := pg3.ListDeliveriesByCustomer(ctx, tenantA, customerID)
+		if err != nil || len(delivs3) != 2 {
+			t.Fatalf("stage %s: expected exactly 2 deliveries in PG, got %d (err=%v)", stage, len(delivs3), err)
+		}
+		subs3, err := pg3.ListSubscriptionsByCustomer(ctx, tenantA, customerID)
+		if err != nil || len(subs3) != 1 {
+			t.Fatalf("stage %s: expected exactly 1 subscription in PG, got %d (err=%v)", stage, len(subs3), err)
+		}
+		postings3, err := pg3.ListFinancialPostings(ctx, tenantA)
+		if err != nil || len(postings3) != 1 {
+			t.Fatalf("stage %s: expected exactly 1 financial posting in PG, got %d (err=%v)", stage, len(postings3), err)
+		}
+		stock3, err := pg3.GetProductStock(ctx, tenantA, comp1)
+		if err != nil || stock3 != 8 {
+			t.Fatalf("stage %s: expected bundle component stock to be deducted once (10 - 2 = 8), got %d (err=%v)", stage, stock3, err)
+		}
+	}
+
+	// Sub-scenario: Caller context canceled right as SaveCheckoutResult fails in-process.
+	// Because rollback() uses context.WithoutCancel(ctx), the claim and partial effects are cleaned up immediately
+	// without even needing to wait for lease expiry.
+	{
+		baseTime := time.Date(2026, 3, 25, 17, 0, 0, 0, time.UTC)
+		cancelCtx, cancelFn := context.WithCancel(ctx)
+		pgCancel := NewPostgresStore(appPool, NewMemoryStore())
+		fStore := &failingSavePostgresStore{
+			PostgresStore: pgCancel,
+			failSave:      true,
+			onFail: func() {
+				cancelFn() // Cancel caller context right when SaveCheckoutResult fails
+			},
+		}
+		svcCancel := NewService(fStore, &mockSink{}, func() time.Time { return baseTime })
+		_ = pgCancel.SetProductStock(ctx, tenantA, comp1, 10)
+		svcCancel.SetPaymentVerifier(func(_ context.Context, _ string, _ string, _ tenantdb.ExactDecimal, _ string) (PaymentStatus, error) {
+			return PaymentStatusSucceeded, nil
+		})
+		cancelReq := CheckoutRequest{
+			WorkspaceID:      tenantA,
+			CustomerEntityID: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaa399",
+			IdempotencyKey:   "idem-m01-canceled-ctx",
+			PaymentIntentID:  "pi-m01-canceled-ctx",
+			BundleID:         "eeeeeeee-eeee-4eee-8eee-eeeeeeeee311",
+			ProductIDs:       []string{prod1},
+			OrderAmount:      mustDecimal(t, "150000.000000"),
+			Currency:         "VND",
+		}
+		if _, err := svcCancel.Checkout(cancelCtx, cancelReq); err == nil {
+			t.Fatalf("expected failure from failingSaveStore")
+		}
+		// Immediately retry on a second instance WITHOUT advancing the clock (proving rollback() succeeded despite canceled ctx).
+		pgRetry := NewPostgresStore(appPool, NewMemoryStore())
+		svcRetry := NewService(pgRetry, &mockSink{}, func() time.Time { return baseTime })
+		svcRetry.SetPaymentVerifier(func(_ context.Context, _ string, _ string, _ tenantdb.ExactDecimal, _ string) (PaymentStatus, error) {
+			return PaymentStatusSucceeded, nil
+		})
+		resRetry, errRetry := svcRetry.Checkout(ctx, cancelReq)
+		if errRetry != nil || resRetry == nil || !resRetry.Success {
+			t.Fatalf("expected immediate retry to succeed after canceled-context rollback, got res=%+v err=%v", resRetry, errRetry)
+		}
 	}
 }

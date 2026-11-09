@@ -25,9 +25,28 @@ type Service struct {
 	paymentVerifier PaymentVerifier
 }
 
+type checkoutOrderIDCtxKey struct{}
+
+func withCheckoutOrderID(ctx context.Context, orderID string) context.Context {
+	if strings.TrimSpace(orderID) == "" {
+		return ctx
+	}
+	return context.WithValue(ctx, checkoutOrderIDCtxKey{}, strings.TrimSpace(orderID))
+}
+
+func checkoutOrderIDFromContext(ctx context.Context) string {
+	if ctx == nil {
+		return ""
+	}
+	v, _ := ctx.Value(checkoutOrderIDCtxKey{}).(string)
+	return v
+}
+
 func NewService(store Store, eventSink EventSink, nowFunc func() time.Time) *Service {
 	if nowFunc == nil {
 		nowFunc = func() time.Time { return time.Now().UTC() }
+	} else if setter, ok := store.(interface{ SetNowFunc(func() time.Time) }); ok {
+		setter.SetNowFunc(nowFunc)
 	}
 	return &Service{
 		store:     store,
@@ -737,34 +756,40 @@ func (s *Service) Checkout(ctx context.Context, req CheckoutRequest) (*CheckoutR
 			PaymentIntentID:    trimmedPI,
 		}
 		if err := s.store.SaveCheckoutResult(ctx, req.WorkspaceID, req.IdempotencyKey, pendingRes); err != nil {
-			_ = s.store.ReleaseCheckoutClaim(ctx, req.WorkspaceID, req.IdempotencyKey, trimmedPI)
+			rbCtx, rbCancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+			_ = s.store.ReleaseCheckoutClaim(rbCtx, req.WorkspaceID, req.IdempotencyKey, trimmedPI)
+			rbCancel()
 			return nil, err
 		}
 		return pendingRes, nil
 	}
 
-	// 5. Atomic Bundle Stock Reservation (Acceptance Target 1) with full rollback on downstream failure (F04 & R02)
+	// 5. Atomic Bundle Stock Reservation (Acceptance Target 1) with full rollback on downstream failure (F04, R02 & M01)
+	orderCtx := withCheckoutOrderID(ctx, orderID)
 	bundleReserved := false
 	var deliveries []DigitalDelivery
 	var subscription *MembershipSubscription
 	var recordedPosting *FinancialPosting
 	rollback := func() {
+		rbCtx, rbCancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+		defer rbCancel()
+		rbOrderCtx := withCheckoutOrderID(rbCtx, orderID)
 		if recordedPosting != nil {
-			_ = s.store.DeleteFinancialPosting(ctx, req.WorkspaceID, recordedPosting.PostingID)
+			_ = s.store.DeleteFinancialPosting(rbCtx, req.WorkspaceID, recordedPosting.PostingID)
 		}
 		for _, del := range deliveries {
-			_ = s.store.DeleteDigitalDelivery(ctx, req.WorkspaceID, del.DeliveryID)
+			_ = s.store.DeleteDigitalDelivery(rbCtx, req.WorkspaceID, del.DeliveryID)
 		}
 		if subscription != nil {
-			_ = s.store.DeleteSubscription(ctx, req.WorkspaceID, subscription.MembershipID)
+			_ = s.store.DeleteSubscription(rbCtx, req.WorkspaceID, subscription.MembershipID)
 		}
 		if bundleReserved && bundle != nil {
-			_ = s.store.ReleaseBundleStock(ctx, req.WorkspaceID, bundle.BundleID, 1)
+			_ = s.store.ReleaseBundleStock(rbOrderCtx, req.WorkspaceID, bundle.BundleID, 1)
 		}
-		_ = s.store.ReleaseCheckoutClaim(ctx, req.WorkspaceID, req.IdempotencyKey, trimmedPI)
+		_ = s.store.ReleaseCheckoutClaim(rbCtx, req.WorkspaceID, req.IdempotencyKey, trimmedPI)
 	}
 	if bundle != nil {
-		if err := s.store.AtomicallyReserveBundleStock(ctx, req.WorkspaceID, bundle.BundleID, 1); err != nil {
+		if err := s.store.AtomicallyReserveBundleStock(orderCtx, req.WorkspaceID, bundle.BundleID, 1); err != nil {
 			rollback()
 			return nil, err
 		}
