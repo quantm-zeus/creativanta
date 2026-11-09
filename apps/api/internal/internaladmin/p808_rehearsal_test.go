@@ -13,6 +13,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -22,6 +23,7 @@ import (
 	adminv1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/admin/v1"
 	commonv1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/common/v1"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/internaladmin"
+	"github.com/quantm-zeus/creativanta/apps/api/internal/migrate"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/rbac"
 )
 
@@ -229,6 +231,9 @@ func TestP808AcceptanceTarget1_RealRestoreAndFailingSmoke(t *testing.T) {
 			Pool:         pgPool,
 			TargetSchema: "rehearsal_p808",
 		}
+		t.Cleanup(func() {
+			_ = pgTarget.Cleanup(context.Background())
+		})
 		pgRec, err := svc.ExecuteDisposableRestoreRehearsal(context.Background(), superAdminID, prodArtifact, 0, pgTarget)
 		if err != nil {
 			t.Fatalf("ExecuteDisposableRestoreRehearsal with PostgresDisposableDBTarget: %v", err)
@@ -489,6 +494,12 @@ func TestP808AcceptanceTarget1_RealRestoreAndFailingSmoke(t *testing.T) {
 	// - /smoke -> 404 Not Found
 	// - GET /api/workspaces/discovery (401 unauthenticated; 200 with Bearer token)
 	// - POST /creativanta.admin.v1.DiagnosticsService/GetOverview (200 with Bearer token + x-workspace-id)
+	// - Real ConnectRPC SystemConfigService/GetDashboard + /admin/v1/audit-integrity handlers on svc
+	authRealBearer := func(r *http.Request) bool {
+		return r.Header.Get("Authorization") == "Bearer valid-real-api-token" && r.Header.Get("x-workspace-id") == wsA
+	}
+	_, sysConfigHandler := svc.NewCandidateSystemConfigHandler(authRealBearer)
+	auditIntegPath, auditIntegHandler := svc.NewCandidateAuditIntegrityHandler(authRealBearer)
 	realAPISrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/healthz":
@@ -506,33 +517,30 @@ func TestP808AcceptanceTarget1_RealRestoreAndFailingSmoke(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte(`{"workspaces":[{"workspace_id":"` + wsA + `","name":"Creator Studio Alpha","role":"owner"}]}`))
 		case "/creativanta.admin.v1.DiagnosticsService/GetOverview":
-			if r.Header.Get("Authorization") != "Bearer valid-real-api-token" || r.Header.Get("x-workspace-id") != wsA {
+			if !authRealBearer(r) {
 				w.WriteHeader(http.StatusForbidden)
 				return
 			}
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte(`{"workspaceId":{"value":"` + wsA + `"},"overallStatus":"DIAGNOSTIC_HEALTH_STATUS_HEALTHY","totalCategoriesCount":4,"healthyCategoriesCount":4,"criticalIssuesCount":0,"activeIssuesCount":0,"unknownExternalEffectsCount":0,"pendingDlqCount":0}`))
 		case "/creativanta.finance.v1.ProfitService/GetSummary":
-			if r.Header.Get("Authorization") != "Bearer valid-real-api-token" || r.Header.Get("x-workspace-id") != wsA {
+			if !authRealBearer(r) {
 				w.WriteHeader(http.StatusForbidden)
 				return
 			}
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte(`{"snapshot":{"workspaceId":"` + wsA + `","isIncomplete":false,"unknownRequiredComponentsCount":0,"netProfit":{"currencyCode":"VND","amount":"15000.00"}}}`))
 		case "/creativanta.admin.v1.AdminBillingService/GetCreditBalance":
-			if r.Header.Get("Authorization") != "Bearer valid-real-api-token" || r.Header.Get("x-workspace-id") != wsA {
+			if !authRealBearer(r) {
 				w.WriteHeader(http.StatusForbidden)
 				return
 			}
 			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(`{"balance":{"workspaceId":{"value":"` + wsA + `"},"totalRemaining":"2420"}}`))
+			_, _ = w.Write([]byte(`{"balance":{"workspaceId":{"value":"` + wsA + `"},"totalRemaining":"2420.000000"}}`))
 		case "/creativanta.admin.v1.SystemConfigService/GetDashboard":
-			if r.Header.Get("Authorization") != "Bearer valid-real-api-token" || r.Header.Get("x-workspace-id") != wsA {
-				w.WriteHeader(http.StatusForbidden)
-				return
-			}
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(`{"maintenanceMode":false,"activeKillSwitchesCount":0,"auditLogEntriesCount":"2","auditSequenceIntact":true}`))
+			sysConfigHandler.ServeHTTP(w, r)
+		case auditIntegPath:
+			auditIntegHandler.ServeHTTP(w, r)
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -1701,5 +1709,465 @@ func TestP808SecondPassRegression_ReleaseF4DataF9_DeletedTempFixtureRejected(t *
 	}
 	if wsAVisibleCount != 1 {
 		t.Fatalf("expected exactly 1 visible workspace for wsA (out of 2 restored workspaces), got %d", wsAVisibleCount)
+	}
+}
+
+type failingRollbackProxyTarget struct {
+	switchedSlot     string
+	switchedDigest   string
+	rolledBackSlot   string
+	switchErr        error
+	rollbackErr      error
+	verifyActiveSlot string
+	verifyDigest     string
+	verifyErr        error
+	enableVerifier   bool
+}
+
+func (f *failingRollbackProxyTarget) SwitchUpstream(_ context.Context, slot, imageDigest string) error {
+	f.switchedSlot = slot
+	f.switchedDigest = imageDigest
+	return f.switchErr
+}
+
+func (f *failingRollbackProxyTarget) RollbackUpstream(_ context.Context, previousSlot, _ string) error {
+	f.rolledBackSlot = previousSlot
+	return f.rollbackErr
+}
+
+type verifiedProxyTarget struct {
+	failingRollbackProxyTarget
+}
+
+func (v *verifiedProxyTarget) VerifiedActiveUpstream(_ context.Context) (string, string, error) {
+	return v.verifyActiveSlot, v.verifyDigest, v.verifyErr
+}
+
+func TestP808ThirdPassRegression_ReleaseF1F2F3_AuditIntegrityRollbackAndMigrateCLI(t *testing.T) {
+	reg, err := rbac.LoadCanonicalBindings(repoRoot(t))
+	if err != nil {
+		t.Fatalf("LoadCanonicalBindings: %v", err)
+	}
+	svc := internaladmin.NewService(reg)
+	const (
+		superAdminID = "90000000-0000-4000-8000-000000000001"
+		wsA          = "22222222-2222-4222-8222-222222222201"
+		greenDigest  = "sha256:aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111"
+		blueDigest   = "sha256:bbbb2222bbbb2222bbbb2222bbbb2222bbbb2222bbbb2222bbbb2222bbbb2222"
+	)
+	if err := svc.RegisterAdmin(internaladmin.InternalAdminRecord{
+		AdminID:      superAdminID,
+		Email:        "super-f1f2@internal.creativanta.vn",
+		FullName:     "Super Admin F1F2",
+		PasswordHash: internaladmin.HashAdminPassword("Super-Restore-2026!"),
+		AdminRole:    rbac.AdminRoleSuper,
+		MFASecret:    "JBSWY3DPEHPK3PXP",
+		MFAEnabled:   true,
+		Status:       "active",
+	}); err != nil {
+		t.Fatalf("RegisterAdmin: %v", err)
+	}
+
+	// =========================================================================
+	// 1. Release F1 & Data F14: Never default auditSequenceIntact to true when
+	// omitted or null, and verify real ConnectRPC SystemConfigService/GetDashboard
+	// + /admin/v1/audit-integrity candidate handlers.
+	// =========================================================================
+	sysPayload := `{"maintenanceMode":false,"activeKillSwitchesCount":0,"auditLogEntriesCount":2}`
+	f1Srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/healthz":
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"status":"alive","role":"api"}`))
+		case "/readyz":
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"status":"ready","role":"api"}`))
+		case "/api/workspaces/discovery":
+			if r.Header.Get("Authorization") != "Bearer valid-smoke-token" {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"workspaces":[{"workspace_id":"` + wsA + `","name":"Primary"}]}`))
+		case "/creativanta.admin.v1.DiagnosticsService/GetOverview":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"workspaceId":{"value":"` + wsA + `"},"overallStatus":"DIAGNOSTIC_HEALTH_STATUS_HEALTHY","totalCategoriesCount":4,"healthyCategoriesCount":4}`))
+		case "/creativanta.finance.v1.ProfitService/GetSummary":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"snapshot":{"workspaceId":"` + wsA + `","isIncomplete":false,"unknownRequiredComponentsCount":0,"netProfit":{"currencyCode":"VND","amount":"15000.00"}}}`))
+		case "/creativanta.admin.v1.AdminBillingService/GetCreditBalance":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"balance":{"workspaceId":{"value":"` + wsA + `"},"totalRemaining":"2420"}}`))
+		case "/creativanta.admin.v1.SystemConfigService/GetDashboard":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(sysPayload))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer f1Srv.Close()
+
+	// (a) Omitted auditSequenceIntact (with /admin/v1/audit-integrity returning 404) must fail closed.
+	proxy := &mockDisposableProxyTarget{}
+	verdict, err := svc.ExecuteLiveBlueGreenReleaseSmokeRehearsal(
+		context.Background(),
+		superAdminID,
+		"green",
+		greenDigest,
+		f1Srv.URL,
+		"valid-smoke-token",
+		wsA,
+		15000000000,
+		2420,
+		proxy,
+	)
+	if !errors.Is(err, internaladmin.ErrReleaseSmokeFailed) || verdict.FailureCode != "SMOKE_METRICS_UNOBSERVED" || verdict.CandidatePromoted || proxy.switchedSlot != "" {
+		t.Fatalf("Release F1 regression: omitting auditSequenceIntact must fail closed and block SwitchUpstream, got err=%v verdict=%+v proxy=%+v", err, verdict, proxy)
+	}
+
+	// (b) Explicit null auditSequenceIntact must also fail closed.
+	sysPayload = `{"maintenanceMode":false,"activeKillSwitchesCount":0,"auditLogEntriesCount":2,"auditSequenceIntact":null}`
+	verdict, err = svc.ExecuteLiveBlueGreenReleaseSmokeRehearsal(
+		context.Background(),
+		superAdminID,
+		"green",
+		greenDigest,
+		f1Srv.URL,
+		"valid-smoke-token",
+		wsA,
+		15000000000,
+		2420,
+		proxy,
+	)
+	if !errors.Is(err, internaladmin.ErrReleaseSmokeFailed) || verdict.FailureCode != "SMOKE_METRICS_UNOBSERVED" || verdict.CandidatePromoted || proxy.switchedSlot != "" {
+		t.Fatalf("Release F1 regression: null auditSequenceIntact must fail closed and block SwitchUpstream, got err=%v verdict=%+v proxy=%+v", err, verdict, proxy)
+	}
+
+	// (c) Real candidate handlers (SystemConfigService/GetDashboard + /admin/v1/audit-integrity) on a candidate
+	// Service that has an audit sequence gap (SimulateAuditSequenceGapForTest) must fail closed even though
+	// GetDashboard reports auditLogEntriesCount > 0.
+	candidateBrokenSvc := internaladmin.NewService(reg)
+	if err := candidateBrokenSvc.RegisterAdmin(internaladmin.InternalAdminRecord{
+		AdminID:      superAdminID,
+		Email:        "super-f1f2@internal.creativanta.vn",
+		FullName:     "Super Admin F1F2",
+		PasswordHash: internaladmin.HashAdminPassword("Super-Restore-2026!"),
+		AdminRole:    rbac.AdminRoleSuper,
+		MFASecret:    "JBSWY3DPEHPK3PXP",
+		MFAEnabled:   true,
+		Status:       "active",
+	}); err != nil {
+		t.Fatalf("RegisterAdmin candidateBrokenSvc: %v", err)
+	}
+	if _, err := candidateBrokenSvc.AppendSequencedAuditEntry(superAdminID, "system.boot", "system", "boot-1", "", "initial boot entry", nil); err != nil {
+		t.Fatalf("AppendSequencedAuditEntry 1: %v", err)
+	}
+	candidateBrokenSvc.SimulateAuditSequenceGapForTest(2)
+	if _, err := candidateBrokenSvc.AppendSequencedAuditEntry(superAdminID, "system.config_check", "system", "cfg-2", "", "post-gap entry", nil); err != nil {
+		t.Fatalf("AppendSequencedAuditEntry 2: %v", err)
+	}
+
+	authCandidateBearer := func(r *http.Request) bool {
+		return r.Header.Get("Authorization") == "Bearer valid-smoke-token"
+	}
+	_, brokenSysHandler := candidateBrokenSvc.NewCandidateSystemConfigHandler(authCandidateBearer)
+	brokenIntegPath, brokenIntegHandler := candidateBrokenSvc.NewCandidateAuditIntegrityHandler(authCandidateBearer)
+	realBrokenCandidateSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/healthz":
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"status":"alive","role":"api"}`))
+		case "/readyz":
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"status":"ready","role":"api"}`))
+		case "/api/workspaces/discovery":
+			if !authCandidateBearer(r) {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"workspaces":[{"workspace_id":"` + wsA + `","name":"Primary"}]}`))
+		case "/creativanta.admin.v1.DiagnosticsService/GetOverview":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"workspaceId":{"value":"` + wsA + `"},"overallStatus":"DIAGNOSTIC_HEALTH_STATUS_HEALTHY","totalCategoriesCount":4,"healthyCategoriesCount":4}`))
+		case "/creativanta.finance.v1.ProfitService/GetSummary":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"snapshot":{"workspaceId":"` + wsA + `","isIncomplete":false,"unknownRequiredComponentsCount":0,"netProfit":{"currency":"VND","amount":"15000.00"}}}`))
+		case "/creativanta.admin.v1.AdminBillingService/GetCreditBalance":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"balance":{"workspaceId":{"value":"` + wsA + `"},"totalRemaining":"2420.000000"}}`))
+		case "/creativanta.admin.v1.SystemConfigService/GetDashboard":
+			brokenSysHandler.ServeHTTP(w, r)
+		case brokenIntegPath:
+			brokenIntegHandler.ServeHTTP(w, r)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer realBrokenCandidateSrv.Close()
+
+	verdict, err = svc.ExecuteLiveBlueGreenReleaseSmokeRehearsal(
+		context.Background(),
+		superAdminID,
+		"green",
+		greenDigest,
+		realBrokenCandidateSrv.URL,
+		"valid-smoke-token",
+		wsA,
+		15000000000,
+		2420,
+		proxy,
+	)
+	if !errors.Is(err, internaladmin.ErrReleaseSmokeFailed) || verdict.FailureCode != "SMOKE_METRICS_UNOBSERVED" || verdict.CandidatePromoted || proxy.switchedSlot != "" {
+		t.Fatalf("Release F1 regression: real candidate handler with audit sequence gap must fail closed, got err=%v verdict=%+v proxy=%+v", err, verdict, proxy)
+	}
+
+	// (d) Real candidate handlers on a healthy candidate Service with intact audit sequence and hash chain succeed.
+	candidateHealthySvc := internaladmin.NewService(reg)
+	if err := candidateHealthySvc.RegisterAdmin(internaladmin.InternalAdminRecord{
+		AdminID:      superAdminID,
+		Email:        "super-f1f2@internal.creativanta.vn",
+		FullName:     "Super Admin F1F2",
+		PasswordHash: internaladmin.HashAdminPassword("Super-Restore-2026!"),
+		AdminRole:    rbac.AdminRoleSuper,
+		MFASecret:    "JBSWY3DPEHPK3PXP",
+		MFAEnabled:   true,
+		Status:       "active",
+	}); err != nil {
+		t.Fatalf("RegisterAdmin candidateHealthySvc: %v", err)
+	}
+	if _, err := candidateHealthySvc.AppendSequencedAuditEntry(superAdminID, "system.boot", "system", "boot-1", "", "initial boot entry", nil); err != nil {
+		t.Fatalf("AppendSequencedAuditEntry healthy 1: %v", err)
+	}
+	if _, err := candidateHealthySvc.AppendSequencedAuditEntry(superAdminID, "system.ready", "system", "ready-2", "", "ready check entry", nil); err != nil {
+		t.Fatalf("AppendSequencedAuditEntry healthy 2: %v", err)
+	}
+
+	_, healthySysHandler := candidateHealthySvc.NewCandidateSystemConfigHandler(authCandidateBearer)
+	healthyIntegPath, healthyIntegHandler := candidateHealthySvc.NewCandidateAuditIntegrityHandler(authCandidateBearer)
+	realHealthyCandidateSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/healthz":
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"status":"alive","role":"api"}`))
+		case "/readyz":
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"status":"ready","role":"api"}`))
+		case "/api/workspaces/discovery":
+			if !authCandidateBearer(r) {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"workspaces":[{"workspace_id":"` + wsA + `","name":"Primary"}]}`))
+		case "/creativanta.admin.v1.DiagnosticsService/GetOverview":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"workspaceId":{"value":"` + wsA + `"},"overallStatus":"DIAGNOSTIC_HEALTH_STATUS_HEALTHY","totalCategoriesCount":4,"healthyCategoriesCount":4}`))
+		case "/creativanta.finance.v1.ProfitService/GetSummary":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"snapshot":{"workspaceId":"` + wsA + `","isIncomplete":false,"unknownRequiredComponentsCount":0,"netProfit":{"currency":"VND","amount":"15000.00"}}}`))
+		case "/creativanta.admin.v1.AdminBillingService/GetCreditBalance":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"balance":{"workspaceId":{"value":"` + wsA + `"},"totalRemaining":"2420.000000"}}`))
+		case "/creativanta.admin.v1.SystemConfigService/GetDashboard":
+			healthySysHandler.ServeHTTP(w, r)
+		case healthyIntegPath:
+			healthyIntegHandler.ServeHTTP(w, r)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer realHealthyCandidateSrv.Close()
+
+	verdict, err = svc.ExecuteLiveBlueGreenReleaseSmokeRehearsal(
+		context.Background(),
+		superAdminID,
+		"green",
+		greenDigest,
+		realHealthyCandidateSrv.URL,
+		"valid-smoke-token",
+		wsA,
+		15000000000,
+		2420,
+		proxy,
+	)
+	if err != nil || !verdict.CandidatePromoted || !verdict.ProxyUpstreamSwitched || proxy.switchedSlot != "green" {
+		t.Fatalf("Release F1 regression: healthy real candidate handlers must promote slot, got err=%v verdict=%+v proxy=%+v", err, verdict, proxy)
+	}
+
+	// =========================================================================
+	// 2. Release F2: RollbackUpstream failure or unverified active slot must
+	// never be ignored and must never falsely claim the previous slot is active.
+	// =========================================================================
+	f2Proxy := &failingRollbackProxyTarget{
+		switchErr:   errors.New("nginx reload failed after writing green upstream config"),
+		rollbackErr: errors.New("nginx rollback reload exited with status 1"),
+	}
+	f2Verdict, f2Err := svc.ExecuteLiveBlueGreenReleaseSmokeRehearsal(
+		context.Background(),
+		superAdminID,
+		"blue",
+		blueDigest,
+		realHealthyCandidateSrv.URL,
+		"valid-smoke-token",
+		wsA,
+		15000000000,
+		2420,
+		f2Proxy,
+	)
+	if !errors.Is(f2Err, internaladmin.ErrReleaseSmokeFailed) {
+		t.Fatalf("Release F2 regression: expected ErrReleaseSmokeFailed, got %v", f2Err)
+	}
+	if !strings.Contains(f2Err.Error(), "nginx rollback reload exited with status 1") {
+		t.Fatalf("Release F2 regression: expected returned error to include RollbackUpstream failure, got %v", f2Err)
+	}
+	if !f2Verdict.RollbackTriggered || f2Verdict.RollbackSucceeded || f2Verdict.RollbackError == "" {
+		t.Fatalf("Release F2 regression: expected RollbackTriggered=true, RollbackSucceeded=false, and non-empty RollbackError, got %+v", f2Verdict)
+	}
+	if f2Verdict.ActiveSlot != "" || f2Verdict.ActiveSlotDigest != "" {
+		t.Fatalf("Release F2 regression: when RollbackUpstream fails, ActiveSlot and ActiveSlotDigest must NOT claim previous slot is active, got ActiveSlot=%q ActiveSlotDigest=%q",
+			f2Verdict.ActiveSlot, f2Verdict.ActiveSlotDigest)
+	}
+
+	// Also verify DisposableProxyActiveStateVerifier catches a drifted active slot after SwitchUpstream.
+	driftedProxy := &verifiedProxyTarget{
+		failingRollbackProxyTarget: failingRollbackProxyTarget{
+			verifyActiveSlot: "blue",
+			verifyDigest:     blueDigest,
+		},
+	}
+	driftVerdict, driftErr := svc.ExecuteLiveBlueGreenReleaseSmokeRehearsal(
+		context.Background(),
+		superAdminID,
+		"green",
+		greenDigest,
+		realHealthyCandidateSrv.URL,
+		"valid-smoke-token",
+		wsA,
+		15000000000,
+		2420,
+		driftedProxy,
+	)
+	if !errors.Is(driftErr, internaladmin.ErrReleaseSmokeFailed) || driftVerdict.FailureCode != "SMOKE_PROXY_SWITCH_UNVERIFIED" || driftVerdict.CandidatePromoted {
+		t.Fatalf("Release F2 regression: expected SMOKE_PROXY_SWITCH_UNVERIFIED when post-switch active upstream does not match candidate, got err=%v verdict=%+v", driftErr, driftVerdict)
+	}
+
+	// =========================================================================
+	// 3. Data F9: Direct RestoreAndVerifySnapshot on simulation/temp fixtures
+	// must report OperationalPostgresRestoreVerified=false and SmokeProbePassed=false.
+	// =========================================================================
+	now := time.Date(2026, 11, 4, 21, 0, 0, 0, time.UTC)
+	simSnap := internaladmin.DatabaseSnapshot{
+		SnapshotID:     "20261104T210000Z-f9-sim",
+		Environment:    "rehearsal-disposable",
+		CreatedAt:      now,
+		WALPositionLSN: "0/18B4F28",
+		Workspaces: []internaladmin.WorkspaceSnapshot{
+			{
+				WorkspaceID:        wsA,
+				Name:               "Creator Studio Alpha",
+				Slug:               "creator-studio-alpha",
+				OwnerUserID:        "11111111-1111-4111-8111-111111111101",
+				AICreditsRemaining: 2420,
+				Status:             "active",
+			},
+		},
+		FinancialPostings: []internaladmin.FinancialPostingSnapshot{
+			{
+				PostingID:      "30000000-0000-4000-8000-000000000001",
+				WorkspaceID:    wsA,
+				AccountCode:    "1100_CASH_CLEARING",
+				Direction:      "debit",
+				AmountMicro:    15000000000,
+				Currency:       "VND",
+				IdempotencyKey: "idem-f9-1",
+				CreatedAt:      now,
+			},
+			{
+				PostingID:      "30000000-0000-4000-8000-000000000002",
+				WorkspaceID:    wsA,
+				AccountCode:    "4000_MERCHANT_REVENUE",
+				Direction:      "credit",
+				AmountMicro:    15000000000,
+				Currency:       "VND",
+				IdempotencyKey: "idem-f9-1",
+				CreatedAt:      now,
+			},
+		},
+		AICreditLots: []internaladmin.AICreditLotSnapshot{
+			{
+				LotID:            "40000000-0000-4000-8000-000000000001",
+				WorkspaceID:      wsA,
+				InitialCredits:   3000,
+				RemainingCredits: 2420,
+				LotType:          "subscription_monthly",
+				ExpiresAt:        now.Add(24 * time.Hour),
+			},
+		},
+		EvidenceObjects: []internaladmin.EvidenceObjectSnapshot{
+			{
+				EvidenceID:    "50000000-0000-4000-8000-000000000001",
+				WorkspaceID:   wsA,
+				Category:      "dispute_receipt",
+				ContentSHA256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+				StorageURI:    "s3://creativanta-evidence/wsA/ev1.pdf",
+				RetentionLock: now.Add(24 * time.Hour),
+			},
+		},
+		AuditEntries: []internaladmin.AuditSequenceEntrySnapshot{
+			{
+				AuditID:        "60000000-0000-4000-8000-000000000001",
+				SequenceNumber: 1,
+				EntryHash:      "a111111111111111111111111111111111111111111111111111111111111111",
+				AdminID:        superAdminID,
+				Action:         "admin.login",
+				CreatedAt:      now,
+			},
+		},
+	}
+	fileTarget := &internaladmin.FileBackedDisposableDBTarget{TargetDir: t.TempDir()}
+	fileOutcome, err := fileTarget.RestoreAndVerifySnapshot(context.Background(), simSnap)
+	if err != nil {
+		t.Fatalf("FileBackedDisposableDBTarget.RestoreAndVerifySnapshot: %v", err)
+	}
+	if fileOutcome.OperationalPostgresRestoreVerified || fileOutcome.SmokeProbePassed || fileOutcome.SmokeFailureCode != "SIMULATION_FILE_TARGET_ONLY" {
+		t.Fatalf("Data F9 regression: file fixture target must report SmokeProbePassed=false and SIMULATION_FILE_TARGET_ONLY, got %+v", fileOutcome)
+	}
+
+	// =========================================================================
+	// 4. Release F3: Empty or subdir-only migration bundle fails closed with
+	// migrate.ErrEmptyMigrationBundle, while idempotent second `migrate.Up` on
+	// an already-migrated database succeeds.
+	// =========================================================================
+	emptyBundleDir := t.TempDir()
+	if _, err := migrate.LoadDir(emptyBundleDir); !errors.Is(err, migrate.ErrEmptyMigrationBundle) {
+		t.Fatalf("Release F3 regression: expected ErrEmptyMigrationBundle on empty dir, got %v", err)
+	}
+	subdirOnlyDir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(subdirOnlyDir, "nested"), 0o755); err != nil {
+		t.Fatalf("mkdir nested: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(subdirOnlyDir, "README.txt"), []byte("no sql here"), 0o600); err != nil {
+		t.Fatalf("write README.txt: %v", err)
+	}
+	if _, err := migrate.LoadDir(subdirOnlyDir); !errors.Is(err, migrate.ErrEmptyMigrationBundle) {
+		t.Fatalf("Release F3 regression: expected ErrEmptyMigrationBundle on subdir-only dir, got %v", err)
+	}
+	if pgPool := openOptionalPostgresForRehearsalTest(t); pgPool != nil {
+		tempTarget := &internaladmin.PostgresDisposableDBTarget{Pool: pgPool, TempFixtureOnly: true}
+		tempOutcome, err := tempTarget.RestoreAndVerifySnapshot(context.Background(), simSnap)
+		if err != nil {
+			t.Fatalf("PostgresDisposableDBTarget temp fixture RestoreAndVerifySnapshot: %v", err)
+		}
+		if tempOutcome.OperationalPostgresRestoreVerified || tempOutcome.SmokeProbePassed || tempOutcome.SmokeFailureCode != "SIMULATION_TEMP_TABLE_FIXTURE_ONLY" {
+			t.Fatalf("Data F9 regression: temp fixture target must report SmokeProbePassed=false and SIMULATION_TEMP_TABLE_FIXTURE_ONLY, got %+v", tempOutcome)
+		}
+
+		if _, err := migrate.Up(context.Background(), pgPool, emptyBundleDir); !errors.Is(err, migrate.ErrEmptyMigrationBundle) {
+			t.Fatalf("Release F3 regression: expected migrate.Up on empty dir to fail with ErrEmptyMigrationBundle, got %v", err)
+		}
+		if _, err := migrate.Status(context.Background(), pgPool, subdirOnlyDir); !errors.Is(err, migrate.ErrEmptyMigrationBundle) {
+			t.Fatalf("Release F3 regression: expected migrate.Status on subdir-only dir to fail with ErrEmptyMigrationBundle, got %v", err)
+		}
 	}
 }

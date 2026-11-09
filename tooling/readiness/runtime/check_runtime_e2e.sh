@@ -297,10 +297,29 @@ export CREATIVANTA_TEST_POSTGRES_DSN="$TEST_DSN"
 
 # Step 5: Run real compiled cmd/migrate CLI against isolated PostgreSQL 17.10
 info "Step 5/6: Running compiled cmd/migrate up & status against isolated PostgreSQL 17.10..."
+mkdir -p "$TMP_DIR/empty_migrations"
+for bad_bundle in "$TMP_DIR/empty_migrations" "$ROOT/infra"; do
+  for subcmd in up status; do
+    set +e
+    CREATIVANTA_MIGRATE_DATABASE_URL="$TEST_DSN" CREATIVANTA_MIGRATIONS_DIR="$bad_bundle" "$TMP_DIR/migrate" "$subcmd" >"$TMP_DIR/migrate_bad_${subcmd}.log" 2>&1
+    bad_rc=$?
+    set -e
+    [[ "$bad_rc" -ne 0 ]] || fail "cmd/migrate $subcmd unexpectedly succeeded against empty/non-SQL bundle $bad_bundle"
+    grep -Fq "migration bundle contains no SQL migration files" "$TMP_DIR/migrate_bad_${subcmd}.log" || fail "cmd/migrate $subcmd missing empty-bundle error message for $bad_bundle"
+  done
+done
+
 CREATIVANTA_MIGRATE_DATABASE_URL="$TEST_DSN" CREATIVANTA_MIGRATIONS_DIR="$ROOT/infra/migrations" "$TMP_DIR/migrate" up >"$TMP_DIR/migrate_up.log" 2>&1 || {
   cat "$TMP_DIR/migrate_up.log" >&2
   fail "cmd/migrate up failed against isolated PostgreSQL 17.10"
 }
+# Idempotent second run when all migrations in a valid bundle are already applied must succeed with applied_versions=[].
+CREATIVANTA_MIGRATE_DATABASE_URL="$TEST_DSN" CREATIVANTA_MIGRATIONS_DIR="$ROOT/infra/migrations" "$TMP_DIR/migrate" up >"$TMP_DIR/migrate_up_idempotent.log" 2>&1 || {
+  cat "$TMP_DIR/migrate_up_idempotent.log" >&2
+  fail "idempotent second cmd/migrate up failed against isolated PostgreSQL 17.10"
+}
+grep -Fq "applied_versions=[]" "$TMP_DIR/migrate_up_idempotent.log" || fail "expected applied_versions=[] on idempotent second cmd/migrate up, got: $(cat "$TMP_DIR/migrate_up_idempotent.log")"
+
 CREATIVANTA_MIGRATE_DATABASE_URL="$TEST_DSN" CREATIVANTA_MIGRATIONS_DIR="$ROOT/infra/migrations" "$TMP_DIR/migrate" status >"$TMP_DIR/migrate_status.log" 2>&1 || {
   cat "$TMP_DIR/migrate_status.log" >&2
   fail "cmd/migrate status failed against isolated PostgreSQL 17.10"
@@ -309,7 +328,7 @@ applied_count="$(grep -c 'applied=true' "$TMP_DIR/migrate_status.log" || true)"
 expected_migrations="$(find "$ROOT/infra/migrations" -maxdepth 1 -type f -name '[0-9]*_*.sql' | wc -l | tr -d '[:space:]')"
 [[ "$expected_migrations" -ge 47 ]] || fail "migration source unexpectedly missing canonical files (found $expected_migrations)"
 [[ "$applied_count" -eq "$expected_migrations" ]] || fail "expected $expected_migrations applied migrations in cmd/migrate status, got $applied_count"
-info "PASS: cmd/migrate CLI applied and verified all $expected_migrations canonical SQL migrations."
+info "PASS: cmd/migrate CLI rejected empty/subdir-only bundles and applied/verified all $expected_migrations canonical SQL migrations."
 
 # Step 6: Execute real Go integration, RLS, negative auth, replay, and race suites
 info "Step 6/6: Running live PostgreSQL 17.10 & Go -race security/RLS/replay test suites..."

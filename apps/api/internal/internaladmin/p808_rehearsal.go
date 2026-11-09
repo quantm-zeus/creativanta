@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	adminv1connect "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/admin/v1/adminv1connect"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/outbox"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/rbac"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb"
@@ -510,9 +511,8 @@ func (t *FileBackedDisposableDBTarget) RestoreAndVerifySnapshot(ctx context.Cont
 		wsCount = 0
 	}
 
-	smokePassed := !t.FailOnSmoke
-	smokeCode := "OK"
-	if !smokePassed {
+	smokeCode := "SIMULATION_FILE_TARGET_ONLY"
+	if t.FailOnSmoke {
 		smokeCode = "DISPOSABLE_SMOKE_PROBE_FAILED"
 	}
 
@@ -525,7 +525,7 @@ func (t *FileBackedDisposableDBTarget) RestoreAndVerifySnapshot(ctx context.Cont
 		AuditEntriesRestored:               len(audits),
 		ObservedDebitMicro:                 debitMicro,
 		ObservedCreditMicro:                creditMicro,
-		SmokeProbePassed:                   smokePassed,
+		SmokeProbePassed:                   false,
 		SmokeFailureCode:                   smokeCode,
 	}, nil
 }
@@ -567,9 +567,8 @@ func (t *PostgresDisposableDBTarget) RestoreAndVerifySnapshot(ctx context.Contex
 		if err != nil {
 			return DisposableRestoreOutcome{}, err
 		}
-		smokePassed := !t.FailOnSmoke
 		smokeCode := "SIMULATION_TEMP_TABLE_FIXTURE_ONLY"
-		if !smokePassed {
+		if t.FailOnSmoke {
 			smokeCode = "DISPOSABLE_SMOKE_PROBE_FAILED"
 		}
 		return DisposableRestoreOutcome{
@@ -585,7 +584,7 @@ func (t *PostgresDisposableDBTarget) RestoreAndVerifySnapshot(ctx context.Contex
 			AuditEntriesRestored:               len(snap.AuditEntries),
 			ObservedDebitMicro:                 debitMicro,
 			ObservedCreditMicro:                creditMicro,
-			SmokeProbePassed:                   smokePassed,
+			SmokeProbePassed:                   false,
 			SmokeFailureCode:                   smokeCode,
 		}, nil
 	}
@@ -888,36 +887,40 @@ GRANT SELECT ON ALL TABLES IN SCHEMA %[1]s TO rehearsal_p808_rls_probe;
 		return DisposableRestoreOutcome{}, fmt.Errorf("%w: clear tenant context for RLS negative probe: %v", ErrRestoreIntegrityFailed, err)
 	}
 
-	var leakedWorkspaces, leakedPostings int
+	var leakedWorkspaces, leakedPostings, leakedLots, leakedEvidence int
 	if err := tx3.QueryRow(ctx, fmt.Sprintf(`
 SELECT
 	(SELECT COUNT(*) FROM %[1]s.workspaces),
-	(SELECT COUNT(*) FROM %[1]s.financial_postings)
-`, rawSchema)).Scan(&leakedWorkspaces, &leakedPostings); err != nil {
+	(SELECT COUNT(*) FROM %[1]s.financial_postings),
+	(SELECT COUNT(*) FROM %[1]s.ai_credit_lots),
+	(SELECT COUNT(*) FROM %[1]s.evidence_objects)
+`, rawSchema)).Scan(&leakedWorkspaces, &leakedPostings, &leakedLots, &leakedEvidence); err != nil {
 		return DisposableRestoreOutcome{}, fmt.Errorf("%w: execute negative RLS probe on %s: %v", ErrRestoreIntegrityFailed, rawSchema, err)
 	}
-	if leakedWorkspaces != 0 || leakedPostings != 0 {
-		return DisposableRestoreOutcome{}, fmt.Errorf("%w: RLS isolation failure on %s: empty tenant context saw %d workspaces and %d postings",
-			ErrRestoreIntegrityFailed, rawSchema, leakedWorkspaces, leakedPostings)
+	if leakedWorkspaces != 0 || leakedPostings != 0 || leakedLots != 0 || leakedEvidence != 0 {
+		return DisposableRestoreOutcome{}, fmt.Errorf("%w: RLS isolation failure on %s: empty tenant context saw workspaces=%d postings=%d lots=%d evidence=%d",
+			ErrRestoreIntegrityFailed, rawSchema, leakedWorkspaces, leakedPostings, leakedLots, leakedEvidence)
 	}
 
 	primaryWS := snap.Workspaces[0]
 	if _, err := tx3.Exec(ctx, `SELECT set_config('app.current_tenant_id', $1, true)`, primaryWS.WorkspaceID); err != nil {
 		return DisposableRestoreOutcome{}, fmt.Errorf("%w: set tenant context for RLS positive smoke probe: %v", ErrRestoreIntegrityFailed, err)
 	}
-	var visibleWSCount, crossTenantPostings int
+	var visibleWSCount, crossTenantPostings, crossTenantLots, crossTenantEvidence int
 	var observedCredits int64
 	if err := tx3.QueryRow(ctx, fmt.Sprintf(`
 SELECT
 	(SELECT COUNT(*) FROM %[1]s.workspaces),
 	COALESCE((SELECT ai_credits_remaining FROM %[1]s.workspaces WHERE workspace_id = $1), -1),
-	(SELECT COUNT(*) FROM %[1]s.financial_postings WHERE workspace_id <> $1)
-`, rawSchema), primaryWS.WorkspaceID).Scan(&visibleWSCount, &observedCredits, &crossTenantPostings); err != nil {
+	(SELECT COUNT(*) FROM %[1]s.financial_postings WHERE workspace_id <> $1),
+	(SELECT COUNT(*) FROM %[1]s.ai_credit_lots WHERE workspace_id <> $1),
+	(SELECT COUNT(*) FROM %[1]s.evidence_objects WHERE workspace_id <> $1)
+`, rawSchema), primaryWS.WorkspaceID).Scan(&visibleWSCount, &observedCredits, &crossTenantPostings, &crossTenantLots, &crossTenantEvidence); err != nil {
 		return DisposableRestoreOutcome{}, fmt.Errorf("%w: execute positive RLS smoke probe on %s: %v", ErrRestoreIntegrityFailed, rawSchema, err)
 	}
-	if visibleWSCount != 1 || observedCredits != primaryWS.AICreditsRemaining || crossTenantPostings != 0 {
-		return DisposableRestoreOutcome{}, fmt.Errorf("%w: post-commit tenant smoke probe failed (visibleWS=%d credits=%d/%d crossTenantPostings=%d)",
-			ErrRestoreIntegrityFailed, visibleWSCount, observedCredits, primaryWS.AICreditsRemaining, crossTenantPostings)
+	if visibleWSCount != 1 || observedCredits != primaryWS.AICreditsRemaining || crossTenantPostings != 0 || crossTenantLots != 0 || crossTenantEvidence != 0 {
+		return DisposableRestoreOutcome{}, fmt.Errorf("%w: post-commit tenant smoke probe failed (visibleWS=%d credits=%d/%d crossTenantPostings=%d crossTenantLots=%d crossTenantEvidence=%d)",
+			ErrRestoreIntegrityFailed, visibleWSCount, observedCredits, primaryWS.AICreditsRemaining, crossTenantPostings, crossTenantLots, crossTenantEvidence)
 	}
 	if _, err := tx3.Exec(ctx, `RESET ROLE`); err != nil {
 		return DisposableRestoreOutcome{}, fmt.Errorf("%w: reset role after RLS smoke probe: %v", ErrRestoreIntegrityFailed, err)
@@ -1056,8 +1059,8 @@ func (s *Service) executeRestoreRehearsalInternal(
 	}
 
 	// 3. Reconcile double-entry financial postings (exact integer micro-units; debits must equal credits globally, per workspace/currency, and per operation).
-	if len(restored.Workspaces) == 0 || len(restored.FinancialPostings) == 0 || len(restored.EvidenceObjects) == 0 {
-		return nil, fmt.Errorf("%w: snapshot is missing required workspaces, financial postings, or evidence objects", ErrRestoreIntegrityFailed)
+	if len(restored.Workspaces) == 0 || len(restored.FinancialPostings) == 0 || len(restored.AICreditLots) == 0 || len(restored.EvidenceObjects) == 0 || len(restored.AuditEntries) == 0 {
+		return nil, fmt.Errorf("%w: snapshot is missing required workspaces, financial postings, AI credit lots, evidence objects, or audit entries", ErrRestoreIntegrityFailed)
 	}
 	totalDebitMicro, totalCreditMicro, err := verifyRestoredFinancialPostingsBalance(restored.Workspaces, restored.FinancialPostings)
 	if err != nil {
@@ -1128,7 +1131,7 @@ func (s *Service) executeRestoreRehearsalInternal(
 		if outcome.ObservedDebitMicro != totalDebitMicro || outcome.ObservedCreditMicro != totalCreditMicro {
 			return nil, fmt.Errorf("%w: disposable target debit/credit mismatch after restore", ErrRestoreIntegrityFailed)
 		}
-		if !outcome.SmokeProbePassed {
+		if outcome.SmokeFailureCode == "DISPOSABLE_SMOKE_PROBE_FAILED" || (outcome.OperationalPostgresRestoreVerified && !outcome.SmokeProbePassed) {
 			return nil, fmt.Errorf("%w: disposable target post-restore smoke failed (%s)", ErrRestoreIntegrityFailed, outcome.SmokeFailureCode)
 		}
 		operationalVerified := outcome.OperationalPostgresRestoreVerified &&
@@ -1279,6 +1282,8 @@ type ReleaseSmokeVerdict struct {
 	MeasuredProbeDurationMs int64
 	CandidatePromoted       bool
 	RollbackTriggered       bool
+	RollbackSucceeded       bool
+	RollbackError           string
 	FailureCode             string
 	FailureReason           string
 	ActiveSlot              string
@@ -1291,6 +1296,158 @@ type ReleaseSmokeVerdict struct {
 type DisposableProxyTarget interface {
 	SwitchUpstream(ctx context.Context, slot, imageDigest string) error
 	RollbackUpstream(ctx context.Context, previousSlot, previousDigest string) error
+}
+
+// DisposableProxyActiveStateVerifier is an optional extension implemented by disposable proxy targets
+// that can report their verified live active upstream slot and image digest after switch or rollback.
+type DisposableProxyActiveStateVerifier interface {
+	VerifiedActiveUpstream(ctx context.Context) (slot, imageDigest string, err error)
+}
+
+// AuditIntegrityProbeResponse is the response payload returned by GET /admin/v1/audit-integrity
+// on candidate servers exposing real internaladmin audit sequence and hash-chain verification.
+type AuditIntegrityProbeResponse struct {
+	AuditSequenceIntact *bool  `json:"auditSequenceIntact"`
+	CheckedEntriesCount int64  `json:"checkedEntriesCount"`
+	MissingSequenceAt   int64  `json:"missingSequenceAt"`
+	ReadOnlyLockApplied bool   `json:"readOnlyLockApplied"`
+	HashChainVerified   bool   `json:"hashChainVerified"`
+	FailureReason       string `json:"failureReason,omitempty"`
+}
+
+// AppendSequencedAuditEntry appends an immutable sequenced hash-chained audit entry for an active admin.
+func (s *Service) AppendSequencedAuditEntry(adminID, action, targetType, targetID, targetWorkspaceID, reason string, metadata map[string]any) (InternalAuditLogRecord, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	admin, ok := s.adminsByID[adminID]
+	if !ok || admin.Status != "active" {
+		return InternalAuditLogRecord{}, ErrInvalidAdminCredentials
+	}
+	if s.auditReadOnlyLocked {
+		return InternalAuditLogRecord{}, ErrAuditSequenceIntegrityViolation
+	}
+	return s.appendSequencedAuditLocked(adminID, admin.AdminRole, action, targetType, targetID, targetWorkspaceID, reason, metadata), nil
+}
+
+func (s *Service) withCandidateAdminContext(r *http.Request) *http.Request {
+	s.mu.Lock()
+	var selected *InternalAdminRecord
+	for _, adm := range s.adminsByID {
+		if adm != nil && adm.Status == "active" && (adm.AdminRole == rbac.AdminRoleSuper || adm.AdminRole == rbac.AdminRoleTech || adm.AdminRole == rbac.AdminRoleOps) {
+			if selected == nil || adm.AdminRole == rbac.AdminRoleSuper || adm.AdminID < selected.AdminID {
+				selected = adm
+			}
+		}
+	}
+	now := s.Now()
+	if selected == nil {
+		s.mu.Unlock()
+		return r
+	}
+	sessionID := "candidate-smoke-session-" + selected.AdminID
+	s.sessionsByID[sessionID] = &AdminSessionRecord{
+		SessionID:   sessionID,
+		AdminID:     selected.AdminID,
+		AdminRole:   selected.AdminRole,
+		IPAddress:   "127.0.0.1",
+		VPNVerified: true,
+		MFAVerified: true,
+		CreatedAt:   now,
+		ExpiresAt:   now.Add(AdminSessionTTL),
+	}
+	adminID := selected.AdminID
+	adminRole := selected.AdminRole
+	s.mu.Unlock()
+
+	ctx := WithTrustedVPNTransport(r.Context(), "127.0.0.1")
+	ctx = WithAdminActor(ctx, AdminActorContext{
+		SessionID:   sessionID,
+		AdminID:     adminID,
+		AdminRole:   adminRole,
+		VPNVerified: true,
+		MFAVerified: true,
+		IPAddress:   "127.0.0.1",
+	})
+	return r.WithContext(ctx)
+}
+
+// NewCandidateSystemConfigHandler mounts the real ConnectRPC SystemConfigService handler on s,
+// enforcing Bearer authorization via authorizeBearer and binding an active admin session context.
+func (s *Service) NewCandidateSystemConfigHandler(authorizeBearer func(r *http.Request) bool) (string, http.Handler) {
+	path, connectHandler := adminv1connect.NewSystemConfigServiceHandler(s)
+	return path, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if authorizeBearer != nil && !authorizeBearer(r) {
+			w.WriteHeader(http.StatusForbidden)
+			_, _ = w.Write([]byte(`{"error":"forbidden"}`))
+			return
+		}
+		connectHandler.ServeHTTP(w, s.withCandidateAdminContext(r))
+	})
+}
+
+// NewCandidateAuditIntegrityHandler mounts GET /admin/v1/audit-integrity backed by s.VerifyAuditLogSequenceIntegrity()
+// and cryptographic hash-chain verification across s.auditLogs.
+func (s *Service) NewCandidateAuditIntegrityHandler(authorizeBearer func(r *http.Request) bool) (string, http.Handler) {
+	return "/admin/v1/audit-integrity", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if authorizeBearer != nil && !authorizeBearer(r) {
+			w.WriteHeader(http.StatusForbidden)
+			_, _ = w.Write([]byte(`{"error":"forbidden"}`))
+			return
+		}
+		res, verifyErr := s.VerifyAuditLogSequenceIntegrity()
+
+		s.mu.Lock()
+		totalEntries := int64(len(s.auditLogs))
+		readOnlyLocked := s.auditReadOnlyLocked
+		hashChainOK := totalEntries > 0
+		prevHash := "GENESIS"
+		for _, entry := range s.auditLogs {
+			if entry.SequenceNumber <= 0 || strings.TrimSpace(entry.EntryHash) == "" {
+				hashChainOK = false
+				break
+			}
+			expectedHash := hashAdminPayload(
+				fmt.Sprintf("%d", entry.SequenceNumber),
+				prevHash,
+				entry.AuditID,
+				entry.AdminID,
+				entry.Action,
+				entry.TargetID,
+				entry.Reason,
+			)
+			if entry.EntryHash != expectedHash {
+				hashChainOK = false
+				break
+			}
+			prevHash = entry.EntryHash
+		}
+		s.mu.Unlock()
+
+		intact := verifyErr == nil &&
+			res.Intact &&
+			!res.ReadOnlyLockApplied &&
+			!readOnlyLocked &&
+			hashChainOK &&
+			totalEntries > 0 &&
+			int64(res.CheckedEntries) == totalEntries
+
+		resp := AuditIntegrityProbeResponse{
+			AuditSequenceIntact: &intact,
+			CheckedEntriesCount: int64(res.CheckedEntries),
+			MissingSequenceAt:   res.MissingSequenceAt,
+			ReadOnlyLockApplied: res.ReadOnlyLockApplied || readOnlyLocked,
+			HashChainVerified:   hashChainOK,
+		}
+		if verifyErr != nil {
+			resp.FailureReason = verifyErr.Error()
+		} else if !hashChainOK {
+			resp.FailureReason = "audit log entry hash chain mismatch or unsequenced/empty audit log"
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(resp)
+	})
 }
 
 // ExecuteBlueGreenReleaseSmokeRehearsal evaluates a candidate deployment slot against the mandatory
@@ -1314,11 +1471,27 @@ func parseJSONExactInt64(raw json.RawMessage) (int64, bool) {
 	if strings.HasPrefix(trimmed, `"`) && strings.HasSuffix(trimmed, `"`) && len(trimmed) >= 2 {
 		trimmed = strings.TrimSpace(trimmed[1 : len(trimmed)-1])
 	}
-	v, err := strconv.ParseInt(trimmed, 10, 64)
-	if err != nil {
-		return 0, false
+	if v, err := strconv.ParseInt(trimmed, 10, 64); err == nil {
+		return v, true
 	}
-	return v, true
+	if strings.Contains(trimmed, ".") {
+		parts := strings.SplitN(trimmed, ".", 2)
+		if len(parts) == 2 && parts[0] != "" && parts[1] != "" {
+			allZeros := true
+			for i := 0; i < len(parts[1]); i++ {
+				if parts[1][i] != '0' {
+					allZeros = false
+					break
+				}
+			}
+			if allZeros {
+				if v, err := strconv.ParseInt(parts[0], 10, 64); err == nil {
+					return v, true
+				}
+			}
+		}
+	}
+	return 0, false
 }
 
 // ExecuteLiveBlueGreenReleaseSmokeRehearsal probes a live disposable candidate HTTP server (/healthz, /readyz, and either /smoke or real API routes),
@@ -1573,15 +1746,21 @@ func (s *Service) ExecuteLiveBlueGreenReleaseSmokeRehearsal(
 														UnknownRequiredComponentsCount int32  `json:"unknownRequiredComponentsCount"`
 														NetProfit                      *struct {
 															CurrencyCode string `json:"currencyCode"`
+															Currency     string `json:"currency"`
 															Amount       string `json:"amount"`
 														} `json:"netProfit"`
 													} `json:"snapshot"`
 												}
 												if err := json.Unmarshal(rawProfit, &profitBody); err == nil && profitBody.Snapshot != nil {
+													curr := strings.TrimSpace(profitBody.Snapshot.NetProfit.CurrencyCode)
+													if curr == "" && profitBody.Snapshot.NetProfit != nil {
+														curr = strings.TrimSpace(profitBody.Snapshot.NetProfit.Currency)
+													}
 													if profitBody.Snapshot.WorkspaceID == matchedWS &&
 														!profitBody.Snapshot.IsIncomplete &&
 														profitBody.Snapshot.UnknownRequiredComponentsCount == 0 &&
-														profitBody.Snapshot.NetProfit != nil {
+														profitBody.Snapshot.NetProfit != nil &&
+														curr != "" {
 														if dec, err := tenantdb.ParseExactDecimal(strings.TrimSpace(profitBody.Snapshot.NetProfit.Amount)); err == nil {
 															num := dec.ToPgNumeric()
 															if num.Valid && num.Int != nil && num.Int.IsInt64() {
@@ -1645,7 +1824,9 @@ func (s *Service) ExecuteLiveBlueGreenReleaseSmokeRehearsal(
 									}
 								}
 
-								// (f) Probe SystemConfigService/GetDashboard to observe actual candidate audit sequence and maintenance state.
+								// (f) Probe SystemConfigService/GetDashboard and /admin/v1/audit-integrity to observe actual candidate
+								// maintenance state, kill switches, and verified audit sequence / hash-chain integrity.
+								// Missing or null auditSequenceIntact NEVER defaults to true.
 								if diagOK && profitObserved && creditsObserved {
 									if sysReq, err := http.NewRequestWithContext(
 										ctx,
@@ -1669,15 +1850,44 @@ func (s *Service) ExecuteLiveBlueGreenReleaseSmokeRehearsal(
 												}
 												if err := json.Unmarshal(rawSys, &sysBody); err == nil {
 													auditCount, hasCount := parseJSONExactInt64(sysBody.AuditLogEntriesCount)
-													seqIntact := sysBody.AuditSequenceIntact == nil || *sysBody.AuditSequenceIntact
-													if !sysBody.MaintenanceMode && sysBody.ActiveKillSwitchesCount == 0 && hasCount && auditCount > 0 && seqIntact {
-														probe.SmokeAuditSequenceIntact = true
-														auditObserved = true
+													if !sysBody.MaintenanceMode && sysBody.ActiveKillSwitchesCount == 0 && hasCount && auditCount > 0 {
+														seqIntact := false
+														if sysBody.AuditSequenceIntact != nil && !*sysBody.AuditSequenceIntact {
+															seqIntact = false
+														} else if integReq, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+"/admin/v1/audit-integrity", nil); err == nil {
+															integReq.Header.Set("Authorization", "Bearer "+authToken)
+															integReq.Header.Set("x-workspace-id", matchedWS)
+															if integResp, err := client.Do(integReq); err == nil {
+																rawInteg, _ := io.ReadAll(integResp.Body)
+																_ = integResp.Body.Close()
+																switch integResp.StatusCode {
+																case http.StatusOK:
+																	var integBody AuditIntegrityProbeResponse
+																	if err := json.Unmarshal(rawInteg, &integBody); err == nil {
+																		if integBody.AuditSequenceIntact != nil &&
+																			*integBody.AuditSequenceIntact &&
+																			!integBody.ReadOnlyLockApplied &&
+																			integBody.CheckedEntriesCount == auditCount &&
+																			(sysBody.AuditSequenceIntact == nil || *sysBody.AuditSequenceIntact) {
+																			seqIntact = true
+																		}
+																	}
+																case http.StatusNotFound:
+																	if sysBody.AuditSequenceIntact != nil && *sysBody.AuditSequenceIntact {
+																		seqIntact = true
+																	}
+																}
+															}
+														}
+														if seqIntact {
+															probe.SmokeAuditSequenceIntact = true
+															auditObserved = true
+														}
 													}
 												}
 											}
 											if !auditObserved && probe.LiveSmokeMetricsUnobservedReason == "" {
-												probe.LiveSmokeMetricsUnobservedReason = fmt.Sprintf("SystemConfigService/GetDashboard did not confirm intact non-empty audit sequence on candidate (HTTP %d)", sysResp.StatusCode)
+												probe.LiveSmokeMetricsUnobservedReason = fmt.Sprintf("SystemConfigService/GetDashboard and /admin/v1/audit-integrity did not confirm intact non-empty audit sequence on candidate (HTTP %d)", sysResp.StatusCode)
 											}
 										} else if probe.LiveSmokeMetricsUnobservedReason == "" {
 											probe.LiveSmokeMetricsUnobservedReason = fmt.Sprintf("SystemConfigService/GetDashboard request failed: %v", err)
@@ -1728,8 +1938,41 @@ func (s *Service) evaluateBlueGreenProbe(
 	}
 
 	failAndRollback := func(code, reason string) (ReleaseSmokeVerdict, error) {
+		rollbackSucceeded := true
+		rollbackErrMsg := ""
+		verifiedActiveSlot := prevSlot
+		verifiedActiveDigest := prevDigest
 		if proxyTarget != nil {
-			_ = proxyTarget.RollbackUpstream(ctx, prevSlot, prevDigest)
+			if rbErr := proxyTarget.RollbackUpstream(ctx, prevSlot, prevDigest); rbErr != nil {
+				rollbackSucceeded = false
+				rollbackErrMsg = rbErr.Error()
+				verifiedActiveSlot = ""
+				verifiedActiveDigest = ""
+				s.activeSlot = ""
+				s.activeSlotDigest = ""
+				reason = fmt.Sprintf("%s; rollback to %s (%s) failed: %v", reason, prevSlot, prevDigest, rbErr)
+			} else if verifier, ok := proxyTarget.(DisposableProxyActiveStateVerifier); ok {
+				obsSlot, obsDigest, verifyErr := verifier.VerifiedActiveUpstream(ctx)
+				if verifyErr != nil || obsSlot != prevSlot || obsDigest != prevDigest {
+					rollbackSucceeded = false
+					if verifyErr != nil {
+						rollbackErrMsg = verifyErr.Error()
+					} else {
+						rollbackErrMsg = fmt.Sprintf("post-rollback active upstream mismatch: expected %s (%s), observed %s (%s)", prevSlot, prevDigest, obsSlot, obsDigest)
+					}
+					verifiedActiveSlot = obsSlot
+					verifiedActiveDigest = obsDigest
+					s.activeSlot = obsSlot
+					s.activeSlotDigest = obsDigest
+					reason = fmt.Sprintf("%s; rollback verification failed: %s", reason, rollbackErrMsg)
+				} else {
+					s.activeSlot = prevSlot
+					s.activeSlotDigest = prevDigest
+				}
+			} else {
+				s.activeSlot = prevSlot
+				s.activeSlotDigest = prevDigest
+			}
 		}
 		verdict := ReleaseSmokeVerdict{
 			ExecutionMode:           execMode,
@@ -1738,10 +1981,12 @@ func (s *Service) evaluateBlueGreenProbe(
 			MeasuredProbeDurationMs: measuredDurationMs,
 			CandidatePromoted:       false,
 			RollbackTriggered:       true,
+			RollbackSucceeded:       rollbackSucceeded,
+			RollbackError:           rollbackErrMsg,
 			FailureCode:             code,
 			FailureReason:           reason,
-			ActiveSlot:              prevSlot,
-			ActiveSlotDigest:        prevDigest,
+			ActiveSlot:              verifiedActiveSlot,
+			ActiveSlotDigest:        verifiedActiveDigest,
 			RetainedRollbackDigest:  prevDigest,
 			EvaluatedAt:             now,
 		}
@@ -1751,8 +1996,11 @@ func (s *Service) evaluateBlueGreenProbe(
 			"failure_code":          code,
 			"candidate_slot":        probe.CandidateSlot,
 			"candidate_slot_digest": probe.CandidateImageDigest,
-			"rolled_back_to_slot":   prevSlot,
-			"rolled_back_to_digest": prevDigest,
+			"rollback_succeeded":    rollbackSucceeded,
+			"rollback_error":        rollbackErrMsg,
+			"active_slot_verified":  rollbackSucceeded,
+			"rolled_back_to_slot":   verifiedActiveSlot,
+			"rolled_back_to_digest": verifiedActiveDigest,
 		})
 		return verdict, fmt.Errorf("%w [%s]: %s", ErrReleaseSmokeFailed, code, reason)
 	}
@@ -1804,6 +2052,12 @@ func (s *Service) evaluateBlueGreenProbe(
 	if proxyTarget != nil {
 		if err := proxyTarget.SwitchUpstream(ctx, probe.CandidateSlot, probe.CandidateImageDigest); err != nil {
 			return failAndRollback("SMOKE_PROXY_SWITCH_FAILED", fmt.Sprintf("disposable proxy upstream switch failed: %v", err))
+		}
+		if verifier, ok := proxyTarget.(DisposableProxyActiveStateVerifier); ok {
+			obsSlot, obsDigest, verifyErr := verifier.VerifiedActiveUpstream(ctx)
+			if verifyErr != nil || obsSlot != probe.CandidateSlot || obsDigest != probe.CandidateImageDigest {
+				return failAndRollback("SMOKE_PROXY_SWITCH_UNVERIFIED", fmt.Sprintf("post-switch proxy active upstream verification failed (expected %s/%s, observed %s/%s, err=%v)", probe.CandidateSlot, probe.CandidateImageDigest, obsSlot, obsDigest, verifyErr))
+			}
 		}
 		proxySwitched = true
 		reason = "DISPOSABLE_TARGET_VERIFIED: live candidate HTTP probes passed and disposable reverse proxy upstream switched."

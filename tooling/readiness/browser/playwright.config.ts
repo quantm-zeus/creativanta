@@ -85,14 +85,14 @@ export default defineConfig({
       command: `PORT=${WEB_PORT} HOST=127.0.0.1 node apps/web/build/index.js`,
       cwd: path.resolve(__dirname, '../../..'),
       port: Number(WEB_PORT),
-      reuseExistingServer: true,
+      reuseExistingServer: false,
       timeout: 15000,
     },
     {
       command: `PORT=${ADMIN_PORT} HOST=127.0.0.1 node apps/admin/build/index.js`,
       cwd: path.resolve(__dirname, '../../..'),
       port: Number(ADMIN_PORT),
-      reuseExistingServer: true,
+      reuseExistingServer: false,
       timeout: 15000,
     }
   ],
