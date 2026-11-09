@@ -324,6 +324,7 @@ class DeveloperStateNotifier extends ChangeNotifier {
   final List<WebhookSubscriptionItem> _webhooks = [];
   int _monthRequests = 0;
   double _billableAICredits = 0.0;
+  int _resetEpoch = 0;
 
   DeveloperStateNotifier({
     required this.workspaceId,
@@ -333,6 +334,7 @@ class DeveloperStateNotifier extends ChangeNotifier {
 
   bool get isBackendWired => rpcCaller != null;
   String get tier => _tier;
+  int get resetEpoch => _resetEpoch;
   List<ApiKeyItem> get keys => List.unmodifiable(_keys);
   List<WebhookSubscriptionItem> get webhooks => List.unmodifiable(_webhooks);
   int get monthRequests => _monthRequests;
@@ -346,6 +348,15 @@ class DeveloperStateNotifier extends ChangeNotifier {
 
   void setTier(String newTier) {
     _tier = newTier.toLowerCase();
+    notifyListeners();
+  }
+
+  void reset() {
+    _resetEpoch += 1;
+    _keys.clear();
+    _webhooks.clear();
+    _monthRequests = 0;
+    _billableAICredits = 0.0;
     notifyListeners();
   }
 
@@ -378,19 +389,25 @@ class DeveloperStateNotifier extends ChangeNotifier {
       );
     }
 
+    final startEpoch = _resetEpoch;
     try {
       final res = await rpcCaller!(
         'creativanta.platform.v1.APIKeyService',
         'Create',
         {
-          'context': {'workspace_id': workspaceId},
-          'idempotency_key': idempotencyKey.isNotEmpty
-              ? idempotencyKey
-              : 'ak_create_${DateTime.now().millisecondsSinceEpoch}',
+          'workspace_id': workspaceId,
           'name': name,
           'scopes': scopes,
         },
       );
+
+      if (_resetEpoch != startEpoch) {
+        return const DeveloperMutationOutcome(
+          ok: false,
+          errorCode: 'SESSION_RESET',
+          message: 'Session or workspace changed during API key creation (fail-closed).',
+        );
+      }
 
       final normalized = _normalizeProto3JsonMap(res);
       final protoRes = pb.CreateResponse()
@@ -473,19 +490,24 @@ class DeveloperStateNotifier extends ChangeNotifier {
       );
     }
 
+    final startEpoch = _resetEpoch;
     try {
       final res = await rpcCaller!(
         'creativanta.platform.v1.APIKeyService',
         'Rotate',
         {
-          'context': {'workspace_id': workspaceId},
-          'idempotency_key': idempotencyKey.isNotEmpty
-              ? idempotencyKey
-              : 'ak_rotate_${DateTime.now().millisecondsSinceEpoch}',
+          'workspace_id': workspaceId,
           'api_key_id': apiKeyId,
-          'grace_period_hours': 24,
         },
       );
+
+      if (_resetEpoch != startEpoch) {
+        return const DeveloperMutationOutcome(
+          ok: false,
+          errorCode: 'SESSION_RESET',
+          message: 'Session or workspace changed during API key rotation (fail-closed).',
+        );
+      }
 
       final normalized = _normalizeProto3JsonMap(res);
       if (!normalized.containsKey('newSecretKey') &&
@@ -582,18 +604,24 @@ class DeveloperStateNotifier extends ChangeNotifier {
       );
     }
 
+    final startEpoch = _resetEpoch;
     try {
       final res = await rpcCaller!(
         'creativanta.platform.v1.APIKeyService',
         'Revoke',
         {
-          'context': {'workspace_id': workspaceId},
-          'idempotency_key': idempotencyKey.isNotEmpty
-              ? idempotencyKey
-              : 'ak_revoke_${DateTime.now().millisecondsSinceEpoch}',
+          'workspace_id': workspaceId,
           'api_key_id': apiKeyId,
         },
       );
+
+      if (_resetEpoch != startEpoch) {
+        return const DeveloperMutationOutcome(
+          ok: false,
+          errorCode: 'SESSION_RESET',
+          message: 'Session or workspace changed during API key revocation (fail-closed).',
+        );
+      }
 
       final normalized = _normalizeProto3JsonMap(res);
       final protoRes = pb.RevokeResponse()
@@ -637,19 +665,25 @@ class DeveloperStateNotifier extends ChangeNotifier {
       );
     }
 
+    final startEpoch = _resetEpoch;
     try {
       final res = await rpcCaller!(
         'creativanta.platform.v1.WebhookSubscriptionService',
         'CreateWebhookSubscription',
         {
-          'context': {'workspace_id': workspaceId},
-          'idempotency_key': idempotencyKey.isNotEmpty
-              ? idempotencyKey
-              : 'wh_create_${DateTime.now().millisecondsSinceEpoch}',
+          'workspace_id': workspaceId,
           'target_url': targetUrl,
           'event_types': eventTypes,
         },
       );
+
+      if (_resetEpoch != startEpoch) {
+        return const DeveloperMutationOutcome(
+          ok: false,
+          errorCode: 'SESSION_RESET',
+          message: 'Session or workspace changed during webhook subscription creation (fail-closed).',
+        );
+      }
 
       final normalized = _normalizeProto3JsonMap(res);
       final protoRes = pb.CreateWebhookSubscriptionResponse()

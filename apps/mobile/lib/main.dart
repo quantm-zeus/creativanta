@@ -57,10 +57,17 @@ class CreativantaApp extends StatefulWidget {
 }
 
 class _CreativantaAppState extends State<CreativantaApp> {
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
   late final AuthProviderAdapter _adapter;
   late final bool _ownedAdapter;
   StreamSubscription<AuthStatus>? _statusSubscription;
   AuthStatus _status = AuthStatus.unconfigured;
+
+  void _popPushedRoutesOnAuthBoundary(AuthStatus nextStatus) {
+    if (nextStatus != AuthStatus.authenticated) {
+      _navigatorKey.currentState?.popUntil((route) => route.isFirst);
+    }
+  }
 
   @override
   void initState() {
@@ -82,6 +89,7 @@ class _CreativantaAppState extends State<CreativantaApp> {
     _status = _adapter.currentStatus;
     _statusSubscription = _adapter.statusStream.listen((status) {
       if (mounted) {
+        _popPushedRoutesOnAuthBoundary(status);
         setState(() {
           _status = status;
         });
@@ -103,6 +111,7 @@ class _CreativantaAppState extends State<CreativantaApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: _navigatorKey,
       title: 'Creativanta Go',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
@@ -158,6 +167,7 @@ class _CreativantaAppState extends State<CreativantaApp> {
             },
             onSignOut: () {
               if (mounted) {
+                _popPushedRoutesOnAuthBoundary(_adapter.currentStatus);
                 setState(() {
                   _status = _adapter.currentStatus;
                 });

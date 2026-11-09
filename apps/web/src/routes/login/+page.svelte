@@ -13,7 +13,14 @@
   let isSubmitting = $state(false);
   let clerkContainer = $state<HTMLDivElement | null>(null);
 
-  let redirectTarget = $derived(sanitizeRedirectTarget($page.url.searchParams.get('redirect'), '/workspaces'));
+  let redirectTarget = $derived(
+    sanitizeRedirectTarget(
+      $page.url.searchParams.get('redirect') ??
+        $page.url.searchParams.get('redirectTo') ??
+        $page.url.searchParams.get('redirect_url'),
+      '/workspaces'
+    )
+  );
 
   onMount(async () => {
     // If Clerk is configured and mounted component is available

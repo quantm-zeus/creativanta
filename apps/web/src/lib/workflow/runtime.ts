@@ -846,6 +846,7 @@ export interface WorkflowEditorSessionSnapshot {
   edges: WorkflowEdge[];
   error: string | null;
   isPersisting: boolean;
+  isReverifying: boolean;
 }
 
 export interface WorkflowEditorContextInput {
@@ -862,9 +863,10 @@ export interface WorkflowEditorContextInput {
  *
  * Guarantees:
  * 1. Never seeds a hardcoded sample graph or synthetic `version = 3` before or after a failed `Get`.
- * 2. Blocks `save()` and `setStatus()` whenever `loadState !== 'loaded'` or `version === null`.
+ * 2. Blocks `save()` and `setStatus()` whenever `loadState !== 'loaded'`, `isReverifying === true`, or `version === null`.
  * 3. Re-synchronizes when delayed auth/workspace discovery resolves or when `(userId, workspaceId, workflowId)` changes.
- * 4. Uses a monotonic request epoch to discard stale in-flight `Get`/`Update`/`Activate` responses after a workspace or user switch.
+ * 4. Preserves unsaved draft edits during same-context re-discovery while locking mutations, and purges draft immediately on tenant/user change, logout, or membership revocation (F5).
+ * 5. Uses a monotonic request epoch to discard stale in-flight `Get`/`Update`/`Activate` responses after a workspace or user switch.
  */
 export function createWorkflowEditorSession(initialWorkflowId: string) {
   let state: WorkflowEditorSessionSnapshot = {
@@ -880,7 +882,8 @@ export function createWorkflowEditorSession(initialWorkflowId: string) {
     nodes: [],
     edges: [],
     error: null,
-    isPersisting: false
+    isPersisting: false,
+    isReverifying: false
   };
 
   let loadEpoch = 0;
@@ -921,10 +924,36 @@ export function createWorkflowEditorSession(initialWorkflowId: string) {
     const targetWorkflowId = String(ctx.workflowId ?? state.workflowId ?? '').trim();
     const targetUserId = String(ctx.userId ?? '').trim() || null;
     const targetWorkspaceId = String(ctx.workspaceId ?? '').trim() || null;
+    const isAuthenticated = ctx.authState === undefined || ctx.authState === 'authenticated';
+
+    const hasLoadedWorkflowForSameSubject =
+      state.loadedContextKey !== null &&
+      state.version !== null &&
+      isAuthenticated &&
+      Boolean(targetUserId) &&
+      targetUserId === state.userId &&
+      Boolean(targetWorkflowId) &&
+      targetWorkflowId === state.workflowId &&
+      (targetWorkspaceId === null || targetWorkspaceId === state.workspaceId);
+
+    if (ctx.isDiscoveryLoading === true && hasLoadedWorkflowForSameSubject) {
+      loadEpoch += 1;
+      state = {
+        ...state,
+        isReverifying: true,
+        isPersisting: false,
+        error: null
+      };
+      emit();
+      return {
+        ok: false,
+        loadState: state.loadState
+      };
+    }
 
     if (
       ctx.isDiscoveryLoading === true ||
-      (ctx.authState !== undefined && ctx.authState !== 'authenticated') ||
+      !isAuthenticated ||
       !targetUserId ||
       !targetWorkspaceId ||
       !targetWorkflowId
@@ -943,7 +972,8 @@ export function createWorkflowEditorSession(initialWorkflowId: string) {
         nodes: [],
         edges: [],
         error: null,
-        isPersisting: false
+        isPersisting: false,
+        isReverifying: false
       };
       emit();
       return {
@@ -953,7 +983,21 @@ export function createWorkflowEditorSession(initialWorkflowId: string) {
     }
 
     const contextKey = `${targetUserId}:${targetWorkspaceId}:${targetWorkflowId}`;
-    if (!ctx.force && state.loadState === 'loaded' && state.loadedContextKey === contextKey) {
+    if (
+      !ctx.force &&
+      state.loadedContextKey === contextKey &&
+      state.version !== null &&
+      (state.loadState === 'loaded' || state.isReverifying)
+    ) {
+      if (state.loadState !== 'loaded' || state.isReverifying || state.error !== null) {
+        state = {
+          ...state,
+          loadState: 'loaded',
+          isReverifying: false,
+          error: null
+        };
+        emit();
+      }
       return {
         ok: true,
         loadState: 'loaded'
@@ -974,7 +1018,8 @@ export function createWorkflowEditorSession(initialWorkflowId: string) {
       nodes: [],
       edges: [],
       error: null,
-      isPersisting: false
+      isPersisting: false,
+      isReverifying: false
     };
     emit();
 
@@ -1015,7 +1060,8 @@ export function createWorkflowEditorSession(initialWorkflowId: string) {
         nodes: [],
         edges: [],
         error: errMessage,
-        isPersisting: false
+        isPersisting: false,
+        isReverifying: false
       };
       emit();
       return {
@@ -1038,7 +1084,8 @@ export function createWorkflowEditorSession(initialWorkflowId: string) {
       nodes: [...res.workflow.graph.nodes],
       edges: [...res.workflow.graph.edges],
       error: null,
-      isPersisting: false
+      isPersisting: false,
+      isReverifying: false
     };
     emit();
     return {
@@ -1048,7 +1095,7 @@ export function createWorkflowEditorSession(initialWorkflowId: string) {
   }
 
   function setMeta(meta: { title?: string; description?: string }) {
-    if (state.loadState !== 'loaded') return;
+    if (state.loadState !== 'loaded' || state.isReverifying) return;
     state = {
       ...state,
       title: meta.title !== undefined ? meta.title : state.title,
@@ -1058,7 +1105,7 @@ export function createWorkflowEditorSession(initialWorkflowId: string) {
   }
 
   function setGraph(graph: { nodes: WorkflowNode[]; edges: WorkflowEdge[] }) {
-    if (state.loadState !== 'loaded') return;
+    if (state.loadState !== 'loaded' || state.isReverifying) return;
     state = {
       ...state,
       nodes: [...graph.nodes],
@@ -1070,6 +1117,7 @@ export function createWorkflowEditorSession(initialWorkflowId: string) {
   async function save(options: CanonicalRpcOptions = {}): Promise<SaveWorkflowRemoteResult> {
     if (
       state.loadState !== 'loaded' ||
+      state.isReverifying ||
       state.version === null ||
       !state.loadedContextKey ||
       !state.workspaceId ||
@@ -1077,8 +1125,9 @@ export function createWorkflowEditorSession(initialWorkflowId: string) {
     ) {
       return {
         ok: false,
-        error:
-          'Không thể lưu workflow khi dữ liệu gốc chưa được tải thành công từ máy chủ (fail-closed).'
+        error: state.isReverifying
+          ? 'Đang xác minh lại ngữ cảnh workspace. Thao tác lưu tạm khóa để bảo vệ bản nháp hiện tại (fail-closed).'
+          : 'Không thể lưu workflow khi dữ liệu gốc chưa được tải thành công từ máy chủ (fail-closed).'
       };
     }
 
@@ -1152,6 +1201,7 @@ export function createWorkflowEditorSession(initialWorkflowId: string) {
   ): Promise<SaveWorkflowRemoteResult> {
     if (
       state.loadState !== 'loaded' ||
+      state.isReverifying ||
       state.version === null ||
       !state.loadedContextKey ||
       !state.workspaceId ||
@@ -1159,8 +1209,9 @@ export function createWorkflowEditorSession(initialWorkflowId: string) {
     ) {
       return {
         ok: false,
-        error:
-          'Không thể đổi trạng thái workflow khi dữ liệu gốc chưa được tải thành công từ máy chủ (fail-closed).'
+        error: state.isReverifying
+          ? 'Đang xác minh lại ngữ cảnh workspace. Thao tác đổi trạng thái tạm khóa để bảo vệ bản nháp hiện tại (fail-closed).'
+          : 'Không thể đổi trạng thái workflow khi dữ liệu gốc chưa được tải thành công từ máy chủ (fail-closed).'
       };
     }
 

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onDestroy } from 'svelte';
 	import {
 		MOTION_STYLES,
 		MOTION_PRESETS,
@@ -7,7 +8,7 @@
 		type MotionStyleOption,
 		type MotionPresetOption
 	} from '$lib/production';
-	import { authStore } from '$lib/auth';
+	import { authStore, registerAuthResetHook } from '$lib/auth';
 
 	interface StudioImage {
 		id: string;
@@ -59,7 +60,32 @@
 		quoteId: string;
 		quotedCredits: string;
 		quoteExpiresAt?: string;
+		userId?: string;
+		workspaceId?: string;
 	} | null = null;
+	let lastSessionKey = '';
+
+	const unregisterResetHook = registerAuthResetHook(() => {
+		pendingServerQuote = null;
+		validationError = '';
+		successMessage = '';
+	});
+
+	onDestroy(() => {
+		unregisterResetHook();
+	});
+
+	$: currentSessionKey =
+		$authStore.state === 'authenticated' && $authStore.user?.id && $authStore.activeWorkspace?.id
+			? `${$authStore.user.id}::${$authStore.activeWorkspace.id}`
+			: '';
+
+	$: {
+		if (!currentSessionKey || (lastSessionKey && lastSessionKey !== currentSessionKey)) {
+			pendingServerQuote = null;
+		}
+		lastSessionKey = currentSessionKey;
+	}
 
 	$: totalCalculatedDuration = images.reduce((sum, img) => sum + img.durationSeconds, 0);
 
@@ -140,6 +166,10 @@
 				aspectRatio: '9:16',
 				selectedTransitionId: transitionType,
 				customPrompt: `${selectedPresetId} (${qualityTier}, ${durationSeconds}s, loop=${isLoop}, bgm=${attachBgm})`,
+				qualityTier,
+				isLoop,
+				durationSeconds,
+				attachBgm,
 				quoteCredits,
 				availableBalance: userBalance,
 				requirePreflightQuote: true
@@ -149,7 +179,9 @@
 				pendingServerQuote = {
 					quoteId: res.quoteId,
 					quotedCredits: res.quotedCredits,
-					quoteExpiresAt: res.quoteExpiresAt
+					quoteExpiresAt: res.quoteExpiresAt,
+					userId: $authStore.user?.id,
+					workspaceId: $authStore.activeWorkspace?.id
 				};
 				validationError =
 					res.error ||
@@ -173,6 +205,15 @@
 
 	async function confirmServerQuoteAndGenerate() {
 		if (!pendingServerQuote) return;
+		if (
+			(pendingServerQuote.userId && pendingServerQuote.userId !== $authStore.user?.id) ||
+			(pendingServerQuote.workspaceId &&
+				pendingServerQuote.workspaceId !== $authStore.activeWorkspace?.id)
+		) {
+			pendingServerQuote = null;
+			validationError = 'Ngữ cảnh phiên hoặc workspace đã thay đổi. Vui lòng lấy báo giá mới (fail-closed).';
+			return;
+		}
 		const confirmedNum = Number(pendingServerQuote.quotedCredits);
 		if (!Number.isFinite(confirmedNum) || userBalance < confirmedNum) {
 			validationError = 'Số dư credits không đủ cho báo giá máy chủ';
@@ -192,9 +233,14 @@
 				aspectRatio: '9:16',
 				selectedTransitionId: transitionType,
 				customPrompt: `${selectedPresetId} (${qualityTier}, ${durationSeconds}s, loop=${isLoop}, bgm=${attachBgm})`,
+				qualityTier,
+				isLoop,
+				durationSeconds,
+				attachBgm,
 				quoteCredits: confirmedNum,
 				availableBalance: userBalance,
 				quoteId: activePending.quoteId,
+				quoteExpiresAt: activePending.quoteExpiresAt,
 				confirmedCredits: activePending.quotedCredits,
 				requirePreflightQuote: false
 			});

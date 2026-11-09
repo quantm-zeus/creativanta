@@ -32,6 +32,7 @@
   let saveNotification = $state<string | null>(null);
   let errorNotification = $state<string | null>(null);
   let isPersisting = $state(false);
+  let isReverifying = $state(false);
 
   const unsubscribeSession = editorSession.subscribe((snap) => {
     workflowId = snap.workflowId;
@@ -44,12 +45,17 @@
     nodes = snap.nodes;
     edges = snap.edges;
     isPersisting = snap.isPersisting;
+    isReverifying = snap.isReverifying;
     if (snap.nodes.length > 0 && !snap.nodes.some((n) => n.node_id === selectedNodeId)) {
       selectedNodeId = snap.nodes[0].node_id;
     } else if (snap.nodes.length === 0) {
       selectedNodeId = '';
     }
   });
+
+  function syncGraphToSession() {
+    editorSession.setGraph({ nodes, edges });
+  }
 
   onDestroy(() => {
     unsubscribeSession();
@@ -130,7 +136,7 @@
   }
 
   function addNode(type: NodeType) {
-    if (loadState !== 'loaded') return;
+    if (loadState !== 'loaded' || isReverifying) return;
     const id = `node-${type.slice(0, 4)}-${Date.now().toString().slice(-4)}`;
     const newNode: WorkflowNode = {
       node_id: id,
@@ -165,7 +171,7 @@
   }
 
   function deleteNode(nodeId: string) {
-    if (loadState !== 'loaded') return;
+    if (loadState !== 'loaded' || isReverifying) return;
     if (nodes.length <= 2) {
       alert('A workflow must maintain at least one trigger and one terminal node.');
       return;
@@ -181,7 +187,7 @@
   }
 
   function runDryRunSimulation() {
-    if (loadState !== 'loaded') return;
+    if (loadState !== 'loaded' || isReverifying) return;
     // Execute simulation of current workflow graph with zero side effects
     simulationReport = {
       success: validation.valid,
@@ -201,6 +207,12 @@
   async function saveWorkflow() {
     errorNotification = null;
     saveNotification = null;
+
+    if (isReverifying) {
+      errorNotification =
+        'Đang xác minh lại ngữ cảnh workspace, vui lòng đợi hoàn tất trước khi lưu (fail-closed).';
+      return;
+    }
 
     if (loadState !== 'loaded' || version === null) {
       errorNotification =
@@ -232,6 +244,12 @@
     errorNotification = null;
     saveNotification = null;
 
+    if (isReverifying) {
+      errorNotification =
+        'Đang xác minh lại ngữ cảnh workspace, vui lòng đợi hoàn tất trước khi đổi trạng thái (fail-closed).';
+      return;
+    }
+
     if (loadState !== 'loaded' || version === null) {
       errorNotification =
         loadError ||
@@ -261,7 +279,7 @@
   }
 
   function exportWorkflow() {
-    if (loadState !== 'loaded' || nodes.length === 0 || version === null) return;
+    if (loadState !== 'loaded' || isReverifying || nodes.length === 0 || version === null) return;
     const payload = {
       schema_version: 1,
       title,
@@ -293,7 +311,8 @@
       <input
         type="text"
         bind:value={title}
-        disabled={loadState !== 'loaded' || isPersisting}
+        oninput={() => editorSession.setMeta({ title })}
+        disabled={loadState !== 'loaded' || isPersisting || isReverifying}
         placeholder={loadState === 'loaded' ? 'Workflow title' : workflowId}
         class="bg-transparent border-b border-transparent hover:border-neutral-700 focus:border-indigo-500 px-1 py-0.5 text-sm font-semibold text-white focus:outline-none transition-colors truncate max-w-xs sm:max-w-md disabled:opacity-60"
       />
@@ -309,7 +328,7 @@
     <div class="flex items-center gap-2">
       <button
         type="button"
-        disabled={loadState !== 'loaded' || isPersisting || version === null}
+        disabled={loadState !== 'loaded' || isPersisting || isReverifying || version === null}
         onclick={toggleStatus}
         class="px-2.5 py-1 text-xs font-semibold rounded-md border capitalize transition-colors disabled:opacity-40 disabled:cursor-not-allowed {status === 'active'
           ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
@@ -322,7 +341,7 @@
 
       <button
         type="button"
-        disabled={loadState !== 'loaded' || isPersisting || nodes.length === 0}
+        disabled={loadState !== 'loaded' || isPersisting || isReverifying || nodes.length === 0}
         onclick={exportWorkflow}
         class="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-neutral-300 hover:text-white bg-neutral-800 hover:bg-neutral-700 rounded-lg transition-colors border border-neutral-700 disabled:opacity-40 disabled:cursor-not-allowed"
       >
@@ -331,7 +350,7 @@
 
       <button
         type="button"
-        disabled={loadState !== 'loaded' || isPersisting || nodes.length === 0}
+        disabled={loadState !== 'loaded' || isPersisting || isReverifying || nodes.length === 0}
         onclick={runDryRunSimulation}
         class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-indigo-300 hover:text-white bg-indigo-950/60 hover:bg-indigo-900/60 rounded-lg transition-colors border border-indigo-800/80 disabled:opacity-40 disabled:cursor-not-allowed"
       >
@@ -340,7 +359,7 @@
 
       <button
         type="button"
-        disabled={loadState !== 'loaded' || isPersisting || version === null}
+        disabled={loadState !== 'loaded' || isPersisting || isReverifying || version === null}
         onclick={saveWorkflow}
         class="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
       >
@@ -350,6 +369,12 @@
   </header>
 
   <!-- Notification Banner -->
+  {#if isReverifying}
+    <div class="bg-amber-500/10 border-b border-amber-500/20 px-4 py-1.5 text-xs font-medium text-amber-300 text-center">
+      ⏳ Đang xác minh lại ngữ cảnh workspace — các chỉnh sửa chưa lưu vẫn được giữ nguyên.
+    </div>
+  {/if}
+
   {#if saveNotification}
     <div class="bg-emerald-500/10 border-b border-emerald-500/20 px-4 py-1.5 text-xs font-medium text-emerald-300 text-center animate-fade-in">
       ✓ {saveNotification}
@@ -604,7 +629,9 @@
             id="config-node-id"
             type="text"
             bind:value={selectedNode.node_id}
-            class="w-full bg-neutral-950 border border-neutral-800 rounded px-2.5 py-1 text-xs text-neutral-200 font-mono focus:border-indigo-500 focus:outline-none"
+            oninput={syncGraphToSession}
+            disabled={isPersisting || isReverifying}
+            class="w-full bg-neutral-950 border border-neutral-800 rounded px-2.5 py-1 text-xs text-neutral-200 font-mono focus:border-indigo-500 focus:outline-none disabled:opacity-60"
           />
         </div>
 
@@ -614,7 +641,9 @@
             id="config-title"
             type="text"
             bind:value={selectedNode.title}
-            class="w-full bg-neutral-950 border border-neutral-800 rounded px-2.5 py-1 text-xs text-neutral-200 focus:border-indigo-500 focus:outline-none"
+            oninput={syncGraphToSession}
+            disabled={isPersisting || isReverifying}
+            class="w-full bg-neutral-950 border border-neutral-800 rounded px-2.5 py-1 text-xs text-neutral-200 focus:border-indigo-500 focus:outline-none disabled:opacity-60"
           />
         </div>
       </div>
@@ -628,8 +657,10 @@
               id="config-event-type"
               type="text"
               bind:value={selectedNode.trigger_config!.event_type}
+              oninput={syncGraphToSession}
+              disabled={isPersisting || isReverifying}
               placeholder="e.g. order.placed"
-              class="w-full bg-neutral-950 border border-neutral-800 rounded px-2.5 py-1 text-xs text-neutral-200 font-mono focus:border-indigo-500 focus:outline-none"
+              class="w-full bg-neutral-950 border border-neutral-800 rounded px-2.5 py-1 text-xs text-neutral-200 font-mono focus:border-indigo-500 focus:outline-none disabled:opacity-60"
             />
           </div>
 
@@ -640,8 +671,10 @@
               id="config-cond-field"
               type="text"
               bind:value={selectedNode.condition_config!.field}
+              oninput={syncGraphToSession}
+              disabled={isPersisting || isReverifying}
               placeholder="e.g. customer.is_vip"
-              class="w-full bg-neutral-950 border border-neutral-800 rounded px-2.5 py-1 text-xs text-neutral-200 font-mono focus:border-indigo-500 focus:outline-none"
+              class="w-full bg-neutral-950 border border-neutral-800 rounded px-2.5 py-1 text-xs text-neutral-200 font-mono focus:border-indigo-500 focus:outline-none disabled:opacity-60"
             />
           </div>
           <div>
@@ -649,7 +682,9 @@
             <select
               id="config-cond-operator"
               bind:value={selectedNode.condition_config!.operator}
-              class="w-full bg-neutral-950 border border-neutral-800 rounded px-2.5 py-1 text-xs text-neutral-200 focus:border-indigo-500 focus:outline-none"
+              onchange={syncGraphToSession}
+              disabled={isPersisting || isReverifying}
+              class="w-full bg-neutral-950 border border-neutral-800 rounded px-2.5 py-1 text-xs text-neutral-200 focus:border-indigo-500 focus:outline-none disabled:opacity-60"
             >
               <option value="eq">Equals (eq)</option>
               <option value="neq">Not Equals (neq)</option>
@@ -664,8 +699,10 @@
               id="config-cond-val"
               type="text"
               bind:value={selectedNode.condition_config!.value_json}
+              oninput={syncGraphToSession}
+              disabled={isPersisting || isReverifying}
               placeholder="true"
-              class="w-full bg-neutral-950 border border-neutral-800 rounded px-2.5 py-1 text-xs text-neutral-200 font-mono focus:border-indigo-500 focus:outline-none"
+              class="w-full bg-neutral-950 border border-neutral-800 rounded px-2.5 py-1 text-xs text-neutral-200 font-mono focus:border-indigo-500 focus:outline-none disabled:opacity-60"
             />
           </div>
 
@@ -676,8 +713,10 @@
               id="config-rpc-name"
               type="text"
               bind:value={selectedNode.action_config!.rpc_name}
+              oninput={syncGraphToSession}
+              disabled={isPersisting || isReverifying}
               placeholder="creativanta.commerce.v1.InventoryService/ReserveStock"
-              class="w-full bg-neutral-950 border border-neutral-800 rounded px-2.5 py-1 text-xs text-neutral-200 font-mono focus:border-indigo-500 focus:outline-none"
+              class="w-full bg-neutral-950 border border-neutral-800 rounded px-2.5 py-1 text-xs text-neutral-200 font-mono focus:border-indigo-500 focus:outline-none disabled:opacity-60"
             />
           </div>
           <div>
@@ -686,7 +725,9 @@
               id="config-input-json"
               rows="3"
               bind:value={selectedNode.action_config!.input_json}
-              class="w-full bg-neutral-950 border border-neutral-800 rounded px-2.5 py-1 text-xs text-neutral-200 font-mono focus:border-indigo-500 focus:outline-none"
+              oninput={syncGraphToSession}
+              disabled={isPersisting || isReverifying}
+              class="w-full bg-neutral-950 border border-neutral-800 rounded px-2.5 py-1 text-xs text-neutral-200 font-mono focus:border-indigo-500 focus:outline-none disabled:opacity-60"
             ></textarea>
           </div>
 
@@ -697,13 +738,15 @@
               id="config-approvers"
               type="text"
               value={selectedNode.approval_config!.approver_ids.join(', ')}
+              disabled={isPersisting || isReverifying}
               onchange={(e) => {
                 selectedNode.approval_config!.approver_ids = (e.currentTarget.value || '')
                   .split(',')
                   .map((s) => s.trim())
                   .filter(Boolean);
+                syncGraphToSession();
               }}
-              class="w-full bg-neutral-950 border border-neutral-800 rounded px-2.5 py-1 text-xs text-neutral-200 font-mono focus:border-indigo-500 focus:outline-none"
+              class="w-full bg-neutral-950 border border-neutral-800 rounded px-2.5 py-1 text-xs text-neutral-200 font-mono focus:border-indigo-500 focus:outline-none disabled:opacity-60"
             />
           </div>
           <div>
@@ -711,7 +754,9 @@
             <select
               id="config-auto-action"
               bind:value={selectedNode.approval_config!.auto_action_on_timeout}
-              class="w-full bg-neutral-950 border border-neutral-800 rounded px-2.5 py-1 text-xs text-neutral-200 focus:border-indigo-500 focus:outline-none"
+              onchange={syncGraphToSession}
+              disabled={isPersisting || isReverifying}
+              class="w-full bg-neutral-950 border border-neutral-800 rounded px-2.5 py-1 text-xs text-neutral-200 focus:border-indigo-500 focus:outline-none disabled:opacity-60"
             >
               <option value="fallback">Route to Fallback</option>
               <option value="reject">Reject</option>
@@ -726,7 +771,9 @@
               id="config-wait-sec"
               type="number"
               bind:value={selectedNode.wait_config!.duration_seconds}
-              class="w-full bg-neutral-950 border border-neutral-800 rounded px-2.5 py-1 text-xs text-neutral-200 font-mono focus:border-indigo-500 focus:outline-none"
+              oninput={syncGraphToSession}
+              disabled={isPersisting || isReverifying}
+              class="w-full bg-neutral-950 border border-neutral-800 rounded px-2.5 py-1 text-xs text-neutral-200 font-mono focus:border-indigo-500 focus:outline-none disabled:opacity-60"
             />
           </div>
 
@@ -736,7 +783,9 @@
             <select
               id="config-outcome"
               bind:value={selectedNode.terminal_config!.outcome}
-              class="w-full bg-neutral-950 border border-neutral-800 rounded px-2.5 py-1 text-xs text-neutral-200 focus:border-indigo-500 focus:outline-none"
+              onchange={syncGraphToSession}
+              disabled={isPersisting || isReverifying}
+              class="w-full bg-neutral-950 border border-neutral-800 rounded px-2.5 py-1 text-xs text-neutral-200 focus:border-indigo-500 focus:outline-none disabled:opacity-60"
             >
               <option value="succeeded">Succeeded</option>
               <option value="partially_succeeded">Partially Succeeded</option>

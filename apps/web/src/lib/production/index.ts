@@ -623,9 +623,14 @@ export interface ImageToVideoGenerationInput {
 	aspectRatio: '9:16' | '16:9' | '1:1';
 	selectedTransitionId: string;
 	customPrompt?: string;
+	qualityTier?: 'draft' | 'standard' | 'premium';
+	isLoop?: boolean;
+	durationSeconds?: number;
+	attachBgm?: boolean;
 	quoteCredits: number;
 	availableBalance: number;
 	quoteId?: string;
+	quoteExpiresAt?: string;
 	confirmedCredits?: string;
 	requirePreflightQuote?: boolean;
 }
@@ -672,6 +677,10 @@ function buildImageToVideoGenerateRequest(
 					.map((i) => i.name || i.id)
 					.join(', ')}`;
 	const totalDuration = input.images.reduce((sum, img) => sum + (img.durationSeconds || 0), 0);
+	const effectiveDuration =
+		typeof input.durationSeconds === 'number' && input.durationSeconds > 0
+			? input.durationSeconds
+			: totalDuration;
 
 	return {
 		context: {
@@ -698,13 +707,13 @@ function buildImageToVideoGenerateRequest(
 				focal_point: 'center'
 			})),
 			default_motion_style: toProtoImageMotionStyle(input.selectedMotionStyleId),
-			duration_seconds: totalDuration,
-			loop_friendly: false,
-			auto_music_sync: true,
+			duration_seconds: effectiveDuration,
+			loop_friendly: Boolean(input.isLoop),
+			auto_music_sync: input.attachBgm ?? true,
 			transition_type: input.selectedTransitionId,
 			transition_duration: 0.5,
 			aspect_ratio: input.aspectRatio,
-			quality_tier: 'standard'
+			quality_tier: input.qualityTier || 'standard'
 		}
 	};
 }
@@ -852,6 +861,27 @@ export async function requestImageToVideoGenerationRemote(
 			ok: false,
 			error: 'Số dư credits không đủ'
 		};
+	}
+
+	if (consentedCreditsNum < input.quoteCredits) {
+		return {
+			ok: false,
+			requiresConfirmation: true,
+			quoteId: activeQuoteId || undefined,
+			quotedCredits: String(input.quoteCredits),
+			quoteExpiresAt: input.quoteExpiresAt,
+			error: `Mức credits xác nhận (${consentedCreditsNum} cr) thấp hơn báo giá yêu cầu (${input.quoteCredits} cr). Vui lòng xác nhận lại trước khi tiếp tục.`
+		};
+	}
+
+	if (input.quoteExpiresAt && input.quoteExpiresAt.trim().length > 0) {
+		const expMs = Date.parse(input.quoteExpiresAt.trim());
+		if (Number.isFinite(expMs) && expMs < Date.now()) {
+			return {
+				ok: false,
+				error: 'Báo giá từ máy chủ đã hết hạn. Vui lòng lấy báo giá mới trước khi tạo video (fail-closed).'
+			};
+		}
 	}
 
 	if (!activeQuoteId && input.requirePreflightQuote) {

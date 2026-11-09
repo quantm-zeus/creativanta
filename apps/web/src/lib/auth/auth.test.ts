@@ -861,5 +861,51 @@ describe('P0-03 Web User-Facing Identity & Auth Store', () => {
         unsubResetHook();
       }
     });
+
+    it('invokes registerAuthResetHook when refreshSession expires or discovery revokes activeWorkspace (T8-F4)', async () => {
+      let resetHookCalls = 0;
+      const unsubResetHook = registerAuthResetHook(() => {
+        resetHookCalls += 1;
+      });
+
+      try {
+        let currentWorkspaces: WorkspaceSummary[] = [mockWorkspaces[0]];
+        let nextToken: string | null = 'token-initial';
+
+        const dynamicClerk: ClerkBrowserInstance = {
+          ...mockClerk,
+          session: {
+            id: 'sess_dyn_1',
+            status: 'active',
+            getToken: vi.fn(async () => nextToken)
+          }
+        };
+
+        const store = createAuthStore();
+        await store.init({
+          publishableKey: 'pk_test_valid_dummy_key',
+          clerkInstance: dynamicClerk,
+          discoveryFetcher: vi.fn(async () => currentWorkspaces)
+        });
+        expect(store.getSnapshot().activeWorkspace?.id).toBe(mockWorkspaces[0].id);
+        const baselineCalls = resetHookCalls;
+
+        // 1. Re-discovery revokes membership in activeWorkspace -> reset hooks fire
+        currentWorkspaces = [mockWorkspaces[1]];
+        await store.discoverWorkspaces();
+        expect(store.getSnapshot().activeWorkspace?.id).toBe(mockWorkspaces[1].id);
+        expect(resetHookCalls).toBe(baselineCalls + 1);
+
+        // 2. Session refresh fails / returns null token -> state becomes expired and reset hooks fire
+        nextToken = null;
+        const refreshed = await store.refreshSession();
+        expect(refreshed).toBeNull();
+        expect(store.getSnapshot().state).toBe('expired');
+        expect(store.getSnapshot().activeWorkspace).toBeNull();
+        expect(resetHookCalls).toBe(baselineCalls + 2);
+      } finally {
+        unsubResetHook();
+      }
+    });
   });
 });

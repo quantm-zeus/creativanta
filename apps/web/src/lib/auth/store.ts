@@ -329,6 +329,12 @@ export function createAuthStore(): AuthStore {
         setPersistedWorkspaceId(selectedWorkspace.id);
       }
 
+      const previousWorkspaceId = get(store).activeWorkspace?.id ?? null;
+      const nextWorkspaceId = selectedWorkspace?.id ?? null;
+      if (previousWorkspaceId && previousWorkspaceId !== nextWorkspaceId) {
+        runAuthResetHooks();
+      }
+
       update((s) => ({
         ...s,
         workspaces: items,
@@ -341,6 +347,9 @@ export function createAuthStore(): AuthStore {
     } catch (err: any) {
       if (targetEpoch !== authEpoch) {
         return [];
+      }
+      if (get(store).activeWorkspace) {
+        runAuthResetHooks();
       }
       const errorMsg = err?.message || 'Lỗi khi tải danh sách workspace';
       update((s) => ({
@@ -449,6 +458,9 @@ export function createAuthStore(): AuthStore {
               try {
                 const token = await emission.session.getToken();
                 if (emissionEpoch !== authEpoch) return;
+                if (!token) {
+                  runAuthResetHooks();
+                }
                 update((s) => ({
                   ...s,
                   state: token ? 'authenticated' : 'expired',
@@ -462,6 +474,7 @@ export function createAuthStore(): AuthStore {
                 }
               } catch (err: any) {
                 if (emissionEpoch !== authEpoch) return;
+                runAuthResetHooks();
                 update((s) => ({
                   ...s,
                   state: 'expired',
@@ -476,6 +489,7 @@ export function createAuthStore(): AuthStore {
 
         // Process current Clerk state
         if (!clerk.user || !clerk.session) {
+          runAuthResetHooks();
           set({
             ...initialState,
             state: 'unauthenticated',
@@ -496,6 +510,7 @@ export function createAuthStore(): AuthStore {
         if (myEpoch !== authEpoch) return;
 
         if (!token) {
+          runAuthResetHooks();
           set({
             ...initialState,
             state: 'expired',
@@ -705,6 +720,7 @@ export function createAuthStore(): AuthStore {
       const refreshEpoch = authEpoch;
       const currentSession = activeClerk?.session;
       if (!currentSession || get(store).state === 'unauthenticated') {
+        runAuthResetHooks();
         update((s) => ({
           ...s,
           state: 'expired',
@@ -721,6 +737,7 @@ export function createAuthStore(): AuthStore {
           return null;
         }
         if (!freshToken) {
+          runAuthResetHooks();
           update((s) => ({
             ...s,
             state: 'expired',
@@ -742,6 +759,7 @@ export function createAuthStore(): AuthStore {
         if (refreshEpoch !== authEpoch || get(store).state === 'unauthenticated') {
           return null;
         }
+        runAuthResetHooks();
         update((s) => ({
           ...s,
           state: 'expired',
