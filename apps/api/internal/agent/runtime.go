@@ -255,33 +255,83 @@ func (r *Runtime) PreflightPlan(ctx context.Context, caller CallerContext, run *
 }
 
 // ExecuteNextStep executes the next pending step in an agent run while enforcing
-// delegated permissions, budget ceiling pauses, and audited handoff on partial failure.
+// atomic step lease claims/fencing, delegated permissions, budget ceiling pauses,
+// and audited handoff on partial failure.
 func (r *Runtime) ExecuteNextStep(ctx context.Context, caller CallerContext, run *AgentRun, capabilities map[string]bool, simStepFailureOrder int) error {
 	if run.CurrentState != StateExecuting {
 		return fmt.Errorf("%w: run is in state %q, cannot execute", ErrInvalidStateTransition, run.CurrentState)
 	}
 
-	// Find the next step to execute
-	var currentStep *AgentStep
-	var stepIndex int = -1
-	for i := range run.Steps {
-		if run.Steps[i].Status == StepStatusPlanning || run.Steps[i].Status == StepStatusExecuting {
-			currentStep = &run.Steps[i]
-			stepIndex = i
-			break
+	ownerID := "exec-" + NewID()
+	var (
+		workingRun  *AgentRun
+		currentStep *AgentStep
+		stepIndex   = -1
+		allDone     bool
+	)
+
+	if leaseStore, ok := r.store.(StepLeaseStore); ok && leaseStore != nil {
+		claimedRun, idx, claimed, done, claimErr := leaseStore.ClaimStepForExecution(ctx, run.WorkspaceID, run.AgentRunID, ownerID, 5*time.Minute)
+		if claimErr != nil {
+			if claimedRun != nil {
+				*run = *claimedRun
+			}
+			return claimErr
+		}
+		allDone = done
+		if claimed && claimedRun != nil && idx >= 0 && idx < len(claimedRun.Steps) {
+			workingRun = claimedRun
+			stepIndex = idx
+			currentStep = &workingRun.Steps[stepIndex]
+		} else if claimedRun != nil {
+			workingRun = claimedRun
+		}
+	} else {
+		workingRun = run
+		for i := range workingRun.Steps {
+			if workingRun.Steps[i].Status == StepStatusPlanning || workingRun.Steps[i].Status == StepStatusExecuting {
+				currentStep = &workingRun.Steps[i]
+				stepIndex = i
+				break
+			}
+		}
+		if currentStep == nil {
+			allDone = true
+		} else {
+			now := time.Now().UTC()
+			currentStep.StartedAt = &now
+			currentStep.Status = StepStatusExecuting
+			currentStep.ExecutionOwner = ownerID
+			currentStep.FencingToken++
+			if strings.TrimSpace(currentStep.OperationKey) == "" {
+				currentStep.OperationKey = fmt.Sprintf("agent_run:%s:step:%d", workingRun.AgentRunID, currentStep.StepOrder)
+			}
 		}
 	}
 
-	if currentStep == nil {
+	if allDone || currentStep == nil {
 		// All steps completed!
 		now := time.Now().UTC()
-		run.CurrentState = StateCompleted
-		run.CompletedAt = &now
-		if run.Memory != nil {
-			// Per RULE-M21-003, memory is discarded after completion
-			run.Memory.Clear()
+		if leaseStore, ok := r.store.(StepLeaseStore); ok && leaseStore != nil {
+			completedRun, _ := leaseStore.MutateRunAtomically(ctx, run.WorkspaceID, run.AgentRunID, func(stored *AgentRun) error {
+				stored.CurrentState = StateCompleted
+				stored.CompletedAt = &now
+				if stored.Memory != nil {
+					stored.Memory.Clear()
+				}
+				return nil
+			})
+			if completedRun != nil {
+				*run = *completedRun
+			}
+		} else {
+			run.CurrentState = StateCompleted
+			run.CompletedAt = &now
+			if run.Memory != nil {
+				run.Memory.Clear()
+			}
+			_ = r.store.UpdateRun(ctx, run)
 		}
-		_ = r.store.UpdateRun(ctx, run)
 		r.store.PublishEvent(ctx, DomainEvent{
 			EventType:   "agent_run.completed",
 			WorkspaceID: run.WorkspaceID,
@@ -296,39 +346,55 @@ func (r *Runtime) ExecuteNextStep(ctx context.Context, caller CallerContext, run
 	}
 
 	now := time.Now().UTC()
-	currentStep.StartedAt = &now
-	currentStep.Status = StepStatusExecuting
+	fencingToken := currentStep.FencingToken
+	syncCallerRun := func(updated *AgentRun) {
+		if updated != nil {
+			*run = *updated
+		}
+	}
 
 	// ------------------------------------------------------------------------
 	// Acceptance Target 1, F11, R3: Every step checks live delegated permissions
 	// ------------------------------------------------------------------------
 	effectiveRole := caller.WorkspaceRole
-	if strings.TrimSpace(run.CreatedBy) != "" {
-		isResumed := isResumedExecution(ctx) || run.ApprovalState == ApprovalApproved
-		initRole, active, roleErr := r.resolveInitiatorRole(ctx, run.WorkspaceID, run.CreatedBy, caller, isResumed)
+	if strings.TrimSpace(workingRun.CreatedBy) != "" {
+		isResumed := isResumedExecution(ctx) || workingRun.ApprovalState == ApprovalApproved
+		initRole, active, roleErr := r.resolveInitiatorRole(ctx, workingRun.WorkspaceID, workingRun.CreatedBy, caller, isResumed)
 		if roleErr != nil || !active || initRole == "" || !CheckPermission(initRole, "agent:execute") {
 			currentStep.Status = StepStatusFailed
 			currentStep.CompletedAt = &now
+			currentStep.LeaseExpiresAt = nil
+			currentStep.ExecutionOwner = ""
 			currentStep.ObservedOutcome = fmt.Sprintf("Permission denied: initiator [%s] workspace access was revoked or downgraded [%s]",
-				run.CreatedBy, initRole)
-			return r.HandlePartialFailure(ctx, caller, run, stepIndex, ErrPermissionDenied, caller.UserID)
+				workingRun.CreatedBy, initRole)
+			err := r.HandlePartialFailure(ctx, caller, workingRun, stepIndex, ErrPermissionDenied, caller.UserID)
+			syncCallerRun(workingRun)
+			return err
 		}
 		if currentStep.RequiredPermission != "" && !CheckPermission(initRole, currentStep.RequiredPermission) {
 			currentStep.Status = StepStatusFailed
 			currentStep.CompletedAt = &now
+			currentStep.LeaseExpiresAt = nil
+			currentStep.ExecutionOwner = ""
 			currentStep.ObservedOutcome = fmt.Sprintf("Permission denied: initiator role [%s] lacks delegated permission [%s]",
 				initRole, currentStep.RequiredPermission)
-			return r.HandlePartialFailure(ctx, caller, run, stepIndex, ErrPermissionDenied, caller.UserID)
+			err := r.HandlePartialFailure(ctx, caller, workingRun, stepIndex, ErrPermissionDenied, caller.UserID)
+			syncCallerRun(workingRun)
+			return err
 		}
 		effectiveRole = initRole
 	}
 	if currentStep.RequiredPermission != "" && !CheckPermission(effectiveRole, currentStep.RequiredPermission) {
 		currentStep.Status = StepStatusFailed
 		currentStep.CompletedAt = &now
+		currentStep.LeaseExpiresAt = nil
+		currentStep.ExecutionOwner = ""
 		currentStep.ObservedOutcome = fmt.Sprintf("Permission denied: user role [%s] lacks delegated permission [%s]",
 			effectiveRole, currentStep.RequiredPermission)
 
-		return r.HandlePartialFailure(ctx, caller, run, stepIndex, ErrPermissionDenied, caller.UserID)
+		err := r.HandlePartialFailure(ctx, caller, workingRun, stepIndex, ErrPermissionDenied, caller.UserID)
+		syncCallerRun(workingRun)
+		return err
 	}
 
 	// Check capability
@@ -336,23 +402,30 @@ func (r *Runtime) ExecuteNextStep(ctx context.Context, caller CallerContext, run
 		if supported, ok := capabilities[currentStep.RequiredCapability]; !ok || !supported {
 			currentStep.Status = StepStatusFailed
 			currentStep.CompletedAt = &now
+			currentStep.LeaseExpiresAt = nil
+			currentStep.ExecutionOwner = ""
 			currentStep.ObservedOutcome = fmt.Sprintf("Required capability [%s] is missing or unsupported in workspace",
 				currentStep.RequiredCapability)
 
-			return r.HandlePartialFailure(ctx, caller, run, stepIndex, ErrCapabilityMissing, caller.UserID)
+			err := r.HandlePartialFailure(ctx, caller, workingRun, stepIndex, ErrCapabilityMissing, caller.UserID)
+			syncCallerRun(workingRun)
+			return err
 		}
 	}
 
 	// High risk approval pause
-	if currentStep.IsHighRisk && run.ApprovalState != ApprovalApproved {
-		run.CurrentState = StateAwaitingApproval
+	if currentStep.IsHighRisk && workingRun.ApprovalState != ApprovalApproved {
+		workingRun.CurrentState = StateAwaitingApproval
 		currentStep.Status = StepStatusAwaitingApproval
-		_ = r.store.UpdateRun(ctx, run)
+		currentStep.LeaseExpiresAt = nil
+		currentStep.ExecutionOwner = ""
+		_ = r.store.UpdateRun(ctx, workingRun)
+		syncCallerRun(workingRun)
 		r.store.PublishEvent(ctx, DomainEvent{
 			EventType:   "agent_run.approval_required",
-			WorkspaceID: run.WorkspaceID,
+			WorkspaceID: workingRun.WorkspaceID,
 			Payload: map[string]any{
-				"run_id":        run.AgentRunID,
+				"run_id":        workingRun.AgentRunID,
 				"step_order":    currentStep.StepOrder,
 				"risk_action":   currentStep.Title,
 				"required_perm": currentStep.RequiredPermission,
@@ -365,7 +438,7 @@ func (r *Runtime) ExecuteNextStep(ctx context.Context, caller CallerContext, run
 	// ------------------------------------------------------------------------
 	// Acceptance Target 2: Budget ceiling pauses
 	// ------------------------------------------------------------------------
-	usedDec, err := tenantdb.ParseExactDecimal(run.CreditsUsed)
+	usedDec, err := tenantdb.ParseExactDecimal(workingRun.CreditsUsed)
 	if err != nil {
 		usedDec = tenantdb.MustParseExactDecimal("0.000000")
 	}
@@ -373,9 +446,9 @@ func (r *Runtime) ExecuteNextStep(ctx context.Context, caller CallerContext, run
 	if err != nil {
 		stepCostDec = tenantdb.MustParseExactDecimal("0.000000")
 	}
-	ceilingDec, err := tenantdb.ParseExactDecimal(run.BudgetCeiling)
+	ceilingDec, err := tenantdb.ParseExactDecimal(workingRun.BudgetCeiling)
 	if err != nil || ceilingDec.IsNegative() {
-		return fmt.Errorf("%w: invalid budget ceiling %q", ErrInvalidBudgetCeiling, run.BudgetCeiling)
+		return fmt.Errorf("%w: invalid budget ceiling %q", ErrInvalidBudgetCeiling, workingRun.BudgetCeiling)
 	}
 
 	newTotalDec, err := usedDec.Add(stepCostDec)
@@ -385,21 +458,24 @@ func (r *Runtime) ExecuteNextStep(ctx context.Context, caller CallerContext, run
 
 	// Enforce hard budget ceiling (F13: zero ceiling is NEVER treated as unlimited)
 	if newTotalDec.Cmp(ceilingDec) > 0 {
-		run.CurrentState = StateWaitingContext
+		workingRun.CurrentState = StateWaitingContext
 		currentStep.Status = StepStatusWaitingContext
+		currentStep.LeaseExpiresAt = nil
+		currentStep.ExecutionOwner = ""
 		currentStep.ObservedOutcome = fmt.Sprintf("Budget ceiling reached: step requires %s credits, cumulative %s exceeds ceiling %s. Pausing execution.",
 			currentStep.EstimatedCredits, newTotalDec.Fixed6String(), ceilingDec.Fixed6String())
 
-		_ = r.store.UpdateRun(ctx, run)
+		_ = r.store.UpdateRun(ctx, workingRun)
+		syncCallerRun(workingRun)
 		r.store.PublishEvent(ctx, DomainEvent{
 			EventType:   "agent_run.waiting_context",
-			WorkspaceID: run.WorkspaceID,
+			WorkspaceID: workingRun.WorkspaceID,
 			Payload: map[string]any{
-				"run_id":                 run.AgentRunID,
+				"run_id":                 workingRun.AgentRunID,
 				"requested_context_type": "budget_increase",
 				"prompt":                 currentStep.ObservedOutcome,
-				"credits_used":           run.CreditsUsed,
-				"budget_ceiling":         run.BudgetCeiling,
+				"credits_used":           workingRun.CreditsUsed,
+				"budget_ceiling":         workingRun.BudgetCeiling,
 			},
 			OccurredAt: now,
 		})
@@ -412,16 +488,24 @@ func (r *Runtime) ExecuteNextStep(ctx context.Context, caller CallerContext, run
 	if simStepFailureOrder > 0 && currentStep.StepOrder == simStepFailureOrder {
 		currentStep.Status = StepStatusFailed
 		currentStep.CompletedAt = &now
+		currentStep.LeaseExpiresAt = nil
+		currentStep.ExecutionOwner = ""
 		currentStep.ObservedOutcome = fmt.Sprintf("Step %d execution failed: simulated downstream service fault", currentStep.StepOrder)
-		return r.HandlePartialFailure(ctx, caller, run, stepIndex, fmt.Errorf("downstream fault at step %d", currentStep.StepOrder), caller.UserID)
+		err := r.HandlePartialFailure(ctx, caller, workingRun, stepIndex, fmt.Errorf("downstream fault at step %d", currentStep.StepOrder), caller.UserID)
+		syncCallerRun(workingRun)
+		return err
 	}
 
 	// Fail closed when no concrete StepExecutor is configured (AI-04 / R07).
 	if r.executor == nil {
 		currentStep.Status = StepStatusFailed
 		currentStep.CompletedAt = &now
+		currentStep.LeaseExpiresAt = nil
+		currentStep.ExecutionOwner = ""
 		currentStep.ObservedOutcome = ErrExecutorNotConfigured.Error()
-		return r.HandlePartialFailure(ctx, caller, run, stepIndex, ErrExecutorNotConfigured, caller.UserID)
+		err := r.HandlePartialFailure(ctx, caller, workingRun, stepIndex, ErrExecutorNotConfigured, caller.UserID)
+		syncCallerRun(workingRun)
+		return err
 	}
 
 	var remainingBudgetStr string
@@ -432,24 +516,35 @@ func (r *Runtime) ExecuteNextStep(ctx context.Context, caller CallerContext, run
 	}
 
 	execRes, err := r.executor.ExecuteStep(ctx, StepExecutionRequest{
-		WorkspaceID:            run.WorkspaceID,
-		AgentRunID:             run.AgentRunID,
-		AgentType:              run.AgentType,
+		WorkspaceID:            workingRun.WorkspaceID,
+		AgentRunID:             workingRun.AgentRunID,
+		AgentType:              workingRun.AgentType,
 		Caller:                 caller,
 		Step:                   *currentStep,
 		RemainingBudgetCredits: remainingBudgetStr,
+		OperationKey:           currentStep.OperationKey,
+		ExecutionOwner:         ownerID,
+		FencingToken:           fencingToken,
 	})
 	if err != nil {
 		currentStep.Status = StepStatusFailed
 		currentStep.CompletedAt = &now
+		currentStep.LeaseExpiresAt = nil
+		currentStep.ExecutionOwner = ""
 		currentStep.ObservedOutcome = err.Error()
-		return r.HandlePartialFailure(ctx, caller, run, stepIndex, err, caller.UserID)
+		fErr := r.HandlePartialFailure(ctx, caller, workingRun, stepIndex, err, caller.UserID)
+		syncCallerRun(workingRun)
+		return fErr
 	}
 	if execRes == nil || strings.TrimSpace(execRes.ObservedOutcome) == "" {
 		currentStep.Status = StepStatusFailed
 		currentStep.CompletedAt = &now
+		currentStep.LeaseExpiresAt = nil
+		currentStep.ExecutionOwner = ""
 		currentStep.ObservedOutcome = ErrInvalidStepOutput.Error()
-		return r.HandlePartialFailure(ctx, caller, run, stepIndex, ErrInvalidStepOutput, caller.UserID)
+		fErr := r.HandlePartialFailure(ctx, caller, workingRun, stepIndex, ErrInvalidStepOutput, caller.UserID)
+		syncCallerRun(workingRun)
+		return fErr
 	}
 
 	actualStepCostDec := stepCostDec
@@ -459,30 +554,35 @@ func (r *Runtime) ExecuteNextStep(ctx context.Context, caller CallerContext, run
 			invalidErr := fmt.Errorf("%w: invalid actual credits %q", ErrInvalidStepOutput, execRes.ActualCredits)
 			currentStep.Status = StepStatusFailed
 			currentStep.CompletedAt = &now
+			currentStep.LeaseExpiresAt = nil
+			currentStep.ExecutionOwner = ""
 			currentStep.ObservedOutcome = invalidErr.Error()
-			return r.HandlePartialFailure(ctx, caller, run, stepIndex, invalidErr, caller.UserID)
+			fErr := r.HandlePartialFailure(ctx, caller, workingRun, stepIndex, invalidErr, caller.UserID)
+			syncCallerRun(workingRun)
+			return fErr
 		}
 		actualStepCostDec = parsedActual
-		newTotalDec, err = usedDec.Add(actualStepCostDec)
-		if err != nil {
-			return fmt.Errorf("credit addition overflow: %w", err)
-		}
 	}
 
+	var createdOutputs []AgentOutput
 	for i := range execRes.Outputs {
 		out := execRes.Outputs[i]
 		if strings.TrimSpace(out.OutputType) == "" || strings.TrimSpace(out.Title) == "" {
 			invalidErr := fmt.Errorf("%w: output missing required type or title", ErrInvalidStepOutput)
 			currentStep.Status = StepStatusFailed
 			currentStep.CompletedAt = &now
+			currentStep.LeaseExpiresAt = nil
+			currentStep.ExecutionOwner = ""
 			currentStep.ObservedOutcome = invalidErr.Error()
-			return r.HandlePartialFailure(ctx, caller, run, stepIndex, invalidErr, caller.UserID)
+			fErr := r.HandlePartialFailure(ctx, caller, workingRun, stepIndex, invalidErr, caller.UserID)
+			syncCallerRun(workingRun)
+			return fErr
 		}
 		if out.OutputID == "" {
 			out.OutputID = NewID()
 		}
-		out.WorkspaceID = run.WorkspaceID
-		out.AgentRunID = run.AgentRunID
+		out.WorkspaceID = workingRun.WorkspaceID
+		out.AgentRunID = workingRun.AgentRunID
 		if out.ApprovalState == "" {
 			out.ApprovalState = ApprovalNotRequired
 		}
@@ -495,51 +595,127 @@ func (r *Runtime) ExecuteNextStep(ctx context.Context, caller CallerContext, run
 		if err := r.store.CreateOutput(ctx, out); err != nil {
 			return err
 		}
-		run.Outputs = append(run.Outputs, out)
+		createdOutputs = append(createdOutputs, out)
 	}
 
-	// Step has already executed: record its actual credits, outputs, and completion status
-	// so ProvideInput never replays an already-executed step!
+	var (
+		exceededPostStepCeiling bool
+		pauseMsg                string
+	)
+	if leaseStore, ok := r.store.(StepLeaseStore); ok && leaseStore != nil {
+		committedRun, commitErr := leaseStore.MutateRunAtomically(ctx, workingRun.WorkspaceID, workingRun.AgentRunID, func(stored *AgentRun) error {
+			if stepIndex < 0 || stepIndex >= len(stored.Steps) {
+				return ErrStepNotFound
+			}
+			st := &stored.Steps[stepIndex]
+			if st.FencingToken != fencingToken || st.ExecutionOwner != ownerID {
+				return ErrStepAlreadyClaimed
+			}
+			authUsedDec, uErr := tenantdb.ParseExactDecimal(stored.CreditsUsed)
+			if uErr != nil {
+				authUsedDec = tenantdb.MustParseExactDecimal("0.000000")
+			}
+			updatedTotalDec, addErr := authUsedDec.Add(actualStepCostDec)
+			if addErr != nil {
+				return fmt.Errorf("credit addition overflow: %w", addErr)
+			}
+			authCeilingDec, cErr := tenantdb.ParseExactDecimal(stored.BudgetCeiling)
+			if cErr != nil || authCeilingDec.IsNegative() {
+				return fmt.Errorf("%w: invalid budget ceiling %q", ErrInvalidBudgetCeiling, stored.BudgetCeiling)
+			}
+
+			st.Status = StepStatusCompleted
+			st.CompletedAt = &now
+			st.ActualCredits = actualStepCostDec.Fixed6String()
+			st.ObservedOutcome = execRes.ObservedOutcome
+			st.LeaseExpiresAt = nil
+			st.ExecutionOwner = ""
+			st.UpdatedAt = now
+
+			stored.CreditsUsed = updatedTotalDec.Fixed6String()
+			stored.Outputs = append(stored.Outputs, createdOutputs...)
+			if stored.Memory != nil {
+				_ = stored.Memory.AddObservation(st.Title, st.ObservedOutcome)
+			}
+
+			if updatedTotalDec.Cmp(authCeilingDec) > 0 {
+				exceededPostStepCeiling = true
+				stored.CurrentState = StateWaitingContext
+				pauseMsg = fmt.Sprintf("Budget ceiling reached after step %d: actual %s credits brought cumulative spend to %s (ceiling %s). Pausing execution.",
+					st.StepOrder, actualStepCostDec.Fixed6String(), updatedTotalDec.Fixed6String(), authCeilingDec.Fixed6String())
+				if stepIndex+1 < len(stored.Steps) && stored.Steps[stepIndex+1].Status == StepStatusPlanning {
+					stored.Steps[stepIndex+1].Status = StepStatusWaitingContext
+					stored.Steps[stepIndex+1].ObservedOutcome = pauseMsg
+				}
+			}
+			return nil
+		})
+		if commitErr != nil {
+			return commitErr
+		}
+		syncCallerRun(committedRun)
+		if exceededPostStepCeiling {
+			r.store.PublishEvent(ctx, DomainEvent{
+				EventType:   "agent_run.waiting_context",
+				WorkspaceID: run.WorkspaceID,
+				Payload: map[string]any{
+					"run_id":                 run.AgentRunID,
+					"requested_context_type": "budget_increase",
+					"prompt":                 pauseMsg,
+					"credits_used":           run.CreditsUsed,
+					"budget_ceiling":         run.BudgetCeiling,
+				},
+				OccurredAt: now,
+			})
+			return ErrBudgetCeilingExceeded
+		}
+		return nil
+	}
+
+	// Fallback path for non-StepLeaseStore implementations
+	newTotalDec, err = usedDec.Add(actualStepCostDec)
+	if err != nil {
+		return fmt.Errorf("credit addition overflow: %w", err)
+	}
 	currentStep.Status = StepStatusCompleted
 	currentStep.CompletedAt = &now
 	currentStep.ActualCredits = actualStepCostDec.Fixed6String()
 	currentStep.ObservedOutcome = execRes.ObservedOutcome
-
-	run.CreditsUsed = newTotalDec.Fixed6String()
-
-	// Update working memory (RULE-M21-003: bounded, non-canonical)
-	if run.Memory != nil {
-		_ = run.Memory.AddObservation(currentStep.Title, currentStep.ObservedOutcome)
+	currentStep.LeaseExpiresAt = nil
+	currentStep.ExecutionOwner = ""
+	workingRun.Outputs = append(workingRun.Outputs, createdOutputs...)
+	workingRun.CreditsUsed = newTotalDec.Fixed6String()
+	if workingRun.Memory != nil {
+		_ = workingRun.Memory.AddObservation(currentStep.Title, currentStep.ObservedOutcome)
 	}
-
-	// If actual post-step spend exceeded the configured budget ceiling, pause the run before any further work
 	if newTotalDec.Cmp(ceilingDec) > 0 {
-		run.CurrentState = StateWaitingContext
-		pauseMsg := fmt.Sprintf("Budget ceiling reached after step %d: actual %s credits brought cumulative spend to %s (ceiling %s). Pausing execution.",
+		workingRun.CurrentState = StateWaitingContext
+		pauseMsg = fmt.Sprintf("Budget ceiling reached after step %d: actual %s credits brought cumulative spend to %s (ceiling %s). Pausing execution.",
 			currentStep.StepOrder, actualStepCostDec.Fixed6String(), newTotalDec.Fixed6String(), ceilingDec.Fixed6String())
-		if stepIndex+1 < len(run.Steps) && run.Steps[stepIndex+1].Status == StepStatusPlanning {
-			run.Steps[stepIndex+1].Status = StepStatusWaitingContext
-			run.Steps[stepIndex+1].ObservedOutcome = pauseMsg
+		if stepIndex+1 < len(workingRun.Steps) && workingRun.Steps[stepIndex+1].Status == StepStatusPlanning {
+			workingRun.Steps[stepIndex+1].Status = StepStatusWaitingContext
+			workingRun.Steps[stepIndex+1].ObservedOutcome = pauseMsg
 		}
-		_ = r.store.UpdateRun(ctx, run)
+		_ = r.store.UpdateRun(ctx, workingRun)
+		syncCallerRun(workingRun)
 		r.store.PublishEvent(ctx, DomainEvent{
 			EventType:   "agent_run.waiting_context",
-			WorkspaceID: run.WorkspaceID,
+			WorkspaceID: workingRun.WorkspaceID,
 			Payload: map[string]any{
-				"run_id":                 run.AgentRunID,
+				"run_id":                 workingRun.AgentRunID,
 				"requested_context_type": "budget_increase",
 				"prompt":                 pauseMsg,
-				"credits_used":           run.CreditsUsed,
-				"budget_ceiling":         run.BudgetCeiling,
+				"credits_used":           workingRun.CreditsUsed,
+				"budget_ceiling":         workingRun.BudgetCeiling,
 			},
 			OccurredAt: now,
 		})
 		return ErrBudgetCeilingExceeded
 	}
-
-	if err := r.store.UpdateRun(ctx, run); err != nil {
+	if err := r.store.UpdateRun(ctx, workingRun); err != nil {
 		return err
 	}
+	syncCallerRun(workingRun)
 	return nil
 }
 

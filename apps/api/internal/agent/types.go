@@ -25,6 +25,7 @@ var (
 	ErrInvalidBudgetCeiling   = errors.New("agent: budget ceiling must be non-negative decimal")
 	ErrExecutorNotConfigured  = errors.New("agent: step executor or provider is not configured (fail-closed)")
 	ErrInvalidStepOutput      = errors.New("agent: step execution returned invalid or missing canonical output")
+	ErrStepAlreadyClaimed     = errors.New("agent: step is already claimed by an active execution owner")
 )
 
 // StepExecutionRequest describes the parameters passed to a StepExecutor for a single step.
@@ -37,6 +38,9 @@ type StepExecutionRequest struct {
 	RemainingBudgetCredits string
 	InputPayload           map[string]any
 	Caller                 CallerContext
+	OperationKey           string
+	ExecutionOwner         string
+	FencingToken           int64
 }
 
 // StepExecutionResult contains the verified outcome of executing a step.
@@ -158,6 +162,10 @@ type AgentStep struct {
 	InputContextJSON   string
 	OutputContextJSON  string
 	DiagnosticsRef     string
+	OperationKey       string
+	ExecutionOwner     string
+	LeaseExpiresAt     *time.Time
+	FencingToken       int64
 	StartedAt          *time.Time
 	CompletedAt        *time.Time
 	CreatedAt          time.Time

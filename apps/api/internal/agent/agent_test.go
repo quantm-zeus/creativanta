@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	automationv1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/automation/v1"
@@ -1030,6 +1031,243 @@ func TestR3_AgentLiveMembership_FailsClosedWithoutResolverAndHonorsAuthoritative
 		}))
 		if connect.CodeOf(err) != connect.CodePermissionDenied {
 			t.Fatalf("R3 VIOLATION: expected AgentHandler to honor authoritative store demotion to viewer, got: %v", err)
+		}
+	}
+}
+
+type barrierCountingStepExecutor struct {
+	mu          sync.Mutex
+	callsByStep map[int]int
+	totalCalls  int
+	step1Enter  chan struct{}
+	step1Gate   chan struct{}
+}
+
+func (e *barrierCountingStepExecutor) ExecuteStep(ctx context.Context, req StepExecutionRequest) (*StepExecutionResult, error) {
+	e.mu.Lock()
+	if e.callsByStep == nil {
+		e.callsByStep = make(map[int]int)
+	}
+	e.callsByStep[req.Step.StepOrder]++
+	e.totalCalls++
+	callNum := e.callsByStep[req.Step.StepOrder]
+	enterCh := e.step1Enter
+	gateCh := e.step1Gate
+	e.mu.Unlock()
+
+	if req.Step.StepOrder == 1 {
+		if enterCh != nil {
+			select {
+			case enterCh <- struct{}{}:
+			default:
+			}
+		}
+		if gateCh != nil {
+			select {
+			case <-gateCh:
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			}
+		}
+	}
+
+	return &StepExecutionResult{
+		ObservedOutcome: fmt.Sprintf("Executed step %d (%s) call #%d", req.Step.StepOrder, req.Step.Title, callNum),
+		ActualCredits:   req.Step.EstimatedCredits,
+		Outputs: []AgentOutput{
+			{
+				OutputType: OutputTypeText,
+				Title:      fmt.Sprintf("Step %d Output #%d", req.Step.StepOrder, callNum),
+				Summary:    fmt.Sprintf("Generated artifact for step %d", req.Step.StepOrder),
+			},
+		},
+	}, nil
+}
+
+func TestN4_ConcurrentProvideInputApproveAndResume_SingleStepExecutionAndCreditAccounting(t *testing.T) {
+	ctx := context.Background()
+	wsID := "11111111-1111-4111-8111-111111111194"
+	editor := CallerContext{UserID: "user-editor-n4", WorkspaceID: wsID, WorkspaceRole: "editor"}
+	mgr1 := CallerContext{UserID: "user-mgr1-n4", WorkspaceID: wsID, WorkspaceRole: "manager"}
+	mgr2 := CallerContext{UserID: "user-mgr2-n4", WorkspaceID: wsID, WorkspaceRole: "manager"}
+
+	// 1. Two Managers concurrently approve the same awaiting_approval run.
+	// Each step MUST execute at most once (never duplicated across concurrent ProvideInput callers).
+	{
+		store := NewMemStore()
+		exec := &barrierCountingStepExecutor{
+			step1Enter: make(chan struct{}, 4),
+			step1Gate:  make(chan struct{}),
+		}
+		svc := NewService(store)
+		svc.SetStepExecutor(exec)
+
+		store.SetMemberRole(wsID, editor.UserID, "editor", true)
+		store.SetMemberRole(wsID, mgr1.UserID, "manager", true)
+		store.SetMemberRole(wsID, mgr2.UserID, "manager", true)
+
+		run, _, reqApp, err := svc.LaunchAgent(ctx, editor, AgentTypeCopilotAction, "Create and publish TikTok ad", "", "", "50.000000", "", false, nil)
+		if err != nil || !reqApp {
+			t.Fatalf("expected copilot publish run to pause for approval, got reqApp=%v err=%v", reqApp, err)
+		}
+		stepCount := len(run.Steps)
+
+		var wg sync.WaitGroup
+		runs := make([]*AgentRun, 2)
+		errs := make([]error, 2)
+		wg.Add(2)
+
+		go func() {
+			defer wg.Done()
+			runs[0], errs[0] = svc.ProvideInput(ctx, mgr1, run.AgentRunID, "", "", true, "", "")
+		}()
+		go func() {
+			defer wg.Done()
+			runs[1], errs[1] = svc.ProvideInput(ctx, mgr2, run.AgentRunID, "", "", true, "", "")
+		}()
+
+		// Wait until the first winner enters step 1 execution, give the second goroutine a window to race, then open the gate.
+		<-exec.step1Enter
+		time.Sleep(25 * time.Millisecond)
+		close(exec.step1Gate)
+		wg.Wait()
+
+		for i, e := range errs {
+			if e != nil {
+				t.Fatalf("ProvideInput caller %d returned unexpected error: %v", i, e)
+			}
+		}
+
+		exec.mu.Lock()
+		for stepOrder := 1; stepOrder <= stepCount; stepOrder++ {
+			if c := exec.callsByStep[stepOrder]; c != 1 {
+				exec.mu.Unlock()
+				t.Fatalf("N4 VIOLATION: step %d was executed %d times across concurrent approvals (expected 1)! callsByStep=%+v", stepOrder, c, exec.callsByStep)
+			}
+		}
+		exec.mu.Unlock()
+
+		finalRun, err := store.GetRun(ctx, wsID, run.AgentRunID)
+		if err != nil {
+			t.Fatalf("GetRun failed: %v", err)
+		}
+		if finalRun.CurrentState != StateCompleted {
+			t.Fatalf("expected final run state completed, got %s", finalRun.CurrentState)
+		}
+		if len(finalRun.Outputs) != stepCount {
+			t.Fatalf("N4 VIOLATION: expected %d outputs (1 per step), got %d", stepCount, len(finalRun.Outputs))
+		}
+	}
+
+	// 2. Concurrent ProvideInput budget resume on a paused waiting_context run must also execute remaining steps only once.
+	{
+		store := NewMemStore()
+		exec := &barrierCountingStepExecutor{}
+		svc := NewService(store)
+		svc.SetStepExecutor(exec)
+
+		store.SetMemberRole(wsID, editor.UserID, "editor", true)
+		store.SetMemberRole(wsID, mgr1.UserID, "manager", true)
+		store.SetMemberRole(wsID, mgr2.UserID, "manager", true)
+
+		// Launch VideoAgent with 6.000000 ceiling -> executes step 1 (5 credits) and pauses before step 2.
+		run, _, _, err := svc.LaunchAgent(ctx, editor, AgentTypeVideoAgent, "Concurrent budget resume test", "", "", "6.000000", "", true, nil)
+		if !errors.Is(err, ErrBudgetCeilingExceeded) {
+			t.Fatalf("expected initial launch to pause at budget gate, got: %v", err)
+		}
+		stepCount := len(run.Steps)
+
+		var wg sync.WaitGroup
+		errs := make([]error, 2)
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			_, errs[0] = svc.ProvideInput(ctx, mgr1, run.AgentRunID, "", "", false, "50.000000", "")
+		}()
+		go func() {
+			defer wg.Done()
+			_, errs[1] = svc.ProvideInput(ctx, mgr2, run.AgentRunID, "", "", false, "50.000000", "")
+		}()
+		wg.Wait()
+
+		for i, e := range errs {
+			if e != nil {
+				t.Fatalf("concurrent budget resume caller %d returned error: %v", i, e)
+			}
+		}
+
+		exec.mu.Lock()
+		for stepOrder := 1; stepOrder <= stepCount; stepOrder++ {
+			if c := exec.callsByStep[stepOrder]; c != 1 {
+				exec.mu.Unlock()
+				t.Fatalf("N4 VIOLATION: step %d was executed %d times across concurrent budget resumes (expected 1)! callsByStep=%+v", stepOrder, c, exec.callsByStep)
+			}
+		}
+		exec.mu.Unlock()
+
+		finalRun, err := store.GetRun(ctx, wsID, run.AgentRunID)
+		if err != nil {
+			t.Fatalf("GetRun failed: %v", err)
+		}
+		if finalRun.CreditsUsed != "50.000000" {
+			t.Fatalf("N4 VIOLATION: expected exact 50.000000 CreditsUsed after single execution of all 6 steps, got %s", finalRun.CreditsUsed)
+		}
+	}
+
+	// 3. Direct concurrent Runtime.ExecuteNextStep calls on the same run must enforce store-level step lease + fencing.
+	{
+		store := NewMemStore()
+		exec := &barrierCountingStepExecutor{
+			step1Enter: make(chan struct{}, 4),
+			step1Gate:  make(chan struct{}),
+		}
+		svc := NewService(store)
+		svc.SetStepExecutor(exec)
+
+		store.SetMemberRole(wsID, editor.UserID, "editor", true)
+		run, _, _, err := svc.LaunchAgent(ctx, editor, AgentTypeVideoAgent, "Direct ExecuteNextStep lease test", "", "", "50.000000", "", false, nil)
+		if err != nil {
+			t.Fatalf("LaunchAgent failed: %v", err)
+		}
+		run.CurrentState = StateExecuting
+		_ = store.UpdateRun(ctx, run)
+
+		snap1, _ := store.GetRun(ctx, wsID, run.AgentRunID)
+		snap2, _ := store.GetRun(ctx, wsID, run.AgentRunID)
+
+		var wg sync.WaitGroup
+		errs := make([]error, 2)
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			errs[0] = svc.runtime.ExecuteNextStep(ctx, editor, snap1, svc.capabilities, 0)
+		}()
+		go func() {
+			defer wg.Done()
+			errs[1] = svc.runtime.ExecuteNextStep(ctx, editor, snap2, svc.capabilities, 0)
+		}()
+
+		<-exec.step1Enter
+		time.Sleep(25 * time.Millisecond)
+		close(exec.step1Gate)
+		wg.Wait()
+
+		claimedCount := 0
+		alreadyClaimedCount := 0
+		for _, e := range errs {
+			if e == nil {
+				claimedCount++
+			} else if errors.Is(e, ErrStepAlreadyClaimed) {
+				alreadyClaimedCount++
+			} else {
+				t.Fatalf("unexpected error from concurrent ExecuteNextStep: %v", e)
+			}
+		}
+		if claimedCount != 1 || alreadyClaimedCount != 1 {
+			t.Fatalf("N4 VIOLATION: expected 1 step claim winner and 1 ErrStepAlreadyClaimed, got claimed=%d alreadyClaimed=%d (errs=%v)", claimedCount, alreadyClaimedCount, errs)
+		}
+		if exec.callsByStep[1] != 1 {
+			t.Fatalf("N4 VIOLATION: expected step 1 executed once under direct ExecuteNextStep race, got %d", exec.callsByStep[1])
 		}
 	}
 }

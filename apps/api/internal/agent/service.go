@@ -2,9 +2,11 @@ package agent
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb"
@@ -17,13 +19,16 @@ type Service struct {
 	planner      *Planner
 	runtime      *Runtime
 	capabilities map[string]bool // workspace capability map (defaults supported)
+	execLocksMu  sync.Mutex
+	runExecLocks map[string]*sync.Mutex
 }
 
 func NewService(store Store) *Service {
 	return &Service{
-		store:   store,
-		planner: NewPlanner(),
-		runtime: NewRuntime(store),
+		store:        store,
+		planner:      NewPlanner(),
+		runtime:      NewRuntime(store),
+		runExecLocks: make(map[string]*sync.Mutex),
 		capabilities: map[string]bool{
 			"ai.nlu":            true,
 			"ai.vision":         true,
@@ -230,11 +235,50 @@ func (s *Service) LaunchAgent(
 	return run, warnings, requiresApproval, nil
 }
 
+func (s *Service) getRunExecutionLock(runID string) *sync.Mutex {
+	s.execLocksMu.Lock()
+	defer s.execLocksMu.Unlock()
+	if s.runExecLocks == nil {
+		s.runExecLocks = make(map[string]*sync.Mutex)
+	}
+	mu, ok := s.runExecLocks[runID]
+	if !ok {
+		mu = &sync.Mutex{}
+		s.runExecLocks[runID] = mu
+	}
+	return mu
+}
+
+func (s *Service) mutateRun(ctx context.Context, workspaceID, runID string, fn func(run *AgentRun) error) (*AgentRun, error) {
+	if leaseStore, ok := s.store.(StepLeaseStore); ok && leaseStore != nil {
+		return leaseStore.MutateRunAtomically(ctx, workspaceID, runID, fn)
+	}
+	run, err := s.store.GetRun(ctx, workspaceID, runID)
+	if err != nil {
+		return nil, err
+	}
+	if err := fn(run); err != nil {
+		return run, err
+	}
+	if err := s.store.UpdateRun(ctx, run); err != nil {
+		return nil, err
+	}
+	return run, nil
+}
+
 // ExecuteRemainingSteps runs remaining steps in sequence.
 func (s *Service) ExecuteRemainingSteps(ctx context.Context, caller CallerContext, runID string, simStepFailureOrder int) (*AgentRun, error) {
 	if err := verifyCallerPrincipal(ctx, caller); err != nil {
 		return nil, err
 	}
+	if _, err := s.store.GetRun(ctx, caller.WorkspaceID, runID); err != nil {
+		return nil, err
+	}
+
+	runLock := s.getRunExecutionLock(runID)
+	runLock.Lock()
+	defer runLock.Unlock()
+
 	run, err := s.store.GetRun(ctx, caller.WorkspaceID, runID)
 	if err != nil {
 		return nil, err
@@ -242,12 +286,20 @@ func (s *Service) ExecuteRemainingSteps(ctx context.Context, caller CallerContex
 
 	if run.CurrentState != StateExecuting {
 		if run.CurrentState == StatePlanning {
-			run.CurrentState = StateExecuting
-			now := time.Now().UTC()
-			if run.StartedAt == nil {
-				run.StartedAt = &now
+			run, err = s.mutateRun(ctx, caller.WorkspaceID, runID, func(stored *AgentRun) error {
+				stored.CurrentState = StateExecuting
+				now := time.Now().UTC()
+				if stored.StartedAt == nil {
+					stored.StartedAt = &now
+				}
+				return nil
+			})
+			if err != nil {
+				return nil, err
 			}
-			_ = s.store.UpdateRun(ctx, run)
+		} else if isResumedExecution(ctx) && run.CurrentState == StateCompleted {
+			// Concurrent approval/resume already completed the remaining steps while waiting on runLock.
+			return run, nil
 		} else {
 			return run, fmt.Errorf("%w: run in state %s", ErrInvalidStateTransition, run.CurrentState)
 		}
@@ -256,6 +308,11 @@ func (s *Service) ExecuteRemainingSteps(ctx context.Context, caller CallerContex
 	// Keep executing next step while in executing state
 	for run.CurrentState == StateExecuting {
 		err := s.runtime.ExecuteNextStep(ctx, caller, run, s.capabilities, simStepFailureOrder)
+		if errors.Is(err, ErrStepAlreadyClaimed) {
+			time.Sleep(5 * time.Millisecond)
+			run, _ = s.store.GetRun(ctx, caller.WorkspaceID, runID)
+			continue
+		}
 		// Fetch fresh run state
 		run, _ = s.store.GetRun(ctx, caller.WorkspaceID, runID)
 		if err != nil {
@@ -411,13 +468,18 @@ func (s *Service) ProvideInput(
 
 	// 1. Explicit Handoff Transfer
 	if handoffTargetUserID != "" {
-		run.CurrentState = StateHandedOff
-		run.HandoffTargetUserID = handoffTargetUserID
-		if inputText != "" {
-			run.HandoffContext = inputText
+		run, err = s.mutateRun(ctx, caller.WorkspaceID, runID, func(stored *AgentRun) error {
+			stored.CurrentState = StateHandedOff
+			stored.HandoffTargetUserID = handoffTargetUserID
+			if inputText != "" {
+				stored.HandoffContext = inputText
+			}
+			stored.CompletedAt = &now
+			return nil
+		})
+		if err != nil {
+			return nil, err
 		}
-		run.CompletedAt = &now
-		_ = s.store.UpdateRun(ctx, run)
 		s.store.PublishEvent(ctx, DomainEvent{
 			EventType:   "agent_run.handed_off",
 			WorkspaceID: caller.WorkspaceID,
@@ -436,16 +498,21 @@ func (s *Service) ProvideInput(
 		if !CheckPermission(caller.WorkspaceRole, "workflow:manage") {
 			return nil, fmt.Errorf("%w: role %q lacks manager authority to approve agent plan", ErrPermissionDenied, caller.WorkspaceRole)
 		}
-		run.ApprovalState = ApprovalApproved
-		if run.CurrentState == StateAwaitingApproval {
-			run.CurrentState = StateExecuting
-			for i := range run.Steps {
-				if run.Steps[i].Status == StepStatusAwaitingApproval {
-					run.Steps[i].Status = StepStatusPlanning
+		run, err = s.mutateRun(ctx, caller.WorkspaceID, runID, func(stored *AgentRun) error {
+			stored.ApprovalState = ApprovalApproved
+			if stored.CurrentState == StateAwaitingApproval {
+				stored.CurrentState = StateExecuting
+				for i := range stored.Steps {
+					if stored.Steps[i].Status == StepStatusAwaitingApproval {
+						stored.Steps[i].Status = StepStatusPlanning
+					}
 				}
 			}
+			return nil
+		})
+		if err != nil {
+			return nil, err
 		}
-		_ = s.store.UpdateRun(ctx, run)
 		// Resume execution
 		return s.ExecuteRemainingSteps(withResumedExecution(ctx), caller, run.AgentRunID, 0)
 	}
@@ -456,56 +523,71 @@ func (s *Service) ProvideInput(
 		if err != nil || !inc.IsPositive() {
 			return nil, fmt.Errorf("%w: budget_ceiling_increase must be a positive decimal", ErrInvalidBudgetCeiling)
 		}
-		currCeiling, err := tenantdb.ParseExactDecimal(run.BudgetCeiling)
-		if err != nil || currCeiling.IsNegative() {
-			return nil, fmt.Errorf("%w: current budget_ceiling %q is invalid", ErrInvalidBudgetCeiling, run.BudgetCeiling)
-		}
-		newCeiling, err := currCeiling.Add(inc)
-		if err != nil || !newCeiling.IsPositive() {
-			return nil, fmt.Errorf("%w: invalid elevated budget ceiling", ErrInvalidBudgetCeiling)
-		}
-		run.BudgetCeiling = newCeiling.Fixed6String()
+		var stillOverBudget bool
+		run, err = s.mutateRun(ctx, caller.WorkspaceID, runID, func(stored *AgentRun) error {
+			currCeiling, cErr := tenantdb.ParseExactDecimal(stored.BudgetCeiling)
+			if cErr != nil || currCeiling.IsNegative() {
+				return fmt.Errorf("%w: current budget_ceiling %q is invalid", ErrInvalidBudgetCeiling, stored.BudgetCeiling)
+			}
+			// If a concurrent resume already transitioned the run out of StateWaitingContext, do not double-add the duplicate budget increase.
+			if stored.CurrentState != StateWaitingContext {
+				return nil
+			}
+			newCeiling, addErr := currCeiling.Add(inc)
+			if addErr != nil || !newCeiling.IsPositive() {
+				return fmt.Errorf("%w: invalid elevated budget ceiling", ErrInvalidBudgetCeiling)
+			}
+			stored.BudgetCeiling = newCeiling.Fixed6String()
 
-		usedDec, err := tenantdb.ParseExactDecimal(run.CreditsUsed)
-		if err != nil {
-			usedDec = tenantdb.MustParseExactDecimal("0.000000")
-		}
-		if usedDec.Cmp(newCeiling) > 0 {
-			// Still over budget ceiling even after increase: remain paused in StateWaitingContext
-			_ = s.store.UpdateRun(ctx, run)
-			return run, ErrBudgetCeilingExceeded
-		}
+			usedDec, uErr := tenantdb.ParseExactDecimal(stored.CreditsUsed)
+			if uErr != nil {
+				usedDec = tenantdb.MustParseExactDecimal("0.000000")
+			}
+			if usedDec.Cmp(newCeiling) > 0 {
+				// Still over budget ceiling even after increase: remain paused in StateWaitingContext
+				stillOverBudget = true
+				return nil
+			}
 
-		// Resume if paused on budget
-		if run.CurrentState == StateWaitingContext {
-			run.CurrentState = StateExecuting
-			for i := range run.Steps {
-				if run.Steps[i].Status == StepStatusWaitingContext {
-					run.Steps[i].Status = StepStatusPlanning
+			stored.CurrentState = StateExecuting
+			for i := range stored.Steps {
+				if stored.Steps[i].Status == StepStatusWaitingContext {
+					stored.Steps[i].Status = StepStatusPlanning
 				}
 			}
+			return nil
+		})
+		if err != nil {
+			return nil, err
 		}
-		_ = s.store.UpdateRun(ctx, run)
+		if stillOverBudget {
+			return run, ErrBudgetCeilingExceeded
+		}
 		return s.ExecuteRemainingSteps(withResumedExecution(ctx), caller, run.AgentRunID, 0)
 	}
 
 	// 4. Human Context Injection
 	if inputText != "" || inputJSON != "" {
-		if run.Memory != nil {
-			_ = run.Memory.AddObservation("operator_input", inputText)
-		}
-		if run.CurrentState == StateWaitingContext {
-			run.CurrentState = StateExecuting
-			for i := range run.Steps {
-				if run.Steps[i].Status == StepStatusWaitingContext {
-					run.Steps[i].Status = StepStatusPlanning
-					if inputJSON != "" {
-						run.Steps[i].InputContextJSON = inputJSON
+		run, err = s.mutateRun(ctx, caller.WorkspaceID, runID, func(stored *AgentRun) error {
+			if stored.Memory != nil {
+				_ = stored.Memory.AddObservation("operator_input", inputText)
+			}
+			if stored.CurrentState == StateWaitingContext {
+				stored.CurrentState = StateExecuting
+				for i := range stored.Steps {
+					if stored.Steps[i].Status == StepStatusWaitingContext {
+						stored.Steps[i].Status = StepStatusPlanning
+						if inputJSON != "" {
+							stored.Steps[i].InputContextJSON = inputJSON
+						}
 					}
 				}
 			}
+			return nil
+		})
+		if err != nil {
+			return nil, err
 		}
-		_ = s.store.UpdateRun(ctx, run)
 		return s.ExecuteRemainingSteps(withResumedExecution(ctx), caller, run.AgentRunID, 0)
 	}
 
