@@ -68,7 +68,7 @@ func isOperatorModeEnum(val string) bool {
 
 // PostgresStore persists Publish Hub state (publish_items, publish_jobs, publish_logs,
 // channel_posts, external_effects, event_outbox) inside tenant-scoped transactions
-// with SET LOCAL app.current_tenant_id (migrations 00001, 00002, 00026).
+// with set_config('app.current_tenant_id', $1, true) (migrations 00001, 00002, 00026).
 type PostgresStore struct {
 	db             *sql.DB
 	mu             sync.RWMutex
@@ -94,7 +94,7 @@ func (s *PostgresStore) beginTenantTx(ctx context.Context, workspaceID string) (
 	if err != nil {
 		return nil, err
 	}
-	if _, err := tx.ExecContext(ctx, `SET LOCAL app.current_tenant_id = $1`, workspaceID); err != nil {
+	if _, err := tx.ExecContext(ctx, `SELECT set_config('app.current_tenant_id', $1, true)`, workspaceID); err != nil {
 		_ = tx.Rollback()
 		return nil, err
 	}
@@ -1907,6 +1907,12 @@ func (s *PostgresStore) GetPublishConsentRecord(ctx context.Context, workspaceID
 		}
 		return nil, fmt.Errorf("postgres get consent_record: %w", err)
 	}
+	var charID sql.NullString
+	_ = tx.QueryRowContext(
+		ctx,
+		`SELECT character_id::text FROM characters WHERE workspace_id = $1 AND consent_record_id = $2 AND deleted_at IS NULL ORDER BY updated_at DESC LIMIT 1`,
+		workspaceID, consentRecordID,
+	).Scan(&charID)
 	_ = tx.Commit()
 	var revTime *time.Time
 	if revokedAt.Valid {
@@ -1916,6 +1922,7 @@ func (s *PostgresStore) GetPublishConsentRecord(ctx context.Context, workspaceID
 	return &PublishConsentRecord{
 		ConsentID:   cID,
 		WorkspaceID: wsID.String,
+		CharacterID: charID.String,
 		UserID:      userID.String,
 		ConsentType: consentType.String,
 		Granted:     granted,
