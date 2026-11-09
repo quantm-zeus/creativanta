@@ -14,9 +14,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/finance"
-	"github.com/quantm-zeus/creativanta/apps/api/internal/migrate"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb"
 )
 
@@ -224,50 +222,36 @@ func TestPostgresStoreEnforcesTenantTxAndRollback(t *testing.T) {
 }
 
 func TestPostgresLiveFinanceStore(t *testing.T) {
-	dsn := os.Getenv("CREATIVANTA_TEST_DATABASE_URL")
-	if dsn == "" {
-		t.Skip("CREATIVANTA_TEST_DATABASE_URL not set; live PostgreSQL finance suite executes in CI")
-	}
+	adminPool, appPool := setupDisposableFinancePostgres(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-
-	adminPool, err := pgxpool.New(ctx, dsn)
-	if err != nil {
-		t.Fatalf("connect pgxpool: %v", err)
-	}
-	defer adminPool.Close()
-
-	migrationsDir := filepath.Join("..", "..", "..", "..", "infra", "migrations")
-	if _, err := migrate.Up(ctx, adminPool, migrationsDir); err != nil {
-		t.Fatalf("migrate.Up: %v", err)
-	}
 
 	wsID := "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa19"
 	otherWS := "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbb19"
 	userID := "11111111-1111-4111-8111-111111111119"
 
-	_, _ = adminPool.Exec(ctx, `
+	if _, err := adminPool.Exec(ctx, `
 		INSERT INTO users (user_id, email, display_name, created_at, updated_at)
 		VALUES ($1::uuid, 'finance-user@test.com', 'Finance User', NOW(), NOW())
-		ON CONFLICT (user_id) DO NOTHING;
-		INSERT INTO workspaces (workspace_id, name, slug, owner_user_id, created_at, updated_at)
-		VALUES ($2::uuid, 'Finance Workspace', 'finance-ws', $1::uuid, NOW(), NOW())
-		ON CONFLICT (workspace_id) DO NOTHING;
-		INSERT INTO workspaces (workspace_id, name, slug, owner_user_id, created_at, updated_at)
-		VALUES ($3::uuid, 'Other Finance Workspace', 'other-finance-ws', $1::uuid, NOW(), NOW())
-		ON CONFLICT (workspace_id) DO NOTHING;
-	`, userID, wsID, otherWS)
-
-	appDSN, err := buildAppUserDSN(dsn)
-	if err != nil {
-		t.Fatalf("buildAppUserDSN: %v", err)
+		ON CONFLICT (user_id) DO NOTHING
+	`, userID); err != nil {
+		t.Fatalf("seed user: %v", err)
 	}
-	appPool, err := pgxpool.New(ctx, appDSN)
-	if err != nil {
-		t.Fatalf("connect app_user pool: %v", err)
+	if _, err := adminPool.Exec(ctx, `
+		INSERT INTO workspaces (workspace_id, name, slug, owner_user_id, created_at, updated_at)
+		VALUES ($1::uuid, 'Finance Workspace', 'finance-ws', $2::uuid, NOW(), NOW())
+		ON CONFLICT (workspace_id) DO NOTHING
+	`, wsID, userID); err != nil {
+		t.Fatalf("seed workspace: %v", err)
 	}
-	defer appPool.Close()
+	if _, err := adminPool.Exec(ctx, `
+		INSERT INTO workspaces (workspace_id, name, slug, owner_user_id, created_at, updated_at)
+		VALUES ($1::uuid, 'Other Finance Workspace', 'other-finance-ws', $2::uuid, NOW(), NOW())
+		ON CONFLICT (workspace_id) DO NOTHING
+	`, otherWS, userID); err != nil {
+		t.Fatalf("seed other workspace: %v", err)
+	}
 
 	store := finance.NewPostgresStore(appPool)
 

@@ -2,6 +2,7 @@ package finance
 
 import (
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb"
@@ -174,21 +175,99 @@ type ReconciliationMatch struct {
 
 // Order represents the order fields relevant for finance reconciliation (§10.3).
 type Order struct {
-	OrderID             string
-	WorkspaceID         string
-	LifecycleState      string
-	Amount              tenantdb.ExactDecimal
-	MatchedAmount       tenantdb.ExactDecimal
-	Currency            string
-	ReconciliationState string
-	COGSAmount          *tenantdb.ExactDecimal
-	OrderedAt           time.Time
-	SourcePlatform      string
-	ProductID           string
-	ProductIDs          []string
-	CampaignID          string
-	PostID              string
-	ContentID           string
+	OrderID              string
+	WorkspaceID          string
+	LifecycleState       string
+	Amount               tenantdb.ExactDecimal
+	MatchedAmount        tenantdb.ExactDecimal
+	Currency             string
+	ReconciliationState  string
+	COGSAmount           *tenantdb.ExactDecimal
+	ZeroCOGSWithReason   bool
+	COGSReason           string
+	PlatformFeeAmount    tenantdb.ExactDecimal
+	PaymentFeeAmount     tenantdb.ExactDecimal
+	ShippingFeeAmount    tenantdb.ExactDecimal
+	CommissionAmount     tenantdb.ExactDecimal
+	ExchangeRateSnapshot ExchangeRateSnapshot
+	OrderedAt            time.Time
+	RecognizedAt         *time.Time
+	SourceUpdatedAt      *time.Time
+	SourcePlatform       string
+	ProductID            string
+	ProductIDs           []string
+	CampaignID           string
+	CampaignIDs          []string
+	PostID               string
+	PostIDs              []string
+	ContentID            string
+	ContentIDs           []string
+}
+
+// EffectiveTime returns the canonical recognition timestamp of the order (RecognizedAt if set, otherwise OrderedAt).
+func (o Order) EffectiveTime() time.Time {
+	if o.RecognizedAt != nil && !o.RecognizedAt.IsZero() {
+		return o.RecognizedAt.UTC()
+	}
+	return o.OrderedAt.UTC()
+}
+
+// HasConfirmedZeroCOGS returns true when an order has an explicit zero COGS with a non-empty reason.
+func (o Order) HasConfirmedZeroCOGS() bool {
+	return o.ZeroCOGSWithReason && strings.TrimSpace(o.COGSReason) != ""
+}
+
+// MatchesProduct returns true if the order is associated with the given product ID.
+func (o Order) MatchesProduct(productID string) bool {
+	if productID == "" {
+		return false
+	}
+	if o.ProductID == productID {
+		return true
+	}
+	for _, pid := range o.ProductIDs {
+		if pid == productID {
+			return true
+		}
+	}
+	return false
+}
+
+// MatchesCampaign returns true if the order is associated with the given campaign ID.
+func (o Order) MatchesCampaign(campaignID string) bool {
+	if campaignID == "" {
+		return false
+	}
+	if o.CampaignID == campaignID {
+		return true
+	}
+	for _, cid := range o.CampaignIDs {
+		if cid == campaignID {
+			return true
+		}
+	}
+	return false
+}
+
+// MatchesContent returns true if the order is associated with the given content or post ID.
+func (o Order) MatchesContent(contentID string) bool {
+	if contentID == "" {
+		return false
+	}
+	if o.ContentID == contentID || o.PostID == contentID {
+		return true
+	}
+	for _, cid := range o.ContentIDs {
+		if cid == contentID {
+			return true
+		}
+	}
+	for _, pid := range o.PostIDs {
+		if pid == contentID {
+			return true
+		}
+	}
+	return false
 }
 
 // DataGapItem models a permission-filtered repair item in the repair queue (RULE-M19-001, M01).
@@ -242,6 +321,17 @@ type ExchangeRateSnapshot struct {
 	SourceClass   string    `json:"source_class"` // official, imported, estimated
 }
 
+// IsEmpty returns true when no fields of the ExchangeRateSnapshot have been populated.
+func (fx ExchangeRateSnapshot) IsEmpty() bool {
+	return strings.TrimSpace(fx.BaseCurrency) == "" &&
+		strings.TrimSpace(fx.QuoteCurrency) == "" &&
+		strings.TrimSpace(fx.RateToBase) == "" &&
+		strings.TrimSpace(fx.Provider) == "" &&
+		strings.TrimSpace(fx.SourceClass) == "" &&
+		fx.CapturedAt.IsZero() &&
+		fx.EffectiveAt.IsZero()
+}
+
 // FinancialPosting represents an immutable, append-only posting in the operating ledger (§26.10).
 type FinancialPosting struct {
 	PostingID            string
@@ -263,21 +353,22 @@ type FinancialPosting struct {
 
 // CostItem represents a tracked cost line item (§11.2).
 type CostItem struct {
-	CostItemID       string
-	WorkspaceID      string
-	CostType         string // platform_fee, shipping, ads_spend, ai_credits, commission, service_tool, cogs, seeding, other
-	Amount           tenantdb.ExactDecimal
-	Currency         string
-	Description      string
-	RelatedScopeType string
-	RelatedScopeID   string
-	SourceClass      string
-	EvidenceID       string
-	ConfidenceReason string
-	CostState        string
-	EffectiveDate    string // YYYY-MM-DD
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
+	CostItemID           string
+	WorkspaceID          string
+	CostType             string // platform_fee, shipping, ads_spend, ai_credits, commission, service_tool, cogs, seeding, other
+	Amount               tenantdb.ExactDecimal
+	Currency             string
+	ExchangeRateSnapshot ExchangeRateSnapshot
+	Description          string
+	RelatedScopeType     string
+	RelatedScopeID       string
+	SourceClass          string
+	EvidenceID           string
+	ConfidenceReason     string
+	CostState            string
+	EffectiveDate        string // YYYY-MM-DD
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
 }
 
 // Settlement represents an ingested payout batch from a platform (§11.1).
