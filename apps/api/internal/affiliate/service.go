@@ -722,20 +722,36 @@ func (s *Service) reconcileCommissionWithVerifiedOrderLocked(ctx context.Context
 		return comm, fmt.Errorf("%w (%w): source order %s is refunded or ineligible (state=%s)", ErrOrderIneligible, ErrCommissionAlreadyConfirmed, comm.OrderID, ord.LifecycleState)
 	}
 
-	// Partial refund handling: if eligibleAmount < comm.OrderAmount (or order has positive RefundedAmount),
-	// recompute the canonical post-refund commission obligation.
-	if !payoutFinalized && ord.RefundedAmount.Cmp(tenantdb.ZeroDecimal()) > 0 && (comm.OrderAmount.IsZero() || eligibleAmount.Cmp(comm.OrderAmount) < 0) {
+	// Partial refund / downward revision handling: if eligibleAmount < comm.OrderAmount
+	// (or order has positive RefundedAmount when comm.OrderAmount was unset),
+	// recompute the canonical post-refund commission obligation from the locked rate/obligation
+	// recorded on the commission at calculation time (never from the mutable current link.CommissionRate).
+	if !payoutFinalized && ((comm.OrderAmount.IsZero() && ord.RefundedAmount.Cmp(tenantdb.ZeroDecimal()) > 0) || (!comm.OrderAmount.IsZero() && eligibleAmount.Cmp(comm.OrderAmount) < 0)) {
+		if comm.InitialOrderAmount.IsZero() && comm.OrderAmount.Cmp(tenantdb.ZeroDecimal()) > 0 {
+			comm.InitialOrderAmount = comm.OrderAmount
+			comm.InitialCommissionAmount = comm.CommissionAmount
+		}
 		var newCommAmt tenantdb.ExactDecimal
 		hasNewComm := false
-		if link, linkErr := s.store.GetLink(ctx, wsID, comm.AffiliateLinkID); linkErr == nil && link != nil && link.CommissionRate.Cmp(tenantdb.ZeroDecimal()) > 0 {
-			newCommAmt = calculateCommissionAmount(eligibleAmount, link.CommissionRate)
+		if comm.CommissionRate.Cmp(tenantdb.ZeroDecimal()) > 0 {
+			newCommAmt = calculateCommissionAmount(eligibleAmount, comm.CommissionRate)
 			hasNewComm = true
-		} else if comm.OrderAmount.Cmp(tenantdb.ZeroDecimal()) > 0 {
-			// Proportional reduction when link is not present in store
-			if ratio, divErr := eligibleAmount.QuoRoundHalfUp(comm.OrderAmount); divErr == nil {
-				if quot, mulErr := comm.CommissionAmount.MulFloor(ratio); mulErr == nil {
-					newCommAmt = quot
-					hasNewComm = true
+		} else {
+			baseOrderAmt := comm.InitialOrderAmount
+			baseCommAmt := comm.InitialCommissionAmount
+			if baseOrderAmt.Cmp(tenantdb.ZeroDecimal()) <= 0 || baseCommAmt.Cmp(tenantdb.ZeroDecimal()) <= 0 {
+				baseOrderAmt = comm.OrderAmount
+				baseCommAmt = comm.CommissionAmount
+			}
+			if baseOrderAmt.Cmp(tenantdb.ZeroDecimal()) <= 0 && ord.GrossAmount.Cmp(tenantdb.ZeroDecimal()) > 0 {
+				baseOrderAmt = ord.GrossAmount
+			}
+			if baseOrderAmt.Cmp(tenantdb.ZeroDecimal()) > 0 && baseCommAmt.Cmp(tenantdb.ZeroDecimal()) > 0 {
+				if ratio, divErr := eligibleAmount.QuoRoundHalfUp(baseOrderAmt); divErr == nil {
+					if quot, mulErr := baseCommAmt.MulFloor(ratio); mulErr == nil {
+						newCommAmt = quot
+						hasNewComm = true
+					}
 				}
 			}
 		}
@@ -883,18 +899,21 @@ func (s *Service) CalculateCommission(ctx context.Context, wsID, linkID, orderID
 	}
 
 	comm := &AffiliateCommission{
-		CommissionID:     newUUID(),
-		WorkspaceID:      wsID,
-		AffiliateLinkID:  linkID,
-		OrderID:          orderID,
-		CreatorEntityID:  cleanCreatorID,
-		OrderAmount:      eligibleAmount,
-		CommissionAmount: commAmt,
-		Currency:         canonicalCurrency,
-		Status:           CommissionPending,
-		HoldUntil:        holdUntil,
-		CreatedAt:        now,
-		UpdatedAt:        now,
+		CommissionID:            newUUID(),
+		WorkspaceID:             wsID,
+		AffiliateLinkID:         linkID,
+		OrderID:                 orderID,
+		CreatorEntityID:         cleanCreatorID,
+		OrderAmount:             eligibleAmount,
+		CommissionRate:          link.CommissionRate,
+		InitialOrderAmount:      eligibleAmount,
+		InitialCommissionAmount: commAmt,
+		CommissionAmount:        commAmt,
+		Currency:                canonicalCurrency,
+		Status:                  CommissionPending,
+		HoldUntil:               holdUntil,
+		CreatedAt:               now,
+		UpdatedAt:               now,
 	}
 
 	if err := s.store.CreateCommission(ctx, comm); err != nil {

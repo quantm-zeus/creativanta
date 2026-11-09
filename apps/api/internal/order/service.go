@@ -152,25 +152,136 @@ func (s *Service) emitEvent(ctx context.Context, eventType, aggregateType, aggre
 	})
 }
 
-func (s *Service) recordOrderPosting(ctx context.Context, o *Order) error {
-	if s.finance == nil {
-		return nil
+func isRecognizedOrderState(state LifecycleState) bool {
+	return state == StateCompleted || state == StatePartiallyRefunded || state == StateRefunded || state == StateReturned
+}
+
+func orderEconomicVersion(o *Order) int {
+	if o == nil || o.Metadata == nil {
+		return 1
 	}
+	switch v := o.Metadata["economic_version"].(type) {
+	case int:
+		if v >= 1 {
+			return v
+		}
+	case int64:
+		if v >= 1 {
+			return int(v)
+		}
+	case float64:
+		if int(v) >= 1 {
+			return int(v)
+		}
+	case string:
+		var parsed int
+		if _, err := fmt.Sscanf(v, "%d", &parsed); err == nil && parsed >= 1 {
+			return parsed
+		}
+	}
+	return 1
+}
+
+func orderCogsTotal(items []OrderItem) (tenantdb.ExactDecimal, bool, error) {
 	cogsTotal := tenantdb.ZeroDecimal()
 	hasCogs := false
-	for _, it := range o.Items {
+	for _, it := range items {
 		if !it.UnitCogs.IsZero() {
 			qtyDec := tenantdb.MustParseExactDecimal(fmt.Sprintf("%d", it.Quantity))
 			lineCogs, err := it.UnitCogs.MulFloor(qtyDec)
 			if err != nil {
-				return err
+				return tenantdb.ZeroDecimal(), false, err
 			}
 			cogsTotal, err = cogsTotal.Add(lineCogs)
 			if err != nil {
-				return err
+				return tenantdb.ZeroDecimal(), false, err
 			}
 			hasCogs = true
 		}
+	}
+	return cogsTotal, hasCogs, nil
+}
+
+func isZeroFeeBreakdown(fb FeeBreakdown) bool {
+	if !fb.PlatformFee.IsZero() ||
+		!fb.PaymentFee.IsZero() ||
+		!fb.ShippingCost.IsZero() ||
+		!fb.AffiliateCommission.IsZero() ||
+		!fb.VatAmount.IsZero() {
+		return false
+	}
+	for _, of := range fb.OtherFees {
+		if !of.Amount.IsZero() {
+			return false
+		}
+	}
+	return true
+}
+
+func feeBreakdownEqual(a, b FeeBreakdown) bool {
+	if a.PlatformFee.Cmp(b.PlatformFee) != 0 ||
+		a.PaymentFee.Cmp(b.PaymentFee) != 0 ||
+		a.ShippingCost.Cmp(b.ShippingCost) != 0 ||
+		a.AffiliateCommission.Cmp(b.AffiliateCommission) != 0 ||
+		a.VatAmount.Cmp(b.VatAmount) != 0 ||
+		len(a.OtherFees) != len(b.OtherFees) {
+		return false
+	}
+	for i := range a.OtherFees {
+		if a.OtherFees[i].Name != b.OtherFees[i].Name ||
+			a.OtherFees[i].Amount.Cmp(b.OtherFees[i].Amount) != 0 {
+			return false
+		}
+	}
+	return true
+}
+
+func orderItemsEqual(a, b []OrderItem) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i].Sku != b[i].Sku ||
+			a[i].ProductID != b[i].ProductID ||
+			a[i].PlatformItemID != b[i].PlatformItemID ||
+			a[i].Variation != b[i].Variation ||
+			a[i].Quantity != b[i].Quantity ||
+			a[i].UnitPrice.Cmp(b[i].UnitPrice) != 0 ||
+			a[i].Discount.Cmp(b[i].Discount) != 0 ||
+			a[i].Total.Cmp(b[i].Total) != 0 ||
+			a[i].UnitCogs.Cmp(b[i].UnitCogs) != 0 {
+			return false
+		}
+	}
+	return true
+}
+
+func hasOrderEconomicRevision(existing, incoming *Order) bool {
+	if existing == nil || incoming == nil {
+		return false
+	}
+	if !incoming.Amount.IsZero() && incoming.Amount.Cmp(existing.Amount) != 0 {
+		return true
+	}
+	if !isZeroFeeBreakdown(incoming.FeeBreakdown) && !feeBreakdownEqual(existing.FeeBreakdown, incoming.FeeBreakdown) {
+		return true
+	}
+	if len(incoming.Items) > 0 && !orderItemsEqual(existing.Items, incoming.Items) {
+		return true
+	}
+	if !incoming.TaxAmount.IsZero() && incoming.TaxAmount.Cmp(existing.TaxAmount) != 0 {
+		return true
+	}
+	return false
+}
+
+func (s *Service) recordOrderPosting(ctx context.Context, o *Order) error {
+	if s.finance == nil {
+		return nil
+	}
+	cogsTotal, hasCogs, err := orderCogsTotal(o.Items)
+	if err != nil {
+		return err
 	}
 	var cogsPtr *tenantdb.ExactDecimal
 	if hasCogs {
@@ -184,11 +295,16 @@ func (s *Service) recordOrderPosting(ctx context.Context, o *Order) error {
 		LifecycleState:   string(o.LifecycleState),
 		GrossAmount:      o.Amount,
 		FeeAmount:        o.FeeBreakdown.PlatformFee,
+		PaymentFeeAmount: o.FeeBreakdown.PaymentFee,
 		ShippingAmount:   o.FeeBreakdown.ShippingCost,
 		COGSAmount:       cogsPtr,
 		CommissionAmount: o.FeeBreakdown.AffiliateCommission,
 		Currency:         o.Currency,
 		SourceClass:      string(o.SourceClass),
+		SourcePlatform:   o.SourcePlatform,
+		ProductID:        o.ProductID,
+		CampaignID:       o.CampaignID,
+		PostID:           o.PostID,
 		Confidence:       string(finance.ConfidenceHigh),
 		ExchangeRateSnapshot: finance.ExchangeRateSnapshot{
 			BaseCurrency:  o.Currency,
@@ -196,8 +312,135 @@ func (s *Service) recordOrderPosting(ctx context.Context, o *Order) error {
 			RateToBase:    "1",
 			SourceClass:   string(o.SourceClass),
 		},
-		EffectiveAt: s.clock().UTC(),
+		EffectiveAt:     s.clock().UTC(),
+		RecognizedAt:    o.RecognizedAt,
+		OrderedAt:       o.OrderedAt,
+		SourceUpdatedAt: o.SourceUpdatedAt,
 	})
+}
+
+func (s *Service) applyOrderEconomicRevision(ctx context.Context, existing, incoming *Order) (bool, error) {
+	if existing == nil || incoming == nil {
+		return false, nil
+	}
+	// Do not allow an untimestamped payload to overwrite an already-timestamped order's economic fields.
+	if existing.SourceUpdatedAt != nil && incoming.SourceUpdatedAt == nil {
+		return false, nil
+	}
+
+	hasEconChange := hasOrderEconomicRevision(existing, incoming)
+	hasNewerTimestamp := incoming.SourceUpdatedAt != nil && (existing.SourceUpdatedAt == nil || incoming.SourceUpdatedAt.After(*existing.SourceUpdatedAt))
+	hasNewerRecognizedAt := incoming.RecognizedAt != nil && (existing.RecognizedAt == nil || !incoming.RecognizedAt.Equal(*existing.RecognizedAt))
+	if !hasEconChange && !hasNewerTimestamp && !hasNewerRecognizedAt {
+		return false, nil
+	}
+
+	newAmount := existing.Amount
+	if !incoming.Amount.IsZero() {
+		newAmount = incoming.Amount
+	}
+	newFees := existing.FeeBreakdown
+	if !isZeroFeeBreakdown(incoming.FeeBreakdown) {
+		newFees = incoming.FeeBreakdown
+	}
+	newItems := existing.Items
+	if len(incoming.Items) > 0 {
+		newItems = make([]OrderItem, len(incoming.Items))
+		copy(newItems, incoming.Items)
+	}
+	newTax := existing.TaxAmount
+	if !incoming.TaxAmount.IsZero() {
+		newTax = incoming.TaxAmount
+	}
+
+	nextVer := orderEconomicVersion(existing)
+	if hasEconChange && isRecognizedOrderState(existing.LifecycleState) {
+		if s.finance != nil && nextVer == 1 && existing.LifecycleState == StateCompleted {
+			if err := s.recordOrderPosting(ctx, existing); err != nil {
+				return false, fmt.Errorf("record initial order finance posting before revision: %w", err)
+			}
+		}
+		nextVer++
+		verStr := fmt.Sprintf("v%d", nextVer)
+		if s.finance != nil {
+			fx := finance.ExchangeRateSnapshot{
+				BaseCurrency:  existing.Currency,
+				QuoteCurrency: existing.Currency,
+				RateToBase:    "1",
+				SourceClass:   string(existing.SourceClass),
+			}
+			if newAmount.Cmp(existing.Amount) != 0 {
+				if err := s.finance.RecordOrderCorrection(ctx, existing.WorkspaceID, existing.OrderID, finance.ComponentRevenue, newAmount, verStr, string(existing.SourceClass), string(finance.ConfidenceHigh), fx); err != nil {
+					return false, fmt.Errorf("record revenue correction: %w", err)
+				}
+			}
+			oldCombinedFee, _ := existing.FeeBreakdown.PlatformFee.Add(existing.FeeBreakdown.PaymentFee)
+			newCombinedFee, _ := newFees.PlatformFee.Add(newFees.PaymentFee)
+			if newCombinedFee.Cmp(oldCombinedFee) != 0 {
+				negFee, _ := tenantdb.ZeroDecimal().Sub(newCombinedFee)
+				if err := s.finance.RecordOrderCorrection(ctx, existing.WorkspaceID, existing.OrderID, finance.ComponentPlatformFee, negFee, verStr, string(existing.SourceClass), string(finance.ConfidenceHigh), fx); err != nil {
+					return false, fmt.Errorf("record platform fee correction: %w", err)
+				}
+			}
+			if newFees.ShippingCost.Cmp(existing.FeeBreakdown.ShippingCost) != 0 {
+				negShip, _ := tenantdb.ZeroDecimal().Sub(newFees.ShippingCost)
+				if err := s.finance.RecordOrderCorrection(ctx, existing.WorkspaceID, existing.OrderID, finance.ComponentShipping, negShip, verStr, string(existing.SourceClass), string(finance.ConfidenceHigh), fx); err != nil {
+					return false, fmt.Errorf("record shipping cost correction: %w", err)
+				}
+			}
+			if newFees.AffiliateCommission.Cmp(existing.FeeBreakdown.AffiliateCommission) != 0 {
+				negComm, _ := tenantdb.ZeroDecimal().Sub(newFees.AffiliateCommission)
+				if err := s.finance.RecordOrderCorrection(ctx, existing.WorkspaceID, existing.OrderID, finance.ComponentCommission, negComm, verStr, string(existing.SourceClass), string(finance.ConfidenceHigh), fx); err != nil {
+					return false, fmt.Errorf("record affiliate commission correction: %w", err)
+				}
+			}
+			oldCogs, oldHasCogs, err := orderCogsTotal(existing.Items)
+			if err != nil {
+				return false, err
+			}
+			newCogs, newHasCogs, err := orderCogsTotal(newItems)
+			if err != nil {
+				return false, err
+			}
+			if (oldHasCogs || newHasCogs) && newCogs.Cmp(oldCogs) != 0 {
+				negCogs, _ := tenantdb.ZeroDecimal().Sub(newCogs)
+				if err := s.finance.RecordOrderCorrection(ctx, existing.WorkspaceID, existing.OrderID, finance.ComponentCOGS, negCogs, verStr, string(existing.SourceClass), string(finance.ConfidenceHigh), fx); err != nil {
+					return false, fmt.Errorf("record cogs correction: %w", err)
+				}
+			}
+		}
+		if existing.Metadata == nil {
+			existing.Metadata = make(map[string]any)
+		}
+		existing.Metadata["economic_version"] = nextVer
+	}
+
+	existing.Amount = newAmount
+	existing.FeeBreakdown = newFees
+	existing.Items = newItems
+	existing.TaxAmount = newTax
+	if hasNewerTimestamp {
+		ts := *incoming.SourceUpdatedAt
+		existing.SourceUpdatedAt = &ts
+	}
+	if hasNewerRecognizedAt {
+		rt := *incoming.RecognizedAt
+		existing.RecognizedAt = &rt
+	}
+	existing.UpdatedAt = s.clock().UTC()
+	if err := s.store.UpdateOrder(ctx, existing); err != nil {
+		return false, err
+	}
+
+	if hasEconChange {
+		s.emitEvent(ctx, "commerce.order.fee_corrected", "order", existing.OrderID, existing.WorkspaceID, map[string]any{
+			"order_id": existing.OrderID,
+			"amount":   existing.Amount.Fixed6String(),
+			"version":  fmt.Sprintf("v%d", nextVer),
+			"reason":   "ingest_economic_revision",
+		})
+	}
+	return hasEconChange, nil
 }
 
 func (s *Service) resolveInventoryStore() inventory.Store {
@@ -584,36 +827,25 @@ func (s *Service) reconcileExistingOrderOnIngest(ctx context.Context, existing *
 	}
 
 	targetState := incoming.LifecycleState
-	if targetState == "" || targetState == existing.LifecycleState {
+	if targetState == "" || targetState == existing.LifecycleState ||
+		(isRecognizedOrderState(existing.LifecycleState) && targetState == StateCompleted) {
 		// Billing R06: Even if the persisted state already matches targetState, ensure stock and finance
 		// effects actually completed in case a prior crash occurred after status persistence.
 		if err := s.ensureOrderStockEffects(ctx, existing, existing.LifecycleState, defaultLocationID); err != nil {
 			return nil, false, err
 		}
-		if existing.LifecycleState == StateCompleted {
+		if existing.LifecycleState == StateCompleted && orderEconomicVersion(existing) == 1 {
 			if err := s.recordOrderPosting(ctx, existing); err != nil {
 				return nil, false, fmt.Errorf("record completed order finance posting: %w", err)
 			}
+		}
+		if _, err := s.applyOrderEconomicRevision(ctx, existing, incoming); err != nil {
+			return nil, false, err
+		}
+		if isRecognizedOrderState(existing.LifecycleState) {
 			s.syncAffiliateOrder(ctx, existing)
 		}
 		return existing, false, nil
-	}
-
-	// Merge newer source_updated_at or fee breakdown before advancing
-	needsMetaUpdate := false
-	if incoming.SourceUpdatedAt != nil && (existing.SourceUpdatedAt == nil || incoming.SourceUpdatedAt.After(*existing.SourceUpdatedAt)) {
-		ts := *incoming.SourceUpdatedAt
-		existing.SourceUpdatedAt = &ts
-		needsMetaUpdate = true
-	}
-	if (!incoming.FeeBreakdown.PlatformFee.IsZero() || !incoming.FeeBreakdown.ShippingCost.IsZero() || !incoming.FeeBreakdown.AffiliateCommission.IsZero()) &&
-		existing.LifecycleState != StateCompleted && existing.LifecycleState != StatePartiallyRefunded && existing.LifecycleState != StateRefunded {
-		existing.FeeBreakdown = incoming.FeeBreakdown
-		needsMetaUpdate = true
-	}
-	if needsMetaUpdate {
-		existing.UpdatedAt = s.clock().UTC()
-		_ = s.store.UpdateOrder(ctx, existing)
 	}
 
 	if targetState == StateCancelled {
@@ -638,6 +870,11 @@ func (s *Service) reconcileExistingOrderOnIngest(ctx context.Context, existing *
 			"incoming_state": targetState,
 		})
 		return existing, false, nil
+	}
+
+	// Merge any newer economic revision or source_updated_at before advancing forward.
+	if _, err := s.applyOrderEconomicRevision(ctx, existing, incoming); err != nil {
+		return nil, false, err
 	}
 
 	// Billing R06: Ensure stock effects for the existing state are reconciled before stepping forward.
@@ -1253,6 +1490,16 @@ func (s *Service) UpdateFeeBreakdown(ctx context.Context, workspaceID, orderID s
 	}
 
 	oldFees := o.FeeBreakdown
+	oldEconVer := orderEconomicVersion(o)
+	nextEconVer := oldEconVer + 1
+	var parsedVer int
+	if _, err := fmt.Sscanf(strings.TrimPrefix(strings.ToLower(strings.TrimSpace(version)), "v"), "%d", &parsedVer); err == nil && parsedVer > nextEconVer {
+		nextEconVer = parsedVer
+	}
+	if o.Metadata == nil {
+		o.Metadata = make(map[string]any)
+	}
+	o.Metadata["economic_version"] = nextEconVer
 	o.FeeBreakdown = newFees
 	o.UpdatedAt = s.clock().UTC()
 
@@ -1272,12 +1519,15 @@ func (s *Service) UpdateFeeBreakdown(ctx context.Context, workspaceID, orderID s
 
 		rollbackFees := func() {
 			o.FeeBreakdown = oldFees
+			o.Metadata["economic_version"] = oldEconVer
 			_ = s.store.UpdateOrder(ctx, o)
 		}
 
-		// Platform fee correction
-		if newFees.PlatformFee.Cmp(oldFees.PlatformFee) != 0 {
-			negFee, _ := tenantdb.ZeroDecimal().Sub(newFees.PlatformFee)
+		// Platform + payment fee correction
+		oldCombinedFee, _ := oldFees.PlatformFee.Add(oldFees.PaymentFee)
+		newCombinedFee, _ := newFees.PlatformFee.Add(newFees.PaymentFee)
+		if newCombinedFee.Cmp(oldCombinedFee) != 0 {
+			negFee, _ := tenantdb.ZeroDecimal().Sub(newCombinedFee)
 			if err := s.finance.RecordOrderCorrection(ctx, workspaceID, orderID, finance.ComponentPlatformFee, negFee, version, string(o.SourceClass), string(finance.ConfidenceHigh), fx); err != nil {
 				rollbackFees()
 				return nil, fmt.Errorf("record platform fee correction: %w", err)

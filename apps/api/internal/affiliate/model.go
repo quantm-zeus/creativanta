@@ -151,24 +151,27 @@ type AttributionRecord struct {
 
 // AffiliateCommission models affiliate_commissions (§10.4B).
 type AffiliateCommission struct {
-	CommissionID     string                 `json:"commission_id"`
-	WorkspaceID      string                 `json:"workspace_id"`
-	AffiliateLinkID  string                 `json:"affiliate_link_id"`
-	OrderID          string                 `json:"order_id"`
-	CreatorEntityID  *string                `json:"creator_entity_id,omitempty"`
-	OrderAmount      tenantdb.ExactDecimal  `json:"order_amount"`
-	CommissionAmount tenantdb.ExactDecimal  `json:"commission_amount"`
-	Currency         string                 `json:"currency"`
-	Status           CommissionState        `json:"status"`
-	HoldUntil        time.Time              `json:"hold_until"`
-	ClawbackReason   string                 `json:"clawback_reason,omitempty"`
-	ClawbackAmount   *tenantdb.ExactDecimal `json:"clawback_amount,omitempty"`
-	PayoutID         *string                `json:"payout_id,omitempty"`
-	ConfirmedAt      *time.Time             `json:"confirmed_at,omitempty"`
-	ClawedBackAt     *time.Time             `json:"clawed_back_at,omitempty"`
-	PaidOutAt        *time.Time             `json:"paid_out_at,omitempty"`
-	CreatedAt        time.Time              `json:"created_at"`
-	UpdatedAt        time.Time              `json:"updated_at"`
+	CommissionID            string                 `json:"commission_id"`
+	WorkspaceID             string                 `json:"workspace_id"`
+	AffiliateLinkID         string                 `json:"affiliate_link_id"`
+	OrderID                 string                 `json:"order_id"`
+	CreatorEntityID         *string                `json:"creator_entity_id,omitempty"`
+	OrderAmount             tenantdb.ExactDecimal  `json:"order_amount"`
+	CommissionRate          tenantdb.ExactDecimal  `json:"commission_rate,omitempty"`
+	InitialOrderAmount      tenantdb.ExactDecimal  `json:"initial_order_amount,omitempty"`
+	InitialCommissionAmount tenantdb.ExactDecimal  `json:"initial_commission_amount,omitempty"`
+	CommissionAmount        tenantdb.ExactDecimal  `json:"commission_amount"`
+	Currency                string                 `json:"currency"`
+	Status                  CommissionState        `json:"status"`
+	HoldUntil               time.Time              `json:"hold_until"`
+	ClawbackReason          string                 `json:"clawback_reason,omitempty"`
+	ClawbackAmount          *tenantdb.ExactDecimal `json:"clawback_amount,omitempty"`
+	PayoutID                *string                `json:"payout_id,omitempty"`
+	ConfirmedAt             *time.Time             `json:"confirmed_at,omitempty"`
+	ClawedBackAt            *time.Time             `json:"clawed_back_at,omitempty"`
+	PaidOutAt               *time.Time             `json:"paid_out_at,omitempty"`
+	CreatedAt               time.Time              `json:"created_at"`
+	UpdatedAt               time.Time              `json:"updated_at"`
 }
 
 // VerifiedOrder represents an authoritative, tenant-scoped order snapshot
