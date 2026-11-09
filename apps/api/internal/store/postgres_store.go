@@ -94,6 +94,21 @@ func (p *PostgresStore) setActiveLease(workspaceID, idempotencyKey, leaseOwner s
 	p.activeLeases[workspaceID+":"+strings.TrimSpace(idempotencyKey)] = leaseOwner
 }
 
+func (p *PostgresStore) getActiveLease(workspaceID, idempotencyKey string) string {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.activeLeases[workspaceID+":"+strings.TrimSpace(idempotencyKey)]
+}
+
+func (p *PostgresStore) clearActiveLease(workspaceID, idempotencyKey, expectedOwner string) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	k := workspaceID + ":" + strings.TrimSpace(idempotencyKey)
+	if expectedOwner == "" || p.activeLeases[k] == expectedOwner {
+		delete(p.activeLeases, k)
+	}
+}
+
 func (p *PostgresStore) popActiveLease(workspaceID, idempotencyKey string) string {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -101,6 +116,61 @@ func (p *PostgresStore) popActiveLease(workspaceID, idempotencyKey string) strin
 	owner := p.activeLeases[k]
 	delete(p.activeLeases, k)
 	return owner
+}
+
+func (p *PostgresStore) verifyCheckoutFenceTx(ctx context.Context, tx pgx.Tx, workspaceID string, fence *checkoutFence, isRollback bool) error {
+	if fence == nil || strings.TrimSpace(fence.IdempotencyKey) == "" {
+		return nil
+	}
+	idemOp := pgIdemOpKey(fence.IdempotencyKey)
+	var status string
+	var raw []byte
+	err := tx.QueryRow(ctx, `
+		SELECT status, result_payload
+		FROM external_effects
+		WHERE workspace_id = $1::uuid AND operation_key = $2
+		FOR UPDATE
+	`, workspaceID, idemOp).Scan(&status, &raw)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrCheckoutLeaseLost
+		}
+		return err
+	}
+	if status != "prepared" {
+		return ErrCheckoutLeaseLost
+	}
+	var payload pgCheckoutClaimPayload
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		return err
+	}
+	if payload.LeaseOwner != fence.LeaseOwner || payload.LeaseEpoch != fence.LeaseEpoch {
+		return ErrCheckoutLeaseLost
+	}
+	if fence.OrderID != "" && payload.OrderID != "" && payload.OrderID != fence.OrderID {
+		return ErrCheckoutLeaseLost
+	}
+	now := p.currentTime(ctx, tx)
+	if !isRollback {
+		if payload.LeaseUntil != nil && !now.Before(*payload.LeaseUntil) {
+			return ErrCheckoutLeaseLost
+		}
+	} else if payload.LeaseUntil != nil && !now.Before(*payload.LeaseUntil) {
+		extended := now.Add(p.leaseTTL())
+		payload.LeaseUntil = &extended
+		updatedRaw, mErr := json.Marshal(payload)
+		if mErr != nil {
+			return mErr
+		}
+		if _, uErr := tx.Exec(ctx, `
+			UPDATE external_effects
+			SET result_payload = $3::jsonb, updated_at = NOW()
+			WHERE workspace_id = $1::uuid AND operation_key = $2 AND status = 'prepared'
+		`, workspaceID, idemOp, string(updatedRaw)); uErr != nil {
+			return uErr
+		}
+	}
+	return nil
 }
 
 type pgCheckoutClaimPayload struct {
@@ -273,9 +343,18 @@ func (p *PostgresStore) ClaimCheckout(ctx context.Context, workspaceID, idempote
 			if claimedOrderID == "" {
 				claimedOrderID = newUUID()
 			}
+			fence := checkoutFenceFromContext(ctx)
 			leaseOwner := p.instanceID + ":" + newUUID()
+			if fence != nil && strings.TrimSpace(fence.LeaseOwner) != "" {
+				leaseOwner = p.instanceID + ":" + strings.TrimSpace(fence.LeaseOwner)
+			}
 			leaseUntil := now.Add(p.leaseTTL())
 			acquiredLeaseOwner = leaseOwner
+			if fence != nil {
+				fence.LeaseOwner = leaseOwner
+				fence.LeaseEpoch = nextEpoch
+				fence.OrderID = claimedOrderID
+			}
 
 			claimPayload, err := json.Marshal(pgCheckoutClaimPayload{
 				IdempotencyKey:     idempotencyKey,
@@ -339,9 +418,8 @@ func (p *PostgresStore) ClaimCheckout(ctx context.Context, workspaceID, idempote
 }
 
 func (p *PostgresStore) ReleaseCheckoutClaim(ctx context.Context, workspaceID, idempotencyKey, paymentIntentID string) error {
-	_ = p.Store.ReleaseCheckoutClaim(ctx, workspaceID, idempotencyKey, paymentIntentID)
 	if p.pool == nil {
-		return nil
+		return p.Store.ReleaseCheckoutClaim(ctx, workspaceID, idempotencyKey, paymentIntentID)
 	}
 
 	idemOp := pgIdemOpKey(idempotencyKey)
@@ -349,7 +427,13 @@ func (p *PostgresStore) ReleaseCheckoutClaim(ctx context.Context, workspaceID, i
 	if strings.TrimSpace(paymentIntentID) != "" {
 		piOp = pgPaymentOpKey(paymentIntentID)
 	}
-	leaseOwner := p.popActiveLease(workspaceID, idempotencyKey)
+	fence := checkoutFenceFromContext(ctx)
+	leaseOwner := ""
+	if fence != nil {
+		leaseOwner = fence.LeaseOwner
+	} else {
+		leaseOwner = p.popActiveLease(workspaceID, idempotencyKey)
+	}
 
 	cleanCtx := ctx
 	if cleanCtx != nil && cleanCtx.Err() != nil {
@@ -358,7 +442,12 @@ func (p *PostgresStore) ReleaseCheckoutClaim(ctx context.Context, workspaceID, i
 		defer cancel()
 	}
 
-	return p.withTenantTx(cleanCtx, workspaceID, func(tx pgx.Tx) error {
+	err := p.withTenantTx(cleanCtx, workspaceID, func(tx pgx.Tx) error {
+		if fence != nil {
+			if err := p.verifyCheckoutFenceTx(cleanCtx, tx, workspaceID, fence, true); err != nil {
+				return err
+			}
+		}
 		if leaseOwner != "" {
 			_, err := tx.Exec(cleanCtx, `
 				DELETE FROM external_effects
@@ -387,7 +476,10 @@ func (p *PostgresStore) ReleaseCheckoutClaim(ctx context.Context, workspaceID, i
 		}
 		_, err := tx.Exec(cleanCtx, `
 			DELETE FROM external_effects
-			WHERE workspace_id = $1::uuid AND operation_key = $2 AND status = 'prepared'
+			WHERE workspace_id = $1::uuid
+			  AND operation_key = $2
+			  AND status = 'prepared'
+			  AND COALESCE(result_payload->>'lease_owner', '') = ''
 		`, workspaceID, idemOp)
 		if err != nil {
 			return err
@@ -395,7 +487,11 @@ func (p *PostgresStore) ReleaseCheckoutClaim(ctx context.Context, workspaceID, i
 		if piOp != "" {
 			_, err = tx.Exec(cleanCtx, `
 				DELETE FROM external_effects
-				WHERE workspace_id = $1::uuid AND operation_key = $2 AND status = 'prepared' AND provider_request_id = $3
+				WHERE workspace_id = $1::uuid
+				  AND operation_key = $2
+				  AND status = 'prepared'
+				  AND provider_request_id = $3
+				  AND COALESCE(result_payload->>'lease_owner', '') = ''
 			`, workspaceID, piOp, idempotencyKey)
 			if err != nil {
 				return err
@@ -403,6 +499,14 @@ func (p *PostgresStore) ReleaseCheckoutClaim(ctx context.Context, workspaceID, i
 		}
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+	if leaseOwner != "" {
+		p.clearActiveLease(workspaceID, idempotencyKey, leaseOwner)
+	}
+	_ = p.Store.ReleaseCheckoutClaim(withoutCheckoutFence(cleanCtx), workspaceID, idempotencyKey, paymentIntentID)
+	return nil
 }
 
 func (p *PostgresStore) GetCheckoutResultByIdempotency(ctx context.Context, workspaceID, idempotencyKey string) (*CheckoutResult, error) {
@@ -486,8 +590,47 @@ func (p *PostgresStore) SaveCheckoutResult(ctx context.Context, workspaceID, ide
 	if strings.TrimSpace(res.PaymentIntentID) != "" {
 		piOp = pgPaymentOpKey(res.PaymentIntentID)
 	}
+	fence := checkoutFenceFromContext(ctx)
 
 	err := p.withTenantTx(ctx, workspaceID, func(tx pgx.Tx) error {
+		if fence != nil {
+			if err := p.verifyCheckoutFenceTx(ctx, tx, workspaceID, fence, false); err != nil {
+				return err
+			}
+		} else {
+			var existingStatus string
+			var existingRaw []byte
+			err := tx.QueryRow(ctx, `
+				SELECT status, result_payload
+				FROM external_effects
+				WHERE workspace_id = $1::uuid AND operation_key = $2
+				FOR UPDATE
+			`, workspaceID, idemOp).Scan(&existingStatus, &existingRaw)
+			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+				return err
+			}
+			if err == nil && len(existingRaw) > 0 {
+				var existingPayload pgCheckoutClaimPayload
+				_ = json.Unmarshal(existingRaw, &existingPayload)
+				if existingPayload.RequestFingerprint != "" && res.RequestFingerprint != "" && existingPayload.RequestFingerprint != res.RequestFingerprint {
+					return ErrPaymentReplay
+				}
+				if existingStatus == "succeeded" && existingPayload.PaymentIntentID != "" && res.PaymentIntentID != "" && existingPayload.PaymentIntentID != res.PaymentIntentID {
+					return ErrPaymentReplay
+				}
+				if existingStatus == "prepared" && existingPayload.LeaseOwner != "" {
+					activeOwner := p.getActiveLease(workspaceID, idempotencyKey)
+					if activeOwner == "" || existingPayload.LeaseOwner != activeOwner {
+						return ErrCheckoutLeaseLost
+					}
+					now := p.currentTime(ctx, tx)
+					if existingPayload.LeaseUntil != nil && !now.Before(*existingPayload.LeaseUntil) {
+						return ErrCheckoutLeaseLost
+					}
+				}
+			}
+		}
+
 		if piOp != "" {
 			var raw []byte
 			err := tx.QueryRow(ctx, `
@@ -569,7 +712,12 @@ func (p *PostgresStore) SaveCheckoutResult(ctx context.Context, workspaceID, ide
 	if err != nil {
 		return err
 	}
-	return p.Store.SaveCheckoutResult(ctx, workspaceID, idempotencyKey, res)
+	if fence != nil {
+		p.clearActiveLease(workspaceID, idempotencyKey, fence.LeaseOwner)
+	} else {
+		p.popActiveLease(workspaceID, idempotencyKey)
+	}
+	return p.Store.SaveCheckoutResult(withoutCheckoutFence(ctx), workspaceID, idempotencyKey, res)
 }
 
 func (p *PostgresStore) RecordVerifiedPaymentIntent(ctx context.Context, intent *VerifiedPaymentIntent) error {
@@ -635,6 +783,9 @@ func (p *PostgresStore) CreateDigitalDelivery(ctx context.Context, d *DigitalDel
 		return p.Store.CreateDigitalDelivery(ctx, d)
 	}
 	err := p.withTenantTx(ctx, d.WorkspaceID, func(tx pgx.Tx) error {
+		if err := p.verifyCheckoutFenceTx(ctx, tx, d.WorkspaceID, checkoutFenceFromContext(ctx), false); err != nil {
+			return err
+		}
 		if strings.TrimSpace(d.IdempotencyKey) != "" {
 			idemOp := "store_delivery_idem:" + strings.TrimSpace(d.IdempotencyKey)
 			var existingRaw []byte
@@ -692,21 +843,27 @@ func (p *PostgresStore) CreateDigitalDelivery(ctx context.Context, d *DigitalDel
 	if err != nil {
 		return err
 	}
-	return p.Store.CreateDigitalDelivery(ctx, d)
+	return p.Store.CreateDigitalDelivery(withoutCheckoutFence(ctx), d)
 }
 
 func (p *PostgresStore) DeleteDigitalDelivery(ctx context.Context, workspaceID, deliveryID string) error {
-	_ = p.Store.DeleteDigitalDelivery(ctx, workspaceID, deliveryID)
 	if p.pool == nil {
-		return nil
+		return p.Store.DeleteDigitalDelivery(ctx, workspaceID, deliveryID)
 	}
-	return p.withTenantTx(ctx, workspaceID, func(tx pgx.Tx) error {
+	err := p.withTenantTx(ctx, workspaceID, func(tx pgx.Tx) error {
+		if err := p.verifyCheckoutFenceTx(ctx, tx, workspaceID, checkoutFenceFromContext(ctx), true); err != nil {
+			return err
+		}
 		_, err := tx.Exec(ctx, `
 			DELETE FROM external_effects
 			WHERE workspace_id = $1::uuid AND aggregate_type = 'digital_delivery' AND aggregate_id = $2::uuid
 		`, workspaceID, deliveryID)
 		return err
 	})
+	if err != nil {
+		return err
+	}
+	return p.Store.DeleteDigitalDelivery(withoutCheckoutFence(ctx), workspaceID, deliveryID)
 }
 
 func (p *PostgresStore) ListDeliveriesByCustomer(ctx context.Context, workspaceID, customerEntityID string) ([]DigitalDelivery, error) {
@@ -760,6 +917,9 @@ func (p *PostgresStore) CreateSubscription(ctx context.Context, sub *MembershipS
 		return p.Store.CreateSubscription(ctx, sub)
 	}
 	err := p.withTenantTx(ctx, sub.WorkspaceID, func(tx pgx.Tx) error {
+		if err := p.verifyCheckoutFenceTx(ctx, tx, sub.WorkspaceID, checkoutFenceFromContext(ctx), false); err != nil {
+			return err
+		}
 		if strings.TrimSpace(sub.ProviderSubscriptionID) != "" {
 			provOp := "store_sub_provider:" + strings.TrimSpace(sub.ProviderSubscriptionID)
 			var existingRaw []byte
@@ -814,21 +974,27 @@ func (p *PostgresStore) CreateSubscription(ctx context.Context, sub *MembershipS
 	if err != nil {
 		return err
 	}
-	return p.Store.CreateSubscription(ctx, sub)
+	return p.Store.CreateSubscription(withoutCheckoutFence(ctx), sub)
 }
 
 func (p *PostgresStore) DeleteSubscription(ctx context.Context, workspaceID, subID string) error {
-	_ = p.Store.DeleteSubscription(ctx, workspaceID, subID)
 	if p.pool == nil {
-		return nil
+		return p.Store.DeleteSubscription(ctx, workspaceID, subID)
 	}
-	return p.withTenantTx(ctx, workspaceID, func(tx pgx.Tx) error {
+	err := p.withTenantTx(ctx, workspaceID, func(tx pgx.Tx) error {
+		if err := p.verifyCheckoutFenceTx(ctx, tx, workspaceID, checkoutFenceFromContext(ctx), true); err != nil {
+			return err
+		}
 		_, err := tx.Exec(ctx, `
 			DELETE FROM external_effects
 			WHERE workspace_id = $1::uuid AND aggregate_type = 'membership_subscription' AND aggregate_id = $2::uuid
 		`, workspaceID, subID)
 		return err
 	})
+	if err != nil {
+		return err
+	}
+	return p.Store.DeleteSubscription(withoutCheckoutFence(ctx), workspaceID, subID)
 }
 
 func (p *PostgresStore) ListSubscriptionsByCustomer(ctx context.Context, workspaceID, customerEntityID string) ([]MembershipSubscription, error) {
@@ -882,6 +1048,9 @@ func (p *PostgresStore) RecordFinancialPosting(ctx context.Context, posting *Fin
 		return p.Store.RecordFinancialPosting(ctx, posting)
 	}
 	err := p.withTenantTx(ctx, posting.WorkspaceID, func(tx pgx.Tx) error {
+		if err := p.verifyCheckoutFenceTx(ctx, tx, posting.WorkspaceID, checkoutFenceFromContext(ctx), false); err != nil {
+			return err
+		}
 		orderOp := "store_posting_order:" + strings.TrimSpace(posting.OrderID)
 		var existingRaw []byte
 		err := tx.QueryRow(ctx, `
@@ -932,21 +1101,27 @@ func (p *PostgresStore) RecordFinancialPosting(ctx context.Context, posting *Fin
 	if err != nil {
 		return err
 	}
-	return p.Store.RecordFinancialPosting(ctx, posting)
+	return p.Store.RecordFinancialPosting(withoutCheckoutFence(ctx), posting)
 }
 
 func (p *PostgresStore) DeleteFinancialPosting(ctx context.Context, workspaceID, postingID string) error {
-	_ = p.Store.DeleteFinancialPosting(ctx, workspaceID, postingID)
 	if p.pool == nil {
-		return nil
+		return p.Store.DeleteFinancialPosting(ctx, workspaceID, postingID)
 	}
-	return p.withTenantTx(ctx, workspaceID, func(tx pgx.Tx) error {
+	err := p.withTenantTx(ctx, workspaceID, func(tx pgx.Tx) error {
+		if err := p.verifyCheckoutFenceTx(ctx, tx, workspaceID, checkoutFenceFromContext(ctx), true); err != nil {
+			return err
+		}
 		_, err := tx.Exec(ctx, `
 			DELETE FROM external_effects
 			WHERE workspace_id = $1::uuid AND aggregate_type = 'financial_posting' AND aggregate_id = $2::uuid
 		`, workspaceID, postingID)
 		return err
 	})
+	if err != nil {
+		return err
+	}
+	return p.Store.DeleteFinancialPosting(withoutCheckoutFence(ctx), workspaceID, postingID)
 }
 
 func (p *PostgresStore) ListFinancialPostings(ctx context.Context, workspaceID string) ([]FinancialPosting, error) {
@@ -1148,6 +1323,9 @@ func (p *PostgresStore) AtomicallyReserveBundleStock(ctx context.Context, worksp
 	updatedStocks := make(map[string]int32, len(b.Items))
 
 	err = p.withTenantTx(ctx, workspaceID, func(tx pgx.Tx) error {
+		if err := p.verifyCheckoutFenceTx(ctx, tx, workspaceID, checkoutFenceFromContext(ctx), false); err != nil {
+			return err
+		}
 		if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock(hashtext($1))", workspaceID+":bundle_stock"); err != nil {
 			return err
 		}
@@ -1288,6 +1466,9 @@ func (p *PostgresStore) ReleaseBundleStock(ctx context.Context, workspaceID, bun
 	updatedStocks := make(map[string]int32, len(b.Items))
 
 	err = p.withTenantTx(cleanCtx, workspaceID, func(tx pgx.Tx) error {
+		if err := p.verifyCheckoutFenceTx(cleanCtx, tx, workspaceID, checkoutFenceFromContext(ctx), true); err != nil {
+			return err
+		}
 		if _, err := tx.Exec(cleanCtx, "SELECT pg_advisory_xact_lock(hashtext($1))", workspaceID+":bundle_stock"); err != nil {
 			return err
 		}

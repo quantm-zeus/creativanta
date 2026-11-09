@@ -1498,3 +1498,170 @@ func TestRemediation_M01_MemoryStoreProcessCrashTakeover(t *testing.T) {
 			stock, len(subs), len(delivs), len(postings))
 	}
 }
+
+type staleLeasePauseStore struct {
+	Store
+	pauseBeforeSave func()
+	failSave        bool
+}
+
+func (s *staleLeasePauseStore) SaveCheckoutResult(ctx context.Context, workspaceID, idempotencyKey string, result *CheckoutResult) error {
+	if s.pauseBeforeSave != nil {
+		s.pauseBeforeSave()
+	}
+	if s.failSave {
+		return errors.New("simulated downstream failure after lease expiry")
+	}
+	return s.Store.SaveCheckoutResult(ctx, workspaceID, idempotencyKey, result)
+}
+
+func TestRemediation_N01_StaleLeaseWorkerCannotRollbackConfirmedCheckout(t *testing.T) {
+	ctx := context.Background()
+	wsID := newUUID()
+	custID := newUUID()
+	prodID := newUUID()
+	compID := newUUID()
+
+	var clockMu sync.Mutex
+	currentNow := time.Date(2026, 3, 25, 16, 0, 0, 0, time.UTC)
+	clockFn := func() time.Time {
+		clockMu.Lock()
+		defer clockMu.Unlock()
+		return currentNow
+	}
+	advanceClock := func(d time.Duration) {
+		clockMu.Lock()
+		currentNow = currentNow.Add(d)
+		clockMu.Unlock()
+	}
+
+	mem := NewMemoryStore()
+	mem.SetCheckoutLeaseTTL(5 * time.Second)
+	mem.SetNowFunc(clockFn)
+	_ = mem.SetProductStock(ctx, wsID, compID, 10)
+
+	svcB := NewService(mem, &mockSink{}, clockFn)
+	_ = svcB.UpsertProduct(ctx, &StoreProduct{
+		ProductID:   prodID,
+		WorkspaceID: wsID,
+		Title:       "N01 Digital Asset",
+		Price:       mustDecimal(t, "50000.000000"),
+		Currency:    "VND",
+		Status:      ProductStatusActive,
+	})
+	bundle, err := svcB.CreateBundle(ctx, &Bundle{
+		WorkspaceID: wsID,
+		Title:       "N01 Bundle",
+		BundlePrice: mustDecimal(t, "100000.000000"),
+		Currency:    "VND",
+		Items:       []BundleItem{{ProductID: compID, Quantity: 2, ProductTitle: "Comp"}},
+	})
+	if err != nil {
+		t.Fatalf("CreateBundle: %v", err)
+	}
+	plan, err := svcB.CreatePlan(ctx, &MembershipPlan{
+		WorkspaceID:     wsID,
+		Title:           "N01 Plan",
+		Price:           mustDecimal(t, "150000.000000"),
+		Currency:        "VND",
+		BillingInterval: "monthly",
+	})
+	if err != nil {
+		t.Fatalf("CreatePlan: %v", err)
+	}
+	_, _ = svcB.PublishPlan(ctx, wsID, plan.PlanID)
+
+	verifier := func(_ context.Context, _ string, _ string, _ tenantdb.ExactDecimal, _ string) (PaymentStatus, error) {
+		return PaymentStatusSucceeded, nil
+	}
+	svcB.SetPaymentVerifier(verifier)
+
+	req := CheckoutRequest{
+		WorkspaceID:      wsID,
+		CustomerEntityID: custID,
+		IdempotencyKey:   "n01-stale-worker-idem",
+		PaymentIntentID:  "pi_n01_stale_worker",
+		BundleID:         bundle.BundleID,
+		MembershipPlanID: plan.PlanID,
+		ProductIDs:       []string{prodID},
+		OrderAmount:      mustDecimal(t, "300000.000000"),
+		Currency:         "VND",
+	}
+
+	var workerBTakeoverRes *CheckoutResult
+	var workerBTakeoverErr error
+	slowStoreA := &staleLeasePauseStore{
+		Store:    mem,
+		failSave: true,
+		pauseBeforeSave: func() {
+			// Worker A has created all effects (stock, sub, delivery, posting) and now stalls past lease TTL.
+			advanceClock(6 * time.Second)
+			// Worker B takes over the expired lease and confirms the checkout.
+			workerBTakeoverRes, workerBTakeoverErr = svcB.Checkout(ctx, req)
+		},
+	}
+	svcA := NewService(slowStoreA, &mockSink{}, clockFn)
+	svcA.SetPaymentVerifier(verifier)
+
+	// Worker A runs Checkout, pauses before SaveCheckoutResult while Worker B takes over and confirms,
+	// then Worker A fails SaveCheckoutResult and attempts rollback().
+	_, errA := svcA.Checkout(ctx, req)
+	if errA == nil {
+		t.Fatalf("expected stale Worker A checkout to fail after lease loss")
+	}
+	if workerBTakeoverErr != nil || workerBTakeoverRes == nil || !workerBTakeoverRes.Success {
+		t.Fatalf("expected Worker B takeover checkout to succeed, got res=%+v err=%v", workerBTakeoverRes, workerBTakeoverErr)
+	}
+
+	// Verify Worker A's stale rollback did NOT delete Worker B's confirmed checkout effects!
+	stock, _ := mem.GetProductStock(ctx, wsID, compID)
+	subs, _ := mem.ListSubscriptionsByCustomer(ctx, wsID, custID)
+	delivs, _ := mem.ListDeliveriesByCustomer(ctx, wsID, custID)
+	postings, _ := mem.ListFinancialPostings(ctx, wsID)
+	if stock != 8 || len(subs) != 1 || len(delivs) != 1 || len(postings) != 1 {
+		t.Fatalf("N01 VIOLATION: stale Worker A rollback wiped confirmed checkout effects! stock=%d (want 8) subs=%d (want 1) delivs=%d (want 1) postings=%d (want 1)",
+			stock, len(subs), len(delivs), len(postings))
+	}
+
+	// Sub-scenario 2: Stale Worker A wakes up after lease takeover and tries to call SaveCheckoutResult directly (failSave=false).
+	// SaveCheckoutResult itself must fail with ErrCheckoutLeaseLost and rollback() must not wipe Worker B's confirmed effects.
+	custID2 := newUUID()
+	req2 := CheckoutRequest{
+		WorkspaceID:      wsID,
+		CustomerEntityID: custID2,
+		IdempotencyKey:   "n01-stale-worker-idem-2",
+		PaymentIntentID:  "pi_n01_stale_worker_2",
+		BundleID:         bundle.BundleID,
+		MembershipPlanID: plan.PlanID,
+		ProductIDs:       []string{prodID},
+		OrderAmount:      mustDecimal(t, "300000.000000"),
+		Currency:         "VND",
+	}
+	var workerBRes2 *CheckoutResult
+	var workerBErr2 error
+	slowStoreA2 := &staleLeasePauseStore{
+		Store:    mem,
+		failSave: false,
+		pauseBeforeSave: func() {
+			advanceClock(6 * time.Second)
+			workerBRes2, workerBErr2 = svcB.Checkout(ctx, req2)
+		},
+	}
+	svcA2 := NewService(slowStoreA2, &mockSink{}, clockFn)
+	svcA2.SetPaymentVerifier(verifier)
+	_, errA2 := svcA2.Checkout(ctx, req2)
+	if !errors.Is(errA2, ErrCheckoutLeaseLost) {
+		t.Fatalf("expected stale Worker A2 SaveCheckoutResult to fail with ErrCheckoutLeaseLost, got %v", errA2)
+	}
+	if workerBErr2 != nil || workerBRes2 == nil || !workerBRes2.Success {
+		t.Fatalf("expected Worker B2 takeover to succeed, got res=%+v err=%v", workerBRes2, workerBErr2)
+	}
+	stock2, _ := mem.GetProductStock(ctx, wsID, compID)
+	subs2, _ := mem.ListSubscriptionsByCustomer(ctx, wsID, custID2)
+	delivs2, _ := mem.ListDeliveriesByCustomer(ctx, wsID, custID2)
+	postings2, _ := mem.ListFinancialPostings(ctx, wsID)
+	if stock2 != 6 || len(subs2) != 1 || len(delivs2) != 1 || len(postings2) != 2 {
+		t.Fatalf("N01 VIOLATION on sub-scenario 2: stock=%d (want 6) subs=%d (want 1) delivs=%d (want 1) postings=%d (want 2)",
+			stock2, len(subs2), len(delivs2), len(postings2))
+	}
+}

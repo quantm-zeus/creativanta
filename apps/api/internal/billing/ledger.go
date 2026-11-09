@@ -2,6 +2,8 @@ package billing
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -374,11 +376,51 @@ func (s *MemoryStore) AttachPostgresPool(pool *pgxpool.Pool) {
 	s.pool = pool
 }
 
+func deterministicBillingUUID(prefix, workspaceID, key string) string {
+	p := prefix
+	if len(p) > 8 {
+		p = p[:8]
+	}
+	for len(p) < 8 {
+		p += "0"
+	}
+	sum := sha256.Sum256([]byte(workspaceID + "|" + key))
+	b4_5 := uint16(sum[0])<<8 | uint16(sum[1])
+	b6_7 := (uint16(sum[2])<<8 | uint16(sum[3])) & 0x0fff
+	b8_9 := ((uint16(sum[4])<<8 | uint16(sum[5])) & 0x3fff) | 0x8000
+	return fmt.Sprintf("%s-%04x-4%03x-%04x-%012x", p, b4_5, b6_7, b8_9, sum[6:12])
+}
+
+func defaultWorkspaceSubscriptionID(workspaceID string) string {
+	ws := strings.TrimSpace(workspaceID)
+	if ws == "" {
+		return "90000000-0000-4000-8000-000000000001"
+	}
+	return deterministicBillingUUID("90000000", ws, "default_subscription")
+}
+
 func (s *MemoryStore) nextUUID(prefix string) string {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.seqCounter++
-	return fmt.Sprintf("%s-0000-4000-8000-%012d", prefix[:8], s.seqCounter)
+	seq := s.seqCounter
+	s.mu.Unlock()
+
+	p := prefix
+	if len(p) > 8 {
+		p = p[:8]
+	}
+	for len(p) < 8 {
+		p += "0"
+	}
+	var rnd [10]byte
+	if _, err := rand.Read(rnd[:]); err != nil {
+		return deterministicBillingUUID(p, fmt.Sprintf("seq:%d", seq), fmt.Sprintf("ts:%d", time.Now().UnixNano()))
+	}
+	b4_5 := uint16(rnd[0])<<8 | uint16(rnd[1])
+	b6_7 := (uint16(rnd[2])<<8 | uint16(rnd[3])) & 0x0fff
+	b8_9 := ((uint16(rnd[4])<<8 | uint16(rnd[5])) & 0x3fff) | 0x8000
+	tail := (uint64(rnd[6])<<40 | uint64(rnd[7])<<32 | uint64(rnd[8])<<24 | uint64(rnd[9])<<16) | (uint64(seq) & 0xffff)
+	return fmt.Sprintf("%s-%04x-4%03x-%04x-%012x", p, b4_5, b6_7, b8_9, tail)
 }
 
 // UpsertRateCard registers or updates a provider rate card in the store.
@@ -552,7 +594,7 @@ func (s *MemoryStore) WithWorkspaceTx(workspaceID string, fn func(state *Workspa
 		if err != nil {
 			return err
 		}
-		effectID := s.nextUUID("99000000")
+		effectID := deterministicBillingUUID("99000000", workspaceID, opKey)
 		if _, err := tx.Exec(ctx, `
 			INSERT INTO external_effects (
 				effect_id, workspace_id, operation_key, provider,
@@ -1401,8 +1443,9 @@ func releaseAllocationsOnState(st *WorkspaceBillingState, res tenantdb.CreditRes
 				lot.RemainingCredits = newRem
 				negExp, _ := tenantdb.ZeroDecimal().Sub(alloc.Credits)
 				balAfter := computeBalanceFromState(st, now).Available
+				expIdemKey := fmt.Sprintf("expire_%s:%s:%s", prefix, res.ReservationID, lot.LotID)
 				expTx := tenantdb.CreditTransactionRow{
-					TransactionID:  fmt.Sprintf("72000000-0000-4000-8000-%012d", len(st.Transactions)+1),
+					TransactionID:  deterministicBillingUUID("72000000", st.WorkspaceID, expIdemKey),
 					WorkspaceID:    st.WorkspaceID,
 					OperationType:  "credit_expiration",
 					CreditsDelta:   negExp,
@@ -1410,7 +1453,7 @@ func releaseAllocationsOnState(st *WorkspaceBillingState, res tenantdb.CreditRes
 					Source:         lot.SourceType,
 					ReservationID:  res.ReservationID,
 					LotID:          lot.LotID,
-					IdempotencyKey: fmt.Sprintf("expire_%s:%s:%s", prefix, res.ReservationID, lot.LotID),
+					IdempotencyKey: expIdemKey,
 					Description:    "Released hold on expired source lot expired immediately",
 					CreatedAt:      now.UTC(),
 				}
