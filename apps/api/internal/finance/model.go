@@ -12,6 +12,7 @@ import (
 const (
 	ComponentRevenue     = "revenue"
 	ComponentPlatformFee = "platform_fee"
+	ComponentPaymentFee  = "payment_fee"
 	ComponentShipping    = "shipping"
 	ComponentCOGS        = "cogs"
 	ComponentAICredits   = "ai_credits"

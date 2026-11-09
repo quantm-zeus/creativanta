@@ -266,16 +266,42 @@ func (m *MemoryStore) RecordCorrectionAtomic(
 	}
 	m.postings[corrected.PostingID] = corrected
 
-	if originType == "order" && component == ComponentCOGS && !baseNewAmount.IsZero() {
+	if originType == "order" {
 		if ord := m.findOrderUnlocked(workspaceID, originID); ord != nil {
-			absCOGS := baseNewAmount
-			if absCOGS.IsNegative() {
-				absCOGS = absCOGS.Neg()
-			}
-			ord.COGSAmount = &absCOGS
+			applyOrderCorrectionToModel(ord, component, baseNewAmount)
 		}
 	}
 	return nil
+}
+
+func applyOrderCorrectionToModel(ord *Order, component string, baseNewAmount tenantdb.ExactDecimal) {
+	if ord == nil {
+		return
+	}
+	absVal := baseNewAmount
+	if absVal.IsNegative() {
+		absVal = absVal.Neg()
+	}
+	switch component {
+	case ComponentRevenue:
+		ord.Amount = baseNewAmount
+	case ComponentCOGS:
+		if !absVal.IsZero() {
+			ord.COGSAmount = &absVal
+		}
+	case ComponentPlatformFee:
+		if ord.PaymentFeeAmount.IsPositive() && absVal.Cmp(ord.PaymentFeeAmount) >= 0 {
+			rem, _ := absVal.Sub(ord.PaymentFeeAmount)
+			ord.PlatformFeeAmount = rem
+		} else {
+			ord.PlatformFeeAmount = absVal
+			ord.PaymentFeeAmount = tenantdb.ZeroDecimal()
+		}
+	case ComponentShipping:
+		ord.ShippingFeeAmount = absVal
+	case ComponentCommission:
+		ord.CommissionAmount = absVal
+	}
 }
 
 func (m *MemoryStore) GetPosting(_ context.Context, workspaceID, postingID string) (*FinancialPosting, error) {
@@ -439,6 +465,86 @@ func (m *MemoryStore) UpdateCostItem(_ context.Context, item *CostItem) error {
 	return nil
 }
 
+func (m *MemoryStore) UpdateCostItemAtomic(
+	_ context.Context,
+	item *CostItem,
+	comp string,
+	negAmount tenantdb.ExactDecimal,
+	fx ExchangeRateSnapshot,
+	effectiveAt, now time.Time,
+) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	existing, ok := m.costItems[item.CostItemID]
+	if !ok || existing.WorkspaceID != item.WorkspaceID {
+		return ErrCostItemNotFound
+	}
+
+	var postings []*FinancialPosting
+	reversedIDs := make(map[string]bool)
+	nonReversalCount := 0
+	for _, p := range m.postings {
+		if p.WorkspaceID == item.WorkspaceID && p.OriginType == "cost_item" && p.OriginID == item.CostItemID {
+			postings = append(postings, p)
+			if p.ReversalOf != nil && *p.ReversalOf != "" {
+				reversedIDs[*p.ReversalOf] = true
+			} else {
+				nonReversalCount++
+			}
+		}
+	}
+
+	for _, p := range postings {
+		if p.ReversalOf != nil || reversedIDs[p.PostingID] {
+			continue
+		}
+		oldID := p.PostingID
+		revAmount, _ := tenantdb.ZeroDecimal().Sub(p.Amount)
+		rev := &FinancialPosting{
+			PostingID:            newUUID(),
+			WorkspaceID:          item.WorkspaceID,
+			OriginType:           "cost_item",
+			OriginID:             item.CostItemID,
+			OriginVersion:        p.OriginVersion + "-reversal",
+			Component:            p.Component,
+			Amount:               revAmount,
+			Currency:             p.Currency,
+			SourceClass:          p.SourceClass,
+			Confidence:           p.Confidence,
+			ExchangeRateSnapshot: p.ExchangeRateSnapshot,
+			ReversalOf:           &oldID,
+			EffectiveAt:          p.EffectiveAt,
+			CreatedAt:            now,
+		}
+		m.postings[rev.PostingID] = rev
+	}
+
+	if item.CostState != CostStateSuperseded {
+		repl := &FinancialPosting{
+			PostingID:            newUUID(),
+			WorkspaceID:          item.WorkspaceID,
+			OriginType:           "cost_item",
+			OriginID:             item.CostItemID,
+			OriginVersion:        fmt.Sprintf("v%d", nonReversalCount+1),
+			Component:            comp,
+			Amount:               negAmount,
+			Currency:             item.Currency,
+			SourceClass:          item.SourceClass,
+			Confidence:           ConfidenceMedium,
+			ExchangeRateSnapshot: fx,
+			EffectiveAt:          effectiveAt,
+			CreatedAt:            now,
+		}
+		m.postings[repl.PostingID] = repl
+	}
+
+	item.UpdatedAt = now
+	cp := *item
+	m.costItems[item.CostItemID] = &cp
+	return nil
+}
+
 func (m *MemoryStore) DeleteCostItem(_ context.Context, workspaceID, costItemID string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -529,6 +635,13 @@ func (m *MemoryStore) ListSettlements(_ context.Context, workspaceID string, fil
 			continue
 		}
 		cp := *s
+		var lines []SettlementLine
+		for _, line := range m.lines {
+			if line.WorkspaceID == workspaceID && line.SettlementID == s.SettlementID {
+				lines = append(lines, *line)
+			}
+		}
+		cp.Lines = lines
 		matched = append(matched, cp)
 	}
 
@@ -550,6 +663,13 @@ func (m *MemoryStore) FindSettlementByExternalID(_ context.Context, workspaceID,
 	for _, s := range m.settlements {
 		if s.WorkspaceID == workspaceID && s.ConnectedAccountID == accountID && s.ExternalSettlementID == externalID {
 			cp := *s
+			var lines []SettlementLine
+			for _, line := range m.lines {
+				if line.WorkspaceID == workspaceID && line.SettlementID == cp.SettlementID {
+					lines = append(lines, *line)
+				}
+			}
+			cp.Lines = lines
 			return &cp, nil
 		}
 	}
@@ -563,6 +683,13 @@ func (m *MemoryStore) FindSettlementByFingerprint(_ context.Context, workspaceID
 	for _, s := range m.settlements {
 		if s.WorkspaceID == workspaceID && s.ImportFingerprint == fingerprint {
 			cp := *s
+			var lines []SettlementLine
+			for _, line := range m.lines {
+				if line.WorkspaceID == workspaceID && line.SettlementID == cp.SettlementID {
+					lines = append(lines, *line)
+				}
+			}
+			cp.Lines = lines
 			return &cp, nil
 		}
 	}
@@ -1813,18 +1940,72 @@ func (p *PostgresStore) RecordCorrectionAtomic(
 			return fmt.Errorf("create corrected posting: %w", err)
 		}
 
-		if originType == "order" && component == ComponentCOGS && !baseNewAmount.IsZero() {
-			absCOGS := baseNewAmount
-			if absCOGS.IsNegative() {
-				absCOGS = absCOGS.Neg()
+		if originType == "order" {
+			absVal := baseNewAmount
+			if absVal.IsNegative() {
+				absVal = absVal.Neg()
 			}
-			cogsPatch, _ := json.Marshal(map[string]any{"cogs": absCOGS.Fixed6String()})
-			_, _ = tx.Exec(txCtx, `
-				UPDATE orders
-				SET fee_breakdown = COALESCE(fee_breakdown, '{}'::jsonb) || $1::jsonb,
-				    updated_at = NOW()
-				WHERE workspace_id = $2 AND order_id::text = $3
-			`, cogsPatch, workspaceID, originID)
+			switch component {
+			case ComponentRevenue:
+				_, _ = tx.Exec(txCtx, `
+					UPDATE orders
+					SET amount = $1,
+					    updated_at = NOW()
+					WHERE workspace_id = $2 AND order_id::text = $3
+				`, baseNewAmount.ToPgNumeric(), workspaceID, originID)
+			case ComponentCOGS:
+				if !absVal.IsZero() {
+					cogsPatch, _ := json.Marshal(map[string]any{"cogs": absVal.Fixed6String()})
+					_, _ = tx.Exec(txCtx, `
+						UPDATE orders
+						SET fee_breakdown = COALESCE(fee_breakdown, '{}'::jsonb) || $1::jsonb,
+						    updated_at = NOW()
+						WHERE workspace_id = $2 AND order_id::text = $3
+					`, cogsPatch, workspaceID, originID)
+				}
+			case ComponentPlatformFee:
+				var feeBytes []byte
+				_ = tx.QueryRow(txCtx, `
+					SELECT COALESCE(fee_breakdown, '{}'::jsonb)
+					FROM orders
+					WHERE workspace_id = $1 AND order_id::text = $2
+				`, workspaceID, originID).Scan(&feeBytes)
+				var fees map[string]any
+				_ = json.Unmarshal(feeBytes, &fees)
+				payFee, _ := parseMapDecimal(fees, "payment_fee", "transaction_fee")
+				platFee := absVal
+				if payFee.IsPositive() && absVal.Cmp(payFee) >= 0 {
+					platFee, _ = absVal.Sub(payFee)
+				} else {
+					payFee = tenantdb.ZeroDecimal()
+				}
+				feePatch, _ := json.Marshal(map[string]any{
+					"platform_fee": platFee.Fixed6String(),
+					"payment_fee":  payFee.Fixed6String(),
+				})
+				_, _ = tx.Exec(txCtx, `
+					UPDATE orders
+					SET fee_breakdown = COALESCE(fee_breakdown, '{}'::jsonb) || $1::jsonb,
+					    updated_at = NOW()
+					WHERE workspace_id = $2 AND order_id::text = $3
+				`, feePatch, workspaceID, originID)
+			case ComponentShipping:
+				shipPatch, _ := json.Marshal(map[string]any{"shipping_cost": absVal.Fixed6String()})
+				_, _ = tx.Exec(txCtx, `
+					UPDATE orders
+					SET fee_breakdown = COALESCE(fee_breakdown, '{}'::jsonb) || $1::jsonb,
+					    updated_at = NOW()
+					WHERE workspace_id = $2 AND order_id::text = $3
+				`, shipPatch, workspaceID, originID)
+			case ComponentCommission:
+				commPatch, _ := json.Marshal(map[string]any{"affiliate_commission": absVal.Fixed6String()})
+				_, _ = tx.Exec(txCtx, `
+					UPDATE orders
+					SET fee_breakdown = COALESCE(fee_breakdown, '{}'::jsonb) || $1::jsonb,
+					    updated_at = NOW()
+					WHERE workspace_id = $2 AND order_id::text = $3
+				`, commPatch, workspaceID, originID)
+			}
 		}
 		return nil
 	})
@@ -2199,6 +2380,121 @@ func (p *PostgresStore) UpdateCostItem(ctx context.Context, item *CostItem) erro
 	})
 }
 
+func (p *PostgresStore) UpdateCostItemAtomic(
+	ctx context.Context,
+	item *CostItem,
+	comp string,
+	negAmount tenantdb.ExactDecimal,
+	fx ExchangeRateSnapshot,
+	effectiveAt, now time.Time,
+) error {
+	fxJSON, err := json.Marshal(postingSnapshotEnvelope{
+		ExchangeRateSnapshot: fx,
+	})
+	if err != nil {
+		return fmt.Errorf("marshal fx snapshot: %w", err)
+	}
+
+	return p.withTenantTx(ctx, item.WorkspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		if _, lockErr := tx.Exec(txCtx, `
+			SELECT pg_advisory_xact_lock(hashtext($1), hashtext('cost_item:' || $2))
+		`, item.WorkspaceID, item.CostItemID); lockErr != nil {
+			return fmt.Errorf("acquire cost_item advisory lock: %w", lockErr)
+		}
+
+		item.UpdatedAt = now
+		cmd, err := tx.Exec(txCtx, `
+			UPDATE cost_items
+			SET amount = $1, description = $2, cost_type = $3, source_class = $4,
+			    cost_state = $5, updated_at = $6
+			WHERE workspace_id = $7 AND cost_item_id = $8 AND deleted_at IS NULL
+		`, item.Amount.ToPgNumeric(), item.Description, item.CostType, item.SourceClass,
+			item.CostState, item.UpdatedAt, item.WorkspaceID, item.CostItemID)
+		if err != nil {
+			return err
+		}
+		if cmd.RowsAffected() == 0 {
+			return ErrCostItemNotFound
+		}
+
+		rows, err := tx.Query(txCtx, `
+			SELECT posting_id, workspace_id, origin_type, origin_id, origin_version,
+			       component, amount, currency, source_class, confidence,
+			       exchange_rate_snapshot, reversal_of, effective_at, created_at
+			FROM financial_postings
+			WHERE workspace_id = $1 AND origin_type = 'cost_item' AND origin_id = $2
+			ORDER BY created_at ASC, posting_id ASC
+		`, item.WorkspaceID, item.CostItemID)
+		if err != nil {
+			return err
+		}
+		var postings []FinancialPosting
+		for rows.Next() {
+			sp, scanErr := scanPostingRow(rows)
+			if scanErr != nil {
+				rows.Close()
+				return scanErr
+			}
+			postings = append(postings, *sp)
+		}
+		if err := rows.Err(); err != nil {
+			rows.Close()
+			return err
+		}
+		rows.Close()
+
+		reversedIDs := make(map[string]bool)
+		nonReversalCount := 0
+		for _, hp := range postings {
+			if hp.ReversalOf != nil && *hp.ReversalOf != "" {
+				reversedIDs[*hp.ReversalOf] = true
+			} else {
+				nonReversalCount++
+			}
+		}
+
+		insertPostingSQL := `
+			INSERT INTO financial_postings (
+				posting_id, workspace_id, origin_type, origin_id, origin_version,
+				component, amount, currency, source_class, confidence,
+				exchange_rate_snapshot, reversal_of, effective_at, created_at
+			) VALUES (
+				$1, $2, $3, $4, $5,
+				$6, $7, $8, $9, $10,
+				$11, $12, $13, $14
+			)
+		`
+		for _, hp := range postings {
+			if hp.ReversalOf != nil || reversedIDs[hp.PostingID] {
+				continue
+			}
+			oldID := hp.PostingID
+			revAmount, _ := tenantdb.ZeroDecimal().Sub(hp.Amount)
+			revFxJSON, _ := json.Marshal(postingSnapshotEnvelope{
+				ExchangeRateSnapshot: hp.ExchangeRateSnapshot,
+			})
+			if _, err := tx.Exec(txCtx, insertPostingSQL,
+				newUUID(), item.WorkspaceID, "cost_item", item.CostItemID, hp.OriginVersion+"-reversal",
+				hp.Component, revAmount.ToPgNumeric(), hp.Currency, hp.SourceClass, hp.Confidence,
+				revFxJSON, &oldID, hp.EffectiveAt, now,
+			); err != nil {
+				return fmt.Errorf("reverse cost item posting: %w", err)
+			}
+		}
+
+		if item.CostState != CostStateSuperseded {
+			if _, err := tx.Exec(txCtx, insertPostingSQL,
+				newUUID(), item.WorkspaceID, "cost_item", item.CostItemID, fmt.Sprintf("v%d", nonReversalCount+1),
+				comp, negAmount.ToPgNumeric(), item.Currency, item.SourceClass, ConfidenceMedium,
+				fxJSON, (*string)(nil), effectiveAt, now,
+			); err != nil {
+				return fmt.Errorf("create updated cost item posting: %w", err)
+			}
+		}
+		return nil
+	})
+}
+
 func (p *PostgresStore) DeleteCostItem(ctx context.Context, workspaceID, costItemID string) error {
 	query := `
 		UPDATE cost_items
@@ -2427,6 +2723,9 @@ func (p *PostgresStore) FindSettlementByExternalID(ctx context.Context, workspac
 	_ = json.Unmarshal(fxBytes, &s.ExchangeRateSnapshot)
 	_ = json.Unmarshal(feesBytes, &s.Fees)
 	_ = json.Unmarshal(dedBytes, &s.Deductions)
+	if lines, lErr := p.ListSettlementLines(ctx, workspaceID, s.SettlementID); lErr == nil {
+		s.Lines = lines
+	}
 	return &s, nil
 }
 
@@ -2469,6 +2768,9 @@ func (p *PostgresStore) FindSettlementByFingerprint(ctx context.Context, workspa
 	_ = json.Unmarshal(fxBytes, &s.ExchangeRateSnapshot)
 	_ = json.Unmarshal(feesBytes, &s.Fees)
 	_ = json.Unmarshal(dedBytes, &s.Deductions)
+	if lines, lErr := p.ListSettlementLines(ctx, workspaceID, s.SettlementID); lErr == nil {
+		s.Lines = lines
+	}
 	return &s, nil
 }
 
@@ -3177,6 +3479,13 @@ func hydrateOrderDetails(o *Order, itemsBytes, feeBytes, metaBytes []byte) {
 				}
 			}
 			if o.COGSAmount == nil && hasItemCOGS && !itemCOGSSum.IsZero() {
+				if !o.ExchangeRateSnapshot.IsEmpty() &&
+					strings.EqualFold(strings.TrimSpace(o.Currency), strings.TrimSpace(o.ExchangeRateSnapshot.BaseCurrency)) &&
+					!strings.EqualFold(strings.TrimSpace(o.ExchangeRateSnapshot.BaseCurrency), strings.TrimSpace(o.ExchangeRateSnapshot.QuoteCurrency)) {
+					if convertedCOGS, cErr := ComputeBaseAmount(itemCOGSSum, o.ExchangeRateSnapshot); cErr == nil && !convertedCOGS.IsZero() {
+						itemCOGSSum = convertedCOGS
+					}
+				}
 				o.COGSAmount = &itemCOGSSum
 			}
 		}

@@ -75,6 +75,27 @@ type atomicCorrectionStore interface {
 	) error
 }
 
+type atomicCostItemStore interface {
+	UpdateCostItemAtomic(
+		ctx context.Context,
+		item *CostItem,
+		comp string,
+		negAmount tenantdb.ExactDecimal,
+		fx ExchangeRateSnapshot,
+		effectiveAt, now time.Time,
+	) error
+}
+
+var costItemLocks sync.Map
+
+func lockCostItem(workspaceID, costItemID string) func() {
+	key := strings.TrimSpace(workspaceID) + ":" + strings.TrimSpace(costItemID)
+	val, _ := costItemLocks.LoadOrStore(key, &sync.Mutex{})
+	mu := val.(*sync.Mutex)
+	mu.Lock()
+	return mu.Unlock
+}
+
 type Service struct {
 	mu            sync.RWMutex
 	correctionMu  sync.Mutex
@@ -195,28 +216,52 @@ func (s *Service) RecordOrderPosting(ctx context.Context, input OrderPostingInpu
 		}
 	}
 
+	grossHydrated := false
+	feeHydrated := false
+	paymentFeeHydrated := false
+	shippingHydrated := false
+	commissionHydrated := false
+	cogsHydrated := false
+	ordCurrency := ""
+
 	if existingOrd != nil {
-		if strings.TrimSpace(input.Currency) == "" && strings.TrimSpace(existingOrd.Currency) != "" {
-			input.Currency = existingOrd.Currency
+		ordCurrency = strings.TrimSpace(existingOrd.Currency)
+		if strings.TrimSpace(input.Currency) == "" {
+			if !input.GrossAmount.IsZero() && !input.ExchangeRateSnapshot.IsEmpty() && strings.TrimSpace(input.ExchangeRateSnapshot.QuoteCurrency) != "" {
+				input.Currency = strings.TrimSpace(input.ExchangeRateSnapshot.QuoteCurrency)
+			} else if !input.GrossAmount.IsZero() && !existingOrd.ExchangeRateSnapshot.IsEmpty() && strings.TrimSpace(existingOrd.ExchangeRateSnapshot.QuoteCurrency) != "" {
+				input.Currency = strings.TrimSpace(existingOrd.ExchangeRateSnapshot.QuoteCurrency)
+			} else if ordCurrency != "" {
+				input.Currency = ordCurrency
+			}
 		}
 		if input.ExchangeRateSnapshot.IsEmpty() && !existingOrd.ExchangeRateSnapshot.IsEmpty() {
 			input.ExchangeRateSnapshot = existingOrd.ExchangeRateSnapshot
 		}
+		if input.GrossAmount.IsZero() && !existingOrd.Amount.IsZero() {
+			input.GrossAmount = existingOrd.Amount
+			grossHydrated = true
+		}
 		if input.FeeAmount.IsZero() && !existingOrd.PlatformFeeAmount.IsZero() {
 			input.FeeAmount = existingOrd.PlatformFeeAmount
+			feeHydrated = true
 		}
 		if input.PaymentFeeAmount.IsZero() && !existingOrd.PaymentFeeAmount.IsZero() {
 			input.PaymentFeeAmount = existingOrd.PaymentFeeAmount
+			paymentFeeHydrated = true
 		}
 		if input.ShippingAmount.IsZero() && !existingOrd.ShippingFeeAmount.IsZero() {
 			input.ShippingAmount = existingOrd.ShippingFeeAmount
+			shippingHydrated = true
 		}
 		if input.CommissionAmount.IsZero() && !existingOrd.CommissionAmount.IsZero() {
 			input.CommissionAmount = existingOrd.CommissionAmount
+			commissionHydrated = true
 		}
 		if input.COGSAmount == nil && existingOrd.COGSAmount != nil {
 			cogsCopy := *existingOrd.COGSAmount
 			input.COGSAmount = &cogsCopy
+			cogsHydrated = true
 		}
 		if !input.ZeroCOGSWithReason && existingOrd.ZeroCOGSWithReason {
 			input.ZeroCOGSWithReason = existingOrd.ZeroCOGSWithReason
@@ -298,9 +343,40 @@ func (s *Service) RecordOrderPosting(ctx context.Context, input OrderPostingInpu
 		return fmt.Errorf("%w: order component amounts cannot be negative", ErrInvalidAmount)
 	}
 
-	baseRevenue, baseCurrency, err := ValidateAndComputeBaseAmount(input.GrossAmount, input.Currency, input.ExchangeRateSnapshot)
-	if err != nil {
-		return fmt.Errorf("fx conversion for revenue: %w", err)
+	var baseRevenue tenantdb.ExactDecimal
+	var baseCurrency string
+	var err error
+	if grossHydrated && ordCurrency != "" {
+		fxBase, _, fxErr := ValidateExchangeRateSnapshot("", input.ExchangeRateSnapshot)
+		if fxErr != nil {
+			return fmt.Errorf("fx conversion for revenue: %w", fxErr)
+		}
+		if strings.EqualFold(ordCurrency, fxBase) {
+			baseRevenue = input.GrossAmount
+			baseCurrency = fxBase
+		} else {
+			baseRevenue, baseCurrency, err = ValidateAndComputeBaseAmount(input.GrossAmount, ordCurrency, input.ExchangeRateSnapshot)
+			if err != nil {
+				return fmt.Errorf("fx conversion for revenue: %w", err)
+			}
+		}
+	} else {
+		baseRevenue, baseCurrency, err = ValidateAndComputeBaseAmount(input.GrossAmount, input.Currency, input.ExchangeRateSnapshot)
+		if err != nil {
+			return fmt.Errorf("fx conversion for revenue: %w", err)
+		}
+	}
+
+	computeComponentBase := func(val tenantdb.ExactDecimal, hydrated bool) (tenantdb.ExactDecimal, error) {
+		if hydrated && ordCurrency != "" {
+			if strings.EqualFold(ordCurrency, baseCurrency) {
+				return val, nil
+			}
+			conv, _, cErr := ValidateAndComputeBaseAmount(val, ordCurrency, input.ExchangeRateSnapshot)
+			return conv, cErr
+		}
+		conv, _, cErr := ValidateAndComputeBaseAmount(val, input.Currency, input.ExchangeRateSnapshot)
+		return conv, cErr
 	}
 
 	var baseCOGS *tenantdb.ExactDecimal
@@ -309,7 +385,7 @@ func (s *Service) RecordOrderPosting(ctx context.Context, input OrderPostingInpu
 			// Unexplained zero COGS is treated as missing COGS, never verified zero
 			baseCOGS = nil
 		} else {
-			cVal, _, cErr := ValidateAndComputeBaseAmount(*input.COGSAmount, input.Currency, input.ExchangeRateSnapshot)
+			cVal, cErr := computeComponentBase(*input.COGSAmount, cogsHydrated)
 			if cErr != nil {
 				return fmt.Errorf("fx conversion for cogs: %w", cErr)
 			}
@@ -319,7 +395,7 @@ func (s *Service) RecordOrderPosting(ctx context.Context, input OrderPostingInpu
 
 	var basePlatformFeeOnly tenantdb.ExactDecimal
 	if !input.FeeAmount.IsZero() {
-		basePlatformFeeOnly, _, err = ValidateAndComputeBaseAmount(input.FeeAmount, input.Currency, input.ExchangeRateSnapshot)
+		basePlatformFeeOnly, err = computeComponentBase(input.FeeAmount, feeHydrated)
 		if err != nil {
 			return fmt.Errorf("fx conversion for platform fee: %w", err)
 		}
@@ -327,7 +403,7 @@ func (s *Service) RecordOrderPosting(ctx context.Context, input OrderPostingInpu
 
 	var basePaymentFeeOnly tenantdb.ExactDecimal
 	if !input.PaymentFeeAmount.IsZero() {
-		basePaymentFeeOnly, _, err = ValidateAndComputeBaseAmount(input.PaymentFeeAmount, input.Currency, input.ExchangeRateSnapshot)
+		basePaymentFeeOnly, err = computeComponentBase(input.PaymentFeeAmount, paymentFeeHydrated)
 		if err != nil {
 			return fmt.Errorf("fx conversion for payment fee: %w", err)
 		}
@@ -340,7 +416,7 @@ func (s *Service) RecordOrderPosting(ctx context.Context, input OrderPostingInpu
 
 	var baseShip tenantdb.ExactDecimal
 	if !input.ShippingAmount.IsZero() {
-		baseShip, _, err = ValidateAndComputeBaseAmount(input.ShippingAmount, input.Currency, input.ExchangeRateSnapshot)
+		baseShip, err = computeComponentBase(input.ShippingAmount, shippingHydrated)
 		if err != nil {
 			return fmt.Errorf("fx conversion for shipping: %w", err)
 		}
@@ -348,7 +424,7 @@ func (s *Service) RecordOrderPosting(ctx context.Context, input OrderPostingInpu
 
 	var baseComm tenantdb.ExactDecimal
 	if !input.CommissionAmount.IsZero() {
-		baseComm, _, err = ValidateAndComputeBaseAmount(input.CommissionAmount, input.Currency, input.ExchangeRateSnapshot)
+		baseComm, err = computeComponentBase(input.CommissionAmount, commissionHydrated)
 		if err != nil {
 			return fmt.Errorf("fx conversion for commission: %w", err)
 		}
@@ -400,14 +476,6 @@ func (s *Service) RecordOrderPosting(ctx context.Context, input OrderPostingInpu
 		return nil
 	}
 
-	// Order is completed: remove from pending pool if present and persist durable order state
-	s.mu.Lock()
-	delete(s.pendingOrders, pendingKey)
-	delete(s.pendingOrders, input.OrderID)
-	s.mu.Unlock()
-
-	_ = s.store.CreateOrder(ctx, orderModel)
-
 	postComponentIdempotent := func(comp string, signedAmount tenantdb.ExactDecimal) error {
 		posting := &FinancialPosting{
 			WorkspaceID:          input.WorkspaceID,
@@ -442,20 +510,6 @@ func (s *Service) RecordOrderPosting(ctx context.Context, input OrderPostingInpu
 		return err
 	}
 
-	// Seed canonical order in attribution engine for revenue attribution and deduplication
-	s.AttributionEngine().SeedCanonicalOrder(CanonicalOrderRecord{
-		OrderID:           input.OrderID,
-		WorkspaceID:       input.WorkspaceID,
-		GrossRevenue:      baseRevenue,
-		RefundDeduction:   tenantdb.ZeroDecimal(),
-		NetRevenue:        baseRevenue,
-		Currency:          baseCurrency,
-		SourceClass:       input.SourceClass,
-		Confidence:        input.Confidence,
-		LifecycleState:    input.LifecycleState,
-		IsRecognizedOrder: true,
-	})
-
 	// 2. Post Platform + Payment Fee (negative) if present
 	if !baseFee.IsZero() {
 		negFee, _ := tenantdb.ZeroDecimal().Sub(baseFee)
@@ -488,6 +542,27 @@ func (s *Service) RecordOrderPosting(ctx context.Context, input OrderPostingInpu
 		}
 	}
 
+	// Order postings succeeded (or were verified idempotent): remove from pending pool, persist durable order state, and seed attribution engine.
+	s.mu.Lock()
+	delete(s.pendingOrders, pendingKey)
+	delete(s.pendingOrders, input.OrderID)
+	s.mu.Unlock()
+
+	_ = s.store.CreateOrder(ctx, orderModel)
+
+	s.AttributionEngine().SeedCanonicalOrder(CanonicalOrderRecord{
+		OrderID:           input.OrderID,
+		WorkspaceID:       input.WorkspaceID,
+		GrossRevenue:      baseRevenue,
+		RefundDeduction:   tenantdb.ZeroDecimal(),
+		NetRevenue:        baseRevenue,
+		Currency:          baseCurrency,
+		SourceClass:       input.SourceClass,
+		Confidence:        input.Confidence,
+		LifecycleState:    input.LifecycleState,
+		IsRecognizedOrder: true,
+	})
+
 	return nil
 }
 
@@ -508,13 +583,93 @@ func (s *Service) effectiveAtFromDate(effectiveDate string) time.Time {
 
 func isValidPostingComponent(component string) bool {
 	switch component {
-	case ComponentRevenue, ComponentPlatformFee, ComponentShipping, ComponentCOGS,
+	case ComponentRevenue, ComponentPlatformFee, ComponentPaymentFee, ComponentShipping, ComponentCOGS,
 		ComponentAICredits, ComponentCommission, ComponentAdsSpend, ComponentSeeding,
 		ComponentRefund, ComponentOther:
 		return true
 	default:
 		return false
 	}
+}
+
+// RecordOrderFeeBreakdownCorrection updates an order's platform fee and/or payment fee in lockstep,
+// preserving whichever sub-component was omitted (nil) from the persisted order state and posting
+// the combined fee to ComponentPlatformFee.
+func (s *Service) RecordOrderFeeBreakdownCorrection(
+	ctx context.Context,
+	workspaceID, orderID string,
+	newPlatformFee, newPaymentFee *tenantdb.ExactDecimal,
+	newVersion string,
+	sourceClass, confidence string,
+	fx ExchangeRateSnapshot,
+) error {
+	if strings.TrimSpace(workspaceID) == "" {
+		return ErrMissingTenant
+	}
+	if strings.TrimSpace(orderID) == "" {
+		return fmt.Errorf("%w: order_id is required", ErrInvalidAmount)
+	}
+	txCurr := strings.TrimSpace(fx.QuoteCurrency)
+	baseCurr, _, err := ValidateExchangeRateSnapshot(txCurr, fx)
+	if err != nil {
+		return fmt.Errorf("fx conversion for fee breakdown correction: %w", err)
+	}
+
+	var existingOrd *Order
+	if s.store != nil {
+		existingOrd, _ = s.store.GetOrder(ctx, workspaceID, orderID)
+	}
+
+	var basePlat tenantdb.ExactDecimal
+	if newPlatformFee != nil {
+		val := *newPlatformFee
+		if val.IsNegative() {
+			val = val.Neg()
+		}
+		basePlat, _, err = ValidateAndComputeBaseAmount(val, txCurr, fx)
+		if err != nil {
+			return err
+		}
+	} else if existingOrd != nil {
+		basePlat = existingOrd.PlatformFeeAmount
+	}
+
+	var basePay tenantdb.ExactDecimal
+	if newPaymentFee != nil {
+		val := *newPaymentFee
+		if val.IsNegative() {
+			val = val.Neg()
+		}
+		basePay, _, err = ValidateAndComputeBaseAmount(val, txCurr, fx)
+		if err != nil {
+			return err
+		}
+	} else if existingOrd != nil {
+		basePay = existingOrd.PaymentFeeAmount
+	}
+
+	combinedBase, err := basePlat.Add(basePay)
+	if err != nil {
+		return err
+	}
+	negCombined := combinedBase
+	if !negCombined.IsNegative() && !negCombined.IsZero() {
+		negCombined = negCombined.Neg()
+	}
+
+	baseFX := fx
+	baseFX.BaseCurrency = baseCurr
+	baseFX.QuoteCurrency = baseCurr
+	baseFX.RateToBase = "1"
+	if err := s.recordOrderComponentCorrection(ctx, workspaceID, orderID, ComponentPlatformFee, negCombined, newVersion, sourceClass, confidence, baseFX); err != nil {
+		return err
+	}
+	if existingOrd != nil {
+		existingOrd.PlatformFeeAmount = basePlat
+		existingOrd.PaymentFeeAmount = basePay
+		_ = s.store.CreateOrder(ctx, existingOrd)
+	}
+	return nil
 }
 
 func (s *Service) RecordOrderCorrection(
@@ -534,6 +689,26 @@ func (s *Service) RecordOrderCorrection(
 		strings.HasSuffix(strings.ToLower(normVersion), "-superseded") {
 		return fmt.Errorf("%w: invalid order correction parameters (order=%q, component=%q, version=%q)", ErrInvalidAmount, orderID, component, newVersion)
 	}
+
+	if component == ComponentPaymentFee {
+		absPay := newAmount
+		if absPay.IsNegative() {
+			absPay = absPay.Neg()
+		}
+		return s.RecordOrderFeeBreakdownCorrection(ctx, workspaceID, orderID, nil, &absPay, normVersion, sourceClass, confidence, fx)
+	}
+
+	return s.recordOrderComponentCorrection(ctx, workspaceID, orderID, component, newAmount, normVersion, sourceClass, confidence, fx)
+}
+
+func (s *Service) recordOrderComponentCorrection(
+	ctx context.Context,
+	workspaceID, orderID, component string,
+	newAmount tenantdb.ExactDecimal,
+	normVersion string,
+	sourceClass, confidence string,
+	fx ExchangeRateSnapshot,
+) error {
 
 	// Normalize sign per ledger invariant: revenue is positive, cost/refund components are negative.
 	signedTxAmount := newAmount
@@ -654,15 +829,9 @@ func (s *Service) RecordOrderCorrection(
 		return err
 	}
 
-	if component == ComponentCOGS && !baseNewAmount.IsZero() {
-		if ord, ordErr := s.store.GetOrder(ctx, workspaceID, orderID); ordErr == nil && ord != nil {
-			absCOGS := baseNewAmount
-			if absCOGS.IsNegative() {
-				absCOGS = absCOGS.Neg()
-			}
-			ord.COGSAmount = &absCOGS
-			_ = s.store.CreateOrder(ctx, ord)
-		}
+	if ord, ordErr := s.store.GetOrder(ctx, workspaceID, orderID); ordErr == nil && ord != nil {
+		applyOrderCorrectionToModel(ord, component, baseNewAmount)
+		_ = s.store.CreateOrder(ctx, ord)
 	}
 	return nil
 }
@@ -744,7 +913,7 @@ func (s *Service) RecordRefundPosting(
 	s.refundOrderIDs[orderStoreKey(workspaceID, refundID)] = orderID
 	s.mu.Unlock()
 	if s.attributionEngine != nil {
-		s.attributionEngine.RecordRefundDeduction(orderID, baseRefund)
+		s.attributionEngine.RecordRefundDeductionForWorkspace(workspaceID, orderID, baseRefund)
 	}
 	if err := s.store.CreatePosting(ctx, posting); err != nil && !errors.Is(err, ErrDuplicatePosting) {
 		return err
@@ -842,6 +1011,9 @@ func (s *Service) UpdateCostItem(ctx context.Context, item *CostItem) (*CostItem
 	if item == nil || strings.TrimSpace(item.WorkspaceID) == "" {
 		return nil, ErrMissingTenant
 	}
+	unlock := lockCostItem(item.WorkspaceID, item.CostItemID)
+	defer unlock()
+
 	existing, err := s.store.GetCostItem(ctx, item.WorkspaceID, item.CostItemID)
 	if err != nil {
 		return nil, err
@@ -901,8 +1073,16 @@ func (s *Service) UpdateCostItem(ctx context.Context, item *CostItem) (*CostItem
 	item.Currency = baseCurrency
 	item.ExchangeRateSnapshot = fx
 
-	if err := s.store.UpdateCostItem(ctx, item); err != nil {
-		return nil, err
+	comp := mapCostTypeToComponent(item.CostType)
+	negAmount, _ := tenantdb.ZeroDecimal().Sub(item.Amount)
+	effectiveAt := s.effectiveAtFromDate(item.EffectiveDate)
+	now := s.clock()
+
+	if atomicStore, ok := s.store.(atomicCostItemStore); ok {
+		if err := atomicStore.UpdateCostItemAtomic(ctx, item, comp, negAmount, fx, effectiveAt, now); err != nil {
+			return nil, err
+		}
+		return item, nil
 	}
 
 	postings, err := s.store.ListPostings(ctx, item.WorkspaceID, PostingFilter{
@@ -923,7 +1103,6 @@ func (s *Service) UpdateCostItem(ctx context.Context, item *CostItem) (*CostItem
 		}
 	}
 
-	now := s.clock()
 	for _, p := range postings {
 		if p.ReversalOf != nil || reversedIDs[p.PostingID] {
 			continue
@@ -951,25 +1130,51 @@ func (s *Service) UpdateCostItem(ctx context.Context, item *CostItem) (*CostItem
 	}
 
 	if item.CostState != CostStateSuperseded {
-		comp := mapCostTypeToComponent(item.CostType)
-		negAmount, _ := tenantdb.ZeroDecimal().Sub(item.Amount)
+		nextVer := fmt.Sprintf("v%d", nonReversalCount+1)
 		replacement := &FinancialPosting{
 			WorkspaceID:          item.WorkspaceID,
 			OriginType:           "cost_item",
 			OriginID:             item.CostItemID,
-			OriginVersion:        fmt.Sprintf("v%d", nonReversalCount+1),
+			OriginVersion:        nextVer,
 			Component:            comp,
 			Amount:               negAmount,
 			Currency:             item.Currency,
 			SourceClass:          item.SourceClass,
 			Confidence:           ConfidenceMedium,
 			ExchangeRateSnapshot: fx,
-			EffectiveAt:          s.effectiveAtFromDate(item.EffectiveDate),
+			EffectiveAt:          effectiveAt,
 			CreatedAt:            now,
 		}
-		if err := s.store.CreatePosting(ctx, replacement); err != nil && !errors.Is(err, ErrDuplicatePosting) {
-			return nil, fmt.Errorf("create updated cost item posting: %w", err)
+		if err := s.store.CreatePosting(ctx, replacement); err != nil {
+			if errors.Is(err, ErrDuplicatePosting) {
+				latestPostings, lErr := s.store.ListPostings(ctx, item.WorkspaceID, PostingFilter{
+					OriginType: "cost_item",
+					OriginID:   item.CostItemID,
+				})
+				if lErr != nil {
+					return nil, err
+				}
+				matched := false
+				for _, lp := range latestPostings {
+					if lp.OriginVersion == nextVer && lp.Component == comp {
+						if lp.Amount.Cmp(negAmount) != 0 || !strings.EqualFold(lp.Currency, item.Currency) {
+							return nil, fmt.Errorf("%w: conflicting cost item posting for %s version %s", ErrDuplicatePosting, item.CostItemID, nextVer)
+						}
+						matched = true
+						break
+					}
+				}
+				if !matched {
+					return nil, err
+				}
+			} else {
+				return nil, fmt.Errorf("create updated cost item posting: %w", err)
+			}
 		}
+	}
+
+	if err := s.store.UpdateCostItem(ctx, item); err != nil {
+		return nil, err
 	}
 
 	return item, nil
@@ -979,6 +1184,9 @@ func (s *Service) DeleteCostItem(ctx context.Context, workspaceID, costItemID st
 	if strings.TrimSpace(workspaceID) == "" {
 		return ErrMissingTenant
 	}
+	unlock := lockCostItem(workspaceID, costItemID)
+	defer unlock()
+
 	if _, err := s.store.GetCostItem(ctx, workspaceID, costItemID); err != nil {
 		return err
 	}
@@ -1026,6 +1234,148 @@ func (s *Service) DeleteCostItem(ctx context.Context, workspaceID, costItemID st
 	}
 
 	return s.store.DeleteCostItem(ctx, workspaceID, costItemID)
+}
+
+func (s *Service) reconcileSettlementLinesAndPostings(ctx context.Context, targetSment *Settlement, lines []SettlementLine) (*Settlement, error) {
+	existingLines, err := s.store.ListSettlementLines(ctx, targetSment.WorkspaceID, targetSment.SettlementID)
+	if err != nil {
+		return nil, err
+	}
+	usedExisting := make([]bool, len(existingLines))
+
+	for i := range lines {
+		lines[i].SettlementID = targetSment.SettlementID
+		lines[i].WorkspaceID = targetSment.WorkspaceID
+
+		matchedIdx := -1
+		if lines[i].LineID != "" {
+			for j := range existingLines {
+				if !usedExisting[j] && existingLines[j].LineID == lines[i].LineID {
+					matchedIdx = j
+					break
+				}
+			}
+		}
+		if matchedIdx < 0 && lines[i].ExternalLineID != "" {
+			for j := range existingLines {
+				if !usedExisting[j] && existingLines[j].ExternalLineID == lines[i].ExternalLineID {
+					matchedIdx = j
+					break
+				}
+			}
+		}
+		if matchedIdx < 0 && lines[i].LineID == "" && lines[i].ExternalLineID == "" {
+			for j := range existingLines {
+				if !usedExisting[j] &&
+					existingLines[j].OrderID == lines[i].OrderID &&
+					existingLines[j].ExternalOrderID == lines[i].ExternalOrderID &&
+					existingLines[j].GrossAmount.Cmp(lines[i].GrossAmount) == 0 &&
+					existingLines[j].FeeAmount.Cmp(lines[i].FeeAmount) == 0 &&
+					existingLines[j].NetAmount.Cmp(lines[i].NetAmount) == 0 {
+					matchedIdx = j
+					break
+				}
+			}
+		}
+
+		if matchedIdx >= 0 {
+			usedExisting[matchedIdx] = true
+			persisted := existingLines[matchedIdx]
+			if persisted.GrossAmount.Cmp(lines[i].GrossAmount) != 0 ||
+				persisted.FeeAmount.Cmp(lines[i].FeeAmount) != 0 ||
+				persisted.NetAmount.Cmp(lines[i].NetAmount) != 0 ||
+				(lines[i].OrderID != "" && persisted.OrderID != "" && persisted.OrderID != lines[i].OrderID) {
+				return nil, fmt.Errorf("%w: conflicting settlement line payload for settlement %s", ErrDuplicateSettlement, targetSment.SettlementID)
+			}
+			lines[i] = persisted
+		} else {
+			if err := s.store.CreateSettlementLine(ctx, &lines[i]); err != nil {
+				return nil, err
+			}
+		}
+
+		// Reconcile fee if order is linked:
+		// If an order fee posting exists, replace it with the settlement fee.
+		// Never charge both! (F03)
+		if lines[i].OrderID != "" && !lines[i].FeeAmount.IsZero() {
+			lineEffectiveAt := s.effectiveAtFromDate(targetSment.EffectiveDate)
+			existingFee, err := s.store.FindPostingByOrigin(ctx, targetSment.WorkspaceID, "order", lines[i].OrderID, ComponentPlatformFee)
+			if err == nil && existingFee != nil {
+				if !existingFee.EffectiveAt.IsZero() {
+					lineEffectiveAt = existingFee.EffectiveAt
+				}
+				// Reverse the estimated order fee
+				revAmount, _ := tenantdb.ZeroDecimal().Sub(existingFee.Amount)
+				revPosting := &FinancialPosting{
+					WorkspaceID:          targetSment.WorkspaceID,
+					OriginType:           "order",
+					OriginID:             lines[i].OrderID,
+					OriginVersion:        existingFee.OriginVersion + "-superseded",
+					Component:            ComponentPlatformFee,
+					Amount:               revAmount,
+					Currency:             existingFee.Currency,
+					SourceClass:          SourceClassOfficial,
+					Confidence:           ConfidenceHigh,
+					ExchangeRateSnapshot: targetSment.ExchangeRateSnapshot,
+					ReversalOf:           &existingFee.PostingID,
+					EffectiveAt:          lineEffectiveAt,
+					CreatedAt:            s.clock(),
+				}
+				if err := s.store.CreatePosting(ctx, revPosting); err != nil && !errors.Is(err, ErrDuplicatePosting) {
+					return nil, err
+				}
+			} else {
+				if orderHistory, hErr := s.store.ListPostings(ctx, targetSment.WorkspaceID, PostingFilter{
+					OriginType: "order",
+					OriginID:   lines[i].OrderID,
+				}); hErr == nil && len(orderHistory) > 0 {
+					for _, hp := range orderHistory {
+						if !hp.EffectiveAt.IsZero() {
+							lineEffectiveAt = hp.EffectiveAt
+							break
+						}
+					}
+				} else if ord, ordErr := s.store.GetOrder(ctx, targetSment.WorkspaceID, lines[i].OrderID); ordErr == nil && ord != nil && !ord.EffectiveTime().IsZero() {
+					lineEffectiveAt = ord.EffectiveTime()
+				}
+			}
+
+			// Post the official settlement fee if not already active
+			negFee, _ := tenantdb.ZeroDecimal().Sub(lines[i].FeeAmount)
+			if existingSettleFee, sErr := s.store.FindPostingByOrigin(ctx, targetSment.WorkspaceID, "settlement_line", lines[i].LineID, ComponentPlatformFee); sErr == nil && existingSettleFee != nil {
+				if existingSettleFee.Amount.Cmp(negFee) != 0 || !strings.EqualFold(existingSettleFee.Currency, lines[i].Currency) {
+					return nil, fmt.Errorf("%w: conflicting settlement line fee posting for line %s", ErrDuplicatePosting, lines[i].LineID)
+				}
+				continue
+			}
+
+			settlementFeePosting := &FinancialPosting{
+				WorkspaceID:          targetSment.WorkspaceID,
+				OriginType:           "settlement_line",
+				OriginID:             lines[i].LineID,
+				OriginVersion:        "v1",
+				RelatedOrderID:       lines[i].OrderID,
+				Component:            ComponentPlatformFee,
+				Amount:               negFee,
+				Currency:             lines[i].Currency,
+				SourceClass:          SourceClassOfficial,
+				Confidence:           ConfidenceHigh,
+				ExchangeRateSnapshot: targetSment.ExchangeRateSnapshot,
+				EffectiveAt:          lineEffectiveAt,
+				CreatedAt:            s.clock(),
+			}
+			if err := s.store.CreatePosting(ctx, settlementFeePosting); err != nil && !errors.Is(err, ErrDuplicatePosting) {
+				return nil, err
+			}
+		}
+	}
+
+	if len(lines) > 0 {
+		targetSment.Lines = lines
+	} else if len(existingLines) > 0 {
+		targetSment.Lines = existingLines
+	}
+	return targetSment, nil
 }
 
 // ImportSettlement imports a platform settlement and reconciles fees without double charging (F03).
@@ -1089,88 +1439,37 @@ func (s *Service) ImportSettlement(ctx context.Context, sment *Settlement, lines
 		lines[i].Currency = baseCurrency
 	}
 
-	// Idempotency check
+	s.correctionMu.Lock()
+	defer s.correctionMu.Unlock()
+
+	var existing *Settlement
 	if sment.ExternalSettlementID != "" && sment.ConnectedAccountID != "" {
-		existing, err := s.store.FindSettlementByExternalID(ctx, sment.WorkspaceID, sment.ConnectedAccountID, sment.ExternalSettlementID)
-		if err == nil && existing != nil {
-			return existing, nil
+		if found, fErr := s.store.FindSettlementByExternalID(ctx, sment.WorkspaceID, sment.ConnectedAccountID, sment.ExternalSettlementID); fErr == nil && found != nil {
+			existing = found
 		}
 	}
-	if sment.ImportFingerprint != "" {
-		existing, err := s.store.FindSettlementByFingerprint(ctx, sment.WorkspaceID, sment.ImportFingerprint)
-		if err == nil && existing != nil {
-			return existing, nil
+	if existing == nil && sment.ImportFingerprint != "" {
+		if found, fErr := s.store.FindSettlementByFingerprint(ctx, sment.WorkspaceID, sment.ImportFingerprint); fErr == nil && found != nil {
+			existing = found
 		}
+	}
+
+	if existing != nil {
+		if (!sment.GrossAmount.IsZero() && existing.GrossAmount.Cmp(sment.GrossAmount) != 0) ||
+			(!sment.NetAmount.IsZero() && existing.NetAmount.Cmp(sment.NetAmount) != 0) ||
+			(sment.Currency != "" && existing.Currency != "" && !strings.EqualFold(sment.Currency, existing.Currency)) {
+			return nil, fmt.Errorf("%w: conflicting settlement header payload for settlement %s", ErrDuplicateSettlement, existing.SettlementID)
+		}
+		return s.reconcileSettlementLinesAndPostings(ctx, existing, lines)
 	}
 
 	if err := s.store.CreateSettlement(ctx, sment); err != nil {
 		return nil, err
 	}
 
-	for i := range lines {
-		lines[i].SettlementID = sment.SettlementID
-		lines[i].WorkspaceID = sment.WorkspaceID
-		if err := s.store.CreateSettlementLine(ctx, &lines[i]); err != nil {
-			return nil, err
-		}
-
-		// Reconcile fee if order is linked:
-		// If an order fee posting exists, replace it with the settlement fee.
-		// Never charge both! (F03)
-		if lines[i].OrderID != "" && !lines[i].FeeAmount.IsZero() {
-			lineEffectiveAt := s.effectiveAtFromDate(sment.EffectiveDate)
-			existingFee, err := s.store.FindPostingByOrigin(ctx, sment.WorkspaceID, "order", lines[i].OrderID, ComponentPlatformFee)
-			if err == nil && existingFee != nil {
-				if !existingFee.EffectiveAt.IsZero() {
-					lineEffectiveAt = existingFee.EffectiveAt
-				}
-				// Reverse the estimated order fee
-				revAmount, _ := tenantdb.ZeroDecimal().Sub(existingFee.Amount)
-				revPosting := &FinancialPosting{
-					WorkspaceID:          sment.WorkspaceID,
-					OriginType:           "order",
-					OriginID:             lines[i].OrderID,
-					OriginVersion:        existingFee.OriginVersion + "-superseded",
-					Component:            ComponentPlatformFee,
-					Amount:               revAmount,
-					Currency:             existingFee.Currency,
-					SourceClass:          SourceClassOfficial,
-					Confidence:           ConfidenceHigh,
-					ExchangeRateSnapshot: sment.ExchangeRateSnapshot,
-					ReversalOf:           &existingFee.PostingID,
-					EffectiveAt:          lineEffectiveAt,
-					CreatedAt:            s.clock(),
-				}
-				if err := s.store.CreatePosting(ctx, revPosting); err != nil && !errors.Is(err, ErrDuplicatePosting) {
-					return nil, err
-				}
-			} else if ord, ordErr := s.store.GetOrder(ctx, sment.WorkspaceID, lines[i].OrderID); ordErr == nil && ord != nil && !ord.EffectiveTime().IsZero() {
-				lineEffectiveAt = ord.EffectiveTime()
-			}
-
-			// Post the official settlement fee
-			negFee, _ := tenantdb.ZeroDecimal().Sub(lines[i].FeeAmount)
-			settlementFeePosting := &FinancialPosting{
-				WorkspaceID:          sment.WorkspaceID,
-				OriginType:           "settlement_line",
-				OriginID:             lines[i].LineID,
-				OriginVersion:        "v1",
-				Component:            ComponentPlatformFee,
-				Amount:               negFee,
-				Currency:             lines[i].Currency,
-				SourceClass:          SourceClassOfficial,
-				Confidence:           ConfidenceHigh,
-				ExchangeRateSnapshot: sment.ExchangeRateSnapshot,
-				EffectiveAt:          lineEffectiveAt,
-				CreatedAt:            s.clock(),
-			}
-			if err := s.store.CreatePosting(ctx, settlementFeePosting); err != nil && !errors.Is(err, ErrDuplicatePosting) {
-				return nil, err
-			}
-		}
+	if _, err := s.reconcileSettlementLinesAndPostings(ctx, sment, lines); err != nil {
+		return nil, err
 	}
-
-	sment.Lines = lines
 
 	if s.eventSink != nil {
 		payload, _ := json.Marshal(map[string]any{
@@ -1377,6 +1676,11 @@ func (s *Service) GetOrComputeProfitSnapshot(
 	settlementLinesByID := make(map[string]SettlementLine)
 	platformsByOrder := make(map[string]map[string]bool)
 	for _, sm := range sments {
+		if len(sm.Lines) == 0 {
+			if lines, lErr := s.store.ListSettlementLines(ctx, workspaceID, sm.SettlementID); lErr == nil {
+				sm.Lines = lines
+			}
+		}
 		settlementsByID[sm.SettlementID] = sm
 		smPlatform := strings.ToLower(strings.TrimSpace(sm.SourcePlatform))
 		for _, l := range sm.Lines {
