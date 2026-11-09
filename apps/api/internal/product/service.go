@@ -273,13 +273,23 @@ func (s *Service) UpdateProduct(ctx context.Context, p *Product) (*Product, erro
 	if p.PatchInventoryEnabled != nil {
 		existing.InventoryEnabled = *p.PatchInventoryEnabled
 	}
+	if strings.TrimSpace(p.Currency) != "" {
+		reqCurr := strings.ToUpper(strings.TrimSpace(p.Currency))
+		existCurr := strings.ToUpper(strings.TrimSpace(existing.Currency))
+		if existCurr == "" {
+			existCurr = "VND"
+		}
+		if !IsValidISOCurrency(reqCurr) || reqCurr != existCurr {
+			return nil, fmt.Errorf("%w: currency %q does not match product currency %q", ErrInvalidInput, p.Currency, existCurr)
+		}
+	}
 	if p.BasePrice != nil {
 		existing.BasePrice = p.BasePrice
 	}
 	if p.COGS != nil {
 		existing.COGS = p.COGS
 	}
-	if p.CatalogStatus != "" && IsValidCatalogStatus(p.CatalogStatus) {
+	if p.CatalogStatus != "" {
 		existing.CatalogStatus = p.CatalogStatus
 	}
 	if len(p.ExternalRefs) > 0 {

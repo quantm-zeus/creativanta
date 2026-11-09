@@ -180,16 +180,31 @@ var productPageCursorHMACKey = []byte("creativanta-product-page-cursor-hmac-v1")
 type productPageCursor struct {
 	WorkspaceID       string `json:"ws"`
 	RPC               string `json:"rpc"`
-	Status            string `json:"st,omitempty"`
-	Type              string `json:"tp,omitempty"`
-	Category          string `json:"cat,omitempty"`
-	SearchQuery       string `json:"q,omitempty"`
+	FilterHash        string `json:"fh,omitempty"`
+	Status            string `json:"-"`
+	Type              string `json:"-"`
+	Category          string `json:"-"`
+	SearchQuery       string `json:"-"`
 	CursorCreatedAtNs int64  `json:"ts,omitempty"`
 	CursorProductID   string `json:"pid,omitempty"`
 	Offset            int    `json:"off,omitempty"`
 }
 
+func computeCursorFilterHash(c productPageCursor) string {
+	h := sha256.New()
+	_, _ = fmt.Fprintf(h, "%s\x00%s\x00%s\x00%s\x00%s",
+		strings.TrimSpace(c.RPC),
+		strings.ToLower(strings.TrimSpace(c.Status)),
+		strings.ToLower(strings.TrimSpace(c.Type)),
+		strings.ToLower(strings.TrimSpace(c.Category)),
+		c.SearchQuery,
+	)
+	sum := h.Sum(nil)
+	return hex.EncodeToString(sum[:16])
+}
+
 func encodeProductPageToken(c productPageCursor) (string, error) {
+	c.FilterHash = computeCursorFilterHash(c)
 	raw, err := json.Marshal(c)
 	if err != nil {
 		return "", err
@@ -198,7 +213,11 @@ func encodeProductPageToken(c productPageCursor) (string, error) {
 	mac := hmac.New(sha256.New, productPageCursorHMACKey)
 	mac.Write([]byte(payloadB64))
 	sig := hex.EncodeToString(mac.Sum(nil))
-	return payloadB64 + "." + sig, nil
+	token := payloadB64 + "." + sig
+	if len(token) > 512 {
+		return "", fmt.Errorf("%w: generated page_token exceeds 512 characters", ErrInvalidInput)
+	}
+	return token, nil
 }
 
 func decodeProductPageToken(token string, expected productPageCursor) (productPageCursor, error) {
@@ -233,11 +252,8 @@ func decodeProductPageToken(token string, expected productPageCursor) (productPa
 	if decoded.WorkspaceID != expected.WorkspaceID {
 		return productPageCursor{}, fmt.Errorf("%w: page_token tenant mismatch", ErrInvalidInput)
 	}
-	if decoded.RPC != expected.RPC ||
-		!strings.EqualFold(decoded.Status, expected.Status) ||
-		!strings.EqualFold(decoded.Type, expected.Type) ||
-		!strings.EqualFold(decoded.Category, expected.Category) ||
-		decoded.SearchQuery != expected.SearchQuery {
+	expectedFilterHash := computeCursorFilterHash(expected)
+	if decoded.RPC != expected.RPC || decoded.FilterHash != expectedFilterHash {
 		return productPageCursor{}, fmt.Errorf("%w: page_token filter mismatch", ErrInvalidInput)
 	}
 	return decoded, nil
@@ -279,13 +295,23 @@ func executeIdempotentMutation[T any](
 	unlock := h.service.lockIdempotency(wsID, idemKey)
 	defer unlock()
 
+	now := h.service.clock().UTC()
+	ctx = WithIdempotencyNow(ctx, now)
+
 	txCtx, commitTx, rollbackTx, err := beginStoreMutationTx(ctx, h.service.store, wsID, idemKey)
 	if err != nil {
 		return nil, mapError(err)
 	}
 	defer rollbackTx()
 
-	reqHash := hashCommandPayload(rpcName, reqPayload)
+	hashPayload := reqPayload
+	if cmdCtx != nil && cmdCtx.ExpectedUpdatedAt != nil {
+		hashPayload = map[string]any{
+			"payload":             reqPayload,
+			"expected_updated_at": cmdCtx.ExpectedUpdatedAt.AsTime().UTC().Truncate(time.Microsecond).Format(time.RFC3339Nano),
+		}
+	}
+	reqHash := hashCommandPayload(rpcName, hashPayload)
 	existing, err := h.service.store.GetIdempotencyRecord(txCtx, wsID, idemKey)
 	if err != nil {
 		return nil, mapError(err)
@@ -325,7 +351,6 @@ func executeIdempotentMutation[T any](
 			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("marshal idempotency response: %w", err))
 		}
 	}
-	now := h.service.clock()
 	if err := h.service.store.SaveIdempotencyRecord(txCtx, IdempotencyRecord{
 		WorkspaceID:    wsID,
 		IdempotencyKey: idemKey,
@@ -390,23 +415,41 @@ func (h *Handler) Create(
 				Title:            msg.Title,
 				Description:      msg.Description,
 				Category:         msg.Category,
-				Currency:         msg.Currency,
+				Currency:         strings.ToUpper(strings.TrimSpace(msg.Currency)),
 				CatalogStatus:    fromProtoCatalogStatus(msg.CatalogStatus),
 				InventoryEnabled: msg.InventoryEnabled,
 				Images:           msg.Images,
 				Metadata:         make(map[string]any),
 			}
+			if p.Currency != "" && !IsValidISOCurrency(p.Currency) {
+				return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%w: currency must be a 3-letter ISO code", ErrInvalidInput))
+			}
 			if msg.BasePrice != nil {
+				bpCurr := strings.ToUpper(strings.TrimSpace(msg.BasePrice.Currency))
+				if !IsValidISOCurrency(bpCurr) {
+					return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%w: base_price.currency must be a 3-letter ISO code", ErrInvalidInput))
+				}
+				if p.Currency != "" && p.Currency != bpCurr {
+					return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%w: base_price.currency %q does not match product currency %q", ErrInvalidInput, bpCurr, p.Currency))
+				}
+				p.Currency = bpCurr
 				dec, err := tenantdb.ParseExactDecimal(msg.BasePrice.Amount)
 				if err != nil {
 					return nil, connect.NewError(connect.CodeInvalidArgument, err)
 				}
 				p.BasePrice = &dec
-				if p.Currency == "" {
-					p.Currency = msg.BasePrice.Currency
-				}
+			}
+			if p.Currency == "" {
+				p.Currency = "VND"
 			}
 			if msg.Cogs != nil {
+				cogsCurr := strings.ToUpper(strings.TrimSpace(msg.Cogs.Currency))
+				if !IsValidISOCurrency(cogsCurr) {
+					return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%w: cogs.currency must be a 3-letter ISO code", ErrInvalidInput))
+				}
+				if cogsCurr != p.Currency {
+					return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%w: cogs.currency %q does not match product currency %q", ErrInvalidInput, cogsCurr, p.Currency))
+				}
 				dec, err := tenantdb.ParseExactDecimal(msg.Cogs.Amount)
 				if err != nil {
 					return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -421,30 +464,46 @@ func (h *Handler) Create(
 					ConnectedAccountID: ref.ConnectedAccountId,
 				})
 			}
-			if msg.MetadataJson != "" {
-				_ = json.Unmarshal([]byte(msg.MetadataJson), &p.Metadata)
+			if strings.TrimSpace(msg.MetadataJson) != "" {
+				if err := json.Unmarshal([]byte(msg.MetadataJson), &p.Metadata); err != nil {
+					return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%w: invalid metadata_json: %v", ErrInvalidInput, err))
+				}
 			}
 			for _, sku := range msg.InitialSkus {
+				skuCurr := strings.ToUpper(strings.TrimSpace(sku.Currency))
+				if skuCurr != "" && (!IsValidISOCurrency(skuCurr) || skuCurr != p.Currency) {
+					return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%w: sku currency %q does not match product currency %q", ErrInvalidInput, sku.Currency, p.Currency))
+				}
 				pSku := ProductSku{
 					SkuCode:           sku.SkuCode,
 					VariantAttributes: sku.VariantAttributes,
-					Currency:          sku.Currency,
+					Currency:          p.Currency,
 					LowStockThreshold: sku.LowStockThreshold,
 					Barcode:           sku.Barcode,
 					WeightGrams:       sku.WeightGrams,
 					IsActive:          sku.IsActive,
 				}
 				if sku.PriceOverride != nil {
-					dec, err := tenantdb.ParseExactDecimal(sku.PriceOverride.Amount)
-					if err == nil {
-						pSku.PriceOverride = &dec
+					poCurr := strings.ToUpper(strings.TrimSpace(sku.PriceOverride.Currency))
+					if !IsValidISOCurrency(poCurr) || poCurr != p.Currency {
+						return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%w: sku price_override.currency %q does not match product currency %q", ErrInvalidInput, sku.PriceOverride.Currency, p.Currency))
 					}
+					dec, err := tenantdb.ParseExactDecimal(sku.PriceOverride.Amount)
+					if err != nil {
+						return nil, connect.NewError(connect.CodeInvalidArgument, err)
+					}
+					pSku.PriceOverride = &dec
 				}
 				if sku.CogsOverride != nil {
-					dec, err := tenantdb.ParseExactDecimal(sku.CogsOverride.Amount)
-					if err == nil {
-						pSku.CogsOverride = &dec
+					coCurr := strings.ToUpper(strings.TrimSpace(sku.CogsOverride.Currency))
+					if !IsValidISOCurrency(coCurr) || coCurr != p.Currency {
+						return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%w: sku cogs_override.currency %q does not match product currency %q", ErrInvalidInput, sku.CogsOverride.Currency, p.Currency))
 					}
+					dec, err := tenantdb.ParseExactDecimal(sku.CogsOverride.Amount)
+					if err != nil {
+						return nil, connect.NewError(connect.CodeInvalidArgument, err)
+					}
+					pSku.CogsOverride = &dec
 				}
 				p.SKUs = append(p.SKUs, pSku)
 			}
@@ -636,22 +695,40 @@ func (h *Handler) Update(
 				p.InventoryEnabled = *msg.InventoryEnabled
 			}
 			if msg.BasePrice != nil {
+				bpCurr := strings.ToUpper(strings.TrimSpace(msg.BasePrice.Currency))
+				if !IsValidISOCurrency(bpCurr) {
+					return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%w: base_price.currency must be a 3-letter ISO code", ErrInvalidInput))
+				}
 				dec, err := tenantdb.ParseExactDecimal(msg.BasePrice.Amount)
 				if err != nil {
 					return nil, connect.NewError(connect.CodeInvalidArgument, err)
 				}
 				p.BasePrice = &dec
-				p.Currency = msg.BasePrice.Currency
+				p.Currency = bpCurr
 			}
 			if msg.Cogs != nil {
+				cogsCurr := strings.ToUpper(strings.TrimSpace(msg.Cogs.Currency))
+				if !IsValidISOCurrency(cogsCurr) {
+					return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%w: cogs.currency must be a 3-letter ISO code", ErrInvalidInput))
+				}
+				if p.Currency != "" && p.Currency != cogsCurr {
+					return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%w: cogs.currency %q does not match base_price.currency %q", ErrInvalidInput, cogsCurr, p.Currency))
+				}
 				dec, err := tenantdb.ParseExactDecimal(msg.Cogs.Amount)
 				if err != nil {
 					return nil, connect.NewError(connect.CodeInvalidArgument, err)
 				}
 				p.COGS = &dec
+				if p.Currency == "" {
+					p.Currency = cogsCurr
+				}
 			}
 			if msg.CatalogStatus != nil {
-				p.CatalogStatus = fromProtoCatalogStatus(*msg.CatalogStatus)
+				mapped := fromProtoCatalogStatus(*msg.CatalogStatus)
+				if mapped == "" {
+					return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%w: invalid catalog_status %v", ErrInvalidInput, *msg.CatalogStatus))
+				}
+				p.CatalogStatus = mapped
 			}
 			if len(msg.ExternalRefs) > 0 {
 				for _, ref := range msg.ExternalRefs {
@@ -669,8 +746,10 @@ func (h *Handler) Update(
 			if msg.MetadataJson != nil {
 				p.HasPatchMetadata = true
 				p.PatchMetadata = make(map[string]any)
-				if *msg.MetadataJson != "" {
-					_ = json.Unmarshal([]byte(*msg.MetadataJson), &p.PatchMetadata)
+				if strings.TrimSpace(*msg.MetadataJson) != "" {
+					if err := json.Unmarshal([]byte(*msg.MetadataJson), &p.PatchMetadata); err != nil {
+						return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%w: invalid metadata_json: %v", ErrInvalidInput, err))
+					}
 					p.Metadata = p.PatchMetadata
 				}
 			}
@@ -1071,10 +1150,14 @@ func (h *Handler) GetSalesChart(
 	}
 	days := 30
 	switch strings.ToLower(strings.TrimSpace(msg.Interval)) {
-	case "week", "7d":
+	case "", "day", "daily", "30d":
+		days = 30
+	case "week", "weekly", "7d":
 		days = 7
-	case "month", "90d":
+	case "month", "monthly", "90d":
 		days = 90
+	default:
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%w: unsupported chart interval %q", ErrInvalidInput, msg.Interval))
 	}
 	pts, curr, err := h.service.GetSalesChart(ctx, wsID, msg.ProductId, days)
 	if err != nil {
@@ -1224,8 +1307,10 @@ func (h *Handler) LinkContent(
 				Title:       msg.Title,
 				URL:         msg.Url,
 			}
-			if msg.MetadataJson != "" {
-				_ = json.Unmarshal([]byte(msg.MetadataJson), &ref.Metadata)
+			if strings.TrimSpace(msg.MetadataJson) != "" {
+				if err := json.Unmarshal([]byte(msg.MetadataJson), &ref.Metadata); err != nil {
+					return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%w: invalid metadata_json: %v", ErrInvalidInput, err))
+				}
 			}
 			saved, err := h.service.LinkContent(txCtx, wsID, msg.ProductId, ref)
 			if err != nil {

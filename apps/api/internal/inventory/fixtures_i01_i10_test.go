@@ -7,7 +7,11 @@ import (
 	"testing"
 	"time"
 
+	"connectrpc.com/connect"
+	commercev1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/commerce/v1"
+	commonv1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/common/v1"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/inventory"
+	"github.com/quantm-zeus/creativanta/apps/api/internal/rbac"
 )
 
 type mockSink struct {
@@ -683,5 +687,148 @@ func TestRemediation_F15_DuplicateSkuLocationReservationCannotOverbook(t *testin
 	balAfter, _ := store.GetBalance(ctx, wsID, skuID, locID)
 	if balAfter.Reserved != 2 || balAfter.Sellable() != 1 {
 		t.Fatalf("expected Reserved=2, Sellable=1, got Reserved=%d Sellable=%d", balAfter.Reserved, balAfter.Sellable())
+	}
+}
+
+func TestSecondPass_InventoryHandler_RBACIdempotencyMovementRestrictionsAndBulkStockIn(t *testing.T) {
+	baseCtx := context.Background()
+	store := inventory.NewMemoryStore()
+	sink := &mockSink{}
+	now := time.Date(2026, 11, 7, 12, 0, 0, 0, time.UTC)
+	svc := inventory.NewService(store, sink, func() time.Time { return now })
+	h := inventory.NewHandler(svc)
+
+	const wsID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa99"
+	const locID = "loc-h-01"
+	const sku1 = "sku-h-01"
+	const sku2 = "sku-h-02"
+
+	_ = store.CreateLocation(baseCtx, &inventory.Location{
+		LocationID:  locID,
+		WorkspaceID: wsID,
+		Name:        "Main Warehouse",
+		IsDefault:   true,
+		Status:      inventory.StatusActive,
+	})
+	_ = svc.RecordOpeningBaseline(baseCtx, wsID, sku1, locID, 10, now.Add(-1*time.Hour))
+	_ = svc.RecordOpeningBaseline(baseCtx, wsID, sku2, locID, 5, now.Add(-1*time.Hour))
+
+	// Hold 8 units on sku1 -> OnHand=10, Reserved=8, Sellable=2
+	if _, err := svc.ReserveStock(baseCtx, wsID, "ord-h-hold", []inventory.ReservationItem{
+		{SkuID: sku1, LocationID: locID, Quantity: 8},
+	}, 15*time.Minute); err != nil {
+		t.Fatalf("ReserveStock failed: %v", err)
+	}
+
+	ctxViewer := rbac.WithPolicyContext(baseCtx, rbac.PolicyContext{
+		ActorUserID: "user-viewer-1",
+		WorkspaceID: wsID,
+		Role:        rbac.RoleViewer,
+	})
+	ctxEditor := rbac.WithPolicyContext(baseCtx, rbac.PolicyContext{
+		ActorUserID: "user-editor-1",
+		WorkspaceID: wsID,
+		Role:        rbac.RoleEditor,
+	})
+
+	// 1. Viewer cannot mutate stock via CreateStockMovement or BulkStockIn -> CodePermissionDenied
+	if _, err := h.CreateStockMovement(ctxViewer, connect.NewRequest(&commercev1.InventoryServiceCreateStockMovementRequest{
+		Context:      &commonv1.CommandContext{IdempotencyKey: "idem-inv-viewer-denied"},
+		SkuId:        sku1,
+		LocationId:   locID,
+		MovementType: commercev1.StockMovementType_STOCK_MOVEMENT_TYPE_ADJUSTMENT,
+		Quantity:     1,
+		Reason:       "viewer attempt",
+	})); connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("expected CodePermissionDenied for Viewer on CreateStockMovement, got %v", err)
+	}
+
+	// 2. Missing IdempotencyKey on CreateStockMovement -> CodeInvalidArgument
+	if _, err := h.CreateStockMovement(ctxEditor, connect.NewRequest(&commercev1.InventoryServiceCreateStockMovementRequest{
+		SkuId:        sku1,
+		LocationId:   locID,
+		MovementType: commercev1.StockMovementType_STOCK_MOVEMENT_TYPE_ADJUSTMENT,
+		Quantity:     1,
+		Reason:       "missing idempotency key",
+	})); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("expected CodeInvalidArgument for missing idempotency_key on CreateStockMovement, got %v", err)
+	}
+
+	// 3. Fabricated sale/return/transfer on CreateStockMovement -> CodeInvalidArgument per api_behavior_contracts.md
+	for _, forbiddenType := range []commercev1.StockMovementType{
+		commercev1.StockMovementType_STOCK_MOVEMENT_TYPE_SALE,
+		commercev1.StockMovementType_STOCK_MOVEMENT_TYPE_RETURN,
+		commercev1.StockMovementType_STOCK_MOVEMENT_TYPE_TRANSFER,
+	} {
+		if _, err := h.CreateStockMovement(ctxEditor, connect.NewRequest(&commercev1.InventoryServiceCreateStockMovementRequest{
+			Context:      &commonv1.CommandContext{IdempotencyKey: "idem-inv-forbidden-" + forbiddenType.String()},
+			SkuId:        sku1,
+			LocationId:   locID,
+			MovementType: forbiddenType,
+			Quantity:     -1,
+			Reason:       "fabricated movement",
+		})); connect.CodeOf(err) != connect.CodeInvalidArgument {
+			t.Fatalf("expected CodeInvalidArgument for fabricated %v on CreateStockMovement, got %v", forbiddenType, err)
+		}
+	}
+
+	// 4. Negative adjustment driving OnHand (10 - 5 = 5) below Reserved (8) -> CodeFailedPrecondition
+	if _, err := h.CreateStockMovement(ctxEditor, connect.NewRequest(&commercev1.InventoryServiceCreateStockMovementRequest{
+		Context:      &commonv1.CommandContext{IdempotencyKey: "idem-inv-below-reserved"},
+		SkuId:        sku1,
+		LocationId:   locID,
+		MovementType: commercev1.StockMovementType_STOCK_MOVEMENT_TYPE_DAMAGE,
+		Quantity:     -5,
+		Reason:       "damaged units",
+	})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("expected CodeFailedPrecondition when negative adjustment drops OnHand below Reserved, got %v", err)
+	}
+	balSku1, _ := store.GetBalance(baseCtx, wsID, sku1, locID)
+	if balSku1.OnHand != 10 || balSku1.Reserved != 8 {
+		t.Fatalf("expected balance unchanged (OnHand=10, Reserved=8) after rejected adjustment, got %+v", balSku1)
+	}
+
+	// 5. BulkStockIn atomically records stock_in movements and supports idempotent replay
+	bulkResp, err := h.BulkStockIn(ctxEditor, connect.NewRequest(&commercev1.InventoryServiceBulkStockInRequest{
+		Context:    &commonv1.CommandContext{IdempotencyKey: "idem-inv-bulk-1"},
+		LocationId: locID,
+		Reason:     "PO-2026-11",
+		Items: []*commercev1.StockMovementItem{
+			{SkuId: sku1, Quantity: 4},
+			{SkuId: sku2, Quantity: 6},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("BulkStockIn failed: %v", err)
+	}
+	if bulkResp.Msg.ProcessedCount != 2 || len(bulkResp.Msg.Movements) != 2 {
+		t.Fatalf("expected ProcessedCount=2 and 2 movements from BulkStockIn, got count=%d len=%d",
+			bulkResp.Msg.ProcessedCount, len(bulkResp.Msg.Movements))
+	}
+	bal1After, _ := store.GetBalance(baseCtx, wsID, sku1, locID)
+	bal2After, _ := store.GetBalance(baseCtx, wsID, sku2, locID)
+	if bal1After.OnHand != 14 || bal2After.OnHand != 11 {
+		t.Fatalf("unexpected balances after BulkStockIn: sku1=%d (want 14), sku2=%d (want 11)", bal1After.OnHand, bal2After.OnHand)
+	}
+
+	// Replay BulkStockIn with same key and payload -> idempotent return without double-counting
+	bulkReplay, err := h.BulkStockIn(ctxEditor, connect.NewRequest(&commercev1.InventoryServiceBulkStockInRequest{
+		Context:    &commonv1.CommandContext{IdempotencyKey: "idem-inv-bulk-1"},
+		LocationId: locID,
+		Reason:     "PO-2026-11",
+		Items: []*commercev1.StockMovementItem{
+			{SkuId: sku1, Quantity: 4},
+			{SkuId: sku2, Quantity: 6},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("BulkStockIn replay failed: %v", err)
+	}
+	if bulkReplay.Msg.ProcessedCount != 2 {
+		t.Fatalf("expected ProcessedCount=2 on replay, got %d", bulkReplay.Msg.ProcessedCount)
+	}
+	bal1Replay, _ := store.GetBalance(baseCtx, wsID, sku1, locID)
+	if bal1Replay.OnHand != 14 {
+		t.Fatalf("BulkStockIn replay double-counted stock: got %d, want 14", bal1Replay.OnHand)
 	}
 }

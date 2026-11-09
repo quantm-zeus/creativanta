@@ -5,9 +5,12 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"net"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -40,13 +43,39 @@ func buildAppUserDSN(adminDSN string) (string, error) {
 }
 
 func TestPostgresLiveProductAndSkuCatalog(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+	defer cancel()
+
 	dsn := os.Getenv("CREATIVANTA_TEST_DATABASE_URL")
 	if dsn == "" {
-		t.Skip("CREATIVANTA_TEST_DATABASE_URL not set; live PostgreSQL M13 product catalog suite executes in CI")
+		conn, err := net.DialTimeout("tcp", "127.0.0.1:15432", time.Second)
+		if err != nil {
+			t.Skip("CREATIVANTA_TEST_DATABASE_URL not set and local Postgres not reachable on 127.0.0.1:15432")
+		}
+		_ = conn.Close()
+		suffix := fmt.Sprintf("%d", time.Now().UnixNano()%1000000)
+		roleName := "cv_t7_prod_" + suffix
+		rolePass := "cv_t7_pass_" + suffix
+		dbName := "cv_t7_prod_db_" + suffix
+		createCmd := exec.CommandContext(ctx, "docker", "exec", "creativanta-p0-postgres-1",
+			"psql", "-U", "creativanta_dev", "-d", "creativanta_dev", "-v", "ON_ERROR_STOP=1",
+			"-c", fmt.Sprintf("CREATE ROLE %s WITH LOGIN SUPERUSER PASSWORD '%s';", roleName, rolePass),
+			"-c", fmt.Sprintf("CREATE DATABASE %s OWNER %s;", dbName, roleName),
+		)
+		if out, err := createCmd.CombinedOutput(); err != nil {
+			t.Skipf("local disposable docker postgres setup unavailable: %v (%s)", err, string(out))
+		}
+		dsn = fmt.Sprintf("postgres://%s:%s@127.0.0.1:15432/%s?sslmode=disable", roleName, rolePass, dbName)
+		t.Cleanup(func() {
+			cleanCtx, cleanCancel := context.WithTimeout(context.Background(), 15*time.Second)
+			defer cleanCancel()
+			_ = exec.CommandContext(cleanCtx, "docker", "exec", "creativanta-p0-postgres-1",
+				"psql", "-U", "creativanta_dev", "-d", "creativanta_dev",
+				"-c", fmt.Sprintf("DROP DATABASE IF EXISTS %s WITH (FORCE);", dbName),
+				"-c", fmt.Sprintf("DROP ROLE IF EXISTS %s;", roleName),
+			).Run()
+		})
 	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
 
 	adminPool, err := pgxpool.New(ctx, dsn)
 	if err != nil {
@@ -567,6 +596,38 @@ func TestPostgresLiveProductAndSkuCatalog(t *testing.T) {
 	if updResp.Msg.Product.InventoryEnabled || updResp.Msg.Product.Category != "" {
 		t.Fatalf("Data F11 Postgres regression: expected InventoryEnabled=false and Category=\"\", got inv=%v cat=%q",
 			updResp.Msg.Product.InventoryEnabled, updResp.Msg.Product.Category)
+	}
+
+	// 12. Second-pass Data F13 & F15 on PostgreSQL: Reject cross-currency BasePrice/COGS update & verify long cursor <= 512 chars
+	if _, err := h.Update(callerCtx, connect.NewRequest(&commercev1.UpdateRequest{
+		Context: &commonv1.CommandContext{
+			WorkspaceId:    &commonv1.UUID{Value: tenantA},
+			IdempotencyKey: "pg-f13-reject-usd-price-on-vnd",
+		},
+		ProductId: prodA2.ProductID,
+		BasePrice: &commonv1.Money{Amount: "15.000000", Currency: "USD"},
+	})); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("Data F13 Postgres regression: expected CodeInvalidArgument on USD BasePrice update for VND product, got %v", err)
+	}
+
+	longSearch := strings.Repeat("TìmKiếmSảnPhẩm", 20)
+	listP1, err := h.List(callerCtx, connect.NewRequest(&commercev1.ListRequest{
+		Pagination: &commonv1.Pagination{PageSize: 1},
+	}))
+	if err != nil {
+		t.Fatalf("Handler.List page 1 on Postgres failed: %v", err)
+	}
+	if listP1.Msg.Pagination.GetHasMore() {
+		tok := listP1.Msg.Pagination.GetNextPageToken()
+		if len(tok) == 0 || len(tok) > 512 {
+			t.Fatalf("Data F15 Postgres regression: unexpected token length %d", len(tok))
+		}
+		if _, err := h.List(callerCtx, connect.NewRequest(&commercev1.ListRequest{
+			Pagination:  &commonv1.Pagination{PageSize: 1, PageToken: tok},
+			SearchQuery: longSearch,
+		})); connect.CodeOf(err) != connect.CodeInvalidArgument {
+			t.Fatalf("Data F15 Postgres regression: expected CodeInvalidArgument on tampered SearchQuery with cursor, got %v", err)
+		}
 	}
 
 	t.Log("PASS: Live PostgreSQL RLS isolation, product catalog, stock movements ledger, CAS, keyset cursor, and sales analytics verified.")

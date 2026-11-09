@@ -211,6 +211,36 @@ func SalesStatsFilterFromContext(ctx context.Context) (SalesStatsFilter, bool) {
 	return f, ok
 }
 
+type idempotencyNowContextKey struct{}
+
+func WithIdempotencyNow(ctx context.Context, now time.Time) context.Context {
+	if now.IsZero() {
+		return ctx
+	}
+	return context.WithValue(ctx, idempotencyNowContextKey{}, now.UTC())
+}
+
+func IdempotencyNowFromContext(ctx context.Context) (time.Time, bool) {
+	if ctx == nil {
+		return time.Time{}, false
+	}
+	t, ok := ctx.Value(idempotencyNowContextKey{}).(time.Time)
+	return t, ok && !t.IsZero()
+}
+
+func IsValidISOCurrency(code string) bool {
+	c := strings.ToUpper(strings.TrimSpace(code))
+	if len(c) != 3 {
+		return false
+	}
+	for i := 0; i < 3; i++ {
+		if c[i] < 'A' || c[i] > 'Z' {
+			return false
+		}
+	}
+	return true
+}
+
 type ExchangeRateSnapshot struct {
 	BaseCurrency  string `json:"base_currency"`
 	QuoteCurrency string `json:"quote_currency"`
@@ -326,7 +356,7 @@ func (p *Product) Validate() error {
 		p.Currency = "VND"
 	}
 	p.Currency = strings.ToUpper(strings.TrimSpace(p.Currency))
-	if len(p.Currency) != 3 {
+	if !IsValidISOCurrency(p.Currency) {
 		return fmt.Errorf("%w: currency must be 3-letter ISO code", ErrInvalidInput)
 	}
 	if p.BasePrice != nil && p.BasePrice.IsNegative() {
@@ -334,6 +364,21 @@ func (p *Product) Validate() error {
 	}
 	if p.COGS != nil && p.COGS.IsNegative() {
 		return fmt.Errorf("%w: cogs cannot be negative", ErrInvalidInput)
+	}
+	for i := range p.SKUs {
+		if p.SKUs[i].Currency != "" {
+			skuCurr := strings.ToUpper(strings.TrimSpace(p.SKUs[i].Currency))
+			if !IsValidISOCurrency(skuCurr) || skuCurr != p.Currency {
+				return fmt.Errorf("%w: sku currency %q does not match product currency %q", ErrInvalidInput, p.SKUs[i].Currency, p.Currency)
+			}
+			p.SKUs[i].Currency = skuCurr
+		}
+		if p.SKUs[i].PriceOverride != nil && p.SKUs[i].PriceOverride.IsNegative() {
+			return fmt.Errorf("%w: sku price_override cannot be negative", ErrInvalidInput)
+		}
+		if p.SKUs[i].CogsOverride != nil && p.SKUs[i].CogsOverride.IsNegative() {
+			return fmt.Errorf("%w: sku cogs_override cannot be negative", ErrInvalidInput)
+		}
 	}
 	return nil
 }

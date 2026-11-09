@@ -3,8 +3,11 @@ package inventory_test
 import (
 	"context"
 	"errors"
+	"fmt"
+	"net"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -214,13 +217,39 @@ func TestPostgresStoreEnforcesTenantTxAndRollback(t *testing.T) {
 }
 
 func TestPostgresLiveInventoryStore(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+	defer cancel()
+
 	dsn := os.Getenv("CREATIVANTA_TEST_DATABASE_URL")
 	if dsn == "" {
-		t.Skip("CREATIVANTA_TEST_DATABASE_URL not set; live PostgreSQL inventory suite executes in CI")
+		conn, err := net.DialTimeout("tcp", "127.0.0.1:15432", time.Second)
+		if err != nil {
+			t.Skip("CREATIVANTA_TEST_DATABASE_URL not set and local Postgres not reachable on 127.0.0.1:15432")
+		}
+		_ = conn.Close()
+		suffix := fmt.Sprintf("%d", time.Now().UnixNano()%1000000)
+		roleName := "cv_t7_inv_" + suffix
+		rolePass := "cv_t7_pass_" + suffix
+		dbName := "cv_t7_inv_db_" + suffix
+		createCmd := exec.CommandContext(ctx, "docker", "exec", "creativanta-p0-postgres-1",
+			"psql", "-U", "creativanta_dev", "-d", "creativanta_dev", "-v", "ON_ERROR_STOP=1",
+			"-c", fmt.Sprintf("CREATE ROLE %s WITH LOGIN SUPERUSER PASSWORD '%s';", roleName, rolePass),
+			"-c", fmt.Sprintf("CREATE DATABASE %s OWNER %s;", dbName, roleName),
+		)
+		if out, err := createCmd.CombinedOutput(); err != nil {
+			t.Skipf("local disposable docker postgres setup unavailable: %v (%s)", err, string(out))
+		}
+		dsn = fmt.Sprintf("postgres://%s:%s@127.0.0.1:15432/%s?sslmode=disable", roleName, rolePass, dbName)
+		t.Cleanup(func() {
+			cleanCtx, cleanCancel := context.WithTimeout(context.Background(), 15*time.Second)
+			defer cleanCancel()
+			_ = exec.CommandContext(cleanCtx, "docker", "exec", "creativanta-p0-postgres-1",
+				"psql", "-U", "creativanta_dev", "-d", "creativanta_dev",
+				"-c", fmt.Sprintf("DROP DATABASE IF EXISTS %s WITH (FORCE);", dbName),
+				"-c", fmt.Sprintf("DROP ROLE IF EXISTS %s;", roleName),
+			).Run()
+		})
 	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
 
 	adminPool, err := pgxpool.New(ctx, dsn)
 	if err != nil {
@@ -231,6 +260,9 @@ func TestPostgresLiveInventoryStore(t *testing.T) {
 	migrationsDir := filepath.Join("..", "..", "..", "..", "infra", "migrations")
 	if _, err := migrate.Up(ctx, adminPool, migrationsDir); err != nil {
 		t.Fatalf("migrate.Up: %v", err)
+	}
+	if _, err := adminPool.Exec(ctx, `ALTER ROLE app_user WITH LOGIN PASSWORD 'app_user_test_pw'`); err != nil {
+		t.Fatalf("alter app_user login: %v", err)
 	}
 
 	wsID := "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa14"
