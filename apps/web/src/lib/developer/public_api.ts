@@ -204,6 +204,12 @@ export function evaluateKeyAuthentication(
   return { valid: false, reason: 'unknown status' };
 }
 
+export interface RevealedSecretEntry {
+  value: string;
+  userId: string;
+  workspaceId: string;
+}
+
 /**
  * Developer State Store
  */
@@ -215,6 +221,8 @@ export interface DeveloperState {
   deliveries: WebhookDeliveryRecord[];
   dailyUsage: DailyUsage[];
   summary: UsageSummary;
+  revealedKeySecret: RevealedSecretEntry | null;
+  revealedWebhookSecret: RevealedSecretEntry | null;
 }
 
 function createDeveloperStore(initialTier: string = 'pro') {
@@ -231,7 +239,9 @@ function createDeveloperStore(initialTier: string = 'pro') {
       readRateLimitRPM: DEFAULT_READ_RATE_LIMIT_RPM,
       writeRateLimitRPM: DEFAULT_WRITE_RATE_LIMIT_RPM,
       billableAICreditsUsed: 0
-    }
+    },
+    revealedKeySecret: null,
+    revealedWebhookSecret: null
   };
 
   const { subscribe, set, update } = writable<DeveloperState>(initialState);
@@ -249,6 +259,131 @@ function createDeveloperStore(initialTier: string = 'pro') {
           monthlyQuota: TIER_MONTHLY_QUOTAS[tier.toLowerCase()] || 100000
         }
       }));
+    },
+    revealKeySecret: (params: {
+      value: string;
+      userId?: string | null;
+      workspaceId?: string | null;
+    }) => {
+      const value = (params.value || '').trim();
+      const userId = (params.userId || '').trim();
+      const workspaceId = (params.workspaceId || '').trim();
+      if (!value || !userId || !workspaceId) {
+        update((s) => ({ ...s, revealedKeySecret: null }));
+        return;
+      }
+      update((s) => ({
+        ...s,
+        revealedKeySecret: { value, userId, workspaceId }
+      }));
+    },
+    revealWebhookSecret: (params: {
+      value: string;
+      userId?: string | null;
+      workspaceId?: string | null;
+    }) => {
+      const value = (params.value || '').trim();
+      const userId = (params.userId || '').trim();
+      const workspaceId = (params.workspaceId || '').trim();
+      if (!value || !userId || !workspaceId) {
+        update((s) => ({ ...s, revealedWebhookSecret: null }));
+        return;
+      }
+      update((s) => ({
+        ...s,
+        revealedWebhookSecret: { value, userId, workspaceId }
+      }));
+    },
+    clearRevealedSecrets: () => {
+      update((s) => ({
+        ...s,
+        revealedKeySecret: null,
+        revealedWebhookSecret: null
+      }));
+    },
+    syncSessionContext: (params: {
+      authState?: string | null;
+      state?: string | null;
+      userId?: string | null;
+      workspaceId?: string | null;
+    }) => {
+      const authState = (params.authState ?? params.state ?? '').trim();
+      const userId = (params.userId || '').trim();
+      const workspaceId = (params.workspaceId || '').trim();
+
+      if (authState !== 'authenticated' || !userId || !workspaceId) {
+        update((s) => ({
+          ...s,
+          revealedKeySecret: null,
+          revealedWebhookSecret: null
+        }));
+        return;
+      }
+
+      update((s) => {
+        const keySecretMatches =
+          s.revealedKeySecret &&
+          s.revealedKeySecret.userId === userId &&
+          s.revealedKeySecret.workspaceId === workspaceId;
+        const webhookSecretMatches =
+          s.revealedWebhookSecret &&
+          s.revealedWebhookSecret.userId === userId &&
+          s.revealedWebhookSecret.workspaceId === workspaceId;
+        const hasCrossWorkspaceRecords =
+          s.keys.some((k) => k.workspaceId && k.workspaceId !== workspaceId) ||
+          s.webhooks.some((w) => w.workspaceId && w.workspaceId !== workspaceId);
+        return {
+          ...s,
+          workspaceId,
+          keys: hasCrossWorkspaceRecords ? [] : s.keys,
+          webhooks: hasCrossWorkspaceRecords ? [] : s.webhooks,
+          deliveries: hasCrossWorkspaceRecords ? [] : s.deliveries,
+          revealedKeySecret: keySecretMatches ? s.revealedKeySecret : null,
+          revealedWebhookSecret: webhookSecretMatches ? s.revealedWebhookSecret : null
+        };
+      });
+    },
+    getVisibleKeySecret: (params: {
+      authState?: string | null;
+      state?: string | null;
+      userId?: string | null;
+      workspaceId?: string | null;
+    }): string => {
+      const current = get({ subscribe });
+      const entry = current.revealedKeySecret;
+      const authState = (params.authState ?? params.state ?? '').trim();
+      if (
+        !entry ||
+        authState !== 'authenticated' ||
+        !params.userId ||
+        !params.workspaceId ||
+        entry.userId !== params.userId ||
+        entry.workspaceId !== params.workspaceId
+      ) {
+        return '';
+      }
+      return entry.value;
+    },
+    getVisibleWebhookSecret: (params: {
+      authState?: string | null;
+      state?: string | null;
+      userId?: string | null;
+      workspaceId?: string | null;
+    }): string => {
+      const current = get({ subscribe });
+      const entry = current.revealedWebhookSecret;
+      const authState = (params.authState ?? params.state ?? '').trim();
+      if (
+        !entry ||
+        authState !== 'authenticated' ||
+        !params.userId ||
+        !params.workspaceId ||
+        entry.userId !== params.userId ||
+        entry.workspaceId !== params.workspaceId
+      ) {
+        return '';
+      }
+      return entry.value;
     },
     createKey: (name: string, scopes: string[]) => {
       const current = get({ subscribe });
@@ -463,20 +598,22 @@ function createDeveloperStore(initialTier: string = 'pro') {
 export const developerStore = createDeveloperStore();
 
 import { callCanonicalRpc, generateIdempotencyKey, type CanonicalRpcOptions } from '$lib/api/client';
-import { registerAuthResetHook } from '$lib/auth/store';
+import { authStore, registerAuthResetHook } from '$lib/auth/store';
 
 registerAuthResetHook(() => {
   developerStore.reset();
 });
 
-function normalizeApiKeyStatus(raw: unknown): APIKeyStatus {
+export function normalizeApiKeyStatus(raw: unknown): APIKeyStatus {
   if (typeof raw === 'number') {
     switch (raw) {
       case 2:
         return 'rotating';
       case 3:
-        return 'revoked';
+        return 'suspended';
       case 4:
+        return 'revoked';
+      case 5:
         return 'expired';
       default:
         return 'active';
@@ -484,16 +621,20 @@ function normalizeApiKeyStatus(raw: unknown): APIKeyStatus {
   }
   const str = String(raw || '').toLowerCase();
   if (str.includes('rotating')) return 'rotating';
+  if (str.includes('suspend')) return 'suspended';
   if (str.includes('revoked')) return 'revoked';
   if (str.includes('expired')) return 'expired';
   return 'active';
 }
 
-function normalizeWebhookStatus(raw: unknown): WebhookStatus {
+export function normalizeWebhookStatus(raw: unknown): WebhookStatus {
   if (typeof raw === 'number') {
-    return raw === 2 ? 'suspended' : 'active';
+    if (raw === 2) return 'suspended';
+    if (raw === 3) return 'revoked';
+    return 'active';
   }
   const str = String(raw || '').toLowerCase();
+  if (str.includes('revoked')) return 'revoked';
   if (str.includes('suspended') || str.includes('disabled')) return 'suspended';
   return 'active';
 }
@@ -508,6 +649,7 @@ export interface IssueApiKeyRemoteResult {
 export async function issueApiKeyRemote(
   params: {
     workspaceId?: string;
+    userId?: string;
     tier: string;
     activeKeysCount: number;
     name: string;
@@ -581,17 +723,19 @@ export async function issueApiKeyRemote(
     };
   }
 
+  const resolvedWorkspaceId = String(
+    remoteKey?.workspace_id || remoteKey?.workspaceId || params.workspaceId || options.workspaceId || ''
+  );
+
   const key: APIKey = {
     apiKeyId,
-    workspaceId: String(
-      remoteKey?.workspace_id || remoteKey?.workspaceId || params.workspaceId || ''
-    ),
+    workspaceId: resolvedWorkspaceId,
     keyPrefix: String(remoteKey?.key_prefix || remoteKey?.keyPrefix || rawSecret.slice(0, 10)),
     name: String(remoteKey?.name || params.name),
     scopes: Array.isArray(remoteKey?.scopes) ? remoteKey.scopes : params.scopes,
     status: normalizeApiKeyStatus(remoteKey?.status),
     logicalKeyId: String(remoteKey?.logical_key_id || remoteKey?.logicalKeyId || apiKeyId),
-    requestCount: 0,
+    requestCount: Number(remoteKey?.request_count ?? remoteKey?.requestCount ?? 0),
     expiresAt:
       String(remoteKey?.expires_at || remoteKey?.expiresAt || '') ||
       new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
@@ -605,12 +749,22 @@ export async function issueApiKeyRemote(
     };
   }
 
+  const authSnap = authStore.getSnapshot();
+  const resolvedUserId = params.userId || (authSnap.state === 'authenticated' ? authSnap.user?.id : undefined);
+  if (resolvedUserId && resolvedWorkspaceId) {
+    developerStore.revealKeySecret({
+      value: rawSecret,
+      userId: resolvedUserId,
+      workspaceId: resolvedWorkspaceId
+    });
+  }
+
   developerStore.upsertRemoteKey(key);
   return { ok: true, key, rawSecret };
 }
 
 export async function rotateApiKeyRemote(
-  params: { workspaceId?: string; apiKeyId: string },
+  params: { workspaceId?: string; userId?: string; apiKeyId: string },
   options: CanonicalRpcOptions = {}
 ): Promise<{
   ok: boolean;
@@ -677,6 +831,8 @@ export async function rotateApiKeyRemote(
     String(
       rpcRes.data?.grace_ends_at ||
         rpcRes.data?.graceEndsAt ||
+        oldKeyData?.rotation_grace_ends_at ||
+        oldKeyData?.rotationGraceEndsAt ||
         oldKeyData?.grace_ends_at ||
         oldKeyData?.graceEndsAt ||
         ''
@@ -699,11 +855,13 @@ export async function rotateApiKeyRemote(
     });
   }
 
+  const resolvedWorkspaceId = String(
+    newKeyData?.workspace_id || newKeyData?.workspaceId || params.workspaceId || options.workspaceId || ''
+  );
+
   const newKey: APIKey = {
     apiKeyId: newApiKeyId,
-    workspaceId: String(
-      newKeyData?.workspace_id || newKeyData?.workspaceId || params.workspaceId || ''
-    ),
+    workspaceId: resolvedWorkspaceId,
     keyPrefix: String(newKeyData?.key_prefix || newKeyData?.keyPrefix || newSecret.slice(0, 10)),
     name: String(newKeyData?.name || existingOld?.name || 'Rotated API Key'),
     scopes: Array.isArray(newKeyData?.scopes)
@@ -716,12 +874,22 @@ export async function rotateApiKeyRemote(
         existingOld?.logicalKeyId ||
         params.apiKeyId
     ),
-    requestCount: 0,
+    requestCount: Number(newKeyData?.request_count ?? newKeyData?.requestCount ?? 0),
     expiresAt:
       String(newKeyData?.expires_at || newKeyData?.expiresAt || '') ||
       new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
     createdBy: String(newKeyData?.created_by || newKeyData?.createdBy || 'authenticated_user')
   };
+
+  const authSnap = authStore.getSnapshot();
+  const resolvedUserId = params.userId || (authSnap.state === 'authenticated' ? authSnap.user?.id : undefined);
+  if (resolvedUserId && resolvedWorkspaceId) {
+    developerStore.revealKeySecret({
+      value: newSecret,
+      userId: resolvedUserId,
+      workspaceId: resolvedWorkspaceId
+    });
+  }
 
   developerStore.upsertRemoteKey(newKey);
   return {
@@ -744,7 +912,7 @@ export async function revokeApiKeyRemote(
       api_key?: Record<string, any>;
       apiKey?: Record<string, any>;
       revoked?: boolean;
-      status?: string;
+      status?: string | number;
     }
   >(
     'creativanta.platform.v1.APIKeyService/Revoke',
@@ -766,6 +934,19 @@ export async function revokeApiKeyRemote(
     };
   }
 
+  const remoteKey = rpcRes.data?.api_key || rpcRes.data?.apiKey;
+  const confirmedRevoked =
+    rpcRes.data?.revoked === true ||
+    (remoteKey && normalizeApiKeyStatus(remoteKey.status) === 'revoked') ||
+    (rpcRes.data?.status !== undefined && normalizeApiKeyStatus(rpcRes.data.status) === 'revoked');
+
+  if (!confirmedRevoked) {
+    return {
+      ok: false,
+      error: 'Phản hồi từ máy chủ không xác nhận trạng thái đã thu hồi khóa API (fail-closed).'
+    };
+  }
+
   if (developerStore.getResetEpoch() !== startEpoch) {
     return {
       ok: false,
@@ -780,6 +961,7 @@ export async function revokeApiKeyRemote(
 export async function registerWebhookRemote(
   params: {
     workspaceId?: string;
+    userId?: string;
     targetUrl: string;
     eventTypes: string[];
   },
@@ -851,11 +1033,13 @@ export async function registerWebhookRemote(
     };
   }
 
+  const resolvedWorkspaceId = String(
+    remoteSub?.workspace_id || remoteSub?.workspaceId || params.workspaceId || options.workspaceId || ''
+  );
+
   const sub: WebhookSubscription = {
     subscriptionId,
-    workspaceId: String(
-      remoteSub?.workspace_id || remoteSub?.workspaceId || params.workspaceId || ''
-    ),
+    workspaceId: resolvedWorkspaceId,
     targetUrl: String(remoteSub?.target_url || remoteSub?.targetUrl || params.targetUrl.trim()),
     eventTypes: Array.isArray(remoteSub?.event_types)
       ? remoteSub.event_types
@@ -864,7 +1048,11 @@ export async function registerWebhookRemote(
         : params.eventTypes,
     status: normalizeWebhookStatus(remoteSub?.status),
     consecutiveFailureCount: Number(
-      remoteSub?.consecutive_failures ?? remoteSub?.consecutiveFailures ?? 0
+      remoteSub?.consecutive_failure_count ??
+        remoteSub?.consecutiveFailureCount ??
+        remoteSub?.consecutive_failures ??
+        remoteSub?.consecutiveFailures ??
+        0
     )
   };
 
@@ -873,6 +1061,16 @@ export async function registerWebhookRemote(
       ok: false,
       error: 'Phiên làm việc hoặc workspace đã thay đổi trong khi đăng ký webhook (fail-closed).'
     };
+  }
+
+  const authSnap = authStore.getSnapshot();
+  const resolvedUserId = params.userId || (authSnap.state === 'authenticated' ? authSnap.user?.id : undefined);
+  if (resolvedUserId && resolvedWorkspaceId) {
+    developerStore.revealWebhookSecret({
+      value: secret,
+      userId: resolvedUserId,
+      workspaceId: resolvedWorkspaceId
+    });
   }
 
   developerStore.upsertRemoteWebhook(sub);

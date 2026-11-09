@@ -16,6 +16,47 @@ class DeveloperApiKeysView extends StatefulWidget {
 class _DeveloperApiKeysViewState extends State<DeveloperApiKeysView> {
   String? _revealedSecret;
   String? _errorBanner;
+  int _lastResetEpoch = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _lastResetEpoch = widget.notifier.resetEpoch;
+    widget.notifier.addListener(_handleNotifierUpdate);
+  }
+
+  @override
+  void didUpdateWidget(covariant DeveloperApiKeysView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.notifier != widget.notifier) {
+      oldWidget.notifier.removeListener(_handleNotifierUpdate);
+      widget.notifier.addListener(_handleNotifierUpdate);
+      _revealedSecret = null;
+      _errorBanner = null;
+      _lastResetEpoch = widget.notifier.resetEpoch;
+    } else if (widget.notifier.resetEpoch != _lastResetEpoch) {
+      _revealedSecret = null;
+      _errorBanner = null;
+      _lastResetEpoch = widget.notifier.resetEpoch;
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.notifier.removeListener(_handleNotifierUpdate);
+    super.dispose();
+  }
+
+  void _handleNotifierUpdate() {
+    if (!mounted) return;
+    if (widget.notifier.resetEpoch != _lastResetEpoch) {
+      setState(() {
+        _revealedSecret = null;
+        _errorBanner = null;
+        _lastResetEpoch = widget.notifier.resetEpoch;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

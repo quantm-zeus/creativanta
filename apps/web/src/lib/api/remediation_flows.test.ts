@@ -1221,4 +1221,346 @@ describe('Remediation Canonical RPC Flows (UF-04..UF-08, AI-02, R04)', () => {
     expect(get(developerStore).keys).toHaveLength(0);
     expect(get(supportStore.tickets)).toHaveLength(0);
   });
+
+  it('T8-F5 Workflow editor preserves unsaved draft during same-tenant re-discovery while locking save, and purges draft on tenant change or revocation', async () => {
+    const session = createWorkflowEditorSession('wf-prod-v3');
+    let loadCalls = 0;
+
+    const loadFetch = vi.fn(async () => {
+      loadCalls += 1;
+      return jsonResponse({
+        workflow: {
+          workflow_id: 'wf-prod-v3',
+          workspace_id: 'ws-1',
+          title: 'Server Title v3',
+          description: 'Server Description',
+          status: 'WORKFLOW_STATUS_DRAFT',
+          version: 3,
+          trigger_config: { type: 'TRIGGER_TYPE_EVENT', event_type: 'order.created' },
+          action_chain: {
+            schema_version: 1,
+            nodes: [
+              {
+                node_id: 'trig-1',
+                node_type: 'NODE_TYPE_TRIGGER',
+                title: 'Order Created',
+                trigger_config: { config: { type: 'TRIGGER_TYPE_EVENT', event_type: 'order.created' } }
+              },
+              {
+                node_id: 'term-1',
+                node_type: 'NODE_TYPE_TERMINAL',
+                title: 'Done',
+                terminal_config: { outcome: 'succeeded' }
+              }
+            ],
+            edges: [{ from_node_id: 'trig-1', to_node_id: 'term-1' }]
+          }
+        }
+      });
+    });
+
+    // 1. Initial load succeeds
+    const initialLoad = await session.syncContext(
+      {
+        userId: 'usr-1',
+        workspaceId: 'ws-1',
+        workflowId: 'wf-prod-v3',
+        authState: 'authenticated',
+        isDiscoveryLoading: false
+      },
+      { token: 'jwt_1', workspaceId: 'ws-1', fetchFn: loadFetch as unknown as typeof fetch }
+    );
+    expect(initialLoad.ok).toBe(true);
+    expect(loadCalls).toBe(1);
+
+    // 2. User edits title, description, and graph without saving yet
+    session.setMeta({
+      title: 'Unsaved Draft Title',
+      description: 'Unsaved Draft Description'
+    });
+    const editedNodes = [
+      ...session.getSnapshot().nodes,
+      {
+        node_id: 'act-unsaved-1',
+        node_type: 'action' as const,
+        title: 'Unsaved Action Node',
+        action_config: {
+          rpc_name: 'creativanta.commerce.v1.InventoryService/CheckStock',
+          input_json: '{}'
+        }
+      }
+    ];
+    session.setGraph({
+      nodes: editedNodes,
+      edges: session.getSnapshot().edges
+    });
+
+    // 3. Same-session re-discovery starts (e.g. Clerk listener refreshes token & re-runs discovery)
+    const reverifyStart = await session.syncContext(
+      {
+        userId: 'usr-1',
+        workspaceId: 'ws-1',
+        workflowId: 'wf-prod-v3',
+        authState: 'authenticated',
+        isDiscoveryLoading: true
+      },
+      { token: 'jwt_2', workspaceId: 'ws-1', fetchFn: loadFetch as unknown as typeof fetch }
+    );
+    expect(reverifyStart.ok).toBe(false);
+    // Draft MUST still be preserved while re-verifying
+    expect(session.getSnapshot().title).toBe('Unsaved Draft Title');
+    expect(session.getSnapshot().description).toBe('Unsaved Draft Description');
+    expect(session.getSnapshot().nodes).toHaveLength(3);
+    expect((session.getSnapshot() as any).isReverifying).toBe(true);
+
+    // Mutations must be temporarily locked during re-verification
+    const blockedSaveFetch = vi.fn();
+    const saveWhileReverifying = await session.save({
+      token: 'jwt_2',
+      workspaceId: 'ws-1',
+      fetchFn: blockedSaveFetch as unknown as typeof fetch
+    });
+    expect(saveWhileReverifying.ok).toBe(false);
+    expect(blockedSaveFetch).not.toHaveBeenCalled();
+
+    // 4. Discovery finishes for the SAME (userId, workspaceId, workflowId) -> draft remains intact without re-fetching
+    const reverifyDone = await session.syncContext(
+      {
+        userId: 'usr-1',
+        workspaceId: 'ws-1',
+        workflowId: 'wf-prod-v3',
+        authState: 'authenticated',
+        isDiscoveryLoading: false
+      },
+      { token: 'jwt_2', workspaceId: 'ws-1', fetchFn: loadFetch as unknown as typeof fetch }
+    );
+    expect(reverifyDone.ok).toBe(true);
+    expect(loadCalls).toBe(1);
+    expect((session.getSnapshot() as any).isReverifying).toBe(false);
+    expect(session.getSnapshot().title).toBe('Unsaved Draft Title');
+    expect(session.getSnapshot().description).toBe('Unsaved Draft Description');
+    expect(session.getSnapshot().nodes).toHaveLength(3);
+
+    // 5. Negative isolation: if discovery finishes with revoked membership (workspaceId: null, isDiscoveryLoading: false), draft is purged
+    await session.syncContext({
+      userId: 'usr-1',
+      workspaceId: null,
+      workflowId: 'wf-prod-v3',
+      authState: 'authenticated',
+      isDiscoveryLoading: false
+    });
+    expect(session.getSnapshot().loadState).toBe('waiting_context');
+    expect(session.getSnapshot().title).toBe('');
+    expect(session.getSnapshot().version).toBeNull();
+    expect(session.getSnapshot().nodes).toHaveLength(0);
+  });
+
+  it('T8-F4 Revealed API and webhook secrets are bound to issuing user+workspace and wiped on logout, expiry, user switch, or workspace switch', async () => {
+    developerStore.reset();
+    const createFetch = vi.fn(async () =>
+      jsonResponse({
+        apiKey: {
+          apiKeyId: 'ak_f4_01',
+          workspaceId: 'ws-1',
+          keyPrefix: 'ca_live_f4',
+          name: 'F4 Secret Key',
+          scopes: ['read:content'],
+          status: 4, // API_KEY_STATUS_REVOKED in proto enum
+          logicalKeyId: 'lk_f4_01'
+        },
+        secretKey: 'ca_live_f4_once_only_secret'
+      })
+    );
+
+    const res = await issueApiKeyRemote(
+      {
+        userId: 'usr-1',
+        workspaceId: 'ws-1',
+        tier: 'pro',
+        activeKeysCount: 0,
+        name: 'F4 Secret Key',
+        scopes: ['read:content']
+      } as any,
+      {
+        token: 'jwt_valid',
+        workspaceId: 'ws-1',
+        fetchFn: createFetch as unknown as typeof fetch
+      }
+    );
+    expect(res.ok).toBe(true);
+    expect(res.key?.status).toBe('revoked');
+
+    // Revealed secret is visible for the issuing (usr-1, ws-1) authenticated session
+    expect(
+      (developerStore as any).getVisibleKeySecret({
+        state: 'authenticated',
+        userId: 'usr-1',
+        workspaceId: 'ws-1'
+      })
+    ).toBe('ca_live_f4_once_only_secret');
+
+    // Different user or different workspace or unauthenticated cannot read the secret
+    expect(
+      (developerStore as any).getVisibleKeySecret({
+        state: 'authenticated',
+        userId: 'usr-2',
+        workspaceId: 'ws-1'
+      })
+    ).toBe('');
+    expect(
+      (developerStore as any).getVisibleKeySecret({
+        state: 'authenticated',
+        userId: 'usr-1',
+        workspaceId: 'ws-2'
+      })
+    ).toBe('');
+    expect(
+      (developerStore as any).getVisibleKeySecret({
+        state: 'unauthenticated',
+        userId: null,
+        workspaceId: null
+      })
+    ).toBe('');
+
+    // Syncing an unauthenticated/expired or different session wipes the stored revealed secret permanently
+    (developerStore as any).syncSessionContext({
+      state: 'unauthenticated',
+      userId: null,
+      workspaceId: null
+    });
+    expect(
+      (developerStore as any).getVisibleKeySecret({
+        state: 'authenticated',
+        userId: 'usr-1',
+        workspaceId: 'ws-1'
+      })
+    ).toBe('');
+  });
+
+  it('T8-F1 Image-to-Video rejects expired server quotes, rejects under-confirmed credits, and forwards qualityTier/loop/duration/bgm', async () => {
+    const unexpectedLiveFetch = vi.fn();
+
+    // 1. Expired quote is rejected before any live Generate RPC is sent
+    const expiredAttempt = await requestImageToVideoGenerationRemote(
+      {
+        workspaceId: 'ws-1',
+        images: [
+          {
+            id: 'img-1',
+            url: 'https://cdn.creativanta.vn/sneaker.jpg',
+            name: 'sneaker.jpg',
+            durationSeconds: 4
+          }
+        ],
+        selectedMotionStyleId: 'parallax_3d',
+        motionIntensity: 75,
+        aspectRatio: '9:16',
+        selectedTransitionId: 'crossfade',
+        qualityTier: 'premium',
+        isLoop: true,
+        durationSeconds: 15,
+        attachBgm: false,
+        quoteCredits: 30,
+        confirmedCredits: '30',
+        quoteId: 'quote_expired_01',
+        quoteExpiresAt: '2020-01-01T00:00:00Z',
+        availableBalance: 320,
+        requirePreflightQuote: false
+      },
+      {
+        token: 'jwt_valid',
+        workspaceId: 'ws-1',
+        fetchFn: unexpectedLiveFetch as unknown as typeof fetch
+      }
+    );
+    expect(expiredAttempt.ok).toBe(false);
+    expect(expiredAttempt.error).toContain('hết hạn');
+    expect(unexpectedLiveFetch).not.toHaveBeenCalled();
+
+    // 2. Under-confirmed credits (< quoteCredits) are rejected before any live Generate RPC is sent
+    const underConfirmedAttempt = await requestImageToVideoGenerationRemote(
+      {
+        workspaceId: 'ws-1',
+        images: [
+          {
+            id: 'img-1',
+            url: 'https://cdn.creativanta.vn/sneaker.jpg',
+            name: 'sneaker.jpg',
+            durationSeconds: 4
+          }
+        ],
+        selectedMotionStyleId: 'parallax_3d',
+        motionIntensity: 75,
+        aspectRatio: '9:16',
+        selectedTransitionId: 'crossfade',
+        quoteCredits: 30,
+        confirmedCredits: '10',
+        quoteId: 'quote_valid_01',
+        availableBalance: 320,
+        requirePreflightQuote: false
+      },
+      {
+        token: 'jwt_valid',
+        workspaceId: 'ws-1',
+        fetchFn: unexpectedLiveFetch as unknown as typeof fetch
+      }
+    );
+    expect(underConfirmedAttempt.ok).toBe(false);
+    expect(underConfirmedAttempt.requiresConfirmation).toBe(true);
+    expect(unexpectedLiveFetch).not.toHaveBeenCalled();
+
+    // 3. Valid confirmation forwards quality_tier, loop_friendly, auto_music_sync, duration_seconds
+    const capturedBodies: any[] = [];
+    const liveOkFetch = vi.fn(async (_url: string, init?: RequestInit) => {
+      const body = init?.body ? JSON.parse(String(init.body)) : {};
+      capturedBodies.push(body);
+      return jsonResponse({
+        job: {
+          job_id: 'job_i2v_f1_verified',
+          estimated_credits: '30',
+          quote_id: body.quote_id,
+          status: 'processing'
+        }
+      });
+    });
+
+    const validAttempt = await requestImageToVideoGenerationRemote(
+      {
+        workspaceId: 'ws-1',
+        images: [
+          {
+            id: 'img-1',
+            url: 'https://cdn.creativanta.vn/sneaker.jpg',
+            name: 'sneaker.jpg',
+            durationSeconds: 4
+          }
+        ],
+        selectedMotionStyleId: 'parallax_3d',
+        motionIntensity: 75,
+        aspectRatio: '9:16',
+        selectedTransitionId: 'crossfade',
+        qualityTier: 'premium',
+        isLoop: true,
+        durationSeconds: 15,
+        attachBgm: false,
+        quoteCredits: 30,
+        confirmedCredits: '30',
+        quoteId: 'quote_valid_01',
+        quoteExpiresAt: '2099-01-01T00:00:00Z',
+        availableBalance: 320,
+        requirePreflightQuote: false
+      },
+      {
+        token: 'jwt_valid',
+        workspaceId: 'ws-1',
+        fetchFn: liveOkFetch as unknown as typeof fetch
+      }
+    );
+    expect(validAttempt.ok).toBe(true);
+    expect(capturedBodies).toHaveLength(1);
+    expect(capturedBodies[0].image_to_video_config.quality_tier).toBe('premium');
+    expect(capturedBodies[0].image_to_video_config.loop_friendly).toBe(true);
+    expect(capturedBodies[0].image_to_video_config.auto_music_sync).toBe(false);
+    expect(capturedBodies[0].image_to_video_config.duration_seconds).toBe(15);
+  });
 });

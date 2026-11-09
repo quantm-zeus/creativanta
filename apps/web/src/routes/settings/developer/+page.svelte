@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import {
     developerStore,
     TIER_KEY_CAPS,
@@ -14,23 +14,78 @@
     type APIKey,
     type WebhookSubscription
   } from '$lib/developer/public_api';
-  import { authStore } from '$lib/auth';
+  import { authStore, registerAuthResetHook } from '$lib/auth';
 
   let selectedTier = 'pro';
   let newKeyName = '';
   let selectedScopes: string[] = ['read:content', 'read:orders'];
   let newKeySecret = '';
+  let newKeySecretSessionKey = '';
   let showCreateKeyModal = false;
   let showCreateWebhookModal = false;
 
   let webhookUrl = '';
   let webhookEvents: string[] = ['workflow.completed', 'content.published'];
   let newWebhookSecret = '';
+  let newWebhookSecretSessionKey = '';
 
   let actionFeedback = '';
   let isProcessing = false;
+  let lastSessionKey = '';
+
+  function clearEphemeralSecretsAndDrafts() {
+    newKeySecret = '';
+    newKeySecretSessionKey = '';
+    newWebhookSecret = '';
+    newWebhookSecretSessionKey = '';
+    showCreateKeyModal = false;
+    showCreateWebhookModal = false;
+    actionFeedback = '';
+    developerStore.clearRevealedSecrets();
+  }
+
+  const unregisterResetHook = registerAuthResetHook(() => {
+    clearEphemeralSecretsAndDrafts();
+  });
+
+  onDestroy(() => {
+    unregisterResetHook();
+  });
+
+  $: currentSessionKey =
+    $authStore.state === 'authenticated' && $authStore.user?.id && $authStore.activeWorkspace?.id
+      ? `${$authStore.user.id}::${$authStore.activeWorkspace.id}`
+      : '';
+
+  $: {
+    developerStore.syncSessionContext({
+      authState: $authStore.state,
+      userId: $authStore.user?.id ?? null,
+      workspaceId: $authStore.activeWorkspace?.id ?? null
+    });
+    if (!currentSessionKey || (lastSessionKey && lastSessionKey !== currentSessionKey)) {
+      clearEphemeralSecretsAndDrafts();
+    }
+    lastSessionKey = currentSessionKey;
+  }
 
   $: state = $developerStore;
+  $: visibleKeySecret =
+    currentSessionKey && newKeySecretSessionKey === currentSessionKey
+      ? state.revealedKeySecret !== null &&
+        state.revealedKeySecret.userId === $authStore.user?.id &&
+        state.revealedKeySecret.workspaceId === $authStore.activeWorkspace?.id
+        ? state.revealedKeySecret.value || newKeySecret
+        : newKeySecret
+      : '';
+  $: visibleWebhookSecret =
+    currentSessionKey && newWebhookSecretSessionKey === currentSessionKey
+      ? state.revealedWebhookSecret !== null &&
+        state.revealedWebhookSecret.userId === $authStore.user?.id &&
+        state.revealedWebhookSecret.workspaceId === $authStore.activeWorkspace?.id
+        ? state.revealedWebhookSecret.value || newWebhookSecret
+        : newWebhookSecret
+      : '';
   $: activeKeysCount = state.keys.filter(
     (k) => k.status === 'active' || k.status === 'rotating'
   ).length;
@@ -52,10 +107,18 @@
 
   async function handleCreateKey() {
     actionFeedback = '';
+    const requestSessionKey = currentSessionKey;
+    const requestUserId = $authStore.user?.id;
+    const requestWorkspaceId = $authStore.activeWorkspace?.id;
+    if (!requestSessionKey || !requestUserId || !requestWorkspaceId) {
+      actionFeedback = 'Yêu cầu phiên đăng nhập và workspace hợp lệ trước khi tạo khóa API (fail-closed).';
+      return;
+    }
     isProcessing = true;
     try {
       const res = await issueApiKeyRemote({
-        workspaceId: $authStore.activeWorkspace?.id,
+        workspaceId: requestWorkspaceId,
+        userId: requestUserId,
         tier: state.tier,
         activeKeysCount,
         name: newKeyName || 'New API Key',
@@ -65,7 +128,12 @@
         actionFeedback = res.error || 'Không thể cấp phát khóa API từ máy chủ (APIKeyService/Create).';
         return;
       }
+      if (currentSessionKey !== requestSessionKey) {
+        clearEphemeralSecretsAndDrafts();
+        return;
+      }
       newKeySecret = res.rawSecret;
+      newKeySecretSessionKey = requestSessionKey;
       newKeyName = '';
       showCreateKeyModal = false;
     } finally {
@@ -75,17 +143,30 @@
 
   async function handleRotate(keyId: string) {
     actionFeedback = '';
+    const requestSessionKey = currentSessionKey;
+    const requestUserId = $authStore.user?.id;
+    const requestWorkspaceId = $authStore.activeWorkspace?.id;
+    if (!requestSessionKey || !requestUserId || !requestWorkspaceId) {
+      actionFeedback = 'Yêu cầu phiên đăng nhập và workspace hợp lệ trước khi xoay vòng khóa API (fail-closed).';
+      return;
+    }
     isProcessing = true;
     try {
       const rot = await rotateApiKeyRemote({
-        workspaceId: $authStore.activeWorkspace?.id,
+        workspaceId: requestWorkspaceId,
+        userId: requestUserId,
         apiKeyId: keyId
       });
       if (!rot.ok || !rot.newSecret || !rot.graceEndsAt) {
         actionFeedback = rot.error || 'Không thể xoay vòng khóa API trên máy chủ (APIKeyService/Rotate).';
         return;
       }
+      if (currentSessionKey !== requestSessionKey) {
+        clearEphemeralSecretsAndDrafts();
+        return;
+      }
       newKeySecret = rot.newSecret;
+      newKeySecretSessionKey = requestSessionKey;
       actionFeedback = `Key rotated successfully! Both keys active during 24h grace window until ${new Date(
         rot.graceEndsAt
       ).toLocaleTimeString()}`;
@@ -114,10 +195,18 @@
 
   async function handleCreateWebhook() {
     actionFeedback = '';
+    const requestSessionKey = currentSessionKey;
+    const requestUserId = $authStore.user?.id;
+    const requestWorkspaceId = $authStore.activeWorkspace?.id;
+    if (!requestSessionKey || !requestUserId || !requestWorkspaceId) {
+      actionFeedback = 'Yêu cầu phiên đăng nhập và workspace hợp lệ trước khi đăng ký Webhook (fail-closed).';
+      return;
+    }
     isProcessing = true;
     try {
       const res = await registerWebhookRemote({
-        workspaceId: $authStore.activeWorkspace?.id,
+        workspaceId: requestWorkspaceId,
+        userId: requestUserId,
         targetUrl: webhookUrl,
         eventTypes: webhookEvents
       });
@@ -127,12 +216,25 @@
           'Không thể đăng ký Webhook trên máy chủ (WebhookSubscriptionService/CreateWebhookSubscription).';
         return;
       }
+      if (currentSessionKey !== requestSessionKey) {
+        clearEphemeralSecretsAndDrafts();
+        return;
+      }
       newWebhookSecret = res.secret;
+      newWebhookSecretSessionKey = requestSessionKey;
       webhookUrl = '';
       showCreateWebhookModal = false;
     } finally {
       isProcessing = false;
     }
+  }
+
+  function copyVisibleSecret(secretValue: string, expectedSessionKey: string) {
+    if (!secretValue || !currentSessionKey || currentSessionKey !== expectedSessionKey) {
+      clearEphemeralSecretsAndDrafts();
+      return;
+    }
+    void navigator.clipboard?.writeText(secretValue);
   }
 
   function toggleScope(scope: string) {
@@ -178,31 +280,31 @@
     </div>
   {/if}
 
-  {#if newKeySecret}
+  {#if visibleKeySecret}
     <div class="secret-reveal-card" role="region" aria-label="Generated Secret Key">
       <div class="secret-header">
         <span class="badge-once">DISPLAYED ONCE</span>
         <strong>Make sure to copy your API secret key now. You won't be able to see it again!</strong>
       </div>
       <div class="secret-box">
-        <code>{newKeySecret}</code>
-        <button class="btn-copy" on:click={() => navigator.clipboard.writeText(newKeySecret)}>
+        <code>{visibleKeySecret}</code>
+        <button class="btn-copy" on:click={() => copyVisibleSecret(visibleKeySecret, newKeySecretSessionKey)}>
           Copy
         </button>
       </div>
-      <small>Stored in database as SHA-256 hash. Visible prefix: {newKeySecret.substring(0, 10)}</small>
+      <small>Stored in database as SHA-256 hash. Visible prefix: {visibleKeySecret.substring(0, 10)}</small>
     </div>
   {/if}
 
-  {#if newWebhookSecret}
+  {#if visibleWebhookSecret}
     <div class="secret-reveal-card webhook-secret" role="region" aria-label="Webhook Signing Secret">
       <div class="secret-header">
         <span class="badge-once">WEBHOOK SIGNING SECRET</span>
         <strong>Use this HMAC-SHA256 secret to verify the X-Creativanta-Signature header on incoming webhooks:</strong>
       </div>
       <div class="secret-box">
-        <code>{newWebhookSecret}</code>
-        <button class="btn-copy" on:click={() => navigator.clipboard.writeText(newWebhookSecret)}>
+        <code>{visibleWebhookSecret}</code>
+        <button class="btn-copy" on:click={() => copyVisibleSecret(visibleWebhookSecret, newWebhookSecretSessionKey)}>
           Copy
         </button>
       </div>

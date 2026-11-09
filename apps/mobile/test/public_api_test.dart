@@ -1,6 +1,12 @@
+import 'dart:convert';
+import 'package:fixnum/fixnum.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:creativanta_mobile/developer/api_key_models.dart';
+import 'package:creativanta_mobile/generated/creativanta/platform/v1/public_api.pb.dart'
+    as pb;
+import 'package:protobuf/well_known_types/google/protobuf/timestamp.pb.dart'
+    as $timestamp;
 import 'package:creativanta_mobile/ui/developer/developer_api_keys_view.dart';
 
 void main() {
@@ -413,6 +419,214 @@ void main() {
       expect(whRes.ok, isTrue, reason: whRes.message);
       expect(whRes.data?.subscriptionId, equals('wh_protojson_301'));
       expect(whRes.data?.signingSecret, equals('whsec_protojson_redacted_301'));
+    });
+
+    test(
+        'T8-F3 DeveloperStateNotifier sends strict Proto3JSON requests (top-level workspace_id, no unknown fields) and round-trips generated protobuf toProto3Json() responses',
+        () async {
+      final strictNotifier = DeveloperStateNotifier(
+        workspaceId: '22222222-2222-2222-2222-222222222201',
+        initialTier: 'pro',
+        rpcCaller: (service, method, payload) async {
+          if (service == 'creativanta.platform.v1.APIKeyService' &&
+              method == 'Create') {
+            final req = pb.CreateRequest()
+              ..mergeFromProto3Json(payload, ignoreUnknownFields: false);
+            expect(
+              req.workspaceId,
+              equals('22222222-2222-2222-2222-222222222201'),
+            );
+            expect(req.name, equals('Strict Roundtrip Key'));
+            expect(req.scopes, equals(['read:content', 'write:content']));
+
+            final resp = pb.CreateResponse(
+              apiKey: pb.APIKey(
+                apiKeyId: 'ak_rt_001',
+                workspaceId: req.workspaceId,
+                keyPrefix: 'ca_live_rt',
+                name: req.name,
+                scopes: req.scopes,
+                status: pb.APIKeyStatus.API_KEY_STATUS_ACTIVE,
+                logicalKeyId: 'lk_rt_001',
+                requestCount: Int64(19),
+                expiresAt: $timestamp.Timestamp.fromDateTime(
+                  DateTime.utc(2027, 3, 1, 12, 0),
+                ),
+                createdBy: 'usr_owner_01',
+                secretKey: 'ca_live_rt_secret_001',
+              ),
+              secretKey: 'ca_live_rt_secret_001',
+            );
+            return jsonDecode(jsonEncode(resp.toProto3Json()))
+                as Map<String, dynamic>;
+          }
+
+          if (service == 'creativanta.platform.v1.APIKeyService' &&
+              method == 'Rotate') {
+            final req = pb.RotateRequest()
+              ..mergeFromProto3Json(payload, ignoreUnknownFields: false);
+            expect(
+              req.workspaceId,
+              equals('22222222-2222-2222-2222-222222222201'),
+            );
+            expect(req.apiKeyId, equals('ak_rt_001'));
+
+            final grace = $timestamp.Timestamp.fromDateTime(
+              DateTime.utc(2026, 11, 10, 12, 0),
+            );
+            final resp = pb.RotateResponse(
+              oldKey: pb.APIKey(
+                apiKeyId: 'ak_rt_001',
+                workspaceId: req.workspaceId,
+                status: pb.APIKeyStatus.API_KEY_STATUS_ROTATING,
+                replacedByKeyId: 'ak_rt_002',
+                rotationGraceEndsAt: grace,
+              ),
+              newKey: pb.APIKey(
+                apiKeyId: 'ak_rt_002',
+                workspaceId: req.workspaceId,
+                keyPrefix: 'ca_live_r2',
+                name: 'Strict Roundtrip Key (Rotated)',
+                scopes: ['read:content', 'write:content'],
+                status: pb.APIKeyStatus.API_KEY_STATUS_ACTIVE,
+                logicalKeyId: 'lk_rt_001',
+                requestCount: Int64.ZERO,
+                expiresAt: $timestamp.Timestamp.fromDateTime(
+                  DateTime.utc(2027, 3, 1, 12, 0),
+                ),
+                createdBy: 'usr_owner_01',
+                secretKey: 'ca_live_r2_secret_002',
+              ),
+              newSecretKey: 'ca_live_r2_secret_002',
+              graceEndsAt: grace,
+            );
+            return jsonDecode(jsonEncode(resp.toProto3Json()))
+                as Map<String, dynamic>;
+          }
+
+          if (service == 'creativanta.platform.v1.APIKeyService' &&
+              method == 'Revoke') {
+            final req = pb.RevokeRequest()
+              ..mergeFromProto3Json(payload, ignoreUnknownFields: false);
+            expect(
+              req.workspaceId,
+              equals('22222222-2222-2222-2222-222222222201'),
+            );
+            expect(req.apiKeyId, equals('ak_rt_002'));
+
+            final resp = pb.RevokeResponse(
+              apiKey: pb.APIKey(
+                apiKeyId: 'ak_rt_002',
+                workspaceId: req.workspaceId,
+                status: pb.APIKeyStatus.API_KEY_STATUS_REVOKED,
+              ),
+            );
+            return jsonDecode(jsonEncode(resp.toProto3Json()))
+                as Map<String, dynamic>;
+          }
+
+          if (service ==
+                  'creativanta.platform.v1.WebhookSubscriptionService' &&
+              method == 'CreateWebhookSubscription') {
+            final req = pb.CreateWebhookSubscriptionRequest()
+              ..mergeFromProto3Json(payload, ignoreUnknownFields: false);
+            expect(
+              req.workspaceId,
+              equals('22222222-2222-2222-2222-222222222201'),
+            );
+            expect(req.targetUrl, equals('https://hooks.creativanta.vn/rt'));
+            expect(req.eventTypes, equals(['order.created']));
+
+            final resp = pb.CreateWebhookSubscriptionResponse(
+              subscription: pb.WebhookSubscription(
+                webhookSubscriptionId: 'wh_rt_001',
+                workspaceId: req.workspaceId,
+                targetUrl: req.targetUrl,
+                eventTypes: req.eventTypes,
+                status: pb.WebhookSubscriptionStatus
+                    .WEBHOOK_SUBSCRIPTION_STATUS_ACTIVE,
+                consecutiveFailureCount: 0,
+              ),
+              signingSecret: 'whsec_rt_secret_001',
+            );
+            return jsonDecode(jsonEncode(resp.toProto3Json()))
+                as Map<String, dynamic>;
+          }
+
+          throw StateError('Unexpected RPC $service/$method');
+        },
+      );
+
+      final cRes = await strictNotifier.createKeyRemote(
+        name: 'Strict Roundtrip Key',
+        scopes: ['read:content', 'write:content'],
+      );
+      expect(cRes.ok, isTrue, reason: cRes.message);
+      expect(cRes.data?.apiKeyId, equals('ak_rt_001'));
+      expect(cRes.data?.requestCount, equals(19));
+      expect(cRes.data?.secretKey, equals('ca_live_rt_secret_001'));
+
+      final rRes = await strictNotifier.rotateKeyRemote('ak_rt_001');
+      expect(rRes.ok, isTrue, reason: rRes.message);
+      expect(rRes.data?.apiKeyId, equals('ak_rt_002'));
+      expect(rRes.data?.secretKey, equals('ca_live_r2_secret_002'));
+
+      final vRes = await strictNotifier.revokeKeyRemote('ak_rt_002');
+      expect(vRes.ok, isTrue, reason: vRes.message);
+      expect(vRes.data?.status, equals(ApiKeyStatus.revoked));
+
+      final wRes = await strictNotifier.createWebhookSubscriptionRemote(
+        targetUrl: 'https://hooks.creativanta.vn/rt',
+        eventTypes: ['order.created'],
+      );
+      expect(wRes.ok, isTrue, reason: wRes.message);
+      expect(wRes.data?.subscriptionId, equals('wh_rt_001'));
+      expect(wRes.data?.signingSecret, equals('whsec_rt_secret_001'));
+    });
+
+    testWidgets(
+        'T8-F4 DeveloperApiKeysView wipes revealed secret immediately when notifier.reset() is called on logout or session change',
+        (WidgetTester tester) async {
+      final resettableNotifier = DeveloperStateNotifier(
+        workspaceId: '22222222-2222-2222-2222-222222222201',
+        initialTier: 'pro',
+        rpcCaller: (service, method, payload) async {
+          return {
+            'apiKey': {
+              'apiKeyId': 'ak_f4_mob_01',
+              'workspaceId': '22222222-2222-2222-2222-222222222201',
+              'keyPrefix': 'ca_live_f4',
+              'name': payload['name'],
+              'scopes': payload['scopes'],
+              'status': 'API_KEY_STATUS_ACTIVE',
+              'logicalKeyId': 'lk_f4_mob_01',
+            },
+            'secretKey': 'ca_live_f4_mobile_secret_once',
+          };
+        },
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: DeveloperApiKeysView(notifier: resettableNotifier),
+        ),
+      );
+
+      await tester.tap(find.text('New Key'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Create'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('DISPLAYED ONCE'), findsOneWidget);
+      expect(find.text('ca_live_f4_mobile_secret_once'), findsOneWidget);
+
+      // Simulate logout / session reset
+      resettableNotifier.reset();
+      await tester.pumpAndSettle();
+
+      expect(resettableNotifier.keys, isEmpty);
+      expect(find.text('DISPLAYED ONCE'), findsNothing);
+      expect(find.text('ca_live_f4_mobile_secret_once'), findsNothing);
     });
   });
 }
