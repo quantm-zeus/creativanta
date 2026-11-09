@@ -2224,3 +2224,620 @@ func TestH04_SameLifecycleEconomicRevisionUpdatesOrderLedgerAndAffiliate(t *test
 	}
 	_ = orderStore
 }
+
+// Codex Round-03 HIGH N02:
+// Order revisions that change item quantity or add/remove SKUs must reconcile stock holds (StateCreated)
+// and stock deductions/movements (StateConfirmed/StateFulfilled/StateCompleted), fail closed on insufficient
+// stock without mutating order items, and keep CancelOrder and CreateReturn/ReceiveReturn consistent with
+// revised item quantities.
+func TestRound03_N02_OrderRevisionReconcilesInventoryOnSkuAndQuantityChanges(t *testing.T) {
+	ctx := context.Background()
+	orderSvc, invSvc, _, invStore, _ := setupTestHarness()
+	finStore := finance.NewMemoryStore()
+	finSvc := finance.NewService(finStore, nil, nil)
+	orderSvc.WithFinance(finSvc)
+
+	wsID := "00000000-0000-0000-0000-000000000001"
+	locID := "00000000-0000-0000-0000-000000000010"
+	skuA := "SKU-R03-N02-A"
+	skuB := "SKU-R03-N02-B"
+	skuC := "SKU-R03-N02-C"
+
+	t0 := time.Date(2026, 3, 25, 10, 0, 0, 0, time.UTC)
+	for _, sku := range []string{skuA, skuB, skuC} {
+		if err := invSvc.RecordOpeningBaseline(ctx, wsID, sku, locID, 10, t0); err != nil {
+			t.Fatalf("RecordOpeningBaseline(%s): %v", sku, err)
+		}
+	}
+
+	t1 := t0.Add(1 * time.Hour)
+	t2 := t0.Add(2 * time.Hour)
+	t3 := t0.Add(3 * time.Hour)
+	t4 := t0.Add(4 * time.Hour)
+
+	// Part 1: StateCreated order item revision (held reservations)
+	createdOrd, _, err := orderSvc.IngestOrder(ctx, &order.Order{
+		OrderID:         "ord-r03-n02-created",
+		WorkspaceID:     wsID,
+		SourceClass:     order.SourceClassOfficial,
+		SourcePlatform:  "tiktok",
+		ExternalOrderID: "tt-r03-n02-created",
+		LifecycleState:  order.StateCreated,
+		Amount:          tenantdb.MustParseExactDecimal("300000.000000"),
+		Currency:        "VND",
+		OrderedAt:       t1,
+		SourceUpdatedAt: &t1,
+		Items: []order.OrderItem{
+			{Sku: skuA, Name: "Item A", Quantity: 2, UnitPrice: tenantdb.MustParseExactDecimal("100000.000000")},
+			{Sku: skuB, Name: "Item B", Quantity: 1, UnitPrice: tenantdb.MustParseExactDecimal("100000.000000")},
+		},
+	}, locID)
+	if err != nil {
+		t.Fatalf("IngestOrder created v1: %v", err)
+	}
+
+	// Revise StateCreated order at t2: SKU-A 2->4, SKU-B removed, SKU-C added qty=3
+	if _, _, err := orderSvc.IngestOrder(ctx, &order.Order{
+		WorkspaceID:     wsID,
+		SourceClass:     order.SourceClassOfficial,
+		SourcePlatform:  "tiktok",
+		ExternalOrderID: "tt-r03-n02-created",
+		LifecycleState:  order.StateCreated,
+		Amount:          tenantdb.MustParseExactDecimal("700000.000000"),
+		Currency:        "VND",
+		OrderedAt:       t1,
+		SourceUpdatedAt: &t2,
+		Items: []order.OrderItem{
+			{Sku: skuA, Name: "Item A", Quantity: 4, UnitPrice: tenantdb.MustParseExactDecimal("100000.000000")},
+			{Sku: skuC, Name: "Item C", Quantity: 3, UnitPrice: tenantdb.MustParseExactDecimal("100000.000000")},
+		},
+	}, locID); err != nil {
+		t.Fatalf("IngestOrder created v2: %v", err)
+	}
+
+	balA, _ := invStore.GetBalance(ctx, wsID, skuA, locID)
+	balB, _ := invStore.GetBalance(ctx, wsID, skuB, locID)
+	balC, _ := invStore.GetBalance(ctx, wsID, skuC, locID)
+	if balA.Reserved != 4 || balB.Reserved != 0 || balC.Reserved != 3 {
+		t.Fatalf("N02 created revision: expected Reserved=(4,0,3), got (%d,%d,%d)", balA.Reserved, balB.Reserved, balC.Reserved)
+	}
+
+	// Negative test: Revise StateCreated order at t3 requesting 15 units of SKU-A (only 10 OnHand) -> fail closed
+	if _, _, err := orderSvc.IngestOrder(ctx, &order.Order{
+		WorkspaceID:     wsID,
+		SourceClass:     order.SourceClassOfficial,
+		SourcePlatform:  "tiktok",
+		ExternalOrderID: "tt-r03-n02-created",
+		LifecycleState:  order.StateCreated,
+		Amount:          tenantdb.MustParseExactDecimal("1500000.000000"),
+		Currency:        "VND",
+		OrderedAt:       t1,
+		SourceUpdatedAt: &t3,
+		Items: []order.OrderItem{
+			{Sku: skuA, Name: "Item A", Quantity: 15, UnitPrice: tenantdb.MustParseExactDecimal("100000.000000")},
+		},
+	}, locID); !errors.Is(err, inventory.ErrInsufficientStock) {
+		t.Fatalf("expected ErrInsufficientStock on oversold created revision, got %v", err)
+	}
+	if _, err := orderSvc.CancelOrder(ctx, wsID, createdOrd.OrderID, "cancel_created_revised"); err != nil {
+		t.Fatalf("CancelOrder created: %v", err)
+	}
+	for _, sku := range []string{skuA, skuB, skuC} {
+		b, _ := invStore.GetBalance(ctx, wsID, sku, locID)
+		if b.OnHand != 10 || b.Reserved != 0 {
+			t.Fatalf("expected OnHand=10 Reserved=0 for %s after cancelling created order, got OnHand=%d Reserved=%d", sku, b.OnHand, b.Reserved)
+		}
+	}
+
+	// Part 2: StateConfirmed order item revision (consumed reservations + stock movements)
+	confOrd, _, err := orderSvc.IngestOrder(ctx, &order.Order{
+		OrderID:         "ord-r03-n02-confirmed",
+		WorkspaceID:     wsID,
+		SourceClass:     order.SourceClassOfficial,
+		SourcePlatform:  "shopee",
+		ExternalOrderID: "sp-r03-n02-confirmed",
+		LifecycleState:  order.StateConfirmed,
+		Amount:          tenantdb.MustParseExactDecimal("500000.000000"),
+		Currency:        "VND",
+		OrderedAt:       t1,
+		SourceUpdatedAt: &t1,
+		Items: []order.OrderItem{
+			{Sku: skuA, Name: "Item A", Quantity: 3, UnitPrice: tenantdb.MustParseExactDecimal("100000.000000")},
+			{Sku: skuB, Name: "Item B", Quantity: 2, UnitPrice: tenantdb.MustParseExactDecimal("100000.000000")},
+		},
+	}, locID)
+	if err != nil {
+		t.Fatalf("IngestOrder confirmed v1: %v", err)
+	}
+
+	// Revise StateConfirmed order at t2: SKU-A 3->1, SKU-B (2) removed, SKU-C added qty=4
+	revConfPayload := &order.Order{
+		WorkspaceID:     wsID,
+		SourceClass:     order.SourceClassOfficial,
+		SourcePlatform:  "shopee",
+		ExternalOrderID: "sp-r03-n02-confirmed",
+		LifecycleState:  order.StateConfirmed,
+		Amount:          tenantdb.MustParseExactDecimal("500000.000000"),
+		Currency:        "VND",
+		OrderedAt:       t1,
+		SourceUpdatedAt: &t2,
+		Items: []order.OrderItem{
+			{Sku: skuA, Name: "Item A", Quantity: 1, UnitPrice: tenantdb.MustParseExactDecimal("100000.000000")},
+			{Sku: skuC, Name: "Item C", Quantity: 4, UnitPrice: tenantdb.MustParseExactDecimal("100000.000000")},
+		},
+	}
+	if _, _, err := orderSvc.IngestOrder(ctx, revConfPayload, locID); err != nil {
+		t.Fatalf("IngestOrder confirmed v2: %v", err)
+	}
+
+	balA, _ = invStore.GetBalance(ctx, wsID, skuA, locID)
+	balB, _ = invStore.GetBalance(ctx, wsID, skuB, locID)
+	balC, _ = invStore.GetBalance(ctx, wsID, skuC, locID)
+	if balA.OnHand != 9 || balB.OnHand != 10 || balC.OnHand != 6 {
+		t.Fatalf("N02 confirmed revision violation: expected OnHand=(9,10,6), got (%d,%d,%d)", balA.OnHand, balB.OnHand, balC.OnHand)
+	}
+	if balA.Reserved != 0 || balB.Reserved != 0 || balC.Reserved != 0 {
+		t.Fatalf("N02 confirmed revision violation: expected Reserved=(0,0,0), got (%d,%d,%d)", balA.Reserved, balB.Reserved, balC.Reserved)
+	}
+
+	// Idempotent replay of t2 revision must keep OnHand=(9,10,6)
+	if _, _, err := orderSvc.IngestOrder(ctx, revConfPayload, locID); err != nil {
+		t.Fatalf("replay confirmed v2: %v", err)
+	}
+	balA, _ = invStore.GetBalance(ctx, wsID, skuA, locID)
+	balB, _ = invStore.GetBalance(ctx, wsID, skuB, locID)
+	balC, _ = invStore.GetBalance(ctx, wsID, skuC, locID)
+	if balA.OnHand != 9 || balB.OnHand != 10 || balC.OnHand != 6 {
+		t.Fatalf("N02 replay violation: expected OnHand=(9,10,6), got (%d,%d,%d)", balA.OnHand, balB.OnHand, balC.OnHand)
+	}
+
+	// Negative test: Revise StateConfirmed order at t3 requesting 12 units of SKU-C (exceeds 10 total stock) -> fail closed
+	if _, _, err := orderSvc.IngestOrder(ctx, &order.Order{
+		WorkspaceID:     wsID,
+		SourceClass:     order.SourceClassOfficial,
+		SourcePlatform:  "shopee",
+		ExternalOrderID: "sp-r03-n02-confirmed",
+		LifecycleState:  order.StateConfirmed,
+		Amount:          tenantdb.MustParseExactDecimal("1300000.000000"),
+		Currency:        "VND",
+		OrderedAt:       t1,
+		SourceUpdatedAt: &t3,
+		Items: []order.OrderItem{
+			{Sku: skuA, Name: "Item A", Quantity: 1, UnitPrice: tenantdb.MustParseExactDecimal("100000.000000")},
+			{Sku: skuC, Name: "Item C", Quantity: 12, UnitPrice: tenantdb.MustParseExactDecimal("100000.000000")},
+		},
+	}, locID); !errors.Is(err, inventory.ErrInsufficientStock) {
+		t.Fatalf("expected ErrInsufficientStock on oversold confirmed revision, got %v", err)
+	}
+	persistedAfterReject, _ := orderSvc.GetOrder(ctx, wsID, confOrd.OrderID)
+	if len(persistedAfterReject.Items) != 2 || persistedAfterReject.Items[1].Quantity != 4 {
+		t.Fatalf("failed revision must not overwrite persisted order items, got %+v", persistedAfterReject.Items)
+	}
+
+	// Forward transition + revision at t4 to StateCompleted: SKU-A 1->2, SKU-C 4->3
+	if _, _, err := orderSvc.IngestOrder(ctx, &order.Order{
+		WorkspaceID:     wsID,
+		SourceClass:     order.SourceClassOfficial,
+		SourcePlatform:  "shopee",
+		ExternalOrderID: "sp-r03-n02-confirmed",
+		LifecycleState:  order.StateCompleted,
+		Amount:          tenantdb.MustParseExactDecimal("500000.000000"),
+		Currency:        "VND",
+		OrderedAt:       t1,
+		SourceUpdatedAt: &t4,
+		Items: []order.OrderItem{
+			{Sku: skuA, Name: "Item A", Quantity: 2, UnitPrice: tenantdb.MustParseExactDecimal("100000.000000")},
+			{Sku: skuC, Name: "Item C", Quantity: 3, UnitPrice: tenantdb.MustParseExactDecimal("100000.000000")},
+		},
+	}, locID); err != nil {
+		t.Fatalf("IngestOrder completed v4: %v", err)
+	}
+
+	balA, _ = invStore.GetBalance(ctx, wsID, skuA, locID)
+	balB, _ = invStore.GetBalance(ctx, wsID, skuB, locID)
+	balC, _ = invStore.GetBalance(ctx, wsID, skuC, locID)
+	if balA.OnHand != 8 || balB.OnHand != 10 || balC.OnHand != 7 {
+		t.Fatalf("N02 completed revision violation: expected OnHand=(8,10,7), got (%d,%d,%d)", balA.OnHand, balB.OnHand, balC.OnHand)
+	}
+
+	// Physical return checks after revision:
+	// Returning 3 units of SKU-A (the old v1 quantity!) must fail because revised order only has 2 units of SKU-A.
+	if _, err := orderSvc.CreateReturn(ctx, &order.Return{
+		WorkspaceID: wsID,
+		OrderID:     confOrd.OrderID,
+		ReturnType:  "partial",
+		Items:       []order.ReturnItem{{Sku: skuA, Quantity: 3, Reason: "stale quantity return"}},
+	}); !errors.Is(err, order.ErrReturnExceedsOrderQuantity) {
+		t.Fatalf("expected ErrReturnExceedsOrderQuantity for stale SKU-A qty=3, got %v", err)
+	}
+	// Returning 3 units of SKU-C (the revised v4 quantity, which was not in v1!) must succeed and restock SKU-C to 10.
+	retC, err := orderSvc.CreateReturn(ctx, &order.Return{
+		WorkspaceID: wsID,
+		OrderID:     confOrd.OrderID,
+		ReturnType:  "partial",
+		Items:       []order.ReturnItem{{Sku: skuC, Quantity: 3, Reason: "return revised SKU-C"}},
+	})
+	if err != nil {
+		t.Fatalf("CreateReturn for revised SKU-C qty=3 failed: %v", err)
+	}
+	if _, err := orderSvc.ReceiveReturn(ctx, wsID, retC.ReturnID, locID); err != nil {
+		t.Fatalf("ReceiveReturn for revised SKU-C qty=3 failed: %v", err)
+	}
+	balC, _ = invStore.GetBalance(ctx, wsID, skuC, locID)
+	if balC.OnHand != 10 {
+		t.Fatalf("expected SKU-C OnHand=10 after physical return of revised item, got %d", balC.OnHand)
+	}
+
+	// Part 3: CancelOrder on a revised confirmed order must only compensate active consumed items
+	confCancelOrd, _, err := orderSvc.IngestOrder(ctx, &order.Order{
+		OrderID:         "ord-r03-n02-cancel-conf",
+		WorkspaceID:     wsID,
+		SourceClass:     order.SourceClassOfficial,
+		SourcePlatform:  "tiktok",
+		ExternalOrderID: "tt-r03-n02-cancel-conf",
+		LifecycleState:  order.StateConfirmed,
+		Amount:          tenantdb.MustParseExactDecimal("300000.000000"),
+		Currency:        "VND",
+		OrderedAt:       t1,
+		SourceUpdatedAt: &t1,
+		Items: []order.OrderItem{
+			{Sku: skuB, Name: "Item B", Quantity: 3, UnitPrice: tenantdb.MustParseExactDecimal("100000.000000")},
+		},
+	}, locID)
+	if err != nil {
+		t.Fatalf("IngestOrder cancel-conf v1: %v", err)
+	}
+	// Revise to replace SKU-B (3) with SKU-C (2) before cancellation
+	if _, _, err := orderSvc.IngestOrder(ctx, &order.Order{
+		WorkspaceID:     wsID,
+		SourceClass:     order.SourceClassOfficial,
+		SourcePlatform:  "tiktok",
+		ExternalOrderID: "tt-r03-n02-cancel-conf",
+		LifecycleState:  order.StateConfirmed,
+		Amount:          tenantdb.MustParseExactDecimal("200000.000000"),
+		Currency:        "VND",
+		OrderedAt:       t1,
+		SourceUpdatedAt: &t2,
+		Items: []order.OrderItem{
+			{Sku: skuC, Name: "Item C", Quantity: 2, UnitPrice: tenantdb.MustParseExactDecimal("100000.000000")},
+		},
+	}, locID); err != nil {
+		t.Fatalf("IngestOrder cancel-conf v2: %v", err)
+	}
+	if _, err := orderSvc.CancelOrder(ctx, wsID, confCancelOrd.OrderID, "cancel_after_sku_swap"); err != nil {
+		t.Fatalf("CancelOrder after sku swap: %v", err)
+	}
+	balB, _ = invStore.GetBalance(ctx, wsID, skuB, locID)
+	balC, _ = invStore.GetBalance(ctx, wsID, skuC, locID)
+	if balB.OnHand != 10 || balC.OnHand != 10 {
+		t.Fatalf("expected SKU-B=10 and SKU-C=10 after cancel of revised confirmed order, got B=%d C=%d", balB.OnHand, balC.OnHand)
+	}
+
+	// Verify ledger reconciliation across all three SKUs
+	for _, sku := range []string{skuA, skuB, skuC} {
+		rep, err := invSvc.ReconcileLedger(ctx, wsID, sku, locID)
+		if err != nil || rep.Discrepancy != 0 {
+			t.Fatalf("ReconcileLedger(%s) discrepancy: rep=%+v err=%v", sku, rep, err)
+		}
+	}
+}
+
+// Codex Round-03 MEDIUM N04:
+// An order revision whose fee breakdown fields or tax amount are explicitly set to 0 ("0.000000")
+// must update the persisted order and emit a 0-amount correction in Finance (reversing prior fees),
+// while an omitted zero-value struct preserves existing values.
+func TestRound03_N04_OrderRevisionWithAllZeroFeesUpdatesOrderAndFinanceLedger(t *testing.T) {
+	ctx := context.Background()
+	orderSvc, invSvc, _, _, _ := setupTestHarness()
+	finStore := finance.NewMemoryStore()
+	finSvc := finance.NewService(finStore, nil, nil)
+	orderSvc.WithFinance(finSvc)
+
+	wsID := "00000000-0000-0000-0000-000000000001"
+	locID := "00000000-0000-0000-0000-000000000010"
+	skuID := "SKU-R03-N04-01"
+
+	t0 := time.Date(2026, 3, 25, 10, 0, 0, 0, time.UTC)
+	if err := invSvc.RecordOpeningBaseline(ctx, wsID, skuID, locID, 20, t0); err != nil {
+		t.Fatalf("RecordOpeningBaseline: %v", err)
+	}
+
+	t1 := t0.Add(1 * time.Hour)
+	t2 := t0.Add(2 * time.Hour)
+	t3 := t0.Add(3 * time.Hour)
+
+	ord, _, err := orderSvc.IngestOrder(ctx, &order.Order{
+		OrderID:         "ord-r03-n04-1",
+		WorkspaceID:     wsID,
+		SourceClass:     order.SourceClassOfficial,
+		SourcePlatform:  "tiktok",
+		ExternalOrderID: "tt-r03-n04-1",
+		LifecycleState:  order.StateCompleted,
+		Amount:          tenantdb.MustParseExactDecimal("500000.000000"),
+		TaxAmount:       tenantdb.MustParseExactDecimal("50000.000000"),
+		Currency:        "VND",
+		OrderedAt:       t1,
+		SourceUpdatedAt: &t1,
+		FeeBreakdown: order.FeeBreakdown{
+			PlatformFee:         tenantdb.MustParseExactDecimal("25000.000000"),
+			PaymentFee:          tenantdb.MustParseExactDecimal("5000.000000"),
+			ShippingCost:        tenantdb.MustParseExactDecimal("15000.000000"),
+			AffiliateCommission: tenantdb.MustParseExactDecimal("10000.000000"),
+		},
+		Items: []order.OrderItem{
+			{
+				Sku:       skuID,
+				Name:      "N04 Item",
+				Quantity:  1,
+				UnitPrice: tenantdb.MustParseExactDecimal("500000.000000"),
+				Total:     tenantdb.MustParseExactDecimal("500000.000000"),
+				UnitCogs:  tenantdb.MustParseExactDecimal("80000.000000"),
+			},
+		},
+	}, locID)
+	if err != nil {
+		t.Fatalf("IngestOrder v1: %v", err)
+	}
+
+	sumOrderLedger := func(orderID string) tenantdb.ExactDecimal {
+		entries, err := finStore.ListPostings(ctx, wsID, finance.PostingFilter{
+			OriginType: "order",
+			OriginID:   orderID,
+		})
+		if err != nil {
+			t.Fatalf("ListPostings: %v", err)
+		}
+		sum := tenantdb.ZeroDecimal()
+		for _, e := range entries {
+			sum, _ = sum.Add(e.Amount)
+		}
+		return sum
+	}
+
+	// Net v1 = 500,000 - (25,000 + 5,000) - 15,000 - 10,000 - 80,000 = 365,000
+	if got := sumOrderLedger(ord.OrderID); got.Cmp(tenantdb.MustParseExactDecimal("365000.000000")) != 0 {
+		t.Fatalf("expected v1 net ledger 365000.000000, got %s", got.String())
+	}
+
+	// Revision at t2 where all fees and TaxAmount are explicitly zeroed ("0.000000")
+	zero := tenantdb.MustParseExactDecimal("0.000000")
+	ordV2, _, err := orderSvc.IngestOrder(ctx, &order.Order{
+		WorkspaceID:     wsID,
+		SourceClass:     order.SourceClassOfficial,
+		SourcePlatform:  "tiktok",
+		ExternalOrderID: "tt-r03-n04-1",
+		LifecycleState:  order.StateCompleted,
+		Amount:          tenantdb.MustParseExactDecimal("500000.000000"),
+		TaxAmount:       zero,
+		Currency:        "VND",
+		OrderedAt:       t1,
+		SourceUpdatedAt: &t2,
+		FeeBreakdown: order.FeeBreakdown{
+			PlatformFee:         zero,
+			PaymentFee:          zero,
+			ShippingCost:        zero,
+			AffiliateCommission: zero,
+		},
+		Items: []order.OrderItem{
+			{
+				Sku:       skuID,
+				Name:      "N04 Item",
+				Quantity:  1,
+				UnitPrice: tenantdb.MustParseExactDecimal("500000.000000"),
+				Total:     tenantdb.MustParseExactDecimal("500000.000000"),
+				UnitCogs:  tenantdb.MustParseExactDecimal("80000.000000"),
+			},
+		},
+	}, locID)
+	if err != nil {
+		t.Fatalf("IngestOrder v2 (all-zero fees): %v", err)
+	}
+
+	if !ordV2.FeeBreakdown.PlatformFee.IsZero() ||
+		!ordV2.FeeBreakdown.PaymentFee.IsZero() ||
+		!ordV2.FeeBreakdown.ShippingCost.IsZero() ||
+		!ordV2.FeeBreakdown.AffiliateCommission.IsZero() ||
+		!ordV2.TaxAmount.IsZero() {
+		t.Fatalf("N04 violation: expected all zero fees and tax after explicit 0 revision, got fees=%+v tax=%s",
+			ordV2.FeeBreakdown, ordV2.TaxAmount.String())
+	}
+
+	// Net v2 = 500,000 - 0 - 0 - 0 - 80,000 = 420,000
+	if got := sumOrderLedger(ord.OrderID); got.Cmp(tenantdb.MustParseExactDecimal("420000.000000")) != 0 {
+		t.Fatalf("N04 violation: expected v2 net ledger 420000.000000 after zeroing fees, got %s", got.String())
+	}
+
+	// Set PlatformFee back to 10,000 via UpdateFeeBreakdown, then send a t3 revision with omitted FeeBreakdown{}
+	if _, err := orderSvc.UpdateFeeBreakdown(ctx, wsID, ord.OrderID, order.FeeBreakdown{
+		PlatformFee: tenantdb.MustParseExactDecimal("10000.000000"),
+	}, "v2b", "ev-n04-1", "reintroduce platform fee"); err != nil {
+		t.Fatalf("UpdateFeeBreakdown: %v", err)
+	}
+	ordV3, _, err := orderSvc.IngestOrder(ctx, &order.Order{
+		WorkspaceID:     wsID,
+		SourceClass:     order.SourceClassOfficial,
+		SourcePlatform:  "tiktok",
+		ExternalOrderID: "tt-r03-n04-1",
+		LifecycleState:  order.StateCompleted,
+		Amount:          tenantdb.MustParseExactDecimal("490000.000000"),
+		Currency:        "VND",
+		OrderedAt:       t1,
+		SourceUpdatedAt: &t3,
+		// FeeBreakdown omitted (zero-value struct)
+		Items: []order.OrderItem{
+			{
+				Sku:       skuID,
+				Name:      "N04 Item",
+				Quantity:  1,
+				UnitPrice: tenantdb.MustParseExactDecimal("490000.000000"),
+				Total:     tenantdb.MustParseExactDecimal("490000.000000"),
+			},
+		},
+	}, locID)
+	if err != nil {
+		t.Fatalf("IngestOrder v3 (omitted fees): %v", err)
+	}
+	if ordV3.FeeBreakdown.PlatformFee.Cmp(tenantdb.MustParseExactDecimal("10000.000000")) != 0 {
+		t.Fatalf("expected omitted FeeBreakdown to preserve PlatformFee=10000.000000, got %s", ordV3.FeeBreakdown.PlatformFee.String())
+	}
+}
+
+type failingCorrectionFinanceRecorder struct {
+	inner           order.FinanceService
+	failOnCall      int
+	correctionCalls int
+}
+
+func (f *failingCorrectionFinanceRecorder) RecordOrderPosting(ctx context.Context, input finance.OrderPostingInput) error {
+	return f.inner.RecordOrderPosting(ctx, input)
+}
+
+func (f *failingCorrectionFinanceRecorder) RecordRefundPosting(ctx context.Context, workspaceID, refundID, orderID string, refundAmount tenantdb.ExactDecimal, currency string, sourceClass, confidence string, fx finance.ExchangeRateSnapshot) error {
+	return f.inner.RecordRefundPosting(ctx, workspaceID, refundID, orderID, refundAmount, currency, sourceClass, confidence, fx)
+}
+
+func (f *failingCorrectionFinanceRecorder) RecordOrderCorrection(ctx context.Context, workspaceID, orderID, component string, newAmount tenantdb.ExactDecimal, newVersion, sourceClass, confidence string, fx finance.ExchangeRateSnapshot) error {
+	f.correctionCalls++
+	if f.failOnCall > 0 && f.correctionCalls >= f.failOnCall {
+		return errors.New("simulated finance correction crash")
+	}
+	return f.inner.RecordOrderCorrection(ctx, workspaceID, orderID, component, newAmount, newVersion, sourceClass, confidence, fx)
+}
+
+type crashAfterFirstUpdateOrderStore struct {
+	order.Store
+	updateCalls   int
+	blockRollback bool
+}
+
+func (s *crashAfterFirstUpdateOrderStore) UpdateOrder(ctx context.Context, o *order.Order) error {
+	s.updateCalls++
+	if s.blockRollback && s.updateCalls > 1 {
+		return errors.New("process crashed before rollback UpdateOrder could run")
+	}
+	return s.Store.UpdateOrder(ctx, o)
+}
+
+// Codex Round-03 HIGH N03:
+// If UpdateFeeBreakdown crashes after persisting o.FeeBreakdown to the order store (before rollbackFees
+// can run, or midway between component corrections), retrying UpdateFeeBreakdown with the same target fees
+// must still emit the missing Finance correction postings and converge the ledger.
+func TestRound03_N03_CrashAfterUpdateFeeBreakdownRecoversFinanceCorrectionOnRetry(t *testing.T) {
+	ctx := context.Background()
+	_, invSvc, orderStore, _, sink := setupTestHarness()
+	finStore := finance.NewMemoryStore()
+	finSvc := finance.NewService(finStore, nil, nil)
+
+	wsID := "00000000-0000-0000-0000-000000000001"
+	locID := "00000000-0000-0000-0000-000000000010"
+	skuID := "SKU-R03-N03-01"
+
+	t0 := time.Date(2026, 3, 25, 10, 0, 0, 0, time.UTC)
+	if err := invSvc.RecordOpeningBaseline(ctx, wsID, skuID, locID, 20, t0); err != nil {
+		t.Fatalf("RecordOpeningBaseline: %v", err)
+	}
+
+	svcHealthy := order.NewService(orderStore, invSvc, sink, func() time.Time { return t0.Add(2 * time.Hour) }).WithFinance(finSvc)
+	ord, _, err := svcHealthy.IngestOrder(ctx, &order.Order{
+		OrderID:         "ord-r03-n03-1",
+		WorkspaceID:     wsID,
+		SourceClass:     order.SourceClassOfficial,
+		SourcePlatform:  "tiktok",
+		ExternalOrderID: "tt-r03-n03-1",
+		LifecycleState:  order.StateCompleted,
+		Amount:          tenantdb.MustParseExactDecimal("500000.000000"),
+		Currency:        "VND",
+		OrderedAt:       t0.Add(1 * time.Hour),
+		FeeBreakdown: order.FeeBreakdown{
+			PlatformFee:         tenantdb.MustParseExactDecimal("20000.000000"),
+			PaymentFee:          tenantdb.MustParseExactDecimal("5000.000000"),
+			ShippingCost:        tenantdb.MustParseExactDecimal("10000.000000"),
+			AffiliateCommission: tenantdb.MustParseExactDecimal("15000.000000"),
+		},
+		Items: []order.OrderItem{
+			{Sku: skuID, Name: "N03 Item", Quantity: 1, UnitPrice: tenantdb.MustParseExactDecimal("500000.000000")},
+		},
+	}, locID)
+	if err != nil {
+		t.Fatalf("IngestOrder: %v", err)
+	}
+
+	targetFees := order.FeeBreakdown{
+		PlatformFee:         tenantdb.MustParseExactDecimal("30000.000000"),
+		PaymentFee:          tenantdb.MustParseExactDecimal("8000.000000"),
+		ShippingCost:        tenantdb.MustParseExactDecimal("12000.000000"),
+		AffiliateCommission: tenantdb.MustParseExactDecimal("18000.000000"),
+	}
+
+	// Simulate process crash after initial UpdateOrder commit and 1st component correction (before rollback can run)
+	crashStore := &crashAfterFirstUpdateOrderStore{Store: orderStore, blockRollback: true}
+	crashFin := &failingCorrectionFinanceRecorder{inner: finSvc, failOnCall: 2}
+	svcCrash := order.NewService(crashStore, invSvc, sink, func() time.Time { return t0.Add(2 * time.Hour) }).WithFinance(crashFin)
+	if _, err := svcCrash.UpdateFeeBreakdown(ctx, wsID, ord.OrderID, targetFees, "v2-settlement", "ev-n03-1", "settlement update"); err == nil {
+		t.Fatalf("expected UpdateFeeBreakdown to fail when finance correction crashes")
+	}
+
+	// Retry exact same UpdateFeeBreakdown call on healthy service instance
+	if _, err := svcHealthy.UpdateFeeBreakdown(ctx, wsID, ord.OrderID, targetFees, "v2-settlement", "ev-n03-1", "settlement update"); err != nil {
+		t.Fatalf("retry UpdateFeeBreakdown on healthy service failed: %v", err)
+	}
+
+	// Net must be 500,000 - (30,000 + 8,000) - 12,000 - 18,000 = 432,000
+	entries, err := finStore.ListPostings(ctx, wsID, finance.PostingFilter{
+		OriginType: "order",
+		OriginID:   ord.OrderID,
+	})
+	if err != nil {
+		t.Fatalf("ListPostings: %v", err)
+	}
+	net := tenantdb.ZeroDecimal()
+	for _, e := range entries {
+		net, _ = net.Add(e.Amount)
+	}
+	if net.Cmp(tenantdb.MustParseExactDecimal("432000.000000")) != 0 {
+		t.Fatalf("N03 violation: expected net ledger 432000.000000 after retry recovery, got %s", net.String())
+	}
+
+	// Also verify crash midway through IngestOrder revision (applyOrderEconomicRevision) recovers on retry
+	t2 := t0.Add(3 * time.Hour)
+	revPayload := &order.Order{
+		WorkspaceID:     wsID,
+		SourceClass:     order.SourceClassOfficial,
+		SourcePlatform:  "tiktok",
+		ExternalOrderID: "tt-r03-n03-1",
+		LifecycleState:  order.StateCompleted,
+		Amount:          tenantdb.MustParseExactDecimal("550000.000000"),
+		Currency:        "VND",
+		OrderedAt:       t0.Add(1 * time.Hour),
+		SourceUpdatedAt: &t2,
+		FeeBreakdown: order.FeeBreakdown{
+			PlatformFee:         tenantdb.MustParseExactDecimal("35000.000000"),
+			PaymentFee:          tenantdb.MustParseExactDecimal("5000.000000"),
+			ShippingCost:        tenantdb.MustParseExactDecimal("15000.000000"),
+			AffiliateCommission: tenantdb.MustParseExactDecimal("20000.000000"),
+		},
+		Items: []order.OrderItem{
+			{Sku: skuID, Name: "N03 Item", Quantity: 1, UnitPrice: tenantdb.MustParseExactDecimal("550000.000000")},
+		},
+	}
+	crashFin2 := &failingCorrectionFinanceRecorder{inner: finSvc, failOnCall: 2}
+	svcCrash2 := order.NewService(orderStore, invSvc, sink, func() time.Time { return t2 }).WithFinance(crashFin2)
+	if _, _, err := svcCrash2.IngestOrder(ctx, revPayload, locID); err == nil {
+		t.Fatalf("expected IngestOrder revision to fail when finance correction crashes")
+	}
+	if _, _, err := svcHealthy.IngestOrder(ctx, revPayload, locID); err != nil {
+		t.Fatalf("retry IngestOrder revision on healthy service failed: %v", err)
+	}
+	// Net must be 550,000 - (35,000 + 5,000) - 15,000 - 20,000 = 475,000
+	entries2, _ := finStore.ListPostings(ctx, wsID, finance.PostingFilter{
+		OriginType: "order",
+		OriginID:   ord.OrderID,
+	})
+	net2 := tenantdb.ZeroDecimal()
+	for _, e := range entries2 {
+		net2, _ = net2.Add(e.Amount)
+	}
+	if net2.Cmp(tenantdb.MustParseExactDecimal("475000.000000")) != 0 {
+		t.Fatalf("N03 violation on IngestOrder revision retry: expected net ledger 475000.000000, got %s", net2.String())
+	}
+}
