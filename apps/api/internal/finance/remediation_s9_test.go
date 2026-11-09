@@ -901,3 +901,405 @@ func TestRemediationS9_R12_PostgresRepairQueueAndRestartEndToEnd(t *testing.T) {
 		t.Fatalf("cross-tenant leak in GetOrComputeProfitSnapshot: gross=%s net=%s err=%v", otherSnap.GrossRevenue.String(), otherSnap.NetProfit.String(), err)
 	}
 }
+
+type errInjectedStore struct {
+	finance.Store
+	listDataGapsErr error
+}
+
+func (e *errInjectedStore) ListDataGaps(ctx context.Context, workspaceID string, filter finance.DataGapFilter, limit, offset int) ([]finance.DataGapItem, int64, error) {
+	if e.listDataGapsErr != nil {
+		return nil, 0, e.listDataGapsErr
+	}
+	return e.Store.ListDataGaps(ctx, workspaceID, filter, limit, offset)
+}
+
+func TestWave2CodexFindings_PreFixRegression(t *testing.T) {
+	ctx := context.Background()
+	wsID := "11111111-1111-4111-8111-111111111199"
+	eff := time.Date(2026, 10, 31, 23, 50, 0, 0, time.UTC)
+	fx := finance.ExchangeRateSnapshot{
+		BaseCurrency:  "VND",
+		QuoteCurrency: "VND",
+		RateToBase:    "1",
+		SourceClass:   finance.SourceClassOfficial,
+		EffectiveAt:   eff,
+	}
+
+	t.Run("R03_PositiveCostCorrectionMagnitude", func(t *testing.T) {
+		store := finance.NewMemoryStore()
+		svc := finance.NewService(store, nil, nil)
+		if err := svc.RecordOrderPosting(ctx, finance.OrderPostingInput{
+			WorkspaceID:          wsID,
+			OrderID:              "ord-r03-pos",
+			OrderVersion:         "v1",
+			LifecycleState:       "completed",
+			GrossAmount:          tenantdb.MustParseExactDecimal("1000.000000"),
+			FeeAmount:            tenantdb.MustParseExactDecimal("100.000000"),
+			Currency:             "VND",
+			EffectiveAt:          eff,
+			SourceClass:          finance.SourceClassOfficial,
+			Confidence:           finance.ConfidenceHigh,
+			ExchangeRateSnapshot: fx,
+		}); err != nil {
+			t.Fatalf("RecordOrderPosting: %v", err)
+		}
+		// Passing positive magnitude 150 for a cost component must still deduct 150 (not add +150 reducing fees to -150)
+		posFee := tenantdb.MustParseExactDecimal("150.000000")
+		if err := svc.RecordOrderCorrection(ctx, wsID, "ord-r03-pos", finance.ComponentPlatformFee, posFee, "v2", finance.SourceClassOfficial, finance.ConfidenceHigh, fx); err != nil {
+			t.Fatalf("RecordOrderCorrection: %v", err)
+		}
+		// Replay v2 and superseded v1 concurrently across 8 goroutines
+		var wg sync.WaitGroup
+		for i := 0; i < 8; i++ {
+			wg.Add(1)
+			go func(idx int) {
+				defer wg.Done()
+				ver := "v2"
+				amt := "150.000000"
+				if idx%2 == 1 {
+					ver = "v1"
+					amt = "-100.000000"
+				}
+				if err := svc.RecordOrderCorrection(ctx, wsID, "ord-r03-pos", finance.ComponentPlatformFee,
+					tenantdb.MustParseExactDecimal(amt), ver, finance.SourceClassOfficial, finance.ConfidenceHigh, fx); err != nil {
+					t.Errorf("concurrent replay %s failed: %v", ver, err)
+				}
+			}(i)
+		}
+		wg.Wait()
+
+		snap, err := svc.GetOrComputeProfitSnapshot(ctx, wsID, "order", "ord-r03-pos", "2026-10-01", "2026-10-31", true)
+		if err != nil {
+			t.Fatalf("GetOrComputeProfitSnapshot: %v", err)
+		}
+		if snap.PlatformFees.String() != "150" || snap.NetProfit.String() != "850" {
+			t.Fatalf("R03 BUG: expected PlatformFees=150 NetProfit=850, got PlatformFees=%s NetProfit=%s", snap.PlatformFees.String(), snap.NetProfit.String())
+		}
+	})
+
+	t.Run("R04_PreExistingOrderDimensionsPreservedWhenOrderPostingInputOmitsThem", func(t *testing.T) {
+		store := finance.NewMemoryStore()
+		svc := finance.NewService(store, nil, nil)
+		// Pre-populate order with dimensions (as exists in DB before order completion calls RecordOrderPosting)
+		if err := store.CreateOrder(ctx, &finance.Order{
+			OrderID:        "ord-r04-hydrate",
+			WorkspaceID:    wsID,
+			Amount:         tenantdb.MustParseExactDecimal("1000.000000"),
+			Currency:       "VND",
+			OrderedAt:      eff,
+			ProductID:      "prod-hydrated",
+			ProductIDs:     []string{"prod-hydrated", "prod-secondary"},
+			CampaignID:     "camp-hydrated",
+			CampaignIDs:    []string{"camp-hydrated", "camp-secondary"},
+			ContentID:      "cnt-hydrated",
+			ContentIDs:     []string{"cnt-hydrated", "cnt-secondary"},
+			SourcePlatform: "shopee",
+		}); err != nil {
+			t.Fatalf("CreateOrder: %v", err)
+		}
+		// order.Service calls RecordOrderPosting without ProductID/CampaignID/ContentID/SourcePlatform
+		if err := svc.RecordOrderPosting(ctx, finance.OrderPostingInput{
+			WorkspaceID:          wsID,
+			OrderID:              "ord-r04-hydrate",
+			OrderVersion:         "v1",
+			LifecycleState:       "completed",
+			GrossAmount:          tenantdb.MustParseExactDecimal("1000.000000"),
+			FeeAmount:            tenantdb.MustParseExactDecimal("100.000000"),
+			PaymentFeeAmount:     tenantdb.MustParseExactDecimal("25.000000"),
+			Currency:             "VND",
+			EffectiveAt:          eff,
+			SourceClass:          finance.SourceClassOfficial,
+			Confidence:           finance.ConfidenceHigh,
+			ExchangeRateSnapshot: fx,
+		}); err != nil {
+			t.Fatalf("RecordOrderPosting: %v", err)
+		}
+		for _, tc := range []struct {
+			scopeType string
+			scopeID   string
+		}{
+			{"product", "prod-hydrated"},
+			{"product", "prod-secondary"},
+			{"campaign", "camp-hydrated"},
+			{"campaign", "camp-secondary"},
+			{"content", "cnt-hydrated"},
+			{"content", "cnt-secondary"},
+			{"platform", "shopee"},
+		} {
+			snap, err := svc.GetOrComputeProfitSnapshot(ctx, wsID, tc.scopeType, tc.scopeID, "2026-10-01", "2026-10-31", true)
+			if err != nil {
+				t.Fatalf("GetOrComputeProfitSnapshot(%s=%s): %v", tc.scopeType, tc.scopeID, err)
+			}
+			if snap.GrossRevenue.String() != "1000" || snap.PlatformFees.String() != "125" {
+				t.Fatalf("R04/N03 BUG (%s=%s): expected GrossRevenue=1000 PlatformFees=125, got Gross=%s Fees=%s",
+					tc.scopeType, tc.scopeID, snap.GrossRevenue.String(), snap.PlatformFees.String())
+			}
+		}
+	})
+
+	t.Run("R09_ImportSettlementRejectsInvalidFX", func(t *testing.T) {
+		store := finance.NewMemoryStore()
+		svc := finance.NewService(store, nil, nil)
+		sment := &finance.Settlement{
+			WorkspaceID:  wsID,
+			SettlementID: "sment-r09-1",
+			GrossAmount:  tenantdb.MustParseExactDecimal("100.000000"),
+			Currency:     "USD",
+			ExchangeRateSnapshot: finance.ExchangeRateSnapshot{
+				BaseCurrency:  "VND",
+				QuoteCurrency: "USD",
+				RateToBase:    "0", // invalid 0 rate!
+			},
+		}
+		_, err := svc.ImportSettlement(ctx, sment, []finance.SettlementLine{
+			{
+				WorkspaceID: wsID,
+				OrderID:     "ord-r09-sment",
+				GrossAmount: tenantdb.MustParseExactDecimal("100.000000"),
+				FeeAmount:   tenantdb.MustParseExactDecimal("10.000000"),
+				NetAmount:   tenantdb.MustParseExactDecimal("90.000000"),
+				Currency:    "USD",
+			},
+		})
+		if err == nil {
+			t.Fatalf("R09 BUG: expected ImportSettlement with invalid cross-currency FX to fail closed, but got nil")
+		}
+
+		// CreateCostItem with invalid cross-currency FX must fail closed
+		if _, err := svc.CreateCostItem(ctx, &finance.CostItem{
+			WorkspaceID: wsID,
+			CostType:    "ads_spend",
+			Amount:      tenantdb.MustParseExactDecimal("50.000000"),
+			Currency:    "USD",
+			SourceClass: finance.SourceClassOfficial,
+			ExchangeRateSnapshot: finance.ExchangeRateSnapshot{
+				BaseCurrency:  "VND",
+				QuoteCurrency: "USD",
+				RateToBase:    "-10",
+			},
+		}); err == nil {
+			t.Fatalf("R09 BUG: expected CreateCostItem with negative FX rate to fail closed")
+		}
+
+		// CreateCostItem with valid USD->VND FX converts to VND and posts in VND
+		ci, err := svc.CreateCostItem(ctx, &finance.CostItem{
+			WorkspaceID:   wsID,
+			CostType:      "payment_fee",
+			Amount:        tenantdb.MustParseExactDecimal("10.000000"),
+			Currency:      "USD",
+			EffectiveDate: "2026-10-15",
+			SourceClass:   finance.SourceClassOfficial,
+			ExchangeRateSnapshot: finance.ExchangeRateSnapshot{
+				BaseCurrency:  "VND",
+				QuoteCurrency: "USD",
+				RateToBase:    "25000",
+				SourceClass:   finance.SourceClassOfficial,
+			},
+		})
+		if err != nil {
+			t.Fatalf("CreateCostItem USD->VND: %v", err)
+		}
+		if ci.Currency != "VND" || ci.Amount.String() != "250000" {
+			t.Fatalf("expected converted cost item 250000 VND, got %s %s", ci.Amount.String(), ci.Currency)
+		}
+
+		// SummarizePostings rejects posting with malformed FX snapshot
+		if _, err := finance.SummarizePostings([]finance.FinancialPosting{
+			{
+				PostingID:   "bad-fx-post",
+				WorkspaceID: wsID,
+				Component:   finance.ComponentRevenue,
+				Amount:      tenantdb.MustParseExactDecimal("1000.000000"),
+				Currency:    "VND",
+				SourceClass: finance.SourceClassOfficial,
+				Confidence:  finance.ConfidenceHigh,
+				ExchangeRateSnapshot: finance.ExchangeRateSnapshot{
+					BaseCurrency:  "VND",
+					QuoteCurrency: "USD",
+					RateToBase:    "0",
+				},
+			},
+		}, false); err == nil {
+			t.Fatalf("R09 BUG: expected SummarizePostings to reject malformed ExchangeRateSnapshot")
+		}
+	})
+
+	t.Run("R11_AttributionEngineRehydratesRefundAcrossRestartAndR12ErrorPropagation", func(t *testing.T) {
+		store := finance.NewMemoryStore()
+		svc1 := finance.NewService(store, nil, nil)
+		if err := svc1.RecordOrderPosting(ctx, finance.OrderPostingInput{
+			WorkspaceID:          wsID,
+			OrderID:              "ord-r11-attr",
+			OrderVersion:         "v1",
+			LifecycleState:       "completed",
+			GrossAmount:          tenantdb.MustParseExactDecimal("1000.000000"),
+			ZeroCOGSWithReason:   true,
+			COGSReason:           "digital_asset",
+			Currency:             "VND",
+			EffectiveAt:          eff,
+			SourceClass:          finance.SourceClassOfficial,
+			Confidence:           finance.ConfidenceHigh,
+			ExchangeRateSnapshot: fx,
+		}); err != nil {
+			t.Fatalf("RecordOrderPosting: %v", err)
+		}
+		if err := svc1.RecordRefundPosting(ctx, wsID, "ref-r11-attr", "ord-r11-attr",
+			tenantdb.MustParseExactDecimal("400.000000"), "VND", finance.SourceClassOfficial, finance.ConfidenceHigh, fx); err != nil {
+			t.Fatalf("RecordRefundPosting: %v", err)
+		}
+
+		// Simulate restart: new Service over same Store
+		svc2 := finance.NewService(store, nil, nil)
+		// Net revenue after 400 refund is 600; attributing 700 must fail with ErrAttributionCapacityExceeded
+		_, err := svc2.AttributionEngine().RecordAttribution(ctx, &finance.ContentAttributionEntity{
+			WorkspaceID:       wsID,
+			OrderID:           "ord-r11-attr",
+			PublishItemID:     "pub-r11",
+			AttributionType:   "direct_click",
+			RevenueAttributed: tenantdb.MustParseExactDecimal("700.000000"),
+			SourceClass:       finance.SourceClassOfficial,
+			Confidence:        finance.ConfidenceHigh,
+		}, true)
+		if !errors.Is(err, finance.ErrAttributionCapacityExceeded) {
+			t.Fatalf("expected ErrAttributionCapacityExceeded after restart refund rehydration, got %v", err)
+		}
+
+		// Confirmed zero COGS order must not appear in missing_cogs repair queue
+		gaps, _, missingCOGS, _, _, err := svc2.ListPendingGaps(ctx, wsID, "owner", finance.DataGapFilter{GapType: "missing_cogs"}, 50, 0)
+		if err != nil {
+			t.Fatalf("ListPendingGaps: %v", err)
+		}
+		if len(gaps) != 0 || missingCOGS != 0 {
+			t.Fatalf("expected 0 missing_cogs for confirmed zero-COGS order, got len=%d missingCOGS=%d", len(gaps), missingCOGS)
+		}
+
+		// R12: ListPendingGaps must propagate store errors instead of swallowing them
+		boomErr := errors.New("simulated database failure")
+		failingSvc := finance.NewService(&errInjectedStore{Store: store, listDataGapsErr: boomErr}, nil, nil)
+		if _, _, _, _, _, err := failingSvc.ListPendingGaps(ctx, wsID, "owner", finance.DataGapFilter{}, 50, 0); !errors.Is(err, boomErr) {
+			t.Fatalf("R12 BUG: expected ListPendingGaps to propagate store error, got %v", err)
+		}
+	})
+
+	t.Run("R11_R12_N03_N04_LivePostgresPreFixBugs", func(t *testing.T) {
+		adminPool, appPool := setupDisposableFinancePostgres(t)
+		const pgWS = "cccccccc-cccc-4ccc-8ccc-cccccccccc01"
+		const pgUser = "11111111-1111-4111-8111-111111111199"
+		const pgOrd = "dddddddd-dddd-4ddd-8ddd-dddddddddd01"
+		const pgSment = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeee01"
+		const pgRec = "ffffffff-ffff-4fff-8fff-ffffffffff01"
+		const pgRefundUUID = "33333333-3333-4333-8333-333333333399"
+
+		if _, err := adminPool.Exec(ctx, `
+			INSERT INTO users (user_id, email, display_name, created_at, updated_at)
+			VALUES ($1::uuid, 'wave2@test.com', 'Wave2 User', NOW(), NOW())
+			ON CONFLICT (user_id) DO NOTHING
+		`, pgUser); err != nil {
+			t.Fatalf("seed user: %v", err)
+		}
+		if _, err := adminPool.Exec(ctx, `
+			INSERT INTO workspaces (workspace_id, name, slug, owner_user_id, created_at, updated_at)
+			VALUES ($1::uuid, 'wave2-ws', 'wave2-ws', $2::uuid, NOW(), NOW())
+			ON CONFLICT (workspace_id) DO NOTHING
+		`, pgWS, pgUser); err != nil {
+			t.Fatalf("seed workspace: %v", err)
+		}
+
+		pgStore := finance.NewPostgresStore(appPool)
+		svc := finance.NewService(pgStore, nil, nil)
+
+		// R11: ResolveRefundOrderID with non-UUID refund string on Postgres must not fail with UUID syntax error
+		if _, err := pgStore.ResolveRefundOrderID(ctx, pgWS, "non-uuid-external-refund-id"); err != nil {
+			t.Errorf("R11 BUG: ResolveRefundOrderID failed on non-UUID refund ID: %v", err)
+		}
+
+		// R12: CreateReconciliationRecord / Get / List / Update with ReconciliationFullyReconciled on Postgres must not fail with enum error
+		if err := pgStore.CreateReconciliationRecord(ctx, &finance.ReconciliationRecord{
+			RecordID:            pgRec,
+			WorkspaceID:         pgWS,
+			ScopeType:           "order_batch",
+			ScopeDescription:    "Wave 2 test",
+			ReconciliationState: finance.ReconciliationFullyReconciled,
+			Currency:            "VND",
+		}); err != nil {
+			t.Errorf("R12 BUG: CreateReconciliationRecord failed with ReconciliationFullyReconciled on Postgres: %v", err)
+		}
+		gotRec, err := pgStore.GetReconciliationRecord(ctx, pgWS, pgRec)
+		if err != nil || gotRec.ReconciliationState != finance.ReconciliationFullyReconciled {
+			t.Errorf("R12 BUG: GetReconciliationRecord expected %s, got %+v (err=%v)", finance.ReconciliationFullyReconciled, gotRec, err)
+		}
+
+		// N03 + N04: Order in Postgres with recognized_at=2026-10-31T23:50:00Z and fee_breakdown={"platform_fee":"80.000000","payment_fee":"20.000000"}
+		if _, err := adminPool.Exec(ctx, `
+			INSERT INTO orders (
+				order_id, workspace_id, source_class, source_platform, lifecycle_state,
+				amount, currency, items, fee_breakdown, reconciliation_state, ordered_at, recognized_at
+			) VALUES (
+				$1::uuid, $2::uuid, 'official', 'shopee', 'completed',
+				1000.000000, 'VND', '[]'::jsonb,
+				'{"platform_fee":"80.000000","payment_fee":"20.000000"}'::jsonb,
+				'imported_only', '2026-10-31T23:40:00Z', '2026-10-31T23:50:00Z'
+			)
+		`, pgOrd, pgWS); err != nil {
+			t.Fatalf("seed order: %v", err)
+		}
+
+		// Seed a refund row with external_refund_id = 'EXT-REF-WAVE2' and verify ResolveRefundOrderID resolves it by external_refund_id
+		if _, err := adminPool.Exec(ctx, `
+			INSERT INTO refunds (
+				refund_id, workspace_id, order_id, refund_type, amount, currency,
+				reason, lifecycle_state, source_class, external_refund_id
+			) VALUES (
+				$1::uuid, $2::uuid, $3::uuid, 'partial', 100.000000, 'VND',
+				'customer return', 'completed', 'official', 'EXT-REF-WAVE2'
+			)
+		`, pgRefundUUID, pgWS, pgOrd); err != nil {
+			t.Fatalf("seed refund: %v", err)
+		}
+		resolvedOrdID, err := pgStore.ResolveRefundOrderID(ctx, pgWS, "EXT-REF-WAVE2")
+		if err != nil || resolvedOrdID != pgOrd {
+			t.Errorf("R11 BUG: expected ResolveRefundOrderID('EXT-REF-WAVE2') = %s, got %q (err=%v)", pgOrd, resolvedOrdID, err)
+		}
+
+		// Simulate late order completion on Nov 7 where order.Service passes EffectiveAt = Nov 7 and FeeAmount = 80 (omitting PaymentFee and RecognizedAt)
+		nov7 := time.Date(2026, 11, 7, 10, 0, 0, 0, time.UTC)
+		if err := svc.RecordOrderPosting(ctx, finance.OrderPostingInput{
+			WorkspaceID:          pgWS,
+			OrderID:              pgOrd,
+			OrderVersion:         "v1",
+			LifecycleState:       "completed",
+			GrossAmount:          tenantdb.MustParseExactDecimal("1000.000000"),
+			FeeAmount:            tenantdb.MustParseExactDecimal("80.000000"),
+			Currency:             "VND",
+			SourceClass:          finance.SourceClassOfficial,
+			Confidence:           finance.ConfidenceHigh,
+			ExchangeRateSnapshot: fx,
+			EffectiveAt:          nov7,
+		}); err != nil {
+			t.Fatalf("RecordOrderPosting: %v", err)
+		}
+
+		octSnap, err := svc.GetOrComputeProfitSnapshot(ctx, pgWS, "order", pgOrd, "2026-10-01", "2026-10-31", true)
+		if err != nil {
+			t.Fatalf("GetOrComputeProfitSnapshot Oct: %v", err)
+		}
+		if octSnap.GrossRevenue.String() != "1000" {
+			t.Errorf("N04 BUG: late-processed order missing from October recognition period; got GrossRevenue=%s", octSnap.GrossRevenue.String())
+		}
+		if octSnap.PlatformFees.String() != "100" {
+			t.Errorf("N03 BUG: payment_fee (20) dropped from platform_fee (80); expected 100, got %s", octSnap.PlatformFees.String())
+		}
+
+		// Also verify platform-scoped snapshot ("shopee") persists and retrieves from PostgreSQL cache (forceRefresh=false)
+		platSnap1, err := svc.GetOrComputeProfitSnapshot(ctx, pgWS, "platform", "shopee", "2026-10-01", "2026-10-31", true)
+		if err != nil || platSnap1.GrossRevenue.String() != "1000" {
+			t.Fatalf("platform snapshot compute failed: %+v (err=%v)", platSnap1, err)
+		}
+		platSnapCached, err := svc.GetOrComputeProfitSnapshot(ctx, pgWS, "platform", "shopee", "2026-10-01", "2026-10-31", false)
+		if err != nil || platSnapCached.ScopeID != "shopee" || platSnapCached.GrossRevenue.String() != "1000" {
+			t.Fatalf("platform snapshot cache read failed: %+v (err=%v)", platSnapCached, err)
+		}
+		_ = pgSment
+	})
+}

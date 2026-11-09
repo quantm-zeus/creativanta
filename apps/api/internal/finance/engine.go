@@ -56,6 +56,9 @@ func ValidateExchangeRateSnapshot(txCurrency string, fx ExchangeRateSnapshot) (s
 // ValidateAndComputeBaseAmount validates the transaction currency and FX snapshot,
 // returning the converted base amount and canonical base currency code.
 func ValidateAndComputeBaseAmount(txAmount tenantdb.ExactDecimal, txCurrency string, fx ExchangeRateSnapshot) (tenantdb.ExactDecimal, string, error) {
+	if strings.TrimSpace(txCurrency) == "" {
+		return tenantdb.ExactDecimal{}, "", fmt.Errorf("%w: transaction currency is required", ErrInvalidAmount)
+	}
 	baseCurr, _, err := ValidateExchangeRateSnapshot(txCurrency, fx)
 	if err != nil {
 		return tenantdb.ExactDecimal{}, "", err
@@ -270,6 +273,15 @@ func SummarizePostings(postings []FinancialPosting, hasMissingCOGS bool) (*Activ
 		}
 		if reversedIDs[p.PostingID] {
 			continue // Reversed entry is excluded
+		}
+		if !p.ExchangeRateSnapshot.IsEmpty() {
+			baseCurr, _, err := ValidateExchangeRateSnapshot("", p.ExchangeRateSnapshot)
+			if err != nil {
+				return nil, err
+			}
+			if pCurr := strings.ToUpper(strings.TrimSpace(p.Currency)); pCurr != "" && pCurr != baseCurr {
+				return nil, fmt.Errorf("%w: posting %s currency %s does not match exchange_rate_snapshot base_currency %s", ErrCurrencyMismatch, p.PostingID, pCurr, baseCurr)
+			}
 		}
 		effCurr := postingEffectiveBaseCurrency(p)
 		if effCurr != "" {

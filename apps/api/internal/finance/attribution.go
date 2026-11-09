@@ -417,17 +417,139 @@ func EnforceSourceClassIntegrity(currentClass, requestedClass string, isLiveAPIV
 
 type AttributionEngine struct {
 	mu           sync.RWMutex
+	store        Store
 	attributions map[string]*ContentAttributionEntity
 	metrics      map[string]*ChannelPostMetricsSnapshot
 	orders       map[string]CanonicalOrderRecord
 }
 
 func NewAttributionEngine() *AttributionEngine {
+	return NewAttributionEngineWithStore(nil)
+}
+
+func NewAttributionEngineWithStore(store Store) *AttributionEngine {
 	return &AttributionEngine{
+		store:        store,
 		attributions: make(map[string]*ContentAttributionEntity),
 		metrics:      make(map[string]*ChannelPostMetricsSnapshot),
 		orders:       make(map[string]CanonicalOrderRecord),
 	}
+}
+
+func (e *AttributionEngine) hydrateOrderFromStoreLocked(ctx context.Context, workspaceID, orderID string) (CanonicalOrderRecord, bool) {
+	if e.store == nil || strings.TrimSpace(workspaceID) == "" || strings.TrimSpace(orderID) == "" {
+		return CanonicalOrderRecord{}, false
+	}
+
+	var gross tenantdb.ExactDecimal
+	currency := "VND"
+	sourceClass := SourceClassOfficial
+	confidence := ConfidenceHigh
+	lifecycleState := "completed"
+	isRecognized := false
+	found := false
+
+	if ord, err := e.store.GetOrder(ctx, workspaceID, orderID); err == nil && ord != nil {
+		found = true
+		gross = ord.Amount
+		if ord.Currency != "" {
+			currency = ord.Currency
+		}
+		if ord.ExchangeRateSnapshot.SourceClass != "" {
+			sourceClass = ord.ExchangeRateSnapshot.SourceClass
+		}
+		if ord.LifecycleState != "" {
+			lifecycleState = ord.LifecycleState
+		}
+		isRecognized = ord.LifecycleState == "completed"
+	}
+
+	postings, err := e.store.ListPostings(ctx, workspaceID, PostingFilter{})
+	if err == nil && len(postings) > 0 {
+		reversedIDs := make(map[string]bool)
+		for _, p := range postings {
+			if p.ReversalOf != nil && *p.ReversalOf != "" {
+				reversedIDs[*p.ReversalOf] = true
+			}
+		}
+
+		postGross := tenantdb.ZeroDecimal()
+		hasRevPosting := false
+		refundTotal := tenantdb.ZeroDecimal()
+		resolver, hasResolver := e.store.(refundOrderResolver)
+
+		for _, p := range postings {
+			if p.ReversalOf != nil || reversedIDs[p.PostingID] {
+				continue
+			}
+			if p.OriginType == "order" && p.OriginID == orderID && p.Component == ComponentRevenue {
+				postGross, _ = postGross.Add(p.Amount)
+				hasRevPosting = true
+				found = true
+				isRecognized = true
+				if p.Currency != "" {
+					currency = p.Currency
+				}
+				if p.SourceClass != "" {
+					sourceClass = p.SourceClass
+				}
+				if p.Confidence != "" {
+					confidence = p.Confidence
+				}
+			} else if p.OriginType == "refund" && p.Component == ComponentRefund {
+				refOrdID := p.RelatedOrderID
+				if refOrdID == "" && hasResolver {
+					refOrdID, _ = resolver.ResolveRefundOrderID(ctx, workspaceID, p.OriginID)
+				}
+				if refOrdID == orderID {
+					absRef := p.Amount
+					if absRef.IsNegative() {
+						absRef = absRef.Neg()
+					}
+					refundTotal, _ = refundTotal.Add(absRef)
+				}
+			}
+		}
+
+		if hasRevPosting {
+			gross = postGross
+		}
+		if found {
+			net, _ := gross.Sub(refundTotal)
+			rec := CanonicalOrderRecord{
+				OrderID:           orderID,
+				WorkspaceID:       workspaceID,
+				GrossRevenue:      gross,
+				RefundDeduction:   refundTotal,
+				NetRevenue:        net,
+				Currency:          currency,
+				SourceClass:       sourceClass,
+				Confidence:        confidence,
+				LifecycleState:    lifecycleState,
+				IsRecognizedOrder: isRecognized,
+			}
+			e.orders[orderID] = rec
+			return rec, true
+		}
+	}
+
+	if found {
+		rec := CanonicalOrderRecord{
+			OrderID:           orderID,
+			WorkspaceID:       workspaceID,
+			GrossRevenue:      gross,
+			RefundDeduction:   tenantdb.ZeroDecimal(),
+			NetRevenue:        gross,
+			Currency:          currency,
+			SourceClass:       sourceClass,
+			Confidence:        confidence,
+			LifecycleState:    lifecycleState,
+			IsRecognizedOrder: isRecognized,
+		}
+		e.orders[orderID] = rec
+		return rec, true
+	}
+	return CanonicalOrderRecord{}, false
 }
 
 // SeedCanonicalOrder registers or updates a canonical order record in the engine.
@@ -507,6 +629,14 @@ func (e *AttributionEngine) RecordAttribution(
 	}
 
 	order, exists := e.orders[attr.OrderID]
+	if !exists {
+		if hydrated, ok := e.hydrateOrderFromStoreLocked(ctx, attr.WorkspaceID, attr.OrderID); ok {
+			order = hydrated
+			exists = true
+		}
+	} else if hydrated, ok := e.hydrateOrderFromStoreLocked(ctx, attr.WorkspaceID, attr.OrderID); ok && hydrated.RefundDeduction.Cmp(order.RefundDeduction) > 0 {
+		order = hydrated
+	}
 	if !exists {
 		// Fallback: create default order record if not pre-seeded
 		order = CanonicalOrderRecord{
@@ -600,8 +730,8 @@ func (e *AttributionEngine) GetContentRevenueAttribution(
 	ctx context.Context,
 	workspaceID, contentID string,
 ) (*financev1.ContentRevenueAttribution, []*ContentAttributionEntity, *financev1.WorkspaceRevenueDeduplicationSummary, error) {
-	e.mu.RLock()
-	defer e.mu.RUnlock()
+	e.mu.Lock()
+	defer e.mu.Unlock()
 
 	var matchingAttrs []*ContentAttributionEntity
 	var allWorkspaceAttrs []ContentAttributionEntity
@@ -616,6 +746,9 @@ func (e *AttributionEngine) GetContentRevenueAttribution(
 			continue
 		}
 		allWorkspaceAttrs = append(allWorkspaceAttrs, *a)
+		if a.OrderID != "" {
+			_, _ = e.hydrateOrderFromStoreLocked(ctx, workspaceID, a.OrderID)
+		}
 
 		if a.PublishItemID == contentID || a.ChannelPostID == contentID {
 			matchingAttrs = append(matchingAttrs, a)

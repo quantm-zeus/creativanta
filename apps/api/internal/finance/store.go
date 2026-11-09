@@ -3,6 +3,7 @@ package finance
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -153,6 +154,7 @@ func (m *MemoryStore) CreatePosting(_ context.Context, p *FinancialPosting) erro
 	}
 
 	// Check unique (workspace_id, origin_type, origin_id, origin_version, component)
+	// and ensure the same target posting is never reversed more than once.
 	for _, existing := range m.postings {
 		if existing.WorkspaceID == p.WorkspaceID &&
 			existing.OriginType == p.OriginType &&
@@ -161,10 +163,118 @@ func (m *MemoryStore) CreatePosting(_ context.Context, p *FinancialPosting) erro
 			existing.Component == p.Component {
 			return ErrDuplicatePosting
 		}
+		if p.ReversalOf != nil && *p.ReversalOf != "" &&
+			existing.WorkspaceID == p.WorkspaceID &&
+			existing.ReversalOf != nil && *existing.ReversalOf == *p.ReversalOf {
+			return ErrDuplicatePosting
+		}
 	}
 
 	cp := *p
 	m.postings[p.PostingID] = &cp
+	return nil
+}
+
+// RecordCorrectionAtomic atomically checks correction version idempotency/conflict,
+// reverses the currently active posting (if any), and appends the replacement posting.
+func (m *MemoryStore) RecordCorrectionAtomic(
+	_ context.Context,
+	workspaceID, originType, originID, component, normVersion string,
+	baseNewAmount tenantdb.ExactDecimal,
+	baseCurrency, sourceClass, confidence string,
+	fx ExchangeRateSnapshot,
+	defaultEffectiveAt, now time.Time,
+) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	reversedIDs := make(map[string]bool)
+	for _, p := range m.postings {
+		if p.WorkspaceID == workspaceID && p.ReversalOf != nil && *p.ReversalOf != "" {
+			reversedIDs[*p.ReversalOf] = true
+		}
+	}
+
+	var existing *FinancialPosting
+	for _, p := range m.postings {
+		if p.WorkspaceID != workspaceID || p.OriginType != originType || p.OriginID != originID || p.Component != component {
+			continue
+		}
+		if p.OriginVersion == normVersion {
+			if p.Amount.Cmp(baseNewAmount) != 0 ||
+				!strings.EqualFold(strings.TrimSpace(p.Currency), baseCurrency) ||
+				(sourceClass != "" && p.SourceClass != "" && !strings.EqualFold(p.SourceClass, sourceClass)) {
+				return fmt.Errorf("%w: conflicting payload for correction version %s on %s %s component %s", ErrDuplicatePosting, normVersion, originType, originID, component)
+			}
+			return nil
+		}
+		if p.ReversalOf == nil && !reversedIDs[p.PostingID] {
+			if existing == nil || p.CreatedAt.After(existing.CreatedAt) || (p.CreatedAt.Equal(existing.CreatedAt) && p.PostingID > existing.PostingID) {
+				cp := *p
+				existing = &cp
+			}
+		}
+	}
+
+	effectiveAt := defaultEffectiveAt
+	currency := baseCurrency
+
+	if existing != nil {
+		if existing.Currency != "" && !strings.EqualFold(existing.Currency, baseCurrency) {
+			return fmt.Errorf("%w: correction currency %s does not match existing posting currency %s", ErrCurrencyMismatch, baseCurrency, existing.Currency)
+		}
+		if fx.EffectiveAt.IsZero() {
+			effectiveAt = existing.EffectiveAt
+		}
+		currency = existing.Currency
+
+		reversalAmount, _ := tenantdb.ZeroDecimal().Sub(existing.Amount)
+		revID := existing.PostingID
+		reversal := &FinancialPosting{
+			PostingID:            newUUID(),
+			WorkspaceID:          workspaceID,
+			OriginType:           originType,
+			OriginID:             originID,
+			OriginVersion:        existing.OriginVersion + "-reversal",
+			Component:            component,
+			Amount:               reversalAmount,
+			Currency:             existing.Currency,
+			SourceClass:          sourceClass,
+			Confidence:           confidence,
+			ExchangeRateSnapshot: fx,
+			ReversalOf:           &revID,
+			EffectiveAt:          existing.EffectiveAt,
+			CreatedAt:            now,
+		}
+		m.postings[reversal.PostingID] = reversal
+	}
+
+	corrected := &FinancialPosting{
+		PostingID:            newUUID(),
+		WorkspaceID:          workspaceID,
+		OriginType:           originType,
+		OriginID:             originID,
+		OriginVersion:        normVersion,
+		Component:            component,
+		Amount:               baseNewAmount,
+		Currency:             currency,
+		SourceClass:          sourceClass,
+		Confidence:           confidence,
+		ExchangeRateSnapshot: fx,
+		EffectiveAt:          effectiveAt,
+		CreatedAt:            now,
+	}
+	m.postings[corrected.PostingID] = corrected
+
+	if originType == "order" && component == ComponentCOGS && !baseNewAmount.IsZero() {
+		if ord := m.findOrderUnlocked(workspaceID, originID); ord != nil {
+			absCOGS := baseNewAmount
+			if absCOGS.IsNegative() {
+				absCOGS = absCOGS.Neg()
+			}
+			ord.COGSAmount = &absCOGS
+		}
+	}
 	return nil
 }
 
@@ -628,6 +738,38 @@ func (m *MemoryStore) findOrderUnlocked(workspaceID, orderID string) *Order {
 	return nil
 }
 
+func cloneOrder(o *Order) Order {
+	if o == nil {
+		return Order{}
+	}
+	cp := *o
+	if o.COGSAmount != nil {
+		cogsCopy := *o.COGSAmount
+		cp.COGSAmount = &cogsCopy
+	}
+	if o.RecognizedAt != nil {
+		recCopy := o.RecognizedAt.UTC()
+		cp.RecognizedAt = &recCopy
+	}
+	if o.SourceUpdatedAt != nil {
+		updCopy := o.SourceUpdatedAt.UTC()
+		cp.SourceUpdatedAt = &updCopy
+	}
+	if len(o.ProductIDs) > 0 {
+		cp.ProductIDs = append([]string(nil), o.ProductIDs...)
+	}
+	if len(o.CampaignIDs) > 0 {
+		cp.CampaignIDs = append([]string(nil), o.CampaignIDs...)
+	}
+	if len(o.PostIDs) > 0 {
+		cp.PostIDs = append([]string(nil), o.PostIDs...)
+	}
+	if len(o.ContentIDs) > 0 {
+		cp.ContentIDs = append([]string(nil), o.ContentIDs...)
+	}
+	return cp
+}
+
 func (m *MemoryStore) CreateOrder(_ context.Context, o *Order) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -635,17 +777,7 @@ func (m *MemoryStore) CreateOrder(_ context.Context, o *Order) error {
 	if o.OrderID == "" {
 		o.OrderID = newUUID()
 	}
-	if o.OrderedAt.IsZero() {
-		o.OrderedAt = time.Now().UTC()
-	}
-	cp := *o
-	if o.COGSAmount != nil {
-		cogsCopy := *o.COGSAmount
-		cp.COGSAmount = &cogsCopy
-	}
-	if len(o.ProductIDs) > 0 {
-		cp.ProductIDs = append([]string(nil), o.ProductIDs...)
-	}
+	cp := cloneOrder(o)
 	if existing := m.findOrderUnlocked(o.WorkspaceID, o.OrderID); existing != nil {
 		if cp.MatchedAmount.IsZero() && !existing.MatchedAmount.IsZero() {
 			cp.MatchedAmount = existing.MatchedAmount
@@ -658,25 +790,77 @@ func (m *MemoryStore) CreateOrder(_ context.Context, o *Order) error {
 			cogsCopy := *existing.COGSAmount
 			cp.COGSAmount = &cogsCopy
 		}
+		if !cp.ZeroCOGSWithReason && existing.ZeroCOGSWithReason {
+			cp.ZeroCOGSWithReason = existing.ZeroCOGSWithReason
+		}
+		if cp.COGSReason == "" {
+			cp.COGSReason = existing.COGSReason
+		}
+		if cp.PlatformFeeAmount.IsZero() && !existing.PlatformFeeAmount.IsZero() {
+			cp.PlatformFeeAmount = existing.PlatformFeeAmount
+		}
+		if cp.PaymentFeeAmount.IsZero() && !existing.PaymentFeeAmount.IsZero() {
+			cp.PaymentFeeAmount = existing.PaymentFeeAmount
+		}
+		if cp.ShippingFeeAmount.IsZero() && !existing.ShippingFeeAmount.IsZero() {
+			cp.ShippingFeeAmount = existing.ShippingFeeAmount
+		}
+		if cp.CommissionAmount.IsZero() && !existing.CommissionAmount.IsZero() {
+			cp.CommissionAmount = existing.CommissionAmount
+		}
+		if cp.ExchangeRateSnapshot.IsEmpty() && !existing.ExchangeRateSnapshot.IsEmpty() {
+			cp.ExchangeRateSnapshot = existing.ExchangeRateSnapshot
+		}
+		if cp.RecognizedAt == nil && existing.RecognizedAt != nil {
+			recCopy := existing.RecognizedAt.UTC()
+			cp.RecognizedAt = &recCopy
+		}
+		if cp.SourceUpdatedAt == nil && existing.SourceUpdatedAt != nil {
+			updCopy := existing.SourceUpdatedAt.UTC()
+			cp.SourceUpdatedAt = &updCopy
+		}
+		if !existing.OrderedAt.IsZero() && (cp.OrderedAt.IsZero() || cp.OrderedAt.After(existing.OrderedAt)) {
+			cp.OrderedAt = existing.OrderedAt
+		}
 		if cp.SourcePlatform == "" {
 			cp.SourcePlatform = existing.SourcePlatform
 		}
 		if cp.ProductID == "" {
 			cp.ProductID = existing.ProductID
 		}
-		if len(cp.ProductIDs) == 0 && len(existing.ProductIDs) > 0 {
-			cp.ProductIDs = append([]string(nil), existing.ProductIDs...)
+		for _, id := range existing.ProductIDs {
+			cp.ProductIDs = appendUniqueString(cp.ProductIDs, id)
 		}
 		if cp.CampaignID == "" {
 			cp.CampaignID = existing.CampaignID
 		}
+		for _, id := range existing.CampaignIDs {
+			cp.CampaignIDs = appendUniqueString(cp.CampaignIDs, id)
+		}
 		if cp.PostID == "" {
 			cp.PostID = existing.PostID
+		}
+		for _, id := range existing.PostIDs {
+			cp.PostIDs = appendUniqueString(cp.PostIDs, id)
 		}
 		if cp.ContentID == "" {
 			cp.ContentID = existing.ContentID
 		}
+		for _, id := range existing.ContentIDs {
+			cp.ContentIDs = appendUniqueString(cp.ContentIDs, id)
+		}
 	}
+	if cp.OrderedAt.IsZero() {
+		if cp.RecognizedAt != nil && !cp.RecognizedAt.IsZero() {
+			cp.OrderedAt = cp.RecognizedAt.UTC()
+		} else {
+			cp.OrderedAt = time.Now().UTC()
+		}
+	}
+	cp.ProductIDs = appendUniqueString(cp.ProductIDs, cp.ProductID)
+	cp.CampaignIDs = appendUniqueString(cp.CampaignIDs, cp.CampaignID)
+	cp.PostIDs = appendUniqueString(cp.PostIDs, cp.PostID)
+	cp.ContentIDs = appendUniqueString(cp.ContentIDs, cp.ContentID)
 	m.orders[orderStoreKey(o.WorkspaceID, o.OrderID)] = &cp
 	return nil
 }
@@ -689,14 +873,7 @@ func (m *MemoryStore) GetOrder(_ context.Context, workspaceID, orderID string) (
 	if o == nil {
 		return nil, ErrOrderNotFound
 	}
-	cp := *o
-	if o.COGSAmount != nil {
-		cogsCopy := *o.COGSAmount
-		cp.COGSAmount = &cogsCopy
-	}
-	if len(o.ProductIDs) > 0 {
-		cp.ProductIDs = append([]string(nil), o.ProductIDs...)
-	}
+	cp := cloneOrder(o)
 	return &cp, nil
 }
 
@@ -707,15 +884,7 @@ func (m *MemoryStore) ListOrders(_ context.Context, workspaceID string) ([]Order
 	var result []Order
 	for _, o := range m.orders {
 		if o.WorkspaceID == workspaceID {
-			cp := *o
-			if o.COGSAmount != nil {
-				cogsCopy := *o.COGSAmount
-				cp.COGSAmount = &cogsCopy
-			}
-			if len(o.ProductIDs) > 0 {
-				cp.ProductIDs = append([]string(nil), o.ProductIDs...)
-			}
-			result = append(result, cp)
+			result = append(result, cloneOrder(o))
 		}
 	}
 	return result, nil
@@ -1136,8 +1305,21 @@ func (m *MemoryStore) ListProofBundles(_ context.Context, workspaceID string, fi
 // ----------------------------------------------------------------------------
 
 func (m *MemoryStore) orderHasActiveCOGSUnlocked(workspaceID, orderID string, reversedIDs map[string]bool) bool {
-	if o := m.findOrderUnlocked(workspaceID, orderID); o != nil && o.COGSAmount != nil && !o.COGSAmount.IsZero() {
-		return true
+	if o := m.findOrderUnlocked(workspaceID, orderID); o != nil {
+		if (o.COGSAmount != nil && !o.COGSAmount.IsZero()) || o.HasConfirmedZeroCOGS() {
+			return true
+		}
+	}
+	for _, ci := range m.costItems {
+		if ci.WorkspaceID == workspaceID &&
+			ci.CostState != CostStateSuperseded &&
+			strings.EqualFold(ci.CostType, "cogs") &&
+			strings.EqualFold(ci.RelatedScopeType, "order") &&
+			ci.RelatedScopeID == orderID {
+			if !ci.Amount.IsZero() || strings.TrimSpace(ci.ConfidenceReason) != "" {
+				return true
+			}
+		}
 	}
 	for _, p := range m.postings {
 		if p.WorkspaceID != workspaceID || p.ReversalOf != nil || reversedIDs[p.PostingID] || p.Component != ComponentCOGS {
@@ -1189,7 +1371,7 @@ func (m *MemoryStore) ListDataGaps(_ context.Context, workspaceID string, filter
 				RelatedObjectType:  "order",
 				RelatedObjectID:    order.OrderID,
 				MonetaryAmount:     order.Amount,
-				UnresolvedSince:    order.OrderedAt,
+				UnresolvedSince:    order.EffectiveTime(),
 				RepairCTALabel:     "Nhập giá vốn",
 				RepairCTARoute:     "/finance/costs?order_id=" + order.OrderID,
 				RequiredPermission: "cost:manage",
@@ -1226,7 +1408,9 @@ func (m *MemoryStore) ListDataGaps(_ context.Context, workspaceID string, filter
 		if line.WorkspaceID != workspaceID {
 			continue
 		}
-		if line.ReconciliationState == ReconciliationImportedOnly || line.ReconciliationState == ReconciliationPartiallyReconciled {
+		if line.ReconciliationState == ReconciliationImportedOnly ||
+			line.ReconciliationState == ReconciliationPartiallyReconciled ||
+			line.ReconciliationState == ReconciliationAwaitingEvidence {
 			rem, _ := line.NetAmount.Sub(line.MatchedAmount)
 			if rem.Cmp(tenantdb.ZeroDecimal()) > 0 {
 				items = append(items, DataGapItem{
@@ -1478,6 +1662,17 @@ func (p *PostgresStore) CreatePosting(ctx context.Context, post *FinancialPostin
 		)
 	`
 	return p.withTenantTx(ctx, post.WorkspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		if post.ReversalOf != nil && strings.TrimSpace(*post.ReversalOf) != "" {
+			var existingRev int
+			revCheckErr := tx.QueryRow(txCtx, `
+				SELECT 1 FROM financial_postings
+				WHERE workspace_id = $1 AND reversal_of = $2
+				LIMIT 1
+			`, post.WorkspaceID, *post.ReversalOf).Scan(&existingRev)
+			if revCheckErr == nil {
+				return ErrDuplicatePosting
+			}
+		}
 		_, err := tx.Exec(txCtx, query,
 			post.PostingID, post.WorkspaceID, post.OriginType, post.OriginID, post.OriginVersion,
 			post.Component, post.Amount.ToPgNumeric(), post.Currency, post.SourceClass, post.Confidence,
@@ -1488,6 +1683,148 @@ func (p *PostgresStore) CreatePosting(ctx context.Context, post *FinancialPostin
 				return ErrDuplicatePosting
 			}
 			return fmt.Errorf("create financial posting: %w", err)
+		}
+		return nil
+	})
+}
+
+// RecordCorrectionAtomic atomically locks existing postings for the origin/component in PostgreSQL,
+// checks version idempotency/conflict, inserts a reversal of the active posting (if any), and inserts
+// the replacement posting in a single tenant-scoped transaction.
+func (p *PostgresStore) RecordCorrectionAtomic(
+	ctx context.Context,
+	workspaceID, originType, originID, component, normVersion string,
+	baseNewAmount tenantdb.ExactDecimal,
+	baseCurrency, sourceClass, confidence string,
+	fx ExchangeRateSnapshot,
+	defaultEffectiveAt, now time.Time,
+) error {
+	fxJSON, err := json.Marshal(postingSnapshotEnvelope{
+		ExchangeRateSnapshot: fx,
+	})
+	if err != nil {
+		return fmt.Errorf("marshal fx snapshot: %w", err)
+	}
+
+	return p.withTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx) error {
+		if _, lockErr := tx.Exec(txCtx, `
+			SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2 || ':' || $3 || ':' || $4))
+		`, workspaceID, originType, originID, component); lockErr != nil {
+			return fmt.Errorf("acquire correction advisory lock: %w", lockErr)
+		}
+		rows, err := tx.Query(txCtx, `
+			SELECT posting_id, workspace_id, origin_type, origin_id, origin_version,
+			       component, amount, currency, source_class, confidence,
+			       exchange_rate_snapshot, reversal_of, effective_at, created_at
+			FROM financial_postings
+			WHERE workspace_id = $1 AND origin_type = $2 AND origin_id = $3 AND component = $4
+			ORDER BY created_at ASC, posting_id ASC
+		`, workspaceID, originType, originID, component)
+		if err != nil {
+			return fmt.Errorf("lock postings for correction: %w", err)
+		}
+		var history []FinancialPosting
+		for rows.Next() {
+			item, scanErr := scanPostingRow(rows)
+			if scanErr != nil {
+				rows.Close()
+				return scanErr
+			}
+			history = append(history, *item)
+		}
+		if err := rows.Err(); err != nil {
+			rows.Close()
+			return err
+		}
+		rows.Close()
+
+		reversedIDs := make(map[string]bool)
+		for _, h := range history {
+			if h.ReversalOf != nil && *h.ReversalOf != "" {
+				reversedIDs[*h.ReversalOf] = true
+			}
+		}
+
+		var existing *FinancialPosting
+		for i := range history {
+			h := history[i]
+			if h.OriginVersion == normVersion {
+				if h.Amount.Cmp(baseNewAmount) != 0 ||
+					!strings.EqualFold(strings.TrimSpace(h.Currency), baseCurrency) ||
+					(sourceClass != "" && h.SourceClass != "" && !strings.EqualFold(h.SourceClass, sourceClass)) {
+					return fmt.Errorf("%w: conflicting payload for correction version %s on %s %s component %s", ErrDuplicatePosting, normVersion, originType, originID, component)
+				}
+				return nil
+			}
+			if h.ReversalOf == nil && !reversedIDs[h.PostingID] {
+				cp := h
+				existing = &cp
+			}
+		}
+
+		effectiveAt := defaultEffectiveAt
+		currency := baseCurrency
+
+		insertQuery := `
+			INSERT INTO financial_postings (
+				posting_id, workspace_id, origin_type, origin_id, origin_version,
+				component, amount, currency, source_class, confidence,
+				exchange_rate_snapshot, reversal_of, effective_at, created_at
+			) VALUES (
+				$1, $2, $3, $4, $5,
+				$6, $7, $8, $9, $10,
+				$11, $12, $13, $14
+			)
+		`
+
+		if existing != nil {
+			if existing.Currency != "" && !strings.EqualFold(existing.Currency, baseCurrency) {
+				return fmt.Errorf("%w: correction currency %s does not match existing posting currency %s", ErrCurrencyMismatch, baseCurrency, existing.Currency)
+			}
+			if fx.EffectiveAt.IsZero() {
+				effectiveAt = existing.EffectiveAt
+			}
+			currency = existing.Currency
+
+			reversalAmount, _ := tenantdb.ZeroDecimal().Sub(existing.Amount)
+			revID := existing.PostingID
+			_, err := tx.Exec(txCtx, insertQuery,
+				newUUID(), workspaceID, originType, originID, existing.OriginVersion+"-reversal",
+				component, reversalAmount.ToPgNumeric(), existing.Currency, sourceClass, confidence,
+				fxJSON, &revID, existing.EffectiveAt, now,
+			)
+			if err != nil {
+				if strings.Contains(err.Error(), "duplicate key") || strings.Contains(err.Error(), "unique constraint") {
+					return ErrDuplicatePosting
+				}
+				return fmt.Errorf("create reversal posting: %w", err)
+			}
+		}
+
+		_, err = tx.Exec(txCtx, insertQuery,
+			newUUID(), workspaceID, originType, originID, normVersion,
+			component, baseNewAmount.ToPgNumeric(), currency, sourceClass, confidence,
+			fxJSON, (*string)(nil), effectiveAt, now,
+		)
+		if err != nil {
+			if strings.Contains(err.Error(), "duplicate key") || strings.Contains(err.Error(), "unique constraint") {
+				return ErrDuplicatePosting
+			}
+			return fmt.Errorf("create corrected posting: %w", err)
+		}
+
+		if originType == "order" && component == ComponentCOGS && !baseNewAmount.IsZero() {
+			absCOGS := baseNewAmount
+			if absCOGS.IsNegative() {
+				absCOGS = absCOGS.Neg()
+			}
+			cogsPatch, _ := json.Marshal(map[string]any{"cogs": absCOGS.Fixed6String()})
+			_, _ = tx.Exec(txCtx, `
+				UPDATE orders
+				SET fee_breakdown = COALESCE(fee_breakdown, '{}'::jsonb) || $1::jsonb,
+				    updated_at = NOW()
+				WHERE workspace_id = $2 AND order_id::text = $3
+			`, cogsPatch, workspaceID, originID)
 		}
 		return nil
 	})
@@ -2271,6 +2608,60 @@ func (p *PostgresStore) UpdateSettlementLineMatched(ctx context.Context, workspa
 	})
 }
 
+func scopeUUIDString(scopeType, scopeID string) *string {
+	trimmed := strings.TrimSpace(scopeID)
+	if trimmed == "" {
+		return nil
+	}
+	if isUUIDFormat(trimmed) {
+		return &trimmed
+	}
+	sum := sha256.Sum256([]byte(strings.ToLower(strings.TrimSpace(scopeType)) + ":" + trimmed))
+	b := sum[:16]
+	b[6] = (b[6] & 0x0f) | 0x50
+	b[8] = (b[8] & 0x3f) | 0x80
+	derived := fmt.Sprintf("%08x-%04x-%04x-%04x-%012x",
+		b[0:4], b[4:6], b[6:8], b[8:10], b[10:16])
+	return &derived
+}
+
+func marshalSnapshotSourceClassMix(mix map[string]tenantdb.ExactDecimal, scopeID string) ([]byte, error) {
+	payload := make(map[string]any, len(mix)+1)
+	for k, v := range mix {
+		payload[k] = v
+	}
+	if trimmed := strings.TrimSpace(scopeID); trimmed != "" && !isUUIDFormat(trimmed) {
+		payload["_raw_scope_id"] = trimmed
+	}
+	return json.Marshal(payload)
+}
+
+func unmarshalSnapshotSourceClassMix(mixBytes []byte, s *ProfitSnapshot) {
+	if len(mixBytes) == 0 || s == nil {
+		return
+	}
+	var rawMap map[string]json.RawMessage
+	if err := json.Unmarshal(mixBytes, &rawMap); err != nil {
+		return
+	}
+	if rawScope, ok := rawMap["_raw_scope_id"]; ok {
+		var scopeStr string
+		if json.Unmarshal(rawScope, &scopeStr) == nil && strings.TrimSpace(scopeStr) != "" {
+			s.ScopeID = strings.TrimSpace(scopeStr)
+		}
+		delete(rawMap, "_raw_scope_id")
+	}
+	if len(rawMap) > 0 {
+		s.SourceClassMix = make(map[string]tenantdb.ExactDecimal, len(rawMap))
+		for k, rawVal := range rawMap {
+			var dec tenantdb.ExactDecimal
+			if json.Unmarshal(rawVal, &dec) == nil {
+				s.SourceClassMix[k] = dec
+			}
+		}
+	}
+}
+
 func (p *PostgresStore) CreateSnapshot(ctx context.Context, s *ProfitSnapshot) error {
 	if s.SnapshotID == "" {
 		s.SnapshotID = newUUID()
@@ -2291,7 +2682,7 @@ func (p *PostgresStore) CreateSnapshot(ctx context.Context, s *ProfitSnapshot) e
 		periodEnd = "2099-12-31"
 	}
 
-	mixJSON, _ := json.Marshal(s.SourceClassMix)
+	mixJSON, _ := marshalSnapshotSourceClassMix(s.SourceClassMix, s.ScopeID)
 	var marginNum pgtype.Numeric
 	if s.MarginPct != nil {
 		marginNum = s.MarginPct.ToPgNumeric()
@@ -2314,7 +2705,7 @@ func (p *PostgresStore) CreateSnapshot(ctx context.Context, s *ProfitSnapshot) e
 	`
 	return p.withTenantTx(ctx, s.WorkspaceID, func(txCtx context.Context, tx pgx.Tx) error {
 		_, err := tx.Exec(txCtx, query,
-			s.SnapshotID, s.WorkspaceID, s.ScopeType, nullableUUIDString(s.ScopeID), periodStart, periodEnd,
+			s.SnapshotID, s.WorkspaceID, s.ScopeType, scopeUUIDString(s.ScopeType, s.ScopeID), periodStart, periodEnd,
 			s.GrossRevenue.ToPgNumeric(), s.PlatformFees.ToPgNumeric(), s.ShippingCosts.ToPgNumeric(),
 			s.AffiliateCommissions.ToPgNumeric(), s.RefundDeductions.ToPgNumeric(),
 			s.COGS.ToPgNumeric(), s.AdsSpend.ToPgNumeric(), s.AICreditCosts.ToPgNumeric(),
@@ -2364,8 +2755,12 @@ func (p *PostgresStore) GetLatestSnapshot(ctx context.Context, workspaceID, scop
 		idx++
 	}
 	if scopeID != "" {
+		resolvedScopeID := scopeID
+		if u := scopeUUIDString(scopeType, scopeID); u != nil {
+			resolvedScopeID = *u
+		}
 		query += fmt.Sprintf(" AND scope_id::text = $%d", idx)
-		args = append(args, scopeID)
+		args = append(args, resolvedScopeID)
 		idx++
 	}
 	if periodStart != "" {
@@ -2471,9 +2866,7 @@ func scanSnapshot(row pgx.Row) (*ProfitSnapshot, error) {
 			s.MarginPct = &m
 		}
 	}
-	if len(mixBytes) > 0 {
-		_ = json.Unmarshal(mixBytes, &s.SourceClassMix)
-	}
+	unmarshalSnapshotSourceClassMix(mixBytes, &s)
 	return &s, nil
 }
 
@@ -2513,9 +2906,7 @@ func scanSnapshotRow(rows pgx.Rows) (*ProfitSnapshot, error) {
 			s.MarginPct = &m
 		}
 	}
-	if len(mixBytes) > 0 {
-		_ = json.Unmarshal(mixBytes, &s.SourceClassMix)
-	}
+	unmarshalSnapshotSourceClassMix(mixBytes, &s)
 	return &s, nil
 }
 
@@ -2588,12 +2979,41 @@ func orderMatchesProduct(o Order, productID string) bool {
 	return false
 }
 
+func parseMapDecimal(m map[string]any, keys ...string) (tenantdb.ExactDecimal, bool) {
+	for _, k := range keys {
+		raw, ok := m[k]
+		if !ok || raw == nil {
+			continue
+		}
+		switch v := raw.(type) {
+		case string:
+			if d, err := tenantdb.ParseExactDecimal(strings.TrimSpace(v)); err == nil {
+				return d, true
+			}
+		case float64:
+			if d, err := tenantdb.ParseExactDecimal(fmt.Sprintf("%.6f", v)); err == nil {
+				return d, true
+			}
+		}
+	}
+	return tenantdb.ZeroDecimal(), false
+}
+
 func hydrateOrderDetails(o *Order, itemsBytes, feeBytes, metaBytes []byte) {
 	if o == nil {
 		return
 	}
 	if o.ProductID != "" {
 		o.ProductIDs = appendUniqueString(o.ProductIDs, o.ProductID)
+	}
+	if o.CampaignID != "" {
+		o.CampaignIDs = appendUniqueString(o.CampaignIDs, o.CampaignID)
+	}
+	if o.PostID != "" {
+		o.PostIDs = appendUniqueString(o.PostIDs, o.PostID)
+	}
+	if o.ContentID != "" {
+		o.ContentIDs = appendUniqueString(o.ContentIDs, o.ContentID)
 	}
 	if len(metaBytes) > 0 {
 		var meta map[string]any
@@ -2616,21 +3036,78 @@ func hydrateOrderDetails(o *Order, itemsBytes, feeBytes, metaBytes []byte) {
 					}
 				}
 			}
-			if o.CampaignID == "" {
-				if v, ok := meta["campaign_id"].(string); ok {
+			if v, ok := meta["campaign_id"].(string); ok && strings.TrimSpace(v) != "" {
+				if o.CampaignID == "" {
 					o.CampaignID = strings.TrimSpace(v)
 				}
+				o.CampaignIDs = appendUniqueString(o.CampaignIDs, v)
 			}
-			if o.PostID == "" {
-				if v, ok := meta["post_id"].(string); ok {
-					o.PostID = strings.TrimSpace(v)
+			if rawIDs, ok := meta["campaign_ids"].([]any); ok {
+				for _, elem := range rawIDs {
+					if s, ok := elem.(string); ok {
+						if o.CampaignID == "" {
+							o.CampaignID = strings.TrimSpace(s)
+						}
+						o.CampaignIDs = appendUniqueString(o.CampaignIDs, s)
+					}
 				}
 			}
-			if o.ContentID == "" {
-				if v, ok := meta["content_id"].(string); ok && strings.TrimSpace(v) != "" {
-					o.ContentID = strings.TrimSpace(v)
-				} else if v, ok := meta["publish_item_id"].(string); ok && strings.TrimSpace(v) != "" {
-					o.ContentID = strings.TrimSpace(v)
+			if v, ok := meta["post_id"].(string); ok && strings.TrimSpace(v) != "" {
+				if o.PostID == "" {
+					o.PostID = strings.TrimSpace(v)
+				}
+				o.PostIDs = appendUniqueString(o.PostIDs, v)
+			}
+			if rawIDs, ok := meta["post_ids"].([]any); ok {
+				for _, elem := range rawIDs {
+					if s, ok := elem.(string); ok {
+						if o.PostID == "" {
+							o.PostID = strings.TrimSpace(s)
+						}
+						o.PostIDs = appendUniqueString(o.PostIDs, s)
+					}
+				}
+			}
+			for _, key := range []string{"content_id", "publish_item_id"} {
+				if v, ok := meta[key].(string); ok && strings.TrimSpace(v) != "" {
+					if o.ContentID == "" {
+						o.ContentID = strings.TrimSpace(v)
+					}
+					o.ContentIDs = appendUniqueString(o.ContentIDs, v)
+				}
+			}
+			if rawIDs, ok := meta["content_ids"].([]any); ok {
+				for _, elem := range rawIDs {
+					if s, ok := elem.(string); ok {
+						if o.ContentID == "" {
+							o.ContentID = strings.TrimSpace(s)
+						}
+						o.ContentIDs = appendUniqueString(o.ContentIDs, s)
+					}
+				}
+			}
+			if o.RecognizedAt == nil {
+				if recStr, ok := meta["recognized_at"].(string); ok && strings.TrimSpace(recStr) != "" {
+					if parsed, err := time.Parse(time.RFC3339, strings.TrimSpace(recStr)); err == nil {
+						u := parsed.UTC()
+						o.RecognizedAt = &u
+					}
+				}
+			}
+			if b, ok := meta["zero_cogs_with_reason"].(bool); ok && b {
+				o.ZeroCOGSWithReason = true
+			}
+			if r, ok := meta["cogs_reason"].(string); ok && strings.TrimSpace(r) != "" && o.COGSReason == "" {
+				o.COGSReason = strings.TrimSpace(r)
+			}
+			if o.ExchangeRateSnapshot.IsEmpty() {
+				if rawFX, ok := meta["exchange_rate_snapshot"]; ok && rawFX != nil {
+					if fxB, err := json.Marshal(rawFX); err == nil {
+						var fx ExchangeRateSnapshot
+						if json.Unmarshal(fxB, &fx) == nil && !fx.IsEmpty() {
+							o.ExchangeRateSnapshot = fx
+						}
+					}
 				}
 			}
 		}
@@ -2638,17 +3115,26 @@ func hydrateOrderDetails(o *Order, itemsBytes, feeBytes, metaBytes []byte) {
 	if len(feeBytes) > 0 {
 		var fees map[string]any
 		if json.Unmarshal(feeBytes, &fees) == nil {
-			if rawCOGS, ok := fees["cogs"]; ok {
-				switch v := rawCOGS.(type) {
-				case string:
-					if d, err := tenantdb.ParseExactDecimal(strings.TrimSpace(v)); err == nil && !d.IsZero() {
-						o.COGSAmount = &d
-					}
-				case float64:
-					if d, err := tenantdb.ParseExactDecimal(fmt.Sprintf("%.6f", v)); err == nil && !d.IsZero() {
-						o.COGSAmount = &d
-					}
-				}
+			if d, ok := parseMapDecimal(fees, "cogs"); ok && !d.IsZero() {
+				o.COGSAmount = &d
+			}
+			if b, ok := fees["zero_cogs_with_reason"].(bool); ok && b {
+				o.ZeroCOGSWithReason = true
+			}
+			if r, ok := fees["cogs_reason"].(string); ok && strings.TrimSpace(r) != "" && o.COGSReason == "" {
+				o.COGSReason = strings.TrimSpace(r)
+			}
+			if d, ok := parseMapDecimal(fees, "platform_fee"); ok && !d.IsZero() && o.PlatformFeeAmount.IsZero() {
+				o.PlatformFeeAmount = d
+			}
+			if d, ok := parseMapDecimal(fees, "payment_fee", "transaction_fee"); ok && !d.IsZero() && o.PaymentFeeAmount.IsZero() {
+				o.PaymentFeeAmount = d
+			}
+			if d, ok := parseMapDecimal(fees, "shipping_cost", "shipping_fee"); ok && !d.IsZero() && o.ShippingFeeAmount.IsZero() {
+				o.ShippingFeeAmount = d
+			}
+			if d, ok := parseMapDecimal(fees, "affiliate_commission", "commission"); ok && !d.IsZero() && o.CommissionAmount.IsZero() {
+				o.CommissionAmount = d
 			}
 		}
 	}
@@ -2658,7 +3144,7 @@ func hydrateOrderDetails(o *Order, itemsBytes, feeBytes, metaBytes []byte) {
 			itemCOGSSum := tenantdb.ZeroDecimal()
 			hasItemCOGS := false
 			for _, item := range rawItems {
-				for _, key := range []string{"product_id", "sku_id", "sku"} {
+				for _, key := range []string{"product_id", "sku_id", "sku", "offer_id"} {
 					if s, ok := item[key].(string); ok && strings.TrimSpace(s) != "" {
 						if o.ProductID == "" && key == "product_id" {
 							o.ProductID = strings.TrimSpace(s)
@@ -2666,23 +3152,14 @@ func hydrateOrderDetails(o *Order, itemsBytes, feeBytes, metaBytes []byte) {
 						o.ProductIDs = appendUniqueString(o.ProductIDs, s)
 					}
 				}
-				var unitCOGS tenantdb.ExactDecimal
-				var parsedCOGS bool
-				if rawUC, ok := item["unit_cogs"]; ok {
-					switch v := rawUC.(type) {
-					case string:
-						if d, err := tenantdb.ParseExactDecimal(strings.TrimSpace(v)); err == nil && !d.IsZero() {
-							unitCOGS = d
-							parsedCOGS = true
-						}
-					case float64:
-						if d, err := tenantdb.ParseExactDecimal(fmt.Sprintf("%.6f", v)); err == nil && !d.IsZero() {
-							unitCOGS = d
-							parsedCOGS = true
-						}
-					}
+				if b, ok := item["zero_cogs_with_reason"].(bool); ok && b {
+					o.ZeroCOGSWithReason = true
 				}
-				if parsedCOGS {
+				if r, ok := item["cogs_reason"].(string); ok && strings.TrimSpace(r) != "" && o.COGSReason == "" {
+					o.COGSReason = strings.TrimSpace(r)
+				}
+				unitCOGS, parsedCOGS := parseMapDecimal(item, "unit_cogs")
+				if parsedCOGS && !unitCOGS.IsZero() {
 					qty := int64(1)
 					if rawQty, ok := item["quantity"].(float64); ok && int64(rawQty) > 0 {
 						qty = int64(rawQty)
@@ -2706,16 +3183,144 @@ func hydrateOrderDetails(o *Order, itemsBytes, feeBytes, metaBytes []byte) {
 	}
 }
 
+func enrichOrdersFromRelationsTx(txCtx context.Context, tx pgx.Tx, workspaceID string, orders []Order) {
+	if len(orders) == 0 {
+		return
+	}
+	orderIdx := make(map[string]int, len(orders))
+	for i := range orders {
+		orderIdx[orders[i].OrderID] = i
+	}
+
+	// 1. Enrich with all content_attribution_records links in the workspace
+	attrRows, attrErr := tx.Query(txCtx, `
+		SELECT order_id::text,
+		       COALESCE(publish_item_id::text, ''),
+		       COALESCE(channel_post_id::text, ''),
+		       COALESCE(utm_campaign, ''),
+		       COALESCE(metadata->>'utm_content', '')
+		FROM content_attribution_records
+		WHERE workspace_id = $1 AND order_id IS NOT NULL
+	`, workspaceID)
+	if attrErr == nil {
+		for attrRows.Next() {
+			var ordID, pubID, postID, utmCamp, utmContent string
+			if attrRows.Scan(&ordID, &pubID, &postID, &utmCamp, &utmContent) == nil {
+				if idx, ok := orderIdx[ordID]; ok {
+					if pubID != "" {
+						if orders[idx].ContentID == "" {
+							orders[idx].ContentID = pubID
+						}
+						orders[idx].ContentIDs = appendUniqueString(orders[idx].ContentIDs, pubID)
+					}
+					if utmContent != "" {
+						if orders[idx].ContentID == "" {
+							orders[idx].ContentID = utmContent
+						}
+						orders[idx].ContentIDs = appendUniqueString(orders[idx].ContentIDs, utmContent)
+					}
+					if postID != "" {
+						if orders[idx].PostID == "" {
+							orders[idx].PostID = postID
+						}
+						orders[idx].PostIDs = appendUniqueString(orders[idx].PostIDs, postID)
+					}
+					if utmCamp != "" {
+						if orders[idx].CampaignID == "" {
+							orders[idx].CampaignID = utmCamp
+						}
+						orders[idx].CampaignIDs = appendUniqueString(orders[idx].CampaignIDs, utmCamp)
+					}
+				}
+			}
+		}
+		attrRows.Close()
+	}
+
+	// 2. Enrich SKU / offer references to product_id from product_skus and offers
+	skuToProduct := make(map[string]string)
+	skuRows, skuErr := tx.Query(txCtx, `
+		SELECT sku_id::text, COALESCE(sku_code, ''), product_id::text
+		FROM product_skus
+		WHERE workspace_id = $1 AND deleted_at IS NULL
+	`, workspaceID)
+	if skuErr == nil {
+		for skuRows.Next() {
+			var skuID, skuCode, prodID string
+			if skuRows.Scan(&skuID, &skuCode, &prodID) == nil && prodID != "" {
+				if skuID != "" {
+					skuToProduct[strings.ToLower(strings.TrimSpace(skuID))] = prodID
+				}
+				if skuCode != "" {
+					skuToProduct[strings.ToLower(strings.TrimSpace(skuCode))] = prodID
+				}
+			}
+		}
+		skuRows.Close()
+	}
+
+	offerRows, offerErr := tx.Query(txCtx, `
+		SELECT offer_id::text, COALESCE(product_id::text, '')
+		FROM offers
+		WHERE workspace_id = $1 AND deleted_at IS NULL
+	`, workspaceID)
+	if offerErr == nil {
+		for offerRows.Next() {
+			var offerID, prodID string
+			if offerRows.Scan(&offerID, &prodID) == nil && offerID != "" && prodID != "" {
+				skuToProduct[strings.ToLower(strings.TrimSpace(offerID))] = prodID
+			}
+		}
+		offerRows.Close()
+	}
+
+	if len(skuToProduct) > 0 {
+		for i := range orders {
+			existingIDs := append([]string(nil), orders[i].ProductIDs...)
+			for _, candidate := range existingIDs {
+				if resolvedProdID, ok := skuToProduct[strings.ToLower(strings.TrimSpace(candidate))]; ok && resolvedProdID != "" {
+					if orders[i].ProductID == "" {
+						orders[i].ProductID = resolvedProdID
+					}
+					orders[i].ProductIDs = appendUniqueString(orders[i].ProductIDs, resolvedProdID)
+				}
+			}
+		}
+	}
+}
+
 func (p *PostgresStore) CreateOrder(ctx context.Context, o *Order) error {
 	if o.OrderID == "" {
 		o.OrderID = newUUID()
 	}
 	if o.OrderedAt.IsZero() {
-		o.OrderedAt = time.Now().UTC()
+		if o.RecognizedAt != nil && !o.RecognizedAt.IsZero() {
+			o.OrderedAt = o.RecognizedAt.UTC()
+		} else {
+			o.OrderedAt = time.Now().UTC()
+		}
 	}
 	feeMap := map[string]any{}
 	if o.COGSAmount != nil {
 		feeMap["cogs"] = o.COGSAmount.Fixed6String()
+	}
+	if o.ZeroCOGSWithReason {
+		feeMap["zero_cogs_with_reason"] = true
+	}
+	if o.COGSReason != "" {
+		feeMap["cogs_reason"] = o.COGSReason
+	}
+	if !o.PlatformFeeAmount.IsZero() {
+		feeMap["platform_fee"] = o.PlatformFeeAmount.Fixed6String()
+	}
+	if !o.PaymentFeeAmount.IsZero() {
+		feeMap["payment_fee"] = o.PaymentFeeAmount.Fixed6String()
+	}
+	if !o.ShippingFeeAmount.IsZero() {
+		feeMap["shipping_cost"] = o.ShippingFeeAmount.Fixed6String()
+	}
+	if !o.CommissionAmount.IsZero() {
+		feeMap["affiliate_commission"] = o.CommissionAmount.Fixed6String()
 	}
 	feeJSON, _ := json.Marshal(feeMap)
 
@@ -2732,11 +3337,32 @@ func (p *PostgresStore) CreateOrder(ctx context.Context, o *Order) error {
 	if o.CampaignID != "" {
 		metaMap["campaign_id"] = o.CampaignID
 	}
+	if len(o.CampaignIDs) > 0 {
+		metaMap["campaign_ids"] = o.CampaignIDs
+	}
 	if o.PostID != "" {
 		metaMap["post_id"] = o.PostID
 	}
+	if len(o.PostIDs) > 0 {
+		metaMap["post_ids"] = o.PostIDs
+	}
 	if o.ContentID != "" {
 		metaMap["content_id"] = o.ContentID
+	}
+	if len(o.ContentIDs) > 0 {
+		metaMap["content_ids"] = o.ContentIDs
+	}
+	if o.RecognizedAt != nil && !o.RecognizedAt.IsZero() {
+		metaMap["recognized_at"] = o.RecognizedAt.UTC().Format(time.RFC3339)
+	}
+	if o.ZeroCOGSWithReason {
+		metaMap["zero_cogs_with_reason"] = true
+	}
+	if o.COGSReason != "" {
+		metaMap["cogs_reason"] = o.COGSReason
+	}
+	if !o.ExchangeRateSnapshot.IsEmpty() {
+		metaMap["exchange_rate_snapshot"] = o.ExchangeRateSnapshot
 	}
 	metaJSON, _ := json.Marshal(metaMap)
 
@@ -2745,17 +3371,18 @@ func (p *PostgresStore) CreateOrder(ctx context.Context, o *Order) error {
 		INSERT INTO orders (
 			order_id, workspace_id, amount, matched_amount, currency,
 			lifecycle_state, reconciliation_state, source_platform,
-			fee_breakdown, metadata, ordered_at, created_at, updated_at
+			fee_breakdown, metadata, ordered_at, recognized_at, created_at, updated_at
 		) VALUES (
 			$1, $2, $3, $4, $5,
 			$6, $7, NULLIF($8, ''),
-			$9::jsonb, $10::jsonb, $11, NOW(), NOW()
+			$9::jsonb, $10::jsonb, $11, $12, NOW(), NOW()
 		)
 		ON CONFLICT (workspace_id, order_id) DO UPDATE SET
 			amount = EXCLUDED.amount,
 			currency = EXCLUDED.currency,
 			lifecycle_state = EXCLUDED.lifecycle_state,
-			ordered_at = EXCLUDED.ordered_at,
+			ordered_at = LEAST(orders.ordered_at, EXCLUDED.ordered_at),
+			recognized_at = COALESCE(EXCLUDED.recognized_at, orders.recognized_at),
 			source_platform = COALESCE(NULLIF(EXCLUDED.source_platform, ''), orders.source_platform),
 			fee_breakdown = COALESCE(orders.fee_breakdown, '{}'::jsonb) || EXCLUDED.fee_breakdown,
 			metadata = COALESCE(orders.metadata, '{}'::jsonb) || EXCLUDED.metadata,
@@ -2765,7 +3392,7 @@ func (p *PostgresStore) CreateOrder(ctx context.Context, o *Order) error {
 		_, err := tx.Exec(txCtx, query,
 			o.OrderID, o.WorkspaceID, o.Amount.ToPgNumeric(), o.MatchedAmount.ToPgNumeric(),
 			o.Currency, o.LifecycleState, pgRecState, o.SourcePlatform,
-			feeJSON, metaJSON, o.OrderedAt,
+			feeJSON, metaJSON, o.OrderedAt, o.RecognizedAt,
 		)
 		return err
 	})
@@ -2774,9 +3401,11 @@ func (p *PostgresStore) CreateOrder(ctx context.Context, o *Order) error {
 func (p *PostgresStore) GetOrder(ctx context.Context, workspaceID, orderID string) (*Order, error) {
 	query := `
 		SELECT order_id::text, workspace_id::text, amount, matched_amount, currency,
-		       lifecycle_state, COALESCE(reconciliation_state::text, 'imported_only'), ordered_at,
+		       lifecycle_state, COALESCE(reconciliation_state::text, 'imported_only'),
+		       ordered_at, recognized_at, source_updated_at,
 		       COALESCE(source_platform, ''),
 		       COALESCE(product_id::text, ''),
+		       COALESCE(offer_id::text, ''),
 		       COALESCE(campaign_id::text, ''),
 		       COALESCE(post_id::text, ''),
 		       COALESCE(items, '[]'::jsonb),
@@ -2787,13 +3416,14 @@ func (p *PostgresStore) GetOrder(ctx context.Context, workspaceID, orderID strin
 	`
 	var o Order
 	var amtNum, matchNum pgtype.Numeric
-	var rawRecState string
+	var rawRecState, offerID string
 	var itemsBytes, feeBytes, metaBytes []byte
 	err := p.withTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx) error {
 		err := tx.QueryRow(txCtx, query, workspaceID, orderID).Scan(
 			&o.OrderID, &o.WorkspaceID, &amtNum, &matchNum, &o.Currency,
-			&o.LifecycleState, &rawRecState, &o.OrderedAt,
-			&o.SourcePlatform, &o.ProductID, &o.CampaignID, &o.PostID,
+			&o.LifecycleState, &rawRecState,
+			&o.OrderedAt, &o.RecognizedAt, &o.SourceUpdatedAt,
+			&o.SourcePlatform, &o.ProductID, &offerID, &o.CampaignID, &o.PostID,
 			&itemsBytes, &feeBytes, &metaBytes,
 		)
 		if err != nil {
@@ -2802,24 +3432,32 @@ func (p *PostgresStore) GetOrder(ctx context.Context, workspaceID, orderID strin
 			}
 			return err
 		}
+		o.Amount, _ = tenantdb.FromPgNumeric(amtNum)
+		o.MatchedAmount, _ = tenantdb.FromPgNumeric(matchNum)
+		o.ReconciliationState = fromPgReconciliationState(rawRecState)
+		if offerID != "" {
+			o.ProductIDs = appendUniqueString(o.ProductIDs, offerID)
+		}
+		hydrateOrderDetails(&o, itemsBytes, feeBytes, metaBytes)
+		slice := []Order{o}
+		enrichOrdersFromRelationsTx(txCtx, tx, workspaceID, slice)
+		o = slice[0]
 		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
-	o.Amount, _ = tenantdb.FromPgNumeric(amtNum)
-	o.MatchedAmount, _ = tenantdb.FromPgNumeric(matchNum)
-	o.ReconciliationState = fromPgReconciliationState(rawRecState)
-	hydrateOrderDetails(&o, itemsBytes, feeBytes, metaBytes)
 	return &o, nil
 }
 
 func (p *PostgresStore) ListOrders(ctx context.Context, workspaceID string) ([]Order, error) {
 	query := `
 		SELECT order_id::text, workspace_id::text, amount, matched_amount, currency,
-		       lifecycle_state, COALESCE(reconciliation_state::text, 'imported_only'), ordered_at,
+		       lifecycle_state, COALESCE(reconciliation_state::text, 'imported_only'),
+		       ordered_at, recognized_at, source_updated_at,
 		       COALESCE(source_platform, ''),
 		       COALESCE(product_id::text, ''),
+		       COALESCE(offer_id::text, ''),
 		       COALESCE(campaign_id::text, ''),
 		       COALESCE(post_id::text, ''),
 		       COALESCE(items, '[]'::jsonb),
@@ -2839,12 +3477,13 @@ func (p *PostgresStore) ListOrders(ctx context.Context, workspaceID string) ([]O
 		for rows.Next() {
 			var o Order
 			var amtNum, matchNum pgtype.Numeric
-			var rawRecState string
+			var rawRecState, offerID string
 			var itemsBytes, feeBytes, metaBytes []byte
 			if err := rows.Scan(
 				&o.OrderID, &o.WorkspaceID, &amtNum, &matchNum, &o.Currency,
-				&o.LifecycleState, &rawRecState, &o.OrderedAt,
-				&o.SourcePlatform, &o.ProductID, &o.CampaignID, &o.PostID,
+				&o.LifecycleState, &rawRecState,
+				&o.OrderedAt, &o.RecognizedAt, &o.SourceUpdatedAt,
+				&o.SourcePlatform, &o.ProductID, &offerID, &o.CampaignID, &o.PostID,
 				&itemsBytes, &feeBytes, &metaBytes,
 			); err != nil {
 				return err
@@ -2852,48 +3491,16 @@ func (p *PostgresStore) ListOrders(ctx context.Context, workspaceID string) ([]O
 			o.Amount, _ = tenantdb.FromPgNumeric(amtNum)
 			o.MatchedAmount, _ = tenantdb.FromPgNumeric(matchNum)
 			o.ReconciliationState = fromPgReconciliationState(rawRecState)
+			if offerID != "" {
+				o.ProductIDs = appendUniqueString(o.ProductIDs, offerID)
+			}
 			hydrateOrderDetails(&o, itemsBytes, feeBytes, metaBytes)
 			result = append(result, o)
 		}
 		if err := rows.Err(); err != nil {
 			return err
 		}
-
-		// Also enrich orders with any content_attribution_records links in the workspace
-		attrRows, attrErr := tx.Query(txCtx, `
-			SELECT order_id::text,
-			       COALESCE(publish_item_id::text, ''),
-			       COALESCE(channel_post_id::text, ''),
-			       COALESCE(utm_campaign, ''),
-			       COALESCE(utm_content, '')
-			FROM content_attribution_records
-			WHERE workspace_id = $1 AND order_id IS NOT NULL AND deleted_at IS NULL
-		`, workspaceID)
-		if attrErr == nil {
-			orderIdx := make(map[string]int, len(result))
-			for i := range result {
-				orderIdx[result[i].OrderID] = i
-			}
-			for attrRows.Next() {
-				var ordID, pubID, postID, utmCamp, utmContent string
-				if attrRows.Scan(&ordID, &pubID, &postID, &utmCamp, &utmContent) == nil {
-					if idx, ok := orderIdx[ordID]; ok {
-						if result[idx].ContentID == "" && pubID != "" {
-							result[idx].ContentID = pubID
-						} else if result[idx].ContentID == "" && utmContent != "" {
-							result[idx].ContentID = utmContent
-						}
-						if result[idx].PostID == "" && postID != "" {
-							result[idx].PostID = postID
-						}
-						if result[idx].CampaignID == "" && utmCamp != "" {
-							result[idx].CampaignID = utmCamp
-						}
-					}
-				}
-			}
-			attrRows.Close()
-		}
+		enrichOrdersFromRelationsTx(txCtx, tx, workspaceID, result)
 		return nil
 	})
 	if err != nil {
@@ -2908,9 +3515,17 @@ func (p *PostgresStore) ResolveRefundOrderID(ctx context.Context, workspaceID, r
 		err := tx.QueryRow(txCtx, `
 			SELECT order_id::text
 			FROM refunds
-			WHERE workspace_id = $1 AND refund_id = $2
+			WHERE workspace_id = $1
+			  AND (refund_id::text = $2 OR COALESCE(external_refund_id, '') = $2)
+			LIMIT 1
 		`, workspaceID, refundID).Scan(&orderID)
 		if errors.Is(err, pgx.ErrNoRows) {
+			_ = tx.QueryRow(txCtx, `
+				SELECT COALESCE(exchange_rate_snapshot->>'related_order_id', '')
+				FROM financial_postings
+				WHERE workspace_id = $1 AND origin_type = 'refund' AND origin_id::text = $2
+				LIMIT 1
+			`, workspaceID, refundID).Scan(&orderID)
 			return nil
 		}
 		return err
@@ -2977,7 +3592,7 @@ func (p *PostgresStore) CreateReconciliationRecord(ctx context.Context, r *Recon
 		_, err := tx.Exec(txCtx, query,
 			r.RecordID, r.WorkspaceID, r.ScopeType, r.ScopeDescription,
 			r.RelatedOrderIDs, r.RelatedSettlementIDs, r.MatchedAmount.ToPgNumeric(),
-			r.DiscrepancyAmount.ToPgNumeric(), r.DiscrepancyReason, r.ReconciliationState,
+			r.DiscrepancyAmount.ToPgNumeric(), r.DiscrepancyReason, toPgReconciliationState(r.ReconciliationState),
 			r.Currency, []byte(mismatchesJSON), r.OverrideReason, overrideBy, r.OverrideAt,
 			pStart, pEnd, r.CreatedAt, r.UpdatedAt,
 		)
@@ -2989,7 +3604,7 @@ func (p *PostgresStore) GetReconciliationRecord(ctx context.Context, workspaceID
 	query := `
 		SELECT record_id, workspace_id, scope_type, scope_description,
 		       related_order_ids, related_settlement_ids, matched_amount,
-		       discrepancy_amount, discrepancy_reason, reconciliation_state,
+		       discrepancy_amount, discrepancy_reason, reconciliation_state::text,
 		       currency, mismatches, override_reason, override_by, override_at,
 		       period_start, period_end, created_at, updated_at
 		FROM reconciliation_records
@@ -3011,7 +3626,7 @@ func (p *PostgresStore) ListReconciliationRecords(ctx context.Context, workspace
 
 	if filter.ReconciliationState != "" {
 		where += fmt.Sprintf(" AND reconciliation_state = $%d", idx)
-		args = append(args, filter.ReconciliationState)
+		args = append(args, toPgReconciliationState(filter.ReconciliationState))
 		idx++
 	}
 	if filter.PeriodStart != "" {
@@ -3029,7 +3644,7 @@ func (p *PostgresStore) ListReconciliationRecords(ctx context.Context, workspace
 	query := fmt.Sprintf(`
 		SELECT record_id, workspace_id, scope_type, scope_description,
 		       related_order_ids, related_settlement_ids, matched_amount,
-		       discrepancy_amount, discrepancy_reason, reconciliation_state,
+		       discrepancy_amount, discrepancy_reason, reconciliation_state::text,
 		       currency, mismatches, override_reason, override_by, override_at,
 		       period_start, period_end, created_at, updated_at
 		FROM reconciliation_records
@@ -3093,7 +3708,7 @@ func (p *PostgresStore) UpdateReconciliationRecord(ctx context.Context, r *Recon
 		_, err := tx.Exec(txCtx, query,
 			r.ScopeType, r.ScopeDescription, r.RelatedOrderIDs,
 			r.RelatedSettlementIDs, r.MatchedAmount.ToPgNumeric(), r.DiscrepancyAmount.ToPgNumeric(),
-			r.DiscrepancyReason, r.ReconciliationState, []byte(mismatchesJSON),
+			r.DiscrepancyReason, toPgReconciliationState(r.ReconciliationState), []byte(mismatchesJSON),
 			r.OverrideReason, overrideBy, r.OverrideAt,
 			r.WorkspaceID, r.RecordID,
 		)
@@ -3189,26 +3804,28 @@ func (p *PostgresStore) AtomicMatch(
 	err := p.withTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx) error {
 		// 1. Lock and read settlement line
 		lineQuery := `
-			SELECT line_id, workspace_id, settlement_id, external_line_id,
-			       external_order_id, order_id, gross_amount, fee_amount,
+			SELECT line_id::text, workspace_id::text, settlement_id::text, external_line_id,
+			       external_order_id, order_id::text, gross_amount, fee_amount,
 			       refund_amount, net_amount, matched_amount, currency,
-			       reconciliation_state, created_at
+			       COALESCE(reconciliation_state::text, 'imported_only'), created_at
 			FROM settlement_lines
 			WHERE workspace_id = $1 AND settlement_id = $2 AND line_id = $3
 			FOR UPDATE
 		`
 		var grossNum, feeNum, refNum, netNum, matchNum pgtype.Numeric
 		var extOrder, ordID *string
+		var rawLineState string
 
 		err := tx.QueryRow(txCtx, lineQuery, workspaceID, settlementID, lineID).Scan(
 			&l.LineID, &l.WorkspaceID, &l.SettlementID, &l.ExternalLineID,
 			&extOrder, &ordID, &grossNum, &feeNum,
 			&refNum, &netNum, &matchNum, &l.Currency,
-			&l.ReconciliationState, &l.CreatedAt,
+			&rawLineState, &l.CreatedAt,
 		)
 		if err != nil {
 			return fmt.Errorf("lock settlement line: %w", err)
 		}
+		l.ReconciliationState = fromPgReconciliationState(rawLineState)
 		if extOrder != nil {
 			l.ExternalOrderID = *extOrder
 		}
@@ -3231,20 +3848,22 @@ func (p *PostgresStore) AtomicMatch(
 
 		// 2. Lock and read order
 		orderQuery := `
-			SELECT order_id, workspace_id, amount, matched_amount, currency,
-			       lifecycle_state, reconciliation_state, ordered_at
+			SELECT order_id::text, workspace_id::text, amount, matched_amount, currency,
+			       lifecycle_state, COALESCE(reconciliation_state::text, 'imported_only'), ordered_at
 			FROM orders
 			WHERE workspace_id = $1 AND order_id = $2
 			FOR UPDATE
 		`
 		var oAmtNum, oMatchNum pgtype.Numeric
+		var rawOrdState string
 		err = tx.QueryRow(txCtx, orderQuery, workspaceID, orderID).Scan(
 			&o.OrderID, &o.WorkspaceID, &oAmtNum, &oMatchNum, &o.Currency,
-			&o.LifecycleState, &o.ReconciliationState, &o.OrderedAt,
+			&o.LifecycleState, &rawOrdState, &o.OrderedAt,
 		)
 		if err != nil {
 			return ErrOrderNotFound
 		}
+		o.ReconciliationState = fromPgReconciliationState(rawOrdState)
 		o.Amount, _ = tenantdb.FromPgNumeric(oAmtNum)
 		o.MatchedAmount, _ = tenantdb.FromPgNumeric(oMatchNum)
 
@@ -3267,7 +3886,7 @@ func (p *PostgresStore) AtomicMatch(
 			UPDATE settlement_lines
 			SET matched_amount = $1, reconciliation_state = $2
 			WHERE workspace_id = $3 AND line_id = $4
-		`, l.MatchedAmount.ToPgNumeric(), l.ReconciliationState, workspaceID, lineID)
+		`, l.MatchedAmount.ToPgNumeric(), toPgReconciliationState(l.ReconciliationState), workspaceID, lineID)
 		if err != nil {
 			return err
 		}
@@ -3283,7 +3902,7 @@ func (p *PostgresStore) AtomicMatch(
 			UPDATE orders
 			SET matched_amount = $1, reconciliation_state = $2, updated_at = NOW()
 			WHERE workspace_id = $3 AND order_id = $4
-		`, o.MatchedAmount.ToPgNumeric(), o.ReconciliationState, workspaceID, orderID)
+		`, o.MatchedAmount.ToPgNumeric(), toPgReconciliationState(o.ReconciliationState), workspaceID, orderID)
 		if err != nil {
 			return err
 		}
@@ -3643,6 +4262,7 @@ func (p *PostgresStore) ListDataGaps(ctx context.Context, workspaceID string, fi
 			costType         string
 			amount           tenantdb.ExactDecimal
 			costState        string
+			confidenceReason string
 			relatedScopeType string
 			relatedScopeID   string
 			createdAt        time.Time
@@ -3650,7 +4270,7 @@ func (p *PostgresStore) ListDataGaps(ctx context.Context, workspaceID string, fi
 		costItemsByID := make(map[string]rawCostItem)
 		cRows, err := tx.Query(txCtx, `
 			SELECT cost_item_id::text, cost_type, amount, cost_state,
-			       COALESCE(related_scope_type, ''), COALESCE(related_scope_id::text, ''), created_at
+			       COALESCE(confidence_reason, ''), COALESCE(related_scope_type, ''), COALESCE(related_scope_id::text, ''), created_at
 			FROM cost_items
 			WHERE workspace_id = $1 AND deleted_at IS NULL
 		`, workspaceID)
@@ -3660,7 +4280,7 @@ func (p *PostgresStore) ListDataGaps(ctx context.Context, workspaceID string, fi
 		for cRows.Next() {
 			var ci rawCostItem
 			var amtNum pgtype.Numeric
-			if err := cRows.Scan(&ci.costItemID, &ci.costType, &amtNum, &ci.costState, &ci.relatedScopeType, &ci.relatedScopeID, &ci.createdAt); err != nil {
+			if err := cRows.Scan(&ci.costItemID, &ci.costType, &amtNum, &ci.costState, &ci.confidenceReason, &ci.relatedScopeType, &ci.relatedScopeID, &ci.createdAt); err != nil {
 				cRows.Close()
 				return err
 			}
@@ -3675,6 +4295,16 @@ func (p *PostgresStore) ListDataGaps(ctx context.Context, workspaceID string, fi
 
 		// Identify orders that have active COGS in financial_postings or order-scoped cost_items
 		ordersWithCOGS := make(map[string]bool)
+		for _, ci := range costItemsByID {
+			if ci.costState != CostStateSuperseded &&
+				strings.EqualFold(ci.costType, "cogs") &&
+				strings.EqualFold(ci.relatedScopeType, "order") &&
+				ci.relatedScopeID != "" {
+				if !ci.amount.IsZero() || strings.TrimSpace(ci.confidenceReason) != "" {
+					ordersWithCOGS[ci.relatedScopeID] = true
+				}
+			}
+		}
 		for _, rp := range postings {
 			if rp.reversalOf != nil || reversedIDs[rp.postingID] || rp.component != ComponentCOGS || rp.amount.IsZero() {
 				continue
@@ -3694,8 +4324,9 @@ func (p *PostgresStore) ListDataGaps(ctx context.Context, workspaceID string, fi
 		// 1. Missing COGS on completed orders (both stored orders and recognized order revenue postings)
 		seenMissingCOGSOrders := make(map[string]bool)
 		orderRows, err := tx.Query(txCtx, `
-			SELECT order_id::text, amount, ordered_at,
+			SELECT order_id::text, amount, ordered_at, recognized_at,
 			       COALESCE(product_id::text, ''),
+			       COALESCE(offer_id::text, ''),
 			       COALESCE(items, '[]'::jsonb),
 			       COALESCE(fee_breakdown, '{}'::jsonb),
 			       COALESCE(metadata, '{}'::jsonb)
@@ -3709,17 +4340,20 @@ func (p *PostgresStore) ListDataGaps(ctx context.Context, workspaceID string, fi
 		for orderRows.Next() {
 			var o Order
 			var amtNum pgtype.Numeric
+			var offerID string
 			var itemsBytes, feeBytes, metaBytes []byte
-			if err := orderRows.Scan(&o.OrderID, &amtNum, &o.OrderedAt, &o.ProductID, &itemsBytes, &feeBytes, &metaBytes); err != nil {
+			if err := orderRows.Scan(&o.OrderID, &amtNum, &o.OrderedAt, &o.RecognizedAt, &o.ProductID, &offerID, &itemsBytes, &feeBytes, &metaBytes); err != nil {
 				orderRows.Close()
 				return err
 			}
 			o.WorkspaceID = workspaceID
 			o.LifecycleState = "completed"
 			o.Amount, _ = tenantdb.FromPgNumeric(amtNum)
+			if offerID != "" {
+				o.ProductIDs = appendUniqueString(o.ProductIDs, offerID)
+			}
 			hydrateOrderDetails(&o, itemsBytes, feeBytes, metaBytes)
-			ordersByID[o.OrderID] = o
-			if o.COGSAmount != nil && !o.COGSAmount.IsZero() {
+			if (o.COGSAmount != nil && !o.COGSAmount.IsZero()) || o.HasConfirmedZeroCOGS() {
 				ordersWithCOGS[o.OrderID] = true
 			}
 			completedOrders = append(completedOrders, o)
@@ -3730,7 +4364,9 @@ func (p *PostgresStore) ListDataGaps(ctx context.Context, workspaceID string, fi
 		}
 		orderRows.Close()
 
+		enrichOrdersFromRelationsTx(txCtx, tx, workspaceID, completedOrders)
 		for _, o := range completedOrders {
+			ordersByID[o.OrderID] = o
 			if !ordersWithCOGS[o.OrderID] {
 				seenMissingCOGSOrders[o.OrderID] = true
 				items = append(items, DataGapItem{
@@ -3742,7 +4378,7 @@ func (p *PostgresStore) ListDataGaps(ctx context.Context, workspaceID string, fi
 					RelatedObjectType:  "order",
 					RelatedObjectID:    o.OrderID,
 					MonetaryAmount:     o.Amount,
-					UnresolvedSince:    o.OrderedAt,
+					UnresolvedSince:    o.EffectiveTime(),
 					RepairCTALabel:     "Nhập giá vốn",
 					RepairCTARoute:     "/finance/costs?order_id=" + o.OrderID,
 					RequiredPermission: "cost:manage",
@@ -3915,6 +4551,7 @@ func scanReconciliationRecord(row pgx.Row) (*ReconciliationRecord, error) {
 		}
 		return nil, err
 	}
+	r.ReconciliationState = fromPgReconciliationState(r.ReconciliationState)
 	r.MatchedAmount, _ = tenantdb.FromPgNumeric(matchNum)
 	r.DiscrepancyAmount, _ = tenantdb.FromPgNumeric(discNum)
 	if len(mismatchesBytes) > 0 {
@@ -3953,6 +4590,7 @@ func scanReconciliationRecordRow(rows pgx.Rows) (*ReconciliationRecord, error) {
 	if err != nil {
 		return nil, err
 	}
+	r.ReconciliationState = fromPgReconciliationState(r.ReconciliationState)
 	r.MatchedAmount, _ = tenantdb.FromPgNumeric(matchNum)
 	r.DiscrepancyAmount, _ = tenantdb.FromPgNumeric(discNum)
 	if len(mismatchesBytes) > 0 {
