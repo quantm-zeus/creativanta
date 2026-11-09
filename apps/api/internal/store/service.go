@@ -42,6 +42,39 @@ func checkoutOrderIDFromContext(ctx context.Context) string {
 	return v
 }
 
+type checkoutFenceCtxKey struct{}
+
+type checkoutFence struct {
+	WorkspaceID     string
+	IdempotencyKey  string
+	PaymentIntentID string
+	OrderID         string
+	LeaseOwner      string
+	LeaseEpoch      int64
+}
+
+func withCheckoutFence(ctx context.Context, fence *checkoutFence) context.Context {
+	if fence == nil {
+		return ctx
+	}
+	return context.WithValue(ctx, checkoutFenceCtxKey{}, fence)
+}
+
+func withoutCheckoutFence(ctx context.Context) context.Context {
+	if ctx == nil {
+		return context.Background()
+	}
+	return context.WithValue(ctx, checkoutFenceCtxKey{}, (*checkoutFence)(nil))
+}
+
+func checkoutFenceFromContext(ctx context.Context) *checkoutFence {
+	if ctx == nil {
+		return nil
+	}
+	v, _ := ctx.Value(checkoutFenceCtxKey{}).(*checkoutFence)
+	return v
+}
+
 func NewService(store Store, eventSink EventSink, nowFunc func() time.Time) *Service {
 	if nowFunc == nil {
 		nowFunc = func() time.Time { return time.Now().UTC() }
@@ -727,8 +760,15 @@ func (s *Service) Checkout(ctx context.Context, req CheckoutRequest) (*CheckoutR
 		return nil, fmt.Errorf("%w: unsettled or unknown payment status %q", ErrPaymentNotVerified, payStatus)
 	}
 
-	// 4b. Durable store-level atomic checkout & payment-intent claim across Service instances BEFORE side effects (R02)
-	claimedReplay, claimedOrderID, err := s.store.ClaimCheckout(ctx, req.WorkspaceID, req.IdempotencyKey, trimmedPI, fp)
+	// 4b. Durable store-level atomic checkout & payment-intent claim across Service instances BEFORE side effects (R02 & N01)
+	fence := &checkoutFence{
+		WorkspaceID:     req.WorkspaceID,
+		IdempotencyKey:  strings.TrimSpace(req.IdempotencyKey),
+		PaymentIntentID: trimmedPI,
+		LeaseOwner:      newUUID(),
+	}
+	fenceCtx := withCheckoutFence(ctx, fence)
+	claimedReplay, claimedOrderID, err := s.store.ClaimCheckout(fenceCtx, req.WorkspaceID, req.IdempotencyKey, trimmedPI, fp)
 	if err != nil {
 		return nil, err
 	}
@@ -743,6 +783,8 @@ func (s *Service) Checkout(ctx context.Context, req CheckoutRequest) (*CheckoutR
 	if orderID == "" {
 		orderID = newUUID()
 	}
+	fence.OrderID = orderID
+	orderCtx := withCheckoutOrderID(fenceCtx, orderID)
 
 	if payStatus == PaymentStatusPending {
 		pendingRes := &CheckoutResult{
@@ -755,8 +797,8 @@ func (s *Service) Checkout(ctx context.Context, req CheckoutRequest) (*CheckoutR
 			RequestFingerprint: fp,
 			PaymentIntentID:    trimmedPI,
 		}
-		if err := s.store.SaveCheckoutResult(ctx, req.WorkspaceID, req.IdempotencyKey, pendingRes); err != nil {
-			rbCtx, rbCancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+		if err := s.store.SaveCheckoutResult(orderCtx, req.WorkspaceID, req.IdempotencyKey, pendingRes); err != nil {
+			rbCtx, rbCancel := context.WithTimeout(context.WithoutCancel(orderCtx), 5*time.Second)
 			_ = s.store.ReleaseCheckoutClaim(rbCtx, req.WorkspaceID, req.IdempotencyKey, trimmedPI)
 			rbCancel()
 			return nil, err
@@ -764,29 +806,27 @@ func (s *Service) Checkout(ctx context.Context, req CheckoutRequest) (*CheckoutR
 		return pendingRes, nil
 	}
 
-	// 5. Atomic Bundle Stock Reservation (Acceptance Target 1) with full rollback on downstream failure (F04, R02 & M01)
-	orderCtx := withCheckoutOrderID(ctx, orderID)
+	// 5. Atomic Bundle Stock Reservation (Acceptance Target 1) with full lease-fenced rollback on downstream failure (F04, R02, M01 & N01)
 	bundleReserved := false
 	var deliveries []DigitalDelivery
 	var subscription *MembershipSubscription
 	var recordedPosting *FinancialPosting
 	rollback := func() {
-		rbCtx, rbCancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+		rbOrderCtx, rbCancel := context.WithTimeout(context.WithoutCancel(orderCtx), 5*time.Second)
 		defer rbCancel()
-		rbOrderCtx := withCheckoutOrderID(rbCtx, orderID)
 		if recordedPosting != nil {
-			_ = s.store.DeleteFinancialPosting(rbCtx, req.WorkspaceID, recordedPosting.PostingID)
+			_ = s.store.DeleteFinancialPosting(rbOrderCtx, req.WorkspaceID, recordedPosting.PostingID)
 		}
 		for _, del := range deliveries {
-			_ = s.store.DeleteDigitalDelivery(rbCtx, req.WorkspaceID, del.DeliveryID)
+			_ = s.store.DeleteDigitalDelivery(rbOrderCtx, req.WorkspaceID, del.DeliveryID)
 		}
 		if subscription != nil {
-			_ = s.store.DeleteSubscription(rbCtx, req.WorkspaceID, subscription.MembershipID)
+			_ = s.store.DeleteSubscription(rbOrderCtx, req.WorkspaceID, subscription.MembershipID)
 		}
 		if bundleReserved && bundle != nil {
 			_ = s.store.ReleaseBundleStock(rbOrderCtx, req.WorkspaceID, bundle.BundleID, 1)
 		}
-		_ = s.store.ReleaseCheckoutClaim(rbCtx, req.WorkspaceID, req.IdempotencyKey, trimmedPI)
+		_ = s.store.ReleaseCheckoutClaim(rbOrderCtx, req.WorkspaceID, req.IdempotencyKey, trimmedPI)
 	}
 	if bundle != nil {
 		if err := s.store.AtomicallyReserveBundleStock(orderCtx, req.WorkspaceID, bundle.BundleID, 1); err != nil {
@@ -811,7 +851,7 @@ func (s *Service) Checkout(ctx context.Context, req CheckoutRequest) (*CheckoutR
 			CreatedAt:               now,
 			UpdatedAt:               now,
 		}
-		if err := s.store.CreateSubscription(ctx, subscription); err != nil {
+		if err := s.store.CreateSubscription(orderCtx, subscription); err != nil {
 			rollback()
 			return nil, err
 		}
@@ -840,7 +880,7 @@ func (s *Service) Checkout(ctx context.Context, req CheckoutRequest) (*CheckoutR
 				MaxDownloads:           5,
 				CreatedAt:              now,
 			}
-			if err := s.store.CreateDigitalDelivery(ctx, &del); err != nil {
+			if err := s.store.CreateDigitalDelivery(orderCtx, &del); err != nil {
 				rollback()
 				return nil, err
 			}
@@ -861,7 +901,7 @@ func (s *Service) Checkout(ctx context.Context, req CheckoutRequest) (*CheckoutR
 			MaxDownloads:           5,
 			CreatedAt:              now,
 		}
-		if err := s.store.CreateDigitalDelivery(ctx, &del); err != nil {
+		if err := s.store.CreateDigitalDelivery(orderCtx, &del); err != nil {
 			rollback()
 			return nil, err
 		}
@@ -878,7 +918,7 @@ func (s *Service) Checkout(ctx context.Context, req CheckoutRequest) (*CheckoutR
 		Currency:       req.Currency,
 		CreatedAt:      now,
 	}
-	if err := s.store.RecordFinancialPosting(ctx, posting); err != nil {
+	if err := s.store.RecordFinancialPosting(orderCtx, posting); err != nil {
 		rollback()
 		return nil, err
 	}
@@ -895,7 +935,7 @@ func (s *Service) Checkout(ctx context.Context, req CheckoutRequest) (*CheckoutR
 		RequestFingerprint: fp,
 		PaymentIntentID:    trimmedPI,
 	}
-	if err := s.store.SaveCheckoutResult(ctx, req.WorkspaceID, req.IdempotencyKey, result); err != nil {
+	if err := s.store.SaveCheckoutResult(orderCtx, req.WorkspaceID, req.IdempotencyKey, result); err != nil {
 		rollback()
 		return nil, err
 	}

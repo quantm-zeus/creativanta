@@ -408,9 +408,13 @@ func (m *MemoryStore) DeletePlan(_ context.Context, workspaceID, planID string) 
 // Membership Subscriptions Implementation
 // ----------------------------------------------------------------------------
 
-func (m *MemoryStore) CreateSubscription(_ context.Context, sub *MembershipSubscription) error {
+func (m *MemoryStore) CreateSubscription(ctx context.Context, sub *MembershipSubscription) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
+	if err := m.verifyCheckoutFenceLocked(ctx, sub.WorkspaceID, false); err != nil {
+		return err
+	}
 
 	if sub.ProviderSubscriptionID != "" {
 		if existingID, ok := m.subByProvider[sub.WorkspaceID+":"+sub.ProviderSubscriptionID]; ok && existingID != "" {
@@ -498,9 +502,13 @@ func (m *MemoryStore) UpdateSubscription(_ context.Context, sub *MembershipSubsc
 	return nil
 }
 
-func (m *MemoryStore) DeleteSubscription(_ context.Context, workspaceID, subID string) error {
+func (m *MemoryStore) DeleteSubscription(ctx context.Context, workspaceID, subID string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
+	if err := m.verifyCheckoutFenceLocked(ctx, workspaceID, true); err != nil {
+		return err
+	}
 
 	existing, ok := m.subscriptions[subID]
 	if !ok || existing.WorkspaceID != workspaceID {
@@ -643,6 +651,10 @@ func (m *MemoryStore) AtomicallyReserveBundleStock(ctx context.Context, workspac
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	if err := m.verifyCheckoutFenceLocked(ctx, workspaceID, false); err != nil {
+		return err
+	}
+
 	bundle, ok := m.bundles[bundleID]
 	if !ok || bundle.WorkspaceID != workspaceID {
 		return ErrBundleNotFound
@@ -687,6 +699,10 @@ func (m *MemoryStore) AtomicallyReserveBundleStock(ctx context.Context, workspac
 func (m *MemoryStore) ReleaseBundleStock(ctx context.Context, workspaceID, bundleID string, quantity int32) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
+	if err := m.verifyCheckoutFenceLocked(ctx, workspaceID, true); err != nil {
+		return err
+	}
 
 	bundle, ok := m.bundles[bundleID]
 	if !ok || bundle.WorkspaceID != workspaceID {
@@ -922,15 +938,25 @@ func (m *MemoryStore) ClaimCheckout(ctx context.Context, workspaceID, idempotenc
 		if existingOrderID == "" {
 			existingOrderID = newUUID()
 		}
+		fence := checkoutFenceFromContext(ctx)
+		leaseOwner := newUUID()
+		if fence != nil && strings.TrimSpace(fence.LeaseOwner) != "" {
+			leaseOwner = strings.TrimSpace(fence.LeaseOwner)
+		}
 		claim := &checkoutClaim{
 			idempotencyKey:     idempotencyKey,
 			paymentIntentID:    paymentIntentID,
 			requestFingerprint: requestFingerprint,
 			orderID:            existingOrderID,
-			leaseOwner:         newUUID(),
+			leaseOwner:         leaseOwner,
 			leaseUntil:         now.Add(m.leaseTTLLocked()),
 			leaseEpoch:         nextEpoch,
 			done:               make(chan struct{}),
+		}
+		if fence != nil {
+			fence.LeaseOwner = leaseOwner
+			fence.LeaseEpoch = nextEpoch
+			fence.OrderID = existingOrderID
 		}
 		m.inFlightCheckouts[idemMapKey] = claim
 		if piMapKey != "" {
@@ -941,9 +967,40 @@ func (m *MemoryStore) ClaimCheckout(ctx context.Context, workspaceID, idempotenc
 	}
 }
 
-func (m *MemoryStore) ReleaseCheckoutClaim(_ context.Context, workspaceID, idempotencyKey, paymentIntentID string) error {
+func (m *MemoryStore) verifyCheckoutFenceLocked(ctx context.Context, workspaceID string, isRollback bool) error {
+	fence := checkoutFenceFromContext(ctx)
+	if fence == nil || strings.TrimSpace(fence.IdempotencyKey) == "" {
+		return nil
+	}
+	idemMapKey := workspaceID + ":" + strings.TrimSpace(fence.IdempotencyKey)
+	claim, ok := m.inFlightCheckouts[idemMapKey]
+	if !ok || claim == nil {
+		return ErrCheckoutLeaseLost
+	}
+	if claim.leaseOwner != fence.LeaseOwner || claim.leaseEpoch != fence.LeaseEpoch {
+		return ErrCheckoutLeaseLost
+	}
+	if fence.OrderID != "" && claim.orderID != "" && claim.orderID != fence.OrderID {
+		return ErrCheckoutLeaseLost
+	}
+	now := m.nowLocked()
+	if !isRollback {
+		if !claim.leaseUntil.IsZero() && !now.Before(claim.leaseUntil) {
+			return ErrCheckoutLeaseLost
+		}
+	} else if !claim.leaseUntil.IsZero() && !now.Before(claim.leaseUntil) {
+		claim.leaseUntil = now.Add(m.leaseTTLLocked())
+	}
+	return nil
+}
+
+func (m *MemoryStore) ReleaseCheckoutClaim(ctx context.Context, workspaceID, idempotencyKey, paymentIntentID string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
+	if err := m.verifyCheckoutFenceLocked(ctx, workspaceID, true); err != nil {
+		return err
+	}
 
 	idemMapKey := workspaceID + ":" + idempotencyKey
 	if claim, ok := m.inFlightCheckouts[idemMapKey]; ok && claim != nil {
@@ -985,9 +1042,13 @@ func (m *MemoryStore) GetCheckoutByPaymentIntent(_ context.Context, workspaceID,
 	return cloneCheckoutResult(res, true), idemKey, nil
 }
 
-func (m *MemoryStore) SaveCheckoutResult(_ context.Context, workspaceID, idempotencyKey string, res *CheckoutResult) error {
+func (m *MemoryStore) SaveCheckoutResult(ctx context.Context, workspaceID, idempotencyKey string, res *CheckoutResult) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
+	if err := m.verifyCheckoutFenceLocked(ctx, workspaceID, false); err != nil {
+		return err
+	}
 
 	idemMapKey := workspaceID + ":" + idempotencyKey
 	if existing, ok := m.checkouts[idemMapKey]; ok && existing != nil {
@@ -1020,9 +1081,13 @@ func (m *MemoryStore) SaveCheckoutResult(_ context.Context, workspaceID, idempot
 	return nil
 }
 
-func (m *MemoryStore) CreateDigitalDelivery(_ context.Context, delivery *DigitalDelivery) error {
+func (m *MemoryStore) CreateDigitalDelivery(ctx context.Context, delivery *DigitalDelivery) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
+	if err := m.verifyCheckoutFenceLocked(ctx, delivery.WorkspaceID, false); err != nil {
+		return err
+	}
 
 	if delivery.IdempotencyKey != "" {
 		idemKey := delivery.WorkspaceID + ":" + delivery.IdempotencyKey
@@ -1049,9 +1114,13 @@ func (m *MemoryStore) CreateDigitalDelivery(_ context.Context, delivery *Digital
 	return nil
 }
 
-func (m *MemoryStore) DeleteDigitalDelivery(_ context.Context, workspaceID, deliveryID string) error {
+func (m *MemoryStore) DeleteDigitalDelivery(ctx context.Context, workspaceID, deliveryID string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
+	if err := m.verifyCheckoutFenceLocked(ctx, workspaceID, true); err != nil {
+		return err
+	}
 
 	existing, ok := m.deliveries[deliveryID]
 	if !ok || existing.WorkspaceID != workspaceID {
@@ -1077,9 +1146,13 @@ func (m *MemoryStore) ListDeliveriesByCustomer(_ context.Context, workspaceID, c
 	return result, nil
 }
 
-func (m *MemoryStore) RecordFinancialPosting(_ context.Context, posting *FinancialPosting) error {
+func (m *MemoryStore) RecordFinancialPosting(ctx context.Context, posting *FinancialPosting) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
+	if err := m.verifyCheckoutFenceLocked(ctx, posting.WorkspaceID, false); err != nil {
+		return err
+	}
 
 	for _, existing := range m.postings {
 		if existing.WorkspaceID == posting.WorkspaceID && posting.OrderID != "" && existing.OrderID == posting.OrderID {
@@ -1100,9 +1173,13 @@ func (m *MemoryStore) RecordFinancialPosting(_ context.Context, posting *Financi
 	return nil
 }
 
-func (m *MemoryStore) DeleteFinancialPosting(_ context.Context, workspaceID, postingID string) error {
+func (m *MemoryStore) DeleteFinancialPosting(ctx context.Context, workspaceID, postingID string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
+	if err := m.verifyCheckoutFenceLocked(ctx, workspaceID, true); err != nil {
+		return err
+	}
 
 	for i := range m.postings {
 		if m.postings[i].WorkspaceID == workspaceID && m.postings[i].PostingID == postingID {

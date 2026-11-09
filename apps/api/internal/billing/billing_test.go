@@ -2229,3 +2229,52 @@ func TestR01_InvoicePaidGuardrailEdgeCases(t *testing.T) {
 		t.Fatalf("expected invoice.paid with credit-pack StripeInvoiceID (in_cs_pack_*) to fail with ErrInvalidBillingInput, got %v", err)
 	}
 }
+
+func TestRemediation_N05_MultiInstanceMultiTenantUUIDUniqueness(t *testing.T) {
+	now := time.Date(2026, 11, 9, 10, 0, 0, 0, time.UTC)
+	reg := loadTestRBAC(t)
+	const wsB = "00000000-0000-4000-8000-000000000002"
+
+	storeA := NewMemoryStore(now)
+	storeB := NewMemoryStore(now)
+	svcA := NewService(reg, NewEngine(storeA), "whsec_n05_a")
+	svcB := NewService(reg, NewEngine(storeB), "whsec_n05_b")
+	svcA.SetClock(func() time.Time { return now })
+	svcB.SetClock(func() time.Time { return now })
+
+	subA, err := svcA.StartProTrial(rbac.WithPolicyContext(context.Background(), rbac.PolicyContext{
+		ActorUserID: testUserOwner,
+		WorkspaceID: testWorkspaceA,
+		Role:        rbac.RoleOwner,
+	}), testWorkspaceA)
+	if err != nil {
+		t.Fatalf("StartProTrial A failed: %v", err)
+	}
+	subB, err := svcB.StartProTrial(rbac.WithPolicyContext(context.Background(), rbac.PolicyContext{
+		ActorUserID: testUserOwner,
+		WorkspaceID: wsB,
+		Role:        rbac.RoleOwner,
+	}), wsB)
+	if err != nil {
+		t.Fatalf("StartProTrial B failed: %v", err)
+	}
+
+	if subA.GetSubscriptionId().GetValue() == subB.GetSubscriptionId().GetValue() {
+		t.Fatalf("N05 VIOLATION: cross-tenant SubscriptionID collision: %s", subA.GetSubscriptionId().GetValue())
+	}
+
+	var lotA, txA, lotB, txB string
+	_ = storeA.WithWorkspaceTx(testWorkspaceA, func(st *WorkspaceBillingState) error {
+		lotA = st.Lots[0].LotID
+		txA = st.Transactions[0].TransactionID
+		return nil
+	})
+	_ = storeB.WithWorkspaceTx(wsB, func(st *WorkspaceBillingState) error {
+		lotB = st.Lots[0].LotID
+		txB = st.Transactions[0].TransactionID
+		return nil
+	})
+	if lotA == lotB || txA == txB {
+		t.Fatalf("N05 VIOLATION: cross-instance/tenant UUID collision: lotA=%s lotB=%s txA=%s txB=%s", lotA, lotB, txA, txB)
+	}
+}

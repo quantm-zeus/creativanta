@@ -28,11 +28,15 @@ func buildAppUserStoreDSN(adminDSN string) (string, error) {
 
 type failingSavePostgresStore struct {
 	*PostgresStore
-	failSave bool
-	onFail   func()
+	failSave   bool
+	onFail     func()
+	beforeSave func()
 }
 
 func (f *failingSavePostgresStore) SaveCheckoutResult(ctx context.Context, workspaceID, idempotencyKey string, res *CheckoutResult) error {
+	if f.beforeSave != nil {
+		f.beforeSave()
+	}
 	if f.failSave {
 		if f.onFail != nil {
 			f.onFail()
@@ -724,6 +728,99 @@ func TestPostgresLiveM01_ProcessKillTakeoverAndEffectRecovery(t *testing.T) {
 		resRetry, errRetry := svcRetry.Checkout(ctx, cancelReq)
 		if errRetry != nil || resRetry == nil || !resRetry.Success {
 			t.Fatalf("expected immediate retry to succeed after canceled-context rollback, got res=%+v err=%v", resRetry, errRetry)
+		}
+	}
+
+	// Sub-scenario N01 (PostgreSQL): Worker A on pgN01A pauses past lease TTL after creating all effects;
+	// Worker B on pgN01B takes over the expired lease and confirms the checkout.
+	// When Worker A resumes (and fails or attempts SaveCheckoutResult), its rollback() must be fenced out
+	// by (LeaseOwner, LeaseEpoch) and must NOT delete confirmed effects from PostgreSQL or memory.
+	for _, simDownstreamErr := range []bool{true, false} {
+		if _, err := adminPool.Exec(ctx, `DELETE FROM external_effects WHERE workspace_id = $1::uuid AND operation_key NOT LIKE 'store_page:%' AND operation_key NOT LIKE 'store_product:%' AND operation_key NOT LIKE 'store_bundle:%' AND operation_key NOT LIKE 'store_plan:%' AND operation_key NOT LIKE 'store_stock:%'`, tenantA); err != nil {
+			t.Fatalf("clean effects for N01 PG test: %v", err)
+		}
+		var n01Mu sync.Mutex
+		n01Now := time.Date(2026, 3, 25, 18, 0, 0, 0, time.UTC)
+		n01Clock := func() time.Time {
+			n01Mu.Lock()
+			defer n01Mu.Unlock()
+			return n01Now
+		}
+		advanceN01Clock := func(d time.Duration) {
+			n01Mu.Lock()
+			n01Now = n01Now.Add(d)
+			n01Mu.Unlock()
+		}
+
+		pgN01A := NewPostgresStore(appPool, NewMemoryStore())
+		pgN01A.SetCheckoutLeaseTTL(5 * time.Second)
+		pgN01A.SetNowFunc(n01Clock)
+
+		pgN01B := NewPostgresStore(appPool, NewMemoryStore())
+		pgN01B.SetCheckoutLeaseTTL(5 * time.Second)
+		pgN01B.SetNowFunc(n01Clock)
+
+		_ = pgN01A.SetProductStock(ctx, tenantA, comp1, 10)
+		svcN01B := NewService(pgN01B, &mockSink{}, n01Clock)
+		svcN01B.SetPaymentVerifier(func(_ context.Context, _ string, _ string, _ tenantdb.ExactDecimal, _ string) (PaymentStatus, error) {
+			return PaymentStatusSucceeded, nil
+		})
+
+		n01Cust := newUUID()
+		n01Req := CheckoutRequest{
+			WorkspaceID:      tenantA,
+			CustomerEntityID: n01Cust,
+			IdempotencyKey:   fmt.Sprintf("idem-n01-pg-%v", simDownstreamErr),
+			PaymentIntentID:  fmt.Sprintf("pi-n01-pg-%v", simDownstreamErr),
+			BundleID:         "eeeeeeee-eeee-4eee-8eee-eeeeeeeee311",
+			MembershipPlanID: "ffffffff-ffff-4fff-8fff-fffffffff311",
+			ProductIDs:       []string{prod1, prod2},
+			OrderAmount:      mustDecimal(t, "300000.000000"),
+			Currency:         "VND",
+		}
+
+		var resN01B *CheckoutResult
+		var errN01B error
+		slowPgA := &failingSavePostgresStore{
+			PostgresStore: pgN01A,
+			failSave:      simDownstreamErr,
+			beforeSave: func() {
+				advanceN01Clock(6 * time.Second)
+				resN01B, errN01B = svcN01B.Checkout(ctx, n01Req)
+			},
+		}
+		svcN01A := NewService(slowPgA, &mockSink{}, n01Clock)
+		svcN01A.SetPaymentVerifier(func(_ context.Context, _ string, _ string, _ tenantdb.ExactDecimal, _ string) (PaymentStatus, error) {
+			return PaymentStatusSucceeded, nil
+		})
+
+		_, errN01A := svcN01A.Checkout(ctx, n01Req)
+		if errN01A == nil {
+			t.Fatalf("N01 PG (simDownstreamErr=%v): expected stale Worker A to fail after lease loss", simDownstreamErr)
+		}
+		if !simDownstreamErr && !errors.Is(errN01A, ErrCheckoutLeaseLost) {
+			t.Fatalf("N01 PG: expected ErrCheckoutLeaseLost when stale Worker A calls SaveCheckoutResult, got %v", errN01A)
+		}
+		if errN01B != nil || resN01B == nil || !resN01B.Success {
+			t.Fatalf("N01 PG: expected Worker B takeover to succeed, got res=%+v err=%v", resN01B, errN01B)
+		}
+
+		pgN01Verify := NewPostgresStore(appPool, NewMemoryStore())
+		delivsV, err := pgN01Verify.ListDeliveriesByCustomer(ctx, tenantA, n01Cust)
+		if err != nil || len(delivsV) != 2 {
+			t.Fatalf("N01 PG VIOLATION (simDownstreamErr=%v): expected 2 deliveries preserved in PG, got %d (err=%v)", simDownstreamErr, len(delivsV), err)
+		}
+		subsV, err := pgN01Verify.ListSubscriptionsByCustomer(ctx, tenantA, n01Cust)
+		if err != nil || len(subsV) != 1 {
+			t.Fatalf("N01 PG VIOLATION (simDownstreamErr=%v): expected 1 subscription preserved in PG, got %d (err=%v)", simDownstreamErr, len(subsV), err)
+		}
+		postingsV, err := pgN01Verify.ListFinancialPostings(ctx, tenantA)
+		if err != nil || len(postingsV) != 1 {
+			t.Fatalf("N01 PG VIOLATION (simDownstreamErr=%v): expected 1 financial posting preserved in PG, got %d (err=%v)", simDownstreamErr, len(postingsV), err)
+		}
+		stockV, err := pgN01Verify.GetProductStock(ctx, tenantA, comp1)
+		if err != nil || stockV != 8 {
+			t.Fatalf("N01 PG VIOLATION (simDownstreamErr=%v): expected stock=8 preserved in PG, got %d (err=%v)", simDownstreamErr, stockV, err)
 		}
 	}
 }

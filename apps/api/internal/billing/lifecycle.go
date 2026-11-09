@@ -260,7 +260,7 @@ func (s *Service) StartProTrial(ctx context.Context, workspaceID string) (*admin
 		st.ReadOnlyReason = ""
 		st.RetentionPhase = RetentionPhaseActive
 
-		subID := "90000000-0000-4000-8000-000000000001"
+		subID := defaultWorkspaceSubscriptionID(pctx.WorkspaceID)
 		if st.Subscription != nil && st.Subscription.SubscriptionID != "" {
 			subID = st.Subscription.SubscriptionID
 		}
@@ -362,7 +362,7 @@ func (s *Service) ExpireTrialWithoutPayment(workspaceID string, now time.Time) (
 		st.RetentionPhase = RetentionPhaseActive
 		st.TrialEndsAt = nil
 
-		subID := "90000000-0000-4000-8000-000000000001"
+		subID := defaultWorkspaceSubscriptionID(workspaceID)
 		if st.Subscription != nil && st.Subscription.SubscriptionID != "" {
 			subID = st.Subscription.SubscriptionID
 		}
@@ -449,7 +449,7 @@ func (s *Service) AdvanceDunning(workspaceID string, day int32, now time.Time) (
 				tier, _ = LookupTier("pro")
 			}
 			st.Subscription = &tenantdb.SubscriptionRow{
-				SubscriptionID:     "90000000-0000-4000-8000-000000000001",
+				SubscriptionID:     defaultWorkspaceSubscriptionID(workspaceID),
 				WorkspaceID:        workspaceID,
 				Plan:               tier.TierCode,
 				BillingInterval:    "monthly",
@@ -919,7 +919,7 @@ func (s *Service) RestoreWorkspace(ctx context.Context, workspaceID, targetTier,
 		nextEnd := now.UTC().Add(30 * 24 * time.Hour)
 		if st.Subscription == nil {
 			st.Subscription = &tenantdb.SubscriptionRow{
-				SubscriptionID: "90000000-0000-4000-8000-000000000001",
+				SubscriptionID: defaultWorkspaceSubscriptionID(pctx.WorkspaceID),
 				WorkspaceID:    pctx.WorkspaceID,
 				CreatedAt:      now.UTC(),
 			}

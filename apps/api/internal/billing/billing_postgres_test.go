@@ -653,4 +653,88 @@ func TestPostgresLiveBillingEngineAndServiceDurabilityAcrossRestarts(t *testing.
 		}
 		return nil
 	})
+
+	// 3) N05 cross-instance & multi-tenant UUID uniqueness check in PostgreSQL:
+	// Two brand-new NewPostgresMemoryStore instances (both starting with seqCounter=0) persisting state for
+	// tenantB and tenantC must NOT collide on external_effects_pkey (effect_id), and a second fresh
+	// instance reloading the same tenant must generate globally unique lot/transaction/invoice UUIDs.
+	const (
+		tenantB = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbb602"
+		tenantC = "cccccccc-cccc-4ccc-8ccc-ccccccccc603"
+	)
+	defer func() {
+		_, _ = adminPool.Exec(ctx, `DELETE FROM external_effects WHERE workspace_id IN ($1::uuid, $2::uuid)`, tenantB, tenantC)
+		_, _ = adminPool.Exec(ctx, `DELETE FROM workspace_members WHERE workspace_id IN ($1::uuid, $2::uuid)`, tenantB, tenantC)
+		_, _ = adminPool.Exec(ctx, `DELETE FROM workspaces WHERE workspace_id IN ($1::uuid, $2::uuid)`, tenantB, tenantC)
+	}()
+	for _, ws := range []struct{ id, slug string }{{tenantB, "billing-dur-b"}, {tenantC, "billing-dur-c"}} {
+		if _, err := adminPool.Exec(ctx, `
+			INSERT INTO workspaces (workspace_id, name, slug, owner_user_id, status)
+			VALUES ($1::uuid, $2, $2, $3::uuid, 'active')
+			ON CONFLICT (workspace_id) DO NOTHING
+		`, ws.id, ws.slug, userA); err != nil {
+			t.Fatalf("seed %s: %v", ws.slug, err)
+		}
+		if _, err := adminPool.Exec(ctx, `
+			INSERT INTO workspace_members (workspace_id, user_id, role, status)
+			VALUES ($1::uuid, $2::uuid, 'owner', 'active')
+			ON CONFLICT (workspace_id, user_id) DO NOTHING
+		`, ws.id, userA); err != nil {
+			t.Fatalf("seed member %s: %v", ws.slug, err)
+		}
+	}
+
+	freshStoreB := NewPostgresMemoryStore(now, appPool)
+	freshStoreC := NewPostgresMemoryStore(now, appPool)
+	svcFreshB := NewService(reg, NewEngine(freshStoreB), "whsec_n05_b")
+	svcFreshC := NewService(reg, NewEngine(freshStoreC), "whsec_n05_c")
+	svcFreshB.SetClock(func() time.Time { return now })
+	svcFreshC.SetClock(func() time.Time { return now })
+
+	subB, err := svcFreshB.StartProTrial(rbac.WithPolicyContext(ctx, rbac.PolicyContext{
+		ActorUserID: userA,
+		WorkspaceID: tenantB,
+		Role:        rbac.RoleOwner,
+	}), tenantB)
+	if err != nil {
+		t.Fatalf("N05 PG: svcFreshB.StartProTrial(tenantB) failed: %v", err)
+	}
+	subC, err := svcFreshC.StartProTrial(rbac.WithPolicyContext(ctx, rbac.PolicyContext{
+		ActorUserID: userA,
+		WorkspaceID: tenantC,
+		Role:        rbac.RoleOwner,
+	}), tenantC)
+	if err != nil {
+		t.Fatalf("N05 PG: svcFreshC.StartProTrial(tenantC) failed (external_effects_pkey collision): %v", err)
+	}
+	if subB.GetSubscriptionId().GetValue() == subC.GetSubscriptionId().GetValue() {
+		t.Fatalf("N05 PG: cross-tenant SubscriptionID collision: %s", subB.GetSubscriptionId().GetValue())
+	}
+
+	// Reload tenantB on another fresh instance (seqCounter=0) and grant additional credits; verify no LotID or TransactionID collision.
+	freshStoreB2 := NewPostgresMemoryStore(now, appPool)
+	engineB2 := NewEngine(freshStoreB2)
+	lot2, _, err := engineB2.GrantLot(
+		tenantB,
+		userA,
+		SourcePurchased,
+		tenantdb.MustParseExactDecimal("100"),
+		nil,
+		"n05-pg-pack-b2",
+		"N05 cross-instance grant",
+		now,
+	)
+	if err != nil {
+		t.Fatalf("N05 PG: GrantLot on freshStoreB2 failed: %v", err)
+	}
+	_ = freshStoreB2.WithWorkspaceTx(tenantB, func(st *WorkspaceBillingState) error {
+		if len(st.Lots) != 2 || st.Lots[0].LotID == st.Lots[1].LotID {
+			t.Fatalf("N05 PG: expected 2 distinct LotIDs after second instance grant, got %+v", st.Lots)
+		}
+		if len(st.Transactions) != 2 || st.Transactions[0].TransactionID == st.Transactions[1].TransactionID {
+			t.Fatalf("N05 PG: expected 2 distinct TransactionIDs after second instance grant, got %+v", st.Transactions)
+		}
+		return nil
+	})
+	_ = lot2
 }

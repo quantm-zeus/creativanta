@@ -30,6 +30,7 @@ var (
 	ErrPaymentFailed                    = errors.New("store: payment capture failed or was declined")
 	ErrPriceMismatch                    = errors.New("store: checkout order amount or currency does not match catalog price")
 	ErrStorefrontNotPublished           = errors.New("store: storefront has no published pages available for checkout")
+	ErrCheckoutLeaseLost                = errors.New("store: checkout idempotency lease lost or expired")
 )
 
 // MapErrorToConnect translates store domain errors to standard ConnectRPC codes.
@@ -47,6 +48,8 @@ func MapErrorToConnect(err error) error {
 		return connect.NewError(connect.CodeNotFound, err)
 	case errors.Is(err, ErrDuplicatePageSlug):
 		return connect.NewError(connect.CodeAlreadyExists, err)
+	case errors.Is(err, ErrCheckoutLeaseLost):
+		return connect.NewError(connect.CodeAborted, err)
 	case errors.Is(err, ErrBundleComponentOutOfStock), errors.Is(err, ErrOfferExpired), errors.Is(err, ErrOfferNotActive),
 		errors.Is(err, ErrProductNotActive), errors.Is(err, ErrPaymentRequired), errors.Is(err, ErrPaymentNotVerified),
 		errors.Is(err, ErrPaymentFailed), errors.Is(err, ErrStorefrontNotPublished):

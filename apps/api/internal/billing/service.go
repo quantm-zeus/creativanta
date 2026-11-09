@@ -430,7 +430,7 @@ func (s *Service) ChangePlan(ctx context.Context, req *adminv1.ChangePlanRequest
 			effectiveMode = "end_of_period"
 		}
 
-		subID := "90000000-0000-4000-8000-000000000001"
+		subID := defaultWorkspaceSubscriptionID(pctx.WorkspaceID)
 		periodStart := now
 		periodEnd := now.Add(30 * 24 * time.Hour)
 		if interval == "annual" {
@@ -639,7 +639,7 @@ func (s *Service) CancelSubscription(ctx context.Context, req *adminv1.CancelSub
 
 		if st.Subscription == nil {
 			st.Subscription = &tenantdb.SubscriptionRow{
-				SubscriptionID:     "90000000-0000-4000-8000-000000000001",
+				SubscriptionID:     defaultWorkspaceSubscriptionID(pctx.WorkspaceID),
 				WorkspaceID:        pctx.WorkspaceID,
 				Plan:               tier.TierCode,
 				BillingInterval:    "monthly",
@@ -1134,7 +1134,7 @@ func (s *Service) SettleStripeWebhook(evt StripeWebhookEvent) (WebhookSettlement
 			subID = st.Subscription.SubscriptionID
 		}
 		if subID == "" {
-			subID = "90000000-0000-4000-8000-000000000001"
+			subID = defaultWorkspaceSubscriptionID(evt.WorkspaceID)
 		}
 		sess.SubscriptionID = subID
 		periodStart := now.UTC()
@@ -1522,7 +1522,7 @@ func (s *Service) SettleStripeWebhook(evt StripeWebhookEvent) (WebhookSettlement
 					subIDForPlan = st.Subscription.SubscriptionID
 				}
 				if subIDForPlan == "" {
-					subIDForPlan = "90000000-0000-4000-8000-000000000001"
+					subIDForPlan = defaultWorkspaceSubscriptionID(evt.WorkspaceID)
 				}
 				subID = subIDForPlan
 				authorizedPendingSess.SubscriptionID = subIDForPlan
