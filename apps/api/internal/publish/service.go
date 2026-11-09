@@ -28,6 +28,16 @@ type CapabilityEvaluator interface {
 	EvaluateActionAccess(workspaceID, platform, actionKey string, requiredScopes []string) capability.EvaluationResult
 }
 
+// AccountCapabilityEvaluator resolves platform capability state bound to a specific connected account and can surface lookup errors.
+type AccountCapabilityEvaluator interface {
+	EvaluateAccountActionAccess(ctx context.Context, workspaceID, connectedAccountID, platform, actionKey string, requiredScopes []string) (capability.EvaluationResult, error)
+}
+
+// RequireExecutableCapabilityChecker matches *capability.Service.RequireExecutableCapability.
+type RequireExecutableCapabilityChecker interface {
+	RequireExecutableCapability(ctx context.Context, workspaceID, connectedAccountID, platform, actionKey, targetMarket string, requireWrite bool) (capability.EvaluationResult, error)
+}
+
 // ConnectedAccountLookup provides account state and platform details.
 type ConnectedAccountLookup interface {
 	GetAccount(workspaceID, accountID string) (*capability.ConnectedAccountRecord, error)
@@ -53,6 +63,7 @@ type ServiceConfig struct {
 	RequireDurableStore bool
 	RoleResolver        RoleResolver
 	CapabilityService   capability.KillSwitchChecker // or CapabilityEvaluator
+	CapabilityEvaluator CapabilityEvaluator
 	Accounts            ConnectedAccountLookup
 	ApprovalChecker     ApprovalPolicyChecker
 	ComplianceChecker   ComplianceChecker
@@ -71,6 +82,9 @@ type Service struct {
 	workspaceDispatches map[string][]time.Time // workspaceID -> recent timestamps
 	connectors          map[string]PlatformConnector
 	capEvaluator        CapabilityEvaluator
+	acctCapEvaluator    AccountCapabilityEvaluator
+	execCapChecker      RequireExecutableCapabilityChecker
+	killSwitch          capability.KillSwitchChecker
 	accountLookup       ConnectedAccountLookup
 	approvalChecker     ApprovalPolicyChecker
 	complianceChecker   ComplianceChecker
@@ -106,10 +120,31 @@ func NewService(cfg ServiceConfig) *Service {
 			}
 		}
 	}
-	var capEvaluator CapabilityEvaluator
+	var (
+		capEvaluator     CapabilityEvaluator
+		acctCapEvaluator AccountCapabilityEvaluator
+		execCapChecker   RequireExecutableCapabilityChecker
+		killSwitch       capability.KillSwitchChecker
+	)
 	if cfg.CapabilityService != nil {
+		killSwitch = cfg.CapabilityService
 		if eval, ok := cfg.CapabilityService.(CapabilityEvaluator); ok {
 			capEvaluator = eval
+		}
+		if ae, ok := cfg.CapabilityService.(AccountCapabilityEvaluator); ok {
+			acctCapEvaluator = ae
+		}
+		if rc, ok := cfg.CapabilityService.(RequireExecutableCapabilityChecker); ok {
+			execCapChecker = rc
+		}
+	}
+	if cfg.CapabilityEvaluator != nil {
+		capEvaluator = cfg.CapabilityEvaluator
+		if ae, ok := cfg.CapabilityEvaluator.(AccountCapabilityEvaluator); ok {
+			acctCapEvaluator = ae
+		}
+		if rc, ok := cfg.CapabilityEvaluator.(RequireExecutableCapabilityChecker); ok {
+			execCapChecker = rc
 		}
 	}
 	return &Service{
@@ -120,6 +155,9 @@ func NewService(cfg ServiceConfig) *Service {
 		workspaceDispatches: make(map[string][]time.Time),
 		connectors:          cfg.Connectors,
 		capEvaluator:        capEvaluator,
+		acctCapEvaluator:    acctCapEvaluator,
+		execCapChecker:      execCapChecker,
+		killSwitch:          killSwitch,
 		accountLookup:       cfg.Accounts,
 		approvalChecker:     cfg.ApprovalChecker,
 		complianceChecker:   cfg.ComplianceChecker,
@@ -372,6 +410,30 @@ func (s *Service) SetCapabilityEvaluator(eval CapabilityEvaluator) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.capEvaluator = eval
+	if ae, ok := eval.(AccountCapabilityEvaluator); ok {
+		s.acctCapEvaluator = ae
+	} else {
+		s.acctCapEvaluator = nil
+	}
+	if rc, ok := eval.(RequireExecutableCapabilityChecker); ok {
+		s.execCapChecker = rc
+	} else {
+		s.execCapChecker = nil
+	}
+}
+
+// SetAccountCapabilityEvaluator injects an account-scoped capability evaluator that can surface lookup errors.
+func (s *Service) SetAccountCapabilityEvaluator(eval AccountCapabilityEvaluator) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.acctCapEvaluator = eval
+}
+
+// SetExecutableCapabilityChecker injects a *capability.Service-compatible executable capability checker.
+func (s *Service) SetExecutableCapabilityChecker(checker RequireExecutableCapabilityChecker) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.execCapChecker = checker
 }
 
 // RegisterConnector registers a platform connector adapter.
@@ -435,27 +497,104 @@ func (s *Service) Events() []DomainEvent {
 }
 
 // ResolveCapability evaluates platform capability for publish_post.
+// Fails closed to MANUAL or UNSUPPORTED (Executable=false) when capability evaluator is nil,
+// returns a lookup error, or returns a non-native/non-executable state (N1).
 func (s *Service) ResolveCapability(workspaceID, platform string) *publishv1.PlatformCapabilitySummary {
+	return s.ResolveCapabilityForAccount(context.Background(), workspaceID, "", platform)
+}
+
+// ResolveCapabilityForAccount evaluates platform capability for publish_post scoped to workspaceID and accountID.
+// Fails closed when evaluator is nil, lookup fails, or capability state is not verified NATIVE + Executable (N1).
+func (s *Service) ResolveCapabilityForAccount(ctx context.Context, workspaceID, accountID, platform string) *publishv1.PlatformCapabilitySummary {
 	p := strings.ToLower(strings.TrimSpace(platform))
 	summary := &publishv1.PlatformCapabilitySummary{
 		Platform:               p,
-		CapabilityState:        publishv1.PublishCapabilityState_PUBLISH_CAPABILITY_STATE_MANUAL,
-		ConnectorState:         "connected",
+		CapabilityState:        publishv1.PublishCapabilityState_PUBLISH_CAPABILITY_STATE_UNSUPPORTED,
+		ConnectorState:         "unverified",
 		RequiredScopes:         []string{"publish"},
 		RequiresManualFallback: true,
 		Executable:             false,
-		PolicySummary:          "Xuất bản nội dung lên nền tảng",
+		PolicySummary:          "Chưa xác minh quyền truy cập thực thi; mặc định từ chối xuất bản tự động.",
 	}
 
 	s.mu.RLock()
 	capEvaluator := s.capEvaluator
+	acctEvaluator := s.acctCapEvaluator
+	reqChecker := s.execCapChecker
+	killSwitch := s.killSwitch
+	accountLookup := s.accountLookup
 	s.mu.RUnlock()
 
-	if capEvaluator != nil {
-		eval := capEvaluator.EvaluateActionAccess(workspaceID, p, "publish_post", nil)
-		summary.RequiredScopes = []string{eval.ActionKey}
-		summary.PolicySummary = eval.PolicyNote.Summary
-		summary.FallbackInstructions = eval.FallbackPath.Instructions
+	if killSwitch != nil {
+		if killed, reason := killSwitch.IsCapabilityKilled(p, "publish_post"); killed {
+			summary.CapabilityState = publishv1.PublishCapabilityState_PUBLISH_CAPABILITY_STATE_DEGRADED
+			summary.RequiresManualFallback = true
+			summary.Executable = false
+			if strings.TrimSpace(reason) != "" {
+				summary.PolicySummary = reason
+			} else {
+				summary.PolicySummary = "Tính năng đang tạm ngắt khẩn cấp (Kill Switch)."
+			}
+			return summary
+		}
+	}
+
+	if accountLookup != nil && strings.TrimSpace(accountID) != "" {
+		acc, accErr := accountLookup.GetAccount(workspaceID, accountID)
+		if accErr != nil || acc == nil || (acc.WorkspaceID != "" && acc.WorkspaceID != workspaceID) || (acc.Platform != "" && !strings.EqualFold(acc.Platform, p)) {
+			summary.CapabilityState = publishv1.PublishCapabilityState_PUBLISH_CAPABILITY_STATE_UNSUPPORTED
+			summary.RequiresManualFallback = true
+			summary.Executable = false
+			summary.PolicySummary = "Không thể xác minh tài khoản kết nối cho nền tảng đích; mặc định từ chối xuất bản tự động."
+			return summary
+		}
+		if strings.TrimSpace(acc.Status) != "" && !strings.EqualFold(strings.TrimSpace(acc.Status), "active") {
+			summary.CapabilityState = publishv1.PublishCapabilityState_PUBLISH_CAPABILITY_STATE_DEGRADED
+			summary.RequiresManualFallback = true
+			summary.Executable = false
+			summary.PolicySummary = "Trạng thái tài khoản kết nối không hoạt động; yêu cầu kết nối lại hoặc đăng thủ công."
+			return summary
+		}
+	}
+
+	var (
+		eval         capability.EvaluationResult
+		evalErr      error
+		hasEvaluated bool
+	)
+
+	if acctEvaluator != nil {
+		eval, evalErr = acctEvaluator.EvaluateAccountActionAccess(ctx, workspaceID, accountID, p, "publish_post", nil)
+		hasEvaluated = true
+	} else if reqChecker != nil {
+		eval, evalErr = reqChecker.RequireExecutableCapability(ctx, workspaceID, accountID, p, "publish_post", "VN", true)
+		hasEvaluated = true
+	} else if capEvaluator != nil {
+		eval = capEvaluator.EvaluateActionAccess(workspaceID, p, "publish_post", nil)
+		hasEvaluated = true
+	}
+
+	if hasEvaluated {
+		if strings.TrimSpace(eval.ActionKey) != "" {
+			summary.RequiredScopes = []string{eval.ActionKey}
+		}
+		if strings.TrimSpace(eval.PolicyNote.Summary) != "" {
+			summary.PolicySummary = eval.PolicyNote.Summary
+		}
+		if strings.TrimSpace(eval.FallbackPath.Instructions) != "" {
+			summary.FallbackInstructions = eval.FallbackPath.Instructions
+		}
+		if evalErr != nil {
+			summary.CapabilityState = publishv1.PublishCapabilityState_PUBLISH_CAPABILITY_STATE_UNSUPPORTED
+			summary.RequiresManualFallback = true
+			summary.Executable = false
+			if strings.TrimSpace(summary.PolicySummary) == "" {
+				summary.PolicySummary = evalErr.Error()
+			}
+			return summary
+		}
+
+		summary.ConnectorState = "connected"
 		summary.Executable = eval.Executable
 
 		switch eval.State {
@@ -483,23 +622,28 @@ func (s *Service) ResolveCapability(workspaceID, platform string) *publishv1.Pla
 			summary.RequiresManualFallback = true
 			summary.Executable = false
 		}
-	} else {
-		switch p {
-		case "shopee":
-			summary.CapabilityState = publishv1.PublishCapabilityState_PUBLISH_CAPABILITY_STATE_UNSUPPORTED
-			summary.RequiresManualFallback = true
-			summary.Executable = false
-			summary.PolicySummary = "Shopee không cung cấp Public API để đăng Shopee Video tự động"
-			summary.FallbackInstructions = "Tải video đã đóng gói về thiết bị và đăng thủ công qua app Shopee Video"
-		case "tiktok", "youtube", "instagram", "facebook":
-			summary.CapabilityState = publishv1.PublishCapabilityState_PUBLISH_CAPABILITY_STATE_NATIVE
-			summary.RequiresManualFallback = false
-			summary.Executable = true
-		default:
-			summary.CapabilityState = publishv1.PublishCapabilityState_PUBLISH_CAPABILITY_STATE_UNSUPPORTED
-			summary.RequiresManualFallback = true
-			summary.Executable = false
-		}
+		return summary
+	}
+
+	// N1 fail-closed default when no capability evaluator is configured:
+	// NEVER grant NATIVE or Executable=true without an evaluator!
+	switch p {
+	case "shopee":
+		summary.CapabilityState = publishv1.PublishCapabilityState_PUBLISH_CAPABILITY_STATE_UNSUPPORTED
+		summary.RequiresManualFallback = true
+		summary.Executable = false
+		summary.PolicySummary = "Shopee không cung cấp Public API để đăng Shopee Video tự động"
+		summary.FallbackInstructions = "Tải video đã đóng gói về thiết bị và đăng thủ công qua app Shopee Video"
+	case "tiktok", "youtube", "instagram", "facebook":
+		summary.CapabilityState = publishv1.PublishCapabilityState_PUBLISH_CAPABILITY_STATE_MANUAL
+		summary.RequiresManualFallback = true
+		summary.Executable = false
+		summary.PolicySummary = "Chưa xác minh quyền truy cập thực thi (Capability Evaluator chưa cấu hình); mặc định chuyển sang đăng thủ công."
+		summary.FallbackInstructions = "Xuất gói nội dung để đăng thủ công và tải lên bằng chứng xác nhận"
+	default:
+		summary.CapabilityState = publishv1.PublishCapabilityState_PUBLISH_CAPABILITY_STATE_UNSUPPORTED
+		summary.RequiresManualFallback = true
+		summary.Executable = false
 	}
 	return summary
 }
@@ -753,7 +897,7 @@ func (s *Service) CreateItem(ctx context.Context, req *connect.Request[publishv1
 
 	workspaceID := caller.WorkspaceID
 	platform := strings.ToLower(req.Msg.TargetPlatform)
-	capSummary := s.ResolveCapability(workspaceID, platform)
+	capSummary := s.ResolveCapabilityForAccount(ctx, workspaceID, req.Msg.TargetAccountId, platform)
 
 	now := s.nowFn()
 	item := &PublishItem{
@@ -1424,8 +1568,8 @@ func (s *Service) Execute(ctx context.Context, req *connect.Request[publishv1.Ex
 		}
 	}
 
-	// Capability re-check at execution time (EC-M11-004 / R4): fail closed unless NATIVE and Executable.
-	capSummary := s.ResolveCapability(item.WorkspaceID, item.TargetPlatform)
+	// Capability re-check at execution time (EC-M11-004 / R4 / N1): fail closed unless NATIVE and Executable.
+	capSummary := s.ResolveCapabilityForAccount(ctx, item.WorkspaceID, item.TargetAccountID, item.TargetPlatform)
 	if !isCapabilityNativeExecutable(capSummary) {
 		item.LifecycleState = StateRequiresManualFallback
 		item.DiagnosticsState = DiagnosticsDegraded
@@ -1506,7 +1650,8 @@ func (s *Service) Execute(ctx context.Context, req *connect.Request[publishv1.Ex
 					}
 				}
 
-				if probeErr == nil && statusRes != nil && (statusRes.Found || statusRes.Status == "confirmed_published") {
+				switch classifyReconciliationStatus(statusRes, probeErr) {
+				case "confirmed_published":
 					completedAt := checkedAt
 					if statusRes.PublishedAt != nil {
 						completedAt = *statusRes.PublishedAt
@@ -1521,9 +1666,7 @@ func (s *Service) Execute(ctx context.Context, req *connect.Request[publishv1.Ex
 						Log:         LogToProto(log),
 						ChannelPost: ChannelPostToProto(channelPost),
 					}), nil
-				}
-
-				if probeErr == nil && statusRes != nil && statusRes.Status == "confirmed_not_published" {
+				case "confirmed_not_published":
 					// Reconciled as definitively NOT published: mark old effect failed and allow a new attempt.
 					existingEffect.Status = "failed"
 					if existingEffect.ResultPayload == nil {
@@ -1535,8 +1678,8 @@ func (s *Service) Execute(ctx context.Context, req *connect.Request[publishv1.Ex
 						job.LastExecutionSummary["requires_reconciliation"] = false
 						_ = s.store.SaveJob(ctx, job)
 					}
-				} else {
-					// Still unknown or probe failed: FAIL CLOSED, do NOT re-submit!
+				default:
+					// Still unknown or probe failed or status ambiguous/contradictory: FAIL CLOSED, do NOT re-submit!
 					existingEffect.Status = "unknown"
 					_ = s.store.SaveEffect(ctx, existingEffect)
 					if job.LastExecutionSummary == nil {
@@ -1579,11 +1722,11 @@ func (s *Service) Execute(ctx context.Context, req *connect.Request[publishv1.Ex
 		}
 	}
 
-	// Re-verify canonical QA/rights/consent gate and capability state immediately before external dispatch (F2 / R4).
+	// Re-verify canonical QA/rights/consent gate and capability state immediately before external dispatch (F2 / R4 / N1).
 	if err := s.enforceComplianceAndDiagnosticsGate(ctx, item); err != nil {
 		return nil, err
 	}
-	if latestCap := s.ResolveCapability(item.WorkspaceID, item.TargetPlatform); !isCapabilityNativeExecutable(latestCap) {
+	if latestCap := s.ResolveCapabilityForAccount(ctx, item.WorkspaceID, item.TargetAccountID, item.TargetPlatform); !isCapabilityNativeExecutable(latestCap) {
 		item.LifecycleState = StateRequiresManualFallback
 		item.DiagnosticsState = DiagnosticsDegraded
 		item.UpdatedAt = now
@@ -1926,7 +2069,14 @@ func (s *Service) ReconcilePublish(ctx context.Context, req *connect.Request[pub
 	activeEffect.LastCheckedAt = &now
 	activeEffect.UpdatedAt = now
 
-	if callErr != nil || statusRes == nil || statusRes.Status == "still_unknown" {
+	if callErr == nil && statusRes != nil && statusRes.Status != "still_unknown" {
+		if err := s.verifyConnectorStatusBinding(item, activeEffect, providerReqID, statusRes, false); err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+	}
+
+	outcome := classifyReconciliationStatus(statusRes, callErr)
+	if outcome == "still_unknown" {
 		_ = s.store.SaveEffect(ctx, activeEffect)
 		return connect.NewResponse(&publishv1.ReconcilePublishResponse{
 			Item:                  ItemToProto(item),
@@ -1949,7 +2099,8 @@ func (s *Service) ReconcilePublish(ctx context.Context, req *connect.Request[pub
 		activeEffect.ResultPayload["recovered_by_user_id"] = caller.ActorUserID
 	}
 
-	if statusRes.Found || statusRes.Status == "confirmed_published" {
+	switch outcome {
+	case "confirmed_published":
 		logMeta := map[string]any{
 			"reconciled":          true,
 			"provider_request_id": providerReqID,
@@ -1966,30 +2117,60 @@ func (s *Service) ReconcilePublish(ctx context.Context, req *connect.Request[pub
 			Reconciled:            true,
 			ReconciliationOutcome: "confirmed_published",
 		}), nil
-	}
 
-	// Post was confirmed NOT published: mark only the matched effect as failed so retry can proceed safely
-	hasRemainingUnknown := false
-	for _, eff := range allEffects {
-		if eff.Status == "unknown" || eff.Status == "submitted" || eff.Status == "prepared" {
-			effReqID := strings.TrimSpace(eff.ProviderRequestID)
-			if eff.EffectID == activeEffect.EffectID || (effReqID != "" && effReqID == providerReqID) {
-				eff.Status = "failed"
-				eff.LastCheckedAt = &now
-				eff.UpdatedAt = now
-				if eff.ResultPayload == nil {
-					eff.ResultPayload = make(map[string]any)
+	case "confirmed_not_published":
+		// Post was confirmed NOT published: mark only the matched effect as failed so retry can proceed safely
+		hasRemainingUnknown := false
+		for _, eff := range allEffects {
+			if eff.Status == "unknown" || eff.Status == "submitted" || eff.Status == "prepared" {
+				effReqID := strings.TrimSpace(eff.ProviderRequestID)
+				if eff.EffectID == activeEffect.EffectID || (effReqID != "" && effReqID == providerReqID) {
+					eff.Status = "failed"
+					eff.LastCheckedAt = &now
+					eff.UpdatedAt = now
+					if eff.ResultPayload == nil {
+						eff.ResultPayload = make(map[string]any)
+					}
+					eff.ResultPayload["reconciled"] = "confirmed_not_published"
+					eff.ResultPayload["reconciled_provider_request_id"] = providerReqID
+					_ = s.store.SaveEffect(ctx, eff)
+				} else {
+					hasRemainingUnknown = true
 				}
-				eff.ResultPayload["reconciled"] = "confirmed_not_published"
-				eff.ResultPayload["reconciled_provider_request_id"] = providerReqID
-				_ = s.store.SaveEffect(ctx, eff)
-			} else {
-				hasRemainingUnknown = true
 			}
 		}
-	}
 
-	if hasRemainingUnknown {
+		if hasRemainingUnknown {
+			return connect.NewResponse(&publishv1.ReconcilePublishResponse{
+				Item:                  ItemToProto(item),
+				Job:                   JobToProto(job),
+				Reconciled:            false,
+				ReconciliationOutcome: "still_unknown",
+			}), nil
+		}
+
+		job.LifecycleState = StateFailed
+		if job.LastExecutionSummary == nil {
+			job.LastExecutionSummary = make(map[string]any)
+		}
+		job.LastExecutionSummary["requires_reconciliation"] = false
+		job.LastExecutionSummary["reconciled_outcome"] = "confirmed_not_published"
+		job.UpdatedAt = now
+		_ = s.store.SaveJob(ctx, job)
+
+		item.LifecycleState = StateFailed
+		item.UpdatedAt = now
+		_ = s.store.SaveItem(ctx, item)
+
+		return connect.NewResponse(&publishv1.ReconcilePublishResponse{
+			Item:                  ItemToProto(item),
+			Job:                   JobToProto(job),
+			Reconciled:            true,
+			ReconciliationOutcome: "confirmed_not_published",
+		}), nil
+
+	default:
+		_ = s.store.SaveEffect(ctx, activeEffect)
 		return connect.NewResponse(&publishv1.ReconcilePublishResponse{
 			Item:                  ItemToProto(item),
 			Job:                   JobToProto(job),
@@ -1997,26 +2178,36 @@ func (s *Service) ReconcilePublish(ctx context.Context, req *connect.Request[pub
 			ReconciliationOutcome: "still_unknown",
 		}), nil
 	}
+}
 
-	job.LifecycleState = StateFailed
-	if job.LastExecutionSummary == nil {
-		job.LastExecutionSummary = make(map[string]any)
+// classifyReconciliationStatus strictly classifies a ConnectorStatusResult into one of:
+// - "confirmed_published"
+// - "confirmed_not_published"
+// - "still_unknown"
+// Any callErr, nil response, empty status, unrecognized status, or contradictory Found/Status/ExternalPost combination
+// fails closed to "still_unknown" (N5).
+func classifyReconciliationStatus(statusRes *ConnectorStatusResult, callErr error) string {
+	if callErr != nil || statusRes == nil {
+		return "still_unknown"
 	}
-	job.LastExecutionSummary["requires_reconciliation"] = false
-	job.LastExecutionSummary["reconciled_outcome"] = "confirmed_not_published"
-	job.UpdatedAt = now
-	_ = s.store.SaveJob(ctx, job)
-
-	item.LifecycleState = StateFailed
-	item.UpdatedAt = now
-	_ = s.store.SaveItem(ctx, item)
-
-	return connect.NewResponse(&publishv1.ReconcilePublishResponse{
-		Item:                  ItemToProto(item),
-		Job:                   JobToProto(job),
-		Reconciled:            true,
-		ReconciliationOutcome: "confirmed_not_published",
-	}), nil
+	status := strings.ToLower(strings.TrimSpace(statusRes.Status))
+	hasExtRef := strings.TrimSpace(statusRes.ExternalPostID) != "" || strings.TrimSpace(statusRes.ExternalPostURL) != ""
+	switch status {
+	case "confirmed_published":
+		if !statusRes.Found || !hasExtRef {
+			return "still_unknown"
+		}
+		return "confirmed_published"
+	case "confirmed_not_published":
+		if statusRes.Found || hasExtRef {
+			return "still_unknown"
+		}
+		return "confirmed_not_published"
+	case "still_unknown":
+		return "still_unknown"
+	default:
+		return "still_unknown"
+	}
 }
 
 // ExportManualPackage generates an export package for offline upload (Acceptance Target 3: Manual proof).
@@ -2372,7 +2563,7 @@ func (s *Service) GetDiagnostics(ctx context.Context, req *connect.Request[publi
 		return nil, connect.NewError(connect.CodeNotFound, ErrItemNotFound)
 	}
 
-	capSummary := s.ResolveCapability(item.WorkspaceID, item.TargetPlatform)
+	capSummary := s.ResolveCapabilityForAccount(ctx, item.WorkspaceID, item.TargetAccountID, item.TargetPlatform)
 	logs, _ := s.store.ListLogsByItemID(ctx, caller.WorkspaceID, item.PublishItemID)
 	var latestLog *PublishLog
 	if len(logs) > 0 {
@@ -2433,7 +2624,7 @@ func (s *Service) Get(ctx context.Context, req *connect.Request[publishv1.GetReq
 		return nil, connect.NewError(connect.CodeNotFound, ErrItemNotFound)
 	}
 
-	capSummary := s.ResolveCapability(item.WorkspaceID, item.TargetPlatform)
+	capSummary := s.ResolveCapabilityForAccount(ctx, item.WorkspaceID, item.TargetAccountID, item.TargetPlatform)
 	return connect.NewResponse(&publishv1.GetResponse{
 		Item:              ItemToProto(item),
 		CapabilitySummary: capSummary,
@@ -2710,7 +2901,7 @@ func (s *Service) CheckCompatibility(ctx context.Context, req *connect.Request[p
 		return nil, err
 	}
 
-	summary := s.ResolveCapability(caller.WorkspaceID, req.Msg.TargetPlatform)
+	summary := s.ResolveCapabilityForAccount(ctx, caller.WorkspaceID, req.Msg.TargetAccountId, req.Msg.TargetPlatform)
 	compatible := summary.Executable
 	issues := make([]string, 0)
 	if !compatible {

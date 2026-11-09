@@ -190,13 +190,21 @@ type MockCapabilityEvaluator struct {
 	state capability.State
 }
 
+func newTestFixtureCapabilityEvaluator() CapabilityEvaluator {
+	return &MockCapabilityEvaluator{state: capability.StateNative}
+}
+
 func (m *MockCapabilityEvaluator) EvaluateActionAccess(workspaceID, platform, actionKey string, requiredScopes []string) capability.EvaluationResult {
-	executable := m.state == capability.StateNative
+	state := m.state
+	if state == capability.StateNative && strings.EqualFold(platform, "shopee") {
+		state = capability.StateUnsupported
+	}
+	executable := state == capability.StateNative
 	return capability.EvaluationResult{
 		Platform:    platform,
 		ActionKey:   actionKey,
 		DisplayName: "Publish Action",
-		State:       m.state,
+		State:       state,
 		Executable:  executable,
 		PolicyNote: capability.PolicyNoteSpec{
 			Summary: "Capability policy for " + platform,
@@ -213,8 +221,9 @@ func (m *MockCapabilityEvaluator) EvaluateActionAccess(workspaceID, platform, ac
 func TestAcceptanceTarget1_NeverPublishBeforeSchedule(t *testing.T) {
 	simulatedTime := time.Date(2026, 11, 3, 10, 0, 0, 0, time.UTC)
 	svc := NewService(ServiceConfig{
-		Clock:             func() time.Time { return simulatedTime },
-		ComplianceChecker: newTestFixtureComplianceChecker(),
+		Clock:               func() time.Time { return simulatedTime },
+		ComplianceChecker:   newTestFixtureComplianceChecker(),
+		CapabilityEvaluator: newTestFixtureCapabilityEvaluator(),
 	})
 
 	mockConn := &MockConnector{platform: "tiktok"}
@@ -323,8 +332,9 @@ func TestAcceptanceTarget1_ScheduleFairnessJitterActivation(t *testing.T) {
 func TestAcceptanceTarget2_UnknownSubmitReconciles(t *testing.T) {
 	simulatedTime := time.Date(2026, 11, 3, 14, 0, 0, 0, time.UTC)
 	svc := NewService(ServiceConfig{
-		Clock:             func() time.Time { return simulatedTime },
-		ComplianceChecker: newTestFixtureComplianceChecker(),
+		Clock:               func() time.Time { return simulatedTime },
+		ComplianceChecker:   newTestFixtureComplianceChecker(),
+		CapabilityEvaluator: newTestFixtureCapabilityEvaluator(),
 	})
 
 	mockConn := &MockConnector{
@@ -522,8 +532,9 @@ func TestAcceptanceTarget3_ManualProofRetainsGraph(t *testing.T) {
 func TestAcceptanceTarget4_TokenRevokePausesAffectedQueuedWork(t *testing.T) {
 	now := time.Date(2026, 11, 3, 16, 0, 0, 0, time.UTC)
 	svc := NewService(ServiceConfig{
-		Clock:             func() time.Time { return now },
-		ComplianceChecker: newTestFixtureComplianceChecker(),
+		Clock:               func() time.Time { return now },
+		ComplianceChecker:   newTestFixtureComplianceChecker(),
+		CapabilityEvaluator: newTestFixtureCapabilityEvaluator(),
 	})
 
 	mockConn := &MockConnector{
@@ -883,8 +894,9 @@ func TestRemediation_TransportAuthInterceptorIntegration(t *testing.T) {
 func TestRemediation_PUB02_UnknownOutcomeBlocksRetryUntilReconciled(t *testing.T) {
 	now := time.Date(2026, 11, 5, 10, 0, 0, 0, time.UTC)
 	svc := NewService(ServiceConfig{
-		Clock:             func() time.Time { return now },
-		ComplianceChecker: newTestFixtureComplianceChecker(),
+		Clock:               func() time.Time { return now },
+		ComplianceChecker:   newTestFixtureComplianceChecker(),
+		CapabilityEvaluator: newTestFixtureCapabilityEvaluator(),
 	})
 
 	// Case A: Unknown outcome WITHOUT ProviderRequestID (e.g. socket drop before response header)
@@ -1008,6 +1020,7 @@ func TestRemediation_R10_FailClosedAndRestartSurvival(t *testing.T) {
 		RequireDurableStore: true,
 		Clock:               func() time.Time { return now },
 		ComplianceChecker:   newTestFixtureComplianceChecker(),
+		CapabilityEvaluator: newTestFixtureCapabilityEvaluator(),
 	})
 	svcBeforeRestart.RegisterConnector(conn1)
 
@@ -1055,9 +1068,10 @@ func TestRemediation_R10_FailClosedAndRestartSurvival(t *testing.T) {
 		reconcileOutcome: "still_unknown",
 	}
 	svcAfterRestart, err := NewStrictService(ServiceConfig{
-		Store:             durableStore,
-		Clock:             func() time.Time { return now },
-		ComplianceChecker: newTestFixtureComplianceChecker(),
+		Store:               durableStore,
+		Clock:               func() time.Time { return now },
+		ComplianceChecker:   newTestFixtureComplianceChecker(),
+		CapabilityEvaluator: newTestFixtureCapabilityEvaluator(),
 	})
 	if err != nil {
 		t.Fatalf("NewStrictService after restart failed: %v", err)
@@ -1173,8 +1187,9 @@ func TestR4_Publish_ComplianceHardBlockAndDiagnosticsGateCannotBeBypassed(t *tes
 		details:       map[string]any{"violation": "music_license_hard_block"},
 	}
 	svc := NewService(ServiceConfig{
-		Clock:             func() time.Time { return now },
-		ComplianceChecker: checker,
+		Clock:               func() time.Time { return now },
+		ComplianceChecker:   checker,
+		CapabilityEvaluator: newTestFixtureCapabilityEvaluator(),
 	})
 	mockConn := &MockConnector{platform: "tiktok", publishOutcome: "success"}
 	svc.RegisterConnector(mockConn)
@@ -1257,8 +1272,9 @@ func TestR4_Publish_ComplianceHardBlockAndDiagnosticsGateCannotBeBypassed(t *tes
 func TestR4_Publish_UnconfiguredConnectorFailsClosedWithoutFakeSuccess(t *testing.T) {
 	now := time.Date(2026, 11, 6, 13, 0, 0, 0, time.UTC)
 	svc := NewService(ServiceConfig{
-		Clock:             func() time.Time { return now },
-		ComplianceChecker: newTestFixtureComplianceChecker(),
+		Clock:               func() time.Time { return now },
+		ComplianceChecker:   newTestFixtureComplianceChecker(),
+		CapabilityEvaluator: newTestFixtureCapabilityEvaluator(),
 		// No connectors registered!
 	})
 	ctxOwner := WithCaller(context.Background(), testWorkspaceA, testUserA, rbac.RoleOwner)
@@ -1302,9 +1318,10 @@ func TestR4_Publish_AppendLogFailurePreventsPublishedStateAndRecoversOnRetry(t *
 		failAppendLog: true,
 	}
 	svc := NewService(ServiceConfig{
-		Store:             wrapStore,
-		Clock:             func() time.Time { return now },
-		ComplianceChecker: newTestFixtureComplianceChecker(),
+		Store:               wrapStore,
+		Clock:               func() time.Time { return now },
+		ComplianceChecker:   newTestFixtureComplianceChecker(),
+		CapabilityEvaluator: newTestFixtureCapabilityEvaluator(),
 	})
 	mockConn := &MockConnector{
 		platform:       "tiktok",
@@ -1365,10 +1382,11 @@ func TestR4_Publish_ApprovedJobCannotBeReusedForDifferentItem(t *testing.T) {
 		approvedIDs:     map[string]bool{"apr-item-a": true},
 	}
 	svc := NewService(ServiceConfig{
-		Store:             store,
-		Clock:             func() time.Time { return now },
-		ApprovalChecker:   approvals,
-		ComplianceChecker: newTestFixtureComplianceChecker(),
+		Store:               store,
+		Clock:               func() time.Time { return now },
+		ApprovalChecker:     approvals,
+		ComplianceChecker:   newTestFixtureComplianceChecker(),
+		CapabilityEvaluator: newTestFixtureCapabilityEvaluator(),
 	})
 	mockConn := &MockConnector{platform: "tiktok", publishOutcome: "success"}
 	svc.RegisterConnector(mockConn)
@@ -1662,8 +1680,9 @@ func TestS6_F2_ComplianceGateFailsClosedWhenCheckerNilOrConsentRevoked(t *testin
 	})
 
 	svcCanon := NewService(ServiceConfig{
-		Clock:             func() time.Time { return now },
-		ComplianceChecker: canonChecker,
+		Clock:               func() time.Time { return now },
+		ComplianceChecker:   canonChecker,
+		CapabilityEvaluator: newTestFixtureCapabilityEvaluator(),
 	})
 	svcCanon.RegisterConnector(mockConn)
 
@@ -1784,8 +1803,9 @@ func TestS6_F5_AmbiguousTransportEOFAndResetLockRetryUntilReconciled(t *testing.
 	for _, tc := range transportErrors {
 		t.Run(tc.name, func(t *testing.T) {
 			svc := NewService(ServiceConfig{
-				Clock:             func() time.Time { return now },
-				ComplianceChecker: newTestFixtureComplianceChecker(),
+				Clock:               func() time.Time { return now },
+				ComplianceChecker:   newTestFixtureComplianceChecker(),
+				CapabilityEvaluator: newTestFixtureCapabilityEvaluator(),
 			})
 			conn := &ambiguousTransportConnector{
 				platform:         "tiktok",
@@ -1851,8 +1871,9 @@ func TestS6_F5_AmbiguousTransportEOFAndResetLockRetryUntilReconciled(t *testing.
 func TestS6_F6_IdempotencyKeyBoundToExactItemAccountAndPayload(t *testing.T) {
 	now := time.Date(2026, 11, 7, 13, 0, 0, 0, time.UTC)
 	svc := NewService(ServiceConfig{
-		Clock:             func() time.Time { return now },
-		ComplianceChecker: newTestFixtureComplianceChecker(),
+		Clock:               func() time.Time { return now },
+		ComplianceChecker:   newTestFixtureComplianceChecker(),
+		CapabilityEvaluator: newTestFixtureCapabilityEvaluator(),
 	})
 	mockConn := &MockConnector{
 		platform:         "tiktok",
@@ -1949,8 +1970,9 @@ func TestS6_F6_IdempotencyKeyBoundToExactItemAccountAndPayload(t *testing.T) {
 func TestS6_F7_RescheduleScheduleAndScheduleRetryBlockedWhileUnknownEffectPending(t *testing.T) {
 	now := time.Date(2026, 11, 7, 14, 0, 0, 0, time.UTC)
 	svc := NewService(ServiceConfig{
-		Clock:             func() time.Time { return now },
-		ComplianceChecker: newTestFixtureComplianceChecker(),
+		Clock:               func() time.Time { return now },
+		ComplianceChecker:   newTestFixtureComplianceChecker(),
+		CapabilityEvaluator: newTestFixtureCapabilityEvaluator(),
 	})
 	mockConn := &MockConnector{
 		platform:         "tiktok",
@@ -2046,8 +2068,9 @@ func TestS6_F7_RescheduleScheduleAndScheduleRetryBlockedWhileUnknownEffectPendin
 func TestS6_F8_ReconcilePublishRejectsMismatchedOrUnboundProviderRequestID(t *testing.T) {
 	now := time.Date(2026, 11, 7, 15, 0, 0, 0, time.UTC)
 	svc := NewService(ServiceConfig{
-		Clock:             func() time.Time { return now },
-		ComplianceChecker: newTestFixtureComplianceChecker(),
+		Clock:               func() time.Time { return now },
+		ComplianceChecker:   newTestFixtureComplianceChecker(),
+		CapabilityEvaluator: newTestFixtureCapabilityEvaluator(),
 	})
 	mockConn := &MockConnector{
 		platform:         "youtube",
@@ -2144,9 +2167,10 @@ func TestS6_F12_SavePostAndAppendEventFailuresRecoverIdempotentlyOnReplay(t *tes
 		failSavePost: true,
 	}
 	svc := NewService(ServiceConfig{
-		Store:             faultStore,
-		Clock:             func() time.Time { return now },
-		ComplianceChecker: newTestFixtureComplianceChecker(),
+		Store:               faultStore,
+		Clock:               func() time.Time { return now },
+		ComplianceChecker:   newTestFixtureComplianceChecker(),
+		CapabilityEvaluator: newTestFixtureCapabilityEvaluator(),
 	})
 	mockConn := &MockConnector{
 		platform:         "tiktok",
@@ -2329,8 +2353,9 @@ func TestT6_R2_ReconcileRejectsUnboundExternalRequestIDOnUnknownEffect(t *testin
 		RightsVerified: true,
 	})
 	svc := NewService(ServiceConfig{
-		Clock:             func() time.Time { return now },
-		ComplianceChecker: checker,
+		Clock:               func() time.Time { return now },
+		ComplianceChecker:   checker,
+		CapabilityEvaluator: newTestFixtureCapabilityEvaluator(),
 	})
 	mockConn := &MockConnector{
 		platform:         "youtube",
@@ -2544,9 +2569,10 @@ func TestT6_R6_ConcurrentExecuteBarrierAllowsOnlySingleSubmission(t *testing.T) 
 				targetCount: 2,
 			}
 			svc := NewService(ServiceConfig{
-				Store:             bStore,
-				Clock:             func() time.Time { return now },
-				ComplianceChecker: checker,
+				Store:               bStore,
+				Clock:               func() time.Time { return now },
+				ComplianceChecker:   checker,
+				CapabilityEvaluator: newTestFixtureCapabilityEvaluator(),
 			})
 			mockConn := &MockConnector{
 				platform:         "tiktok",
@@ -2619,8 +2645,9 @@ func TestT6_R7_PublishVariantsWithBatchIdempotencyKeyExecutesAllItemsAndReplaysC
 		RightsVerified: true,
 	})
 	svc := NewService(ServiceConfig{
-		Clock:             func() time.Time { return now },
-		ComplianceChecker: checker,
+		Clock:               func() time.Time { return now },
+		ComplianceChecker:   checker,
+		CapabilityEvaluator: newTestFixtureCapabilityEvaluator(),
 	})
 	mockConn := &MockConnector{
 		platform:         "tiktok",
