@@ -887,6 +887,7 @@ export function createWorkflowEditorSession(initialWorkflowId: string) {
   };
 
   let loadEpoch = 0;
+  let pendingMutations = 0;
   const subscribers = new Set<(snapshot: WorkflowEditorSessionSnapshot) => void>();
 
   function emit() {
@@ -937,11 +938,10 @@ export function createWorkflowEditorSession(initialWorkflowId: string) {
       (targetWorkspaceId === null || targetWorkspaceId === state.workspaceId);
 
     if (ctx.isDiscoveryLoading === true && hasLoadedWorkflowForSameSubject) {
-      loadEpoch += 1;
       state = {
         ...state,
         isReverifying: true,
-        isPersisting: false,
+        isPersisting: pendingMutations > 0,
         error: null
       };
       emit();
@@ -959,6 +959,7 @@ export function createWorkflowEditorSession(initialWorkflowId: string) {
       !targetWorkflowId
     ) {
       loadEpoch += 1;
+      pendingMutations = 0;
       state = {
         workflowId: targetWorkflowId,
         workspaceId: targetWorkspaceId,
@@ -989,11 +990,17 @@ export function createWorkflowEditorSession(initialWorkflowId: string) {
       state.version !== null &&
       (state.loadState === 'loaded' || state.isReverifying)
     ) {
-      if (state.loadState !== 'loaded' || state.isReverifying || state.error !== null) {
+      if (
+        state.loadState !== 'loaded' ||
+        state.isReverifying ||
+        state.isPersisting !== (pendingMutations > 0) ||
+        state.error !== null
+      ) {
         state = {
           ...state,
           loadState: 'loaded',
           isReverifying: false,
+          isPersisting: pendingMutations > 0,
           error: null
         };
         emit();
@@ -1005,6 +1012,7 @@ export function createWorkflowEditorSession(initialWorkflowId: string) {
     }
 
     const requestEpoch = ++loadEpoch;
+    pendingMutations = 0;
     state = {
       workflowId: targetWorkflowId,
       workspaceId: targetWorkspaceId,
@@ -1095,7 +1103,7 @@ export function createWorkflowEditorSession(initialWorkflowId: string) {
   }
 
   function setMeta(meta: { title?: string; description?: string }) {
-    if (state.loadState !== 'loaded' || state.isReverifying) return;
+    if (state.loadState !== 'loaded' || state.isReverifying || state.isPersisting) return;
     state = {
       ...state,
       title: meta.title !== undefined ? meta.title : state.title,
@@ -1105,7 +1113,7 @@ export function createWorkflowEditorSession(initialWorkflowId: string) {
   }
 
   function setGraph(graph: { nodes: WorkflowNode[]; edges: WorkflowEdge[] }) {
-    if (state.loadState !== 'loaded' || state.isReverifying) return;
+    if (state.loadState !== 'loaded' || state.isReverifying || state.isPersisting) return;
     state = {
       ...state,
       nodes: [...graph.nodes],
@@ -1118,6 +1126,8 @@ export function createWorkflowEditorSession(initialWorkflowId: string) {
     if (
       state.loadState !== 'loaded' ||
       state.isReverifying ||
+      state.isPersisting ||
+      pendingMutations > 0 ||
       state.version === null ||
       !state.loadedContextKey ||
       !state.workspaceId ||
@@ -1127,7 +1137,9 @@ export function createWorkflowEditorSession(initialWorkflowId: string) {
         ok: false,
         error: state.isReverifying
           ? 'Đang xác minh lại ngữ cảnh workspace. Thao tác lưu tạm khóa để bảo vệ bản nháp hiện tại (fail-closed).'
-          : 'Không thể lưu workflow khi dữ liệu gốc chưa được tải thành công từ máy chủ (fail-closed).'
+          : state.isPersisting || pendingMutations > 0
+            ? 'Đang lưu hoặc cập nhật trạng thái workflow. Vui lòng đợi thao tác hiện tại hoàn tất (fail-closed).'
+            : 'Không thể lưu workflow khi dữ liệu gốc chưa được tải thành công từ máy chủ (fail-closed).'
       };
     }
 
@@ -1136,6 +1148,7 @@ export function createWorkflowEditorSession(initialWorkflowId: string) {
     const activeWorkspaceId = state.workspaceId;
     const activeWorkflowId = state.workflowId;
     const activeVersion = state.version;
+    pendingMutations += 1;
     state = { ...state, isPersisting: true };
     emit();
 
@@ -1166,26 +1179,28 @@ export function createWorkflowEditorSession(initialWorkflowId: string) {
         };
       }
 
+      pendingMutations = Math.max(0, pendingMutations - 1);
       if (res.ok && typeof res.version === 'number') {
         state = {
           ...state,
           version: res.version,
           status: res.status ?? state.status,
           error: null,
-          isPersisting: false
+          isPersisting: pendingMutations > 0
         };
         emit();
       } else {
         state = {
           ...state,
-          isPersisting: false
+          isPersisting: pendingMutations > 0
         };
         emit();
       }
       return res;
     } catch (err) {
       if (saveEpoch === loadEpoch && state.loadedContextKey === saveContextKey) {
-        state = { ...state, isPersisting: false };
+        pendingMutations = Math.max(0, pendingMutations - 1);
+        state = { ...state, isPersisting: pendingMutations > 0 };
         emit();
       }
       return {
@@ -1202,6 +1217,8 @@ export function createWorkflowEditorSession(initialWorkflowId: string) {
     if (
       state.loadState !== 'loaded' ||
       state.isReverifying ||
+      state.isPersisting ||
+      pendingMutations > 0 ||
       state.version === null ||
       !state.loadedContextKey ||
       !state.workspaceId ||
@@ -1211,7 +1228,9 @@ export function createWorkflowEditorSession(initialWorkflowId: string) {
         ok: false,
         error: state.isReverifying
           ? 'Đang xác minh lại ngữ cảnh workspace. Thao tác đổi trạng thái tạm khóa để bảo vệ bản nháp hiện tại (fail-closed).'
-          : 'Không thể đổi trạng thái workflow khi dữ liệu gốc chưa được tải thành công từ máy chủ (fail-closed).'
+          : state.isPersisting || pendingMutations > 0
+            ? 'Đang lưu hoặc cập nhật trạng thái workflow. Vui lòng đợi thao tác hiện tại hoàn tất (fail-closed).'
+            : 'Không thể đổi trạng thái workflow khi dữ liệu gốc chưa được tải thành công từ máy chủ (fail-closed).'
       };
     }
 
@@ -1220,6 +1239,7 @@ export function createWorkflowEditorSession(initialWorkflowId: string) {
     const activeWorkspaceId = state.workspaceId;
     const activeWorkflowId = state.workflowId;
     const activeVersion = state.version;
+    pendingMutations += 1;
     state = { ...state, isPersisting: true };
     emit();
 
@@ -1244,26 +1264,28 @@ export function createWorkflowEditorSession(initialWorkflowId: string) {
         };
       }
 
+      pendingMutations = Math.max(0, pendingMutations - 1);
       if (res.ok && res.status) {
         state = {
           ...state,
           status: res.status,
           version: typeof res.version === 'number' ? res.version : state.version,
           error: null,
-          isPersisting: false
+          isPersisting: pendingMutations > 0
         };
         emit();
       } else {
         state = {
           ...state,
-          isPersisting: false
+          isPersisting: pendingMutations > 0
         };
         emit();
       }
       return res;
     } catch (err) {
       if (statusEpoch === loadEpoch && state.loadedContextKey === statusContextKey) {
-        state = { ...state, isPersisting: false };
+        pendingMutations = Math.max(0, pendingMutations - 1);
+        state = { ...state, isPersisting: pendingMutations > 0 };
         emit();
       }
       return {

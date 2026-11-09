@@ -88,6 +88,7 @@ export interface CreateWorkspaceInput {
 export interface CreateWorkspaceResult {
   ok: boolean;
   workspace?: WorkspaceSummary;
+  stale?: boolean;
   error?: string;
 }
 
@@ -578,12 +579,24 @@ export function createAuthStore(): AuthStore {
       customFetch?: typeof fetch
     ): Promise<CreateWorkspaceResult> {
       const snapshot = get(store);
-      if (snapshot.state !== 'authenticated' || !snapshot.token) {
+      if (snapshot.state !== 'authenticated' || !snapshot.token || !snapshot.user?.id) {
         return {
           ok: false,
           error: 'Yêu cầu đăng nhập hợp lệ trước khi tạo Workspace mới (fail-closed).'
         };
       }
+
+      const requestEpoch = authEpoch;
+      const requestUserId = snapshot.user.id;
+      const isStaleCreateSession = (): boolean => {
+        const current = get(store);
+        return (
+          requestEpoch !== authEpoch ||
+          current.state !== 'authenticated' ||
+          !current.user?.id ||
+          current.user.id !== requestUserId
+        );
+      };
 
       const displayName = (input.displayName || '').trim();
       if (displayName.length < 2) {
@@ -639,11 +652,27 @@ export function createAuthStore(): AuthStore {
           })
         });
 
+        if (isStaleCreateSession()) {
+          return {
+            ok: false,
+            stale: true,
+            error: 'Phiên đăng nhập đã thay đổi trong khi tạo Workspace (fail-closed).'
+          };
+        }
+
         let payload: any = null;
         try {
           payload = await res.json();
         } catch {
           payload = null;
+        }
+
+        if (isStaleCreateSession()) {
+          return {
+            ok: false,
+            stale: true,
+            error: 'Phiên đăng nhập đã thay đổi trong khi tạo Workspace (fail-closed).'
+          };
         }
 
         if (!res.ok) {
@@ -675,6 +704,14 @@ export function createAuthStore(): AuthStore {
           status: 'active'
         };
 
+        if (isStaleCreateSession()) {
+          return {
+            ok: false,
+            stale: true,
+            error: 'Phiên đăng nhập đã thay đổi trong khi tạo Workspace (fail-closed).'
+          };
+        }
+
         setPersistedWorkspaceId(createdSummary.id);
         persistOperatorMode(chosenMode);
         modeStore.setMode(chosenMode);
@@ -696,6 +733,13 @@ export function createAuthStore(): AuthStore {
           workspace: createdSummary
         };
       } catch (err: any) {
+        if (isStaleCreateSession()) {
+          return {
+            ok: false,
+            stale: true,
+            error: 'Phiên đăng nhập đã thay đổi trong khi tạo Workspace (fail-closed).'
+          };
+        }
         return {
           ok: false,
           error:

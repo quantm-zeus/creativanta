@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount, onDestroy, tick } from 'svelte';
   import {
     developerStore,
     TIER_KEY_CAPS,
@@ -15,6 +15,7 @@
     type WebhookSubscription
   } from '$lib/developer/public_api';
   import { authStore, registerAuthResetHook } from '$lib/auth';
+  import { activateModalFocusSession, handleModalKeydown } from '$lib/a11y';
 
   let selectedTier = 'pro';
   let newKeyName = '';
@@ -23,6 +24,12 @@
   let newKeySecretSessionKey = '';
   let showCreateKeyModal = false;
   let showCreateWebhookModal = false;
+  let createKeyTriggerButton: HTMLButtonElement | null = null;
+  let createWebhookTriggerButton: HTMLButtonElement | null = null;
+  let createKeyDialogEl: HTMLDivElement | null = null;
+  let createWebhookDialogEl: HTMLDivElement | null = null;
+  let releaseCreateKeyModalFocus: (() => void) | null = null;
+  let releaseCreateWebhookModalFocus: (() => void) | null = null;
 
   let webhookUrl = '';
   let webhookEvents: string[] = ['workflow.completed', 'content.published'];
@@ -33,13 +40,61 @@
   let isProcessing = false;
   let lastSessionKey = '';
 
+  async function openCreateKeyModal() {
+    if (showCreateWebhookModal) {
+      closeCreateWebhookModal();
+    }
+    showCreateKeyModal = true;
+    await tick();
+    releaseCreateKeyModalFocus?.();
+    releaseCreateKeyModalFocus = activateModalFocusSession(
+      createKeyDialogEl,
+      createKeyTriggerButton
+    );
+  }
+
+  function closeCreateKeyModal() {
+    showCreateKeyModal = false;
+    releaseCreateKeyModalFocus?.();
+    releaseCreateKeyModalFocus = null;
+  }
+
+  async function openCreateWebhookModal() {
+    if (showCreateKeyModal) {
+      closeCreateKeyModal();
+    }
+    showCreateWebhookModal = true;
+    await tick();
+    releaseCreateWebhookModalFocus?.();
+    releaseCreateWebhookModalFocus = activateModalFocusSession(
+      createWebhookDialogEl,
+      createWebhookTriggerButton
+    );
+  }
+
+  function closeCreateWebhookModal() {
+    showCreateWebhookModal = false;
+    releaseCreateWebhookModalFocus?.();
+    releaseCreateWebhookModalFocus = null;
+  }
+
+  function handleWindowKeydown(event: KeyboardEvent) {
+    if (showCreateKeyModal) {
+      handleModalKeydown(event, createKeyDialogEl, closeCreateKeyModal);
+      return;
+    }
+    if (showCreateWebhookModal) {
+      handleModalKeydown(event, createWebhookDialogEl, closeCreateWebhookModal);
+    }
+  }
+
   function clearEphemeralSecretsAndDrafts() {
     newKeySecret = '';
     newKeySecretSessionKey = '';
     newWebhookSecret = '';
     newWebhookSecretSessionKey = '';
-    showCreateKeyModal = false;
-    showCreateWebhookModal = false;
+    closeCreateKeyModal();
+    closeCreateWebhookModal();
     actionFeedback = '';
     developerStore.clearRevealedSecrets();
   }
@@ -49,6 +104,10 @@
   });
 
   onDestroy(() => {
+    releaseCreateKeyModalFocus?.();
+    releaseCreateKeyModalFocus = null;
+    releaseCreateWebhookModalFocus?.();
+    releaseCreateWebhookModalFocus = null;
     unregisterResetHook();
   });
 
@@ -135,7 +194,7 @@
       newKeySecret = res.rawSecret;
       newKeySecretSessionKey = requestSessionKey;
       newKeyName = '';
-      showCreateKeyModal = false;
+      closeCreateKeyModal();
     } finally {
       isProcessing = false;
     }
@@ -223,7 +282,7 @@
       newWebhookSecret = res.secret;
       newWebhookSecretSessionKey = requestSessionKey;
       webhookUrl = '';
-      showCreateWebhookModal = false;
+      closeCreateWebhookModal();
     } finally {
       isProcessing = false;
     }
@@ -254,7 +313,14 @@
   }
 </script>
 
-<div class="developer-settings-container">
+<svelte:window on:keydown={handleWindowKeydown} />
+
+<div
+  class="developer-settings-container"
+  data-modal-background
+  inert={showCreateKeyModal || showCreateWebhookModal ? true : undefined}
+  aria-hidden={showCreateKeyModal || showCreateWebhookModal ? 'true' : undefined}
+>
   <header class="header">
     <div>
       <h1 class="title">Developer Platform & Public API (S24)</h1>
@@ -351,8 +417,9 @@
       </div>
       <button
         class="btn-primary"
+        bind:this={createKeyTriggerButton}
         disabled={activeKeysCount >= keyCap}
-        on:click={() => (showCreateKeyModal = true)}
+        on:click={openCreateKeyModal}
       >
         + Create API Key
       </button>
@@ -426,7 +493,11 @@
           Automated HTTP POST delivery with HMAC-SHA256 signatures, exponential retries (1s/10s/60s), and auto-suspension after 100 consecutive failures.
         </p>
       </div>
-      <button class="btn-primary" on:click={() => (showCreateWebhookModal = true)}>
+      <button
+        class="btn-primary"
+        bind:this={createWebhookTriggerButton}
+        on:click={openCreateWebhookModal}
+      >
         + Add Webhook Endpoint
       </button>
     </div>
@@ -482,9 +553,16 @@
 
 <!-- CREATE KEY MODAL -->
 {#if showCreateKeyModal}
-  <div class="modal-backdrop">
-    <div class="modal-card">
-      <h3>Create Developer API Key</h3>
+  <div class="modal-backdrop" role="presentation">
+    <div
+      class="modal-card"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="create-key-dialog-title"
+      tabindex="-1"
+      bind:this={createKeyDialogEl}
+    >
+      <h3 id="create-key-dialog-title">Create Developer API Key</h3>
       <div class="form-group">
         <label for="key-name">Key Name</label>
         <input id="key-name" type="text" placeholder="e.g. CI/CD Deploy Key" bind:value={newKeyName} />
@@ -511,7 +589,7 @@
       </div>
 
       <div class="modal-actions">
-        <button class="btn-secondary" on:click={() => (showCreateKeyModal = false)}>Cancel</button>
+        <button class="btn-secondary" on:click={closeCreateKeyModal}>Cancel</button>
         <button class="btn-primary" on:click={handleCreateKey}>Generate Key</button>
       </div>
     </div>
@@ -520,9 +598,16 @@
 
 <!-- CREATE WEBHOOK MODAL -->
 {#if showCreateWebhookModal}
-  <div class="modal-backdrop">
-    <div class="modal-card">
-      <h3>Add Outbound Webhook Endpoint</h3>
+  <div class="modal-backdrop" role="presentation">
+    <div
+      class="modal-card"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="create-webhook-dialog-title"
+      tabindex="-1"
+      bind:this={createWebhookDialogEl}
+    >
+      <h3 id="create-webhook-dialog-title">Add Outbound Webhook Endpoint</h3>
       <div class="form-group">
         <label for="target-url">Target URL</label>
         <input
@@ -550,7 +635,7 @@
       </div>
 
       <div class="modal-actions">
-        <button class="btn-secondary" on:click={() => (showCreateWebhookModal = false)}>Cancel</button>
+        <button class="btn-secondary" on:click={closeCreateWebhookModal}>Cancel</button>
         <button class="btn-primary" disabled={!webhookUrl || webhookEvents.length === 0} on:click={handleCreateWebhook}>
           Create Subscription
         </button>

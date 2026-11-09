@@ -1,11 +1,14 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte';
   import { page } from '$app/state';
   import {
-    type Script,
+    createScriptEditorSession,
+    type ScriptEditorLoadState,
     type Scene,
     type ScriptLifecycleState,
     type ScriptApprovalState
   } from '$lib/script';
+  import { authStore } from '$lib/auth';
   import ApprovalStatusBadge from '$lib/script/ApprovalStatusBadge.svelte';
   import ScriptSceneEditor from '$lib/script/ScriptSceneEditor.svelte';
   import SourceChainLineage from '$lib/content/SourceChainLineage.svelte';
@@ -13,67 +16,84 @@
   import CreativeAssistantPublishGuard from '$lib/content/CreativeAssistantPublishGuard.svelte';
   import { hasPublishIntent, type SourceChainLineage as LineageData } from '$lib/content';
 
+  const initialScriptId = page.params.id || 'scr-001';
+  const editorSession = createScriptEditorSession(initialScriptId);
+
   const scriptId = $derived(page.params.id || 'scr-001');
 
-  let scriptTitle = $state('Kịch bản Video Ngắn: Skincare Mùa Hè Kiềm Dầu 3 Bước');
+  let loadState = $state<ScriptEditorLoadState>('waiting_context');
+  let loadError = $state<string | null>(null);
+  let scriptTitle = $state('');
   let formatType = $state('9:16 vertical short');
   let durationTarget = $state(60);
-  let versionIndex = $state(2);
+  let versionIndex = $state<number | null>(null);
   let lifecycleState = $state<ScriptLifecycleState>('draft');
   let approvalState = $state<ScriptApprovalState>('not_submitted');
   let rejectionReason = $state('');
-
-  let scenes = $state<Scene[]>([
-    {
-      sceneId: 'sc-1',
-      scriptId: 'scr-001',
-      workspaceId: 'ws-current-tenant',
-      sceneIndex: 0,
-      description: 'Hook mở đầu',
-      content: 'Nếu hè này da bạn đổ dầu như chảo mỡ, hãy dừng ngay 2 bước này!',
-      durationSeconds: 5,
-      visualNotes: 'Quay cận mặt bóng dầu, biểu cảm thất vọng',
-      audioNotes: 'Nhạc dồn dập, tiếng còi stop',
-      shotList: [],
-      createdAt: new Date().toISOString()
-    },
-    {
-      sceneId: 'sc-2',
-      scriptId: 'scr-001',
-      workspaceId: 'ws-current-tenant',
-      sceneIndex: 1,
-      description: 'Giải pháp & Hướng dẫn',
-      content: 'Chỉ cần đổi sang toner dạng nước và gel dưỡng mỏng nhẹ...',
-      durationSeconds: 35,
-      visualNotes: 'Texture kem tan nhanh trên da',
-      audioNotes: 'Nhạc nhẹ nhàng, voice ấm áp',
-      shotList: [],
-      createdAt: new Date().toISOString()
-    },
-    {
-      sceneId: 'sc-3',
-      scriptId: 'scr-001',
-      workspaceId: 'ws-current-tenant',
-      sceneIndex: 2,
-      description: 'CTA Kêu gọi',
-      content: 'Bấm vào giỏ hàng góc trái để nhận ưu đãi hè này nhé!',
-      durationSeconds: 20,
-      visualNotes: 'Chỉ tay vào giỏ hàng TikTok Shop',
-      audioNotes: 'Nhạc chốt vui nhộn',
-      shotList: [],
-      createdAt: new Date().toISOString()
-    }
-  ]);
+  let scenes = $state<Scene[]>([]);
 
   let isConflict = $state(false);
   let conflictReason = $state('');
   let saveFeedback = $state('');
+  let approvalRequestId = $state<string | null>(null);
+  let isPersisting = $state(false);
+  let isReverifying = $state(false);
   let aiQuery = $state('');
   let aiRefusalNotice = $state('');
   let activeTab = $state<'ai' | 'brief' | 'review'>('ai');
 
+  const unsubscribeSession = editorSession.subscribe((snap) => {
+    loadState = snap.loadState;
+    loadError = snap.error;
+    scriptTitle = snap.title;
+    formatType = snap.formatType;
+    durationTarget = snap.durationTargetSeconds;
+    versionIndex = snap.versionIndex;
+    lifecycleState = snap.lifecycleState;
+    approvalState = snap.approvalState;
+    rejectionReason = snap.rejectionReason;
+    scenes = snap.scenes;
+    isConflict = snap.isConflict;
+    conflictReason = snap.conflictReason;
+    saveFeedback = snap.saveFeedback;
+    approvalRequestId = snap.approvalRequestId;
+    isPersisting = snap.isPersisting;
+    isReverifying = snap.isReverifying;
+  });
+
+  onDestroy(() => {
+    unsubscribeSession();
+  });
+
+  $effect(() => {
+    const routeScriptId = page.params.id || 'scr-001';
+    const userId = $authStore.user?.id ?? null;
+    const workspaceId = $authStore.activeWorkspace?.id ?? null;
+    const authState = $authStore.state;
+    const isDiscoveryLoading = $authStore.isDiscoveryLoading;
+
+    void editorSession.syncContext({
+      scriptId: routeScriptId,
+      userId,
+      workspaceId,
+      authState,
+      isDiscoveryLoading
+    });
+  });
+
+  async function retryLoadScript() {
+    await editorSession.syncContext({
+      scriptId: page.params.id || scriptId,
+      userId: $authStore.user?.id ?? null,
+      workspaceId: $authStore.activeWorkspace?.id ?? null,
+      authState: $authStore.state,
+      isDiscoveryLoading: $authStore.isDiscoveryLoading,
+      force: true
+    });
+  }
+
   const lineage: LineageData = $derived({
-    workspaceId: 'ws-current-tenant',
+    workspaceId: $authStore.activeWorkspace?.id || 'ws-current-tenant',
     scriptId: scriptId,
     trend: {
       id: 'tr-peptide',
@@ -105,7 +125,7 @@
     script: {
       id: scriptId,
       type: 'script',
-      title: scriptTitle,
+      title: scriptTitle || scriptId,
       state: `${lifecycleState} | ${approvalState}`,
       routeUrl: `/scripts/${scriptId}`,
       createdAt: new Date().toISOString(),
@@ -114,7 +134,7 @@
     assetBrief: {
       id: 'brief-001',
       type: 'asset_brief',
-      title: 'Asset Brief: ' + scriptTitle,
+      title: 'Asset Brief: ' + (scriptTitle || scriptId),
       state: 'ready',
       routeUrl: `/scripts/${scriptId}/brief`,
       createdAt: new Date().toISOString(),
@@ -126,23 +146,18 @@
     emittedEvents: ['script.created']
   });
 
-  function handleSave() {
-    versionIndex += 1;
-    saveFeedback = `Đã lưu phiên bản v${versionIndex} lúc ${new Date().toLocaleTimeString('vi-VN')}`;
-    isConflict = false;
-    setTimeout(() => {
-      saveFeedback = '';
-    }, 4000);
+  function handleTitleInput(event: Event) {
+    const target = event.currentTarget as HTMLInputElement;
+    scriptTitle = target.value;
+    editorSession.setTitle(target.value);
   }
 
-  function handleSubmitForReview() {
-    if (scenes.length === 0 || scenes.some(s => !s.content.trim())) {
-      alert('Không thể gửi duyệt: Kịch bản phải có ít nhất 1 cảnh và tất cả cảnh phải có nội dung (EC-M06-001).');
-      return;
-    }
-    lifecycleState = 'in_review';
-    approvalState = 'pending_approval';
-    saveFeedback = 'Đã gửi kịch bản cho quản lý phê duyệt.';
+  async function handleSave() {
+    await editorSession.save();
+  }
+
+  async function handleSubmitForReview() {
+    await editorSession.submitForReview();
   }
 
   function handleAiAsk() {
@@ -171,32 +186,41 @@
           ← Danh sách kịch bản
         </a>
         <div class="h-4 w-px bg-gray-300"></div>
+        <h1 class="sr-only">Script Lab: {scriptTitle || scriptId}</h1>
         <input
           type="text"
-          bind:value={scriptTitle}
-          class="rounded-lg border-transparent px-2 py-1 font-bold text-gray-900 text-lg hover:border-gray-300 focus:border-blue-500 focus:bg-white focus:outline-none transition"
+          value={scriptTitle}
+          oninput={handleTitleInput}
+          disabled={loadState !== 'loaded' || isPersisting || isReverifying}
+          placeholder="Tiêu đề kịch bản..."
+          aria-label="Tiêu đề kịch bản"
+          class="rounded-lg border-transparent px-2 py-1 font-bold text-gray-900 text-lg hover:border-gray-300 focus:border-blue-500 focus:bg-white focus:outline-none disabled:opacity-60 transition"
         />
         <ApprovalStatusBadge lifecycle={lifecycleState} approval={approvalState} />
-        <span class="rounded bg-gray-100 px-2 py-0.5 font-mono text-xs text-gray-600">v{versionIndex}</span>
+        <span class="rounded bg-gray-100 px-2 py-0.5 font-mono text-xs text-gray-600">
+          {versionIndex !== null ? `v${versionIndex}` : 'Chưa đồng bộ'}
+        </span>
       </div>
 
       <div class="flex items-center gap-3">
         {#if saveFeedback}
-          <span class="text-xs text-emerald-600 font-medium">{saveFeedback}</span>
+          <span class="text-xs text-emerald-600 font-medium" role="status">{saveFeedback}</span>
         {/if}
         <button
           onclick={handleSave}
-          class="rounded-lg border border-gray-300 bg-white px-3.5 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition"
+          disabled={loadState !== 'loaded' || isPersisting || isReverifying || versionIndex === null}
+          class="rounded-lg border border-gray-300 bg-white px-3.5 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
         >
-          💾 Lưu bản nháp
+          {isPersisting ? '⏳ Đang lưu...' : '💾 Lưu bản nháp'}
         </button>
 
         {#if approvalState === 'not_submitted' || approvalState === 'rejected'}
           <button
             onclick={handleSubmitForReview}
-            class="rounded-lg bg-blue-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow hover:bg-blue-700 transition"
+            disabled={loadState !== 'loaded' || isPersisting || isReverifying || versionIndex === null}
+            class="rounded-lg bg-blue-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
           >
-            📤 Gửi duyệt kịch bản
+            {isPersisting ? '⏳ Đang gửi...' : '📤 Gửi duyệt kịch bản'}
           </button>
         {/if}
 
@@ -221,11 +245,40 @@
     <!-- Source Chain Lineage Breadcrumb -->
     <SourceChainLineage {lineage} />
 
+    {#if loadError}
+      <div
+        class="rounded-xl border border-red-200 bg-red-50 p-4 text-xs text-red-800 flex items-center justify-between gap-4"
+        role="alert"
+      >
+        <div>
+          <strong class="font-bold">Thao tác bị từ chối (fail-closed):</strong>
+          <span class="ml-1">{loadError}</span>
+        </div>
+        <button
+          onclick={retryLoadScript}
+          class="shrink-0 rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100 transition"
+        >
+          Tải lại từ máy chủ
+        </button>
+      </div>
+    {:else if loadState !== 'loaded'}
+      <div
+        class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900 flex items-center justify-between gap-4"
+        role="status"
+      >
+        <span>
+          {loadState === 'loading'
+            ? 'Đang tải kịch bản và phiên bản mới nhất từ máy chủ (ScriptService/Get)...'
+            : 'Đang chờ xác thực phiên làm việc và ngữ cảnh workspace. Thao tác lưu và gửi duyệt tạm khóa (fail-closed).'}
+        </span>
+      </div>
+    {/if}
+
     <!-- Concurrent Conflict Banner if triggered -->
     <ConcurrentConflictBanner
       isStale={isConflict}
       reason={conflictReason}
-      onReload={() => { isConflict = false; }}
+      onReload={retryLoadScript}
     />
 
     <!-- Main Workspace Split View -->
@@ -234,7 +287,10 @@
       <div class="space-y-6 lg:col-span-8">
         <ScriptSceneEditor
           {scenes}
-          onUpdateScenes={(newScenes: Scene[]) => { scenes = newScenes; }}
+          onUpdateScenes={(newScenes: Scene[]) => {
+            scenes = newScenes;
+            editorSession.setScenes(newScenes);
+          }}
         />
       </div>
 
@@ -312,8 +368,19 @@
               </div>
               <div class="flex justify-between py-1 border-b border-gray-100">
                 <span class="text-gray-500">Phiên bản hiện tại:</span>
-                <span class="font-bold font-mono">v{versionIndex}</span>
+                <span class="font-bold font-mono">{versionIndex !== null ? `v${versionIndex}` : 'Chưa đồng bộ'}</span>
               </div>
+              {#if approvalRequestId}
+                <div class="flex justify-between py-1 border-b border-gray-100">
+                  <span class="text-gray-500">Mã yêu cầu duyệt:</span>
+                  <span class="font-bold font-mono">{approvalRequestId}</span>
+                </div>
+              {/if}
+              {#if rejectionReason}
+                <div class="rounded bg-red-50 p-2 text-red-700 border border-red-100">
+                  <span class="font-semibold">Lý do từ chối:</span> {rejectionReason}
+                </div>
+              {/if}
               <a
                 href="/scripts/{scriptId}/review"
                 class="block w-full text-center rounded-lg border border-indigo-600 py-2 text-xs font-semibold text-indigo-700 hover:bg-indigo-50 transition"

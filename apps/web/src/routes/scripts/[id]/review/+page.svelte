@@ -1,6 +1,13 @@
 <script lang="ts">
   import { page } from '$app/state';
-  import { type ScriptApprovalState, type ScriptLifecycleState } from '$lib/script';
+  import {
+    approveScriptRemote,
+    rejectScriptRemote,
+    loadScriptRemote,
+    type ScriptApprovalState,
+    type ScriptLifecycleState
+  } from '$lib/script';
+  import { authStore } from '$lib/auth';
   import ApprovalStatusBadge from '$lib/script/ApprovalStatusBadge.svelte';
   import RejectionModal from '$lib/script/RejectionModal.svelte';
   import ConcurrentConflictBanner from '$lib/content/ConcurrentConflictBanner.svelte';
@@ -15,6 +22,8 @@
   let lifecycleState = $state<ScriptLifecycleState>('in_review');
   let approvalState = $state<ScriptApprovalState>('pending_approval');
   let rejectionReason = $state('');
+  let isProcessingReview = $state(false);
+  let reviewError = $state('');
 
   // Concurrency tracking: Reviewer snapshot time vs script updated_at
   let reviewerSnapshotTime = $state(new Date().toISOString());
@@ -36,26 +45,79 @@
   let newCommentText = $state('');
   let feedbackMessage = $state('');
 
-  function handleApprove() {
+  async function handleApprove() {
+    feedbackMessage = '';
+    reviewError = '';
     if (staleCheck.isStale) {
-      alert('Không thể phê duyệt: Phiên bản kịch bản đã bị thay đổi kể từ khi bạn mở trang (EC-M06-003). Vui lòng tải lại trang.');
+      reviewError = 'Không thể phê duyệt: Phiên bản kịch bản đã bị thay đổi kể từ khi bạn mở trang (EC-M06-003). Vui lòng tải lại trang.';
       return;
     }
-    approvalState = 'approved';
-    lifecycleState = 'approved';
-    feedbackMessage = '✓ Đã phê duyệt kịch bản thành công!';
+    const workspaceId = $authStore.activeWorkspace?.id;
+    if (!workspaceId) {
+      reviewError = 'Yêu cầu phiên đăng nhập và workspace hợp lệ trước khi phê duyệt kịch bản (fail-closed).';
+      return;
+    }
+    isProcessingReview = true;
+    try {
+      const res = await approveScriptRemote({
+        workspaceId,
+        scriptId,
+        expectedVersion: versionIndex,
+        reviewerSnapshotTime
+      });
+      if (!res.ok || !res.script) {
+        if (res.conflict) {
+          showStaleSimulation = true;
+        }
+        reviewError = res.error || 'Không thể phê duyệt kịch bản trên máy chủ (ScriptService/Approve fail-closed).';
+        return;
+      }
+      versionIndex = res.script.versionIndex;
+      approvalState = res.script.approvalState;
+      lifecycleState = res.script.lifecycleState;
+      feedbackMessage = '✓ Đã phê duyệt kịch bản thành công trên máy chủ!';
+    } finally {
+      isProcessingReview = false;
+    }
   }
 
-  function handleRejectConfirm(reason: string) {
+  async function handleRejectConfirm(reason: string) {
+    feedbackMessage = '';
+    reviewError = '';
     if (staleCheck.isStale) {
-      alert('Không thể từ chối: Kịch bản đã được tác giả cập nhật mới. Vui lòng tải lại.');
+      reviewError = 'Không thể từ chối: Kịch bản đã được tác giả cập nhật mới. Vui lòng tải lại.';
       return;
     }
-    approvalState = 'rejected';
-    lifecycleState = 'revision_required';
-    rejectionReason = reason;
-    showRejectionModal = false;
-    feedbackMessage = `Đã từ chối kịch bản và gửi phản hồi: "${reason}"`;
+    const workspaceId = $authStore.activeWorkspace?.id;
+    if (!workspaceId) {
+      reviewError = 'Yêu cầu phiên đăng nhập và workspace hợp lệ trước khi từ chối kịch bản (fail-closed).';
+      return;
+    }
+    isProcessingReview = true;
+    try {
+      const res = await rejectScriptRemote({
+        workspaceId,
+        scriptId,
+        rejectionReason: reason,
+        expectedVersion: versionIndex,
+        reviewerSnapshotTime
+      });
+      if (!res.ok || !res.script) {
+        if (res.conflict) {
+          showStaleSimulation = true;
+        }
+        reviewError = res.error || 'Không thể từ chối kịch bản trên máy chủ (ScriptService/Reject fail-closed).';
+        return;
+      }
+      versionIndex = res.script.versionIndex;
+      approvalState = res.script.approvalState;
+      lifecycleState = res.script.lifecycleState;
+      rejectionReason = res.script.rejectionReason || reason;
+      showRejectionModal = false;
+      feedbackMessage = `Đã từ chối kịch bản trên máy chủ và gửi phản hồi: "${reason}"`;
+    } finally {
+      isProcessingReview = false;
+    }
   }
 
   function handleAddComment() {
@@ -70,11 +132,34 @@
     newCommentText = '';
   }
 
-  function handleReloadLatest() {
-    reviewerSnapshotTime = new Date().toISOString();
-    scriptUpdatedAt = new Date().toISOString();
-    showStaleSimulation = false;
-    feedbackMessage = 'Đã tải lại phiên bản mới nhất từ tác giả.';
+  async function handleReloadLatest() {
+    feedbackMessage = '';
+    reviewError = '';
+    const workspaceId = $authStore.activeWorkspace?.id;
+    if (!workspaceId) {
+      reviewError = 'Không thể tải lại kịch bản khi chưa xác thực ngữ cảnh workspace (fail-closed).';
+      return;
+    }
+    isProcessingReview = true;
+    try {
+      const res = await loadScriptRemote({ workspaceId, scriptId });
+      if (!res.ok || !res.script) {
+        reviewError = res.error || 'Không thể tải lại phiên bản mới nhất từ máy chủ (ScriptService/Get fail-closed).';
+        return;
+      }
+      scriptTitle = res.script.title || scriptTitle;
+      formatType = res.script.formatType || formatType;
+      durationTarget = res.script.durationTargetSeconds || durationTarget;
+      versionIndex = res.script.versionIndex;
+      lifecycleState = res.script.lifecycleState;
+      approvalState = res.script.approvalState;
+      reviewerSnapshotTime = new Date().toISOString();
+      scriptUpdatedAt = res.script.updatedAt || reviewerSnapshotTime;
+      showStaleSimulation = false;
+      feedbackMessage = `Đã tải lại phiên bản v${res.script.versionIndex} mới nhất từ máy chủ.`;
+    } finally {
+      isProcessingReview = false;
+    }
   }
 </script>
 
@@ -104,7 +189,7 @@
         {#if approvalState === 'pending_approval' || approvalState === 'not_submitted'}
           <button
             onclick={() => showRejectionModal = true}
-            disabled={staleCheck.isStale}
+            disabled={staleCheck.isStale || isProcessingReview}
             class="rounded-lg border border-red-300 bg-white px-3.5 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
             data-testid="btn-reject-review"
           >
@@ -112,7 +197,7 @@
           </button>
           <button
             onclick={handleApprove}
-            disabled={staleCheck.isStale}
+            disabled={staleCheck.isStale || isProcessingReview}
             class="rounded-lg bg-emerald-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
             data-testid="btn-approve-review"
           >
@@ -131,8 +216,14 @@
       onReload={handleReloadLatest}
     />
 
+    {#if reviewError}
+      <div class="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-800 font-medium" role="alert">
+        {reviewError}
+      </div>
+    {/if}
+
     {#if feedbackMessage}
-      <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800 font-medium">
+      <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800 font-medium" role="status">
         {feedbackMessage}
       </div>
     {/if}

@@ -21,6 +21,19 @@
   let isCreatingWorkspace = $state(false);
   let createWorkspaceError = $state<string | null>(null);
   let createWorkspaceSuccess = $state<string | null>(null);
+  let lastObservedUserId = $state<string | null>($authStore.user?.id ?? null);
+
+  $effect(() => {
+    const currentUserId = $authStore.user?.id ?? null;
+    const authState = $authStore.state;
+    if (authState !== 'authenticated' || currentUserId !== lastObservedUserId) {
+      showCreateForm = false;
+      createWorkspaceError = null;
+      createWorkspaceSuccess = null;
+      selectionError = null;
+      lastObservedUserId = currentUserId;
+    }
+  });
 
   function handleNameInput(value: string) {
     newWorkspaceName = value;
@@ -33,6 +46,11 @@
     e.preventDefault();
     createWorkspaceError = null;
     createWorkspaceSuccess = null;
+    const requestUserId = $authStore.user?.id ?? null;
+    if ($authStore.state !== 'authenticated' || !requestUserId) {
+      createWorkspaceError = 'Yêu cầu phiên đăng nhập hợp lệ trước khi tạo Workspace (fail-closed).';
+      return;
+    }
     isCreatingWorkspace = true;
 
     try {
@@ -41,6 +59,15 @@
         slug: newWorkspaceSlug,
         defaultOperatorMode: newWorkspaceMode
       });
+
+      if (
+        res.stale ||
+        $authStore.state !== 'authenticated' ||
+        !$authStore.user?.id ||
+        $authStore.user.id !== requestUserId
+      ) {
+        return;
+      }
 
       if (!res.ok || !res.workspace) {
         createWorkspaceError =
