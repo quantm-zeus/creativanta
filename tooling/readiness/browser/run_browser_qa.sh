@@ -69,17 +69,23 @@ else
   fi
 fi
 
-# 4. Verify Built Web & Admin Applications
-echo "Checking SvelteKit build artifacts..."
-if [ ! -f "apps/web/build/index.js" ]; then
-  echo "Building apps/web for production preview..."
-  pnpm build:web
-fi
-
-if [ ! -f "apps/admin/build/index.js" ]; then
-  echo "Building apps/admin for production preview..."
-  pnpm build:admin
-fi
+# 4. Verify & Build Web & Admin Applications (Bound to Current Source Fingerprint)
+echo "Checking SvelteKit build artifacts and source fingerprints..."
+FP_SCRIPT="${SCRIPT_DIR}/build_fingerprint.mjs"
+for app in web admin; do
+  if [ "${BROWSER_QA_FORCE_REBUILD:-0}" = "1" ] || ! node "${FP_SCRIPT}" verify "${app}" "${REPO_ROOT}" >/dev/null 2>&1; then
+    if [ "${BROWSER_QA_REJECT_STALE_BUILD:-0}" = "1" ]; then
+      echo "FATAL: Stale, missing, or unverified build artifact for apps/${app}:" >&2
+      node "${FP_SCRIPT}" verify "${app}" "${REPO_ROOT}" >&2
+      exit 1
+    fi
+    echo "Building apps/${app} for current source fingerprint..."
+    rm -rf "apps/${app}/build"
+    pnpm "build:${app}"
+    node "${FP_SCRIPT}" stamp "${app}" "${REPO_ROOT}"
+  fi
+  node "${FP_SCRIPT}" verify "${app}" "${REPO_ROOT}"
+done
 
 # 5. Create Readiness Output Directory
 mkdir -p build/readiness/2026-11-05

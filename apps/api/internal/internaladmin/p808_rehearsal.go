@@ -18,6 +18,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -1905,6 +1906,45 @@ func (s *Service) ExecuteLiveBlueGreenReleaseSmokeRehearsal(
 	return s.evaluateBlueGreenProbe(ctx, adminID, probe, proxyTarget, elapsedMs)
 }
 
+type liveVerifiedUpstreamState struct {
+	slot   string
+	digest string
+}
+
+var (
+	liveVerifiedUpstreamMu    sync.Mutex
+	liveVerifiedUpstreamBySvc = make(map[*Service]liveVerifiedUpstreamState)
+)
+
+func getLiveVerifiedUpstream(s *Service) (string, string) {
+	liveVerifiedUpstreamMu.Lock()
+	defer liveVerifiedUpstreamMu.Unlock()
+	st := liveVerifiedUpstreamBySvc[s]
+	return st.slot, st.digest
+}
+
+func setLiveVerifiedUpstream(s *Service, slot, digest string) {
+	liveVerifiedUpstreamMu.Lock()
+	defer liveVerifiedUpstreamMu.Unlock()
+	if slot == "" || digest == "" {
+		delete(liveVerifiedUpstreamBySvc, s)
+		return
+	}
+	liveVerifiedUpstreamBySvc[s] = liveVerifiedUpstreamState{
+		slot:   slot,
+		digest: digest,
+	}
+}
+
+func isValidBlueGreenSlot(slot string) bool {
+	return slot == "blue" || slot == "green"
+}
+
+func isValidPinnedDigest(digest string) bool {
+	trimmed := strings.TrimSpace(digest)
+	return strings.HasPrefix(trimmed, "sha256:") && len(trimmed) >= 15
+}
+
 func (s *Service) evaluateBlueGreenProbe(
 	ctx context.Context,
 	adminID string,
@@ -1927,8 +1967,6 @@ func (s *Service) evaluateBlueGreenProbe(
 	}
 
 	now := s.Now()
-	prevSlot := s.activeSlot
-	prevDigest := s.activeSlotDigest
 	execMode := RehearsalModeSimulationOnly
 	isSim := true
 	if proxyTarget != nil {
@@ -1936,17 +1974,96 @@ func (s *Service) evaluateBlueGreenProbe(
 		isSim = false
 	}
 
+	var (
+		prevSlot   string
+		prevDigest string
+	)
+	if isSim {
+		prevSlot = s.activeSlot
+		prevDigest = s.activeSlotDigest
+	} else if verifier, ok := proxyTarget.(DisposableProxyActiveStateVerifier); ok {
+		obsSlot, obsDigest, verifyErr := verifier.VerifiedActiveUpstream(ctx)
+		obsSlot = strings.TrimSpace(obsSlot)
+		obsDigest = strings.TrimSpace(obsDigest)
+		if verifyErr == nil && isValidBlueGreenSlot(obsSlot) && isValidPinnedDigest(obsDigest) {
+			prevSlot = obsSlot
+			prevDigest = obsDigest
+			setLiveVerifiedUpstream(s, obsSlot, obsDigest)
+			s.activeSlot = obsSlot
+			s.activeSlotDigest = obsDigest
+		} else {
+			prevSlot = ""
+			prevDigest = ""
+			setLiveVerifiedUpstream(s, "", "")
+			s.activeSlot = ""
+			s.activeSlotDigest = ""
+		}
+	} else {
+		prevSlot, prevDigest = getLiveVerifiedUpstream(s)
+	}
+	switchAttempted := false
+
 	failAndRollback := func(code, reason string) (ReleaseSmokeVerdict, error) {
 		rollbackSucceeded := true
 		rollbackErrMsg := ""
 		verifiedActiveSlot := prevSlot
 		verifiedActiveDigest := prevDigest
 		if proxyTarget != nil {
-			if prevSlot == "" || prevDigest == "" {
+			if !switchAttempted {
+				if prevSlot == "" || prevDigest == "" {
+					rollbackSucceeded = false
+					rollbackErrMsg = "previous active slot is unverified; proxy upstream untouched before switch"
+					verifiedActiveSlot = ""
+					verifiedActiveDigest = ""
+					setLiveVerifiedUpstream(s, "", "")
+					s.activeSlot = ""
+					s.activeSlotDigest = ""
+				} else if verifier, ok := proxyTarget.(DisposableProxyActiveStateVerifier); ok {
+					obsSlot, obsDigest, verifyErr := verifier.VerifiedActiveUpstream(ctx)
+					obsSlot = strings.TrimSpace(obsSlot)
+					obsDigest = strings.TrimSpace(obsDigest)
+					if verifyErr != nil {
+						rollbackSucceeded = false
+						rollbackErrMsg = verifyErr.Error()
+						verifiedActiveSlot = ""
+						verifiedActiveDigest = ""
+						setLiveVerifiedUpstream(s, "", "")
+						s.activeSlot = ""
+						s.activeSlotDigest = ""
+						reason = fmt.Sprintf("%s; active upstream verification failed: %s", reason, rollbackErrMsg)
+					} else if obsSlot != prevSlot || obsDigest != prevDigest {
+						rollbackSucceeded = false
+						rollbackErrMsg = fmt.Sprintf("pre-switch active upstream mismatch: expected %s (%s), observed %s (%s)", prevSlot, prevDigest, obsSlot, obsDigest)
+						if isValidBlueGreenSlot(obsSlot) && isValidPinnedDigest(obsDigest) {
+							verifiedActiveSlot = obsSlot
+							verifiedActiveDigest = obsDigest
+							setLiveVerifiedUpstream(s, obsSlot, obsDigest)
+							s.activeSlot = obsSlot
+							s.activeSlotDigest = obsDigest
+						} else {
+							verifiedActiveSlot = ""
+							verifiedActiveDigest = ""
+							setLiveVerifiedUpstream(s, "", "")
+							s.activeSlot = ""
+							s.activeSlotDigest = ""
+						}
+						reason = fmt.Sprintf("%s; active upstream verification failed: %s", reason, rollbackErrMsg)
+					} else {
+						setLiveVerifiedUpstream(s, prevSlot, prevDigest)
+						s.activeSlot = prevSlot
+						s.activeSlotDigest = prevDigest
+					}
+				} else {
+					setLiveVerifiedUpstream(s, prevSlot, prevDigest)
+					s.activeSlot = prevSlot
+					s.activeSlotDigest = prevDigest
+				}
+			} else if prevSlot == "" || prevDigest == "" {
 				rollbackSucceeded = false
 				rollbackErrMsg = "previous active slot is unverified; cannot roll back to an unverified upstream"
 				verifiedActiveSlot = ""
 				verifiedActiveDigest = ""
+				setLiveVerifiedUpstream(s, "", "")
 				s.activeSlot = ""
 				s.activeSlotDigest = ""
 				if verifier, ok := proxyTarget.(DisposableProxyActiveStateVerifier); ok {
@@ -1955,9 +2072,10 @@ func (s *Service) evaluateBlueGreenProbe(
 					obsDigest = strings.TrimSpace(obsDigest)
 					if verifyErr != nil {
 						rollbackErrMsg = fmt.Sprintf("%s (verification error: %v)", rollbackErrMsg, verifyErr)
-					} else if (obsSlot == "blue" || obsSlot == "green") && strings.HasPrefix(obsDigest, "sha256:") && len(obsDigest) >= 15 {
+					} else if isValidBlueGreenSlot(obsSlot) && isValidPinnedDigest(obsDigest) {
 						verifiedActiveSlot = obsSlot
 						verifiedActiveDigest = obsDigest
+						setLiveVerifiedUpstream(s, obsSlot, obsDigest)
 						s.activeSlot = obsSlot
 						s.activeSlotDigest = obsDigest
 						rollbackErrMsg = fmt.Sprintf("post-rollback active upstream mismatch: expected verified previous slot, observed %s (%s)", obsSlot, obsDigest)
@@ -1969,6 +2087,7 @@ func (s *Service) evaluateBlueGreenProbe(
 				rollbackErrMsg = rbErr.Error()
 				verifiedActiveSlot = ""
 				verifiedActiveDigest = ""
+				setLiveVerifiedUpstream(s, "", "")
 				s.activeSlot = ""
 				s.activeSlotDigest = ""
 				reason = fmt.Sprintf("%s; rollback to %s (%s) failed: %v", reason, prevSlot, prevDigest, rbErr)
@@ -1981,29 +2100,34 @@ func (s *Service) evaluateBlueGreenProbe(
 					rollbackErrMsg = verifyErr.Error()
 					verifiedActiveSlot = ""
 					verifiedActiveDigest = ""
+					setLiveVerifiedUpstream(s, "", "")
 					s.activeSlot = ""
 					s.activeSlotDigest = ""
 					reason = fmt.Sprintf("%s; rollback verification failed: %s", reason, rollbackErrMsg)
 				} else if obsSlot != prevSlot || obsDigest != prevDigest {
 					rollbackSucceeded = false
 					rollbackErrMsg = fmt.Sprintf("post-rollback active upstream mismatch: expected %s (%s), observed %s (%s)", prevSlot, prevDigest, obsSlot, obsDigest)
-					if (obsSlot == "blue" || obsSlot == "green") && strings.HasPrefix(obsDigest, "sha256:") && len(obsDigest) >= 15 {
+					if isValidBlueGreenSlot(obsSlot) && isValidPinnedDigest(obsDigest) {
 						verifiedActiveSlot = obsSlot
 						verifiedActiveDigest = obsDigest
+						setLiveVerifiedUpstream(s, obsSlot, obsDigest)
 						s.activeSlot = obsSlot
 						s.activeSlotDigest = obsDigest
 					} else {
 						verifiedActiveSlot = ""
 						verifiedActiveDigest = ""
+						setLiveVerifiedUpstream(s, "", "")
 						s.activeSlot = ""
 						s.activeSlotDigest = ""
 					}
 					reason = fmt.Sprintf("%s; rollback verification failed: %s", reason, rollbackErrMsg)
 				} else {
+					setLiveVerifiedUpstream(s, prevSlot, prevDigest)
 					s.activeSlot = prevSlot
 					s.activeSlotDigest = prevDigest
 				}
 			} else {
+				setLiveVerifiedUpstream(s, prevSlot, prevDigest)
 				s.activeSlot = prevSlot
 				s.activeSlotDigest = prevDigest
 			}
@@ -2084,17 +2208,21 @@ func (s *Service) evaluateBlueGreenProbe(
 	proxySwitched := false
 	reason := "SIMULATION_ONLY: pre-promotion probe inputs validated in memory; no live reverse proxy upstream was switched."
 	if proxyTarget != nil {
+		switchAttempted = true
 		if err := proxyTarget.SwitchUpstream(ctx, probe.CandidateSlot, probe.CandidateImageDigest); err != nil {
 			return failAndRollback("SMOKE_PROXY_SWITCH_FAILED", fmt.Sprintf("disposable proxy upstream switch failed: %v", err))
 		}
 		if verifier, ok := proxyTarget.(DisposableProxyActiveStateVerifier); ok {
 			obsSlot, obsDigest, verifyErr := verifier.VerifiedActiveUpstream(ctx)
+			obsSlot = strings.TrimSpace(obsSlot)
+			obsDigest = strings.TrimSpace(obsDigest)
 			if verifyErr != nil || obsSlot != probe.CandidateSlot || obsDigest != probe.CandidateImageDigest {
 				return failAndRollback("SMOKE_PROXY_SWITCH_UNVERIFIED", fmt.Sprintf("post-switch proxy active upstream verification failed (expected %s/%s, observed %s/%s, err=%v)", probe.CandidateSlot, probe.CandidateImageDigest, obsSlot, obsDigest, verifyErr))
 			}
 		}
 		proxySwitched = true
 		reason = "DISPOSABLE_TARGET_VERIFIED: live candidate HTTP probes passed and disposable reverse proxy upstream switched."
+		setLiveVerifiedUpstream(s, probe.CandidateSlot, probe.CandidateImageDigest)
 	}
 
 	s.activeSlot = probe.CandidateSlot
