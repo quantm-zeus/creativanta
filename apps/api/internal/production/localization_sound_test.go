@@ -2,9 +2,12 @@ package production
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 
@@ -857,5 +860,438 @@ func TestR8_VoiceCloneAndVoiceover_FailClosedWithoutProvider_And_NoChargeOnStore
 		if bal := svc.GetWorkspaceBalance(wsID); bal.Cmp(balAfterClone) != 0 {
 			t.Fatalf("R8 CRITICAL VIOLATION: credits deducted despite CreateAsset error! got balance=%s, expected %s", bal.String(), balAfterClone.String())
 		}
+	}
+}
+
+type barrierVoiceCloneProvider struct {
+	mu               sync.Mutex
+	cloneCalls       int
+	synthCalls       int
+	cloneEnteredCh   chan struct{}
+	cloneReleaseCh   chan struct{}
+	synthEnteredCh   chan struct{}
+	synthReleaseCh   chan struct{}
+	cloneErr         error
+	synthErr         error
+	seenCloneEffects []string
+	seenSynthEffects []string
+	seenCloneOpKeys  []string
+	seenSynthOpKeys  []string
+}
+
+func (p *barrierVoiceCloneProvider) CloneVoice(ctx context.Context, workspaceID, characterID, voiceName string, _ []string, _ bool) (string, string, error) {
+	p.mu.Lock()
+	p.cloneCalls++
+	callNum := p.cloneCalls
+	p.seenCloneEffects = append(p.seenCloneEffects, workspaceID+":"+characterID+":"+voiceName)
+	if opKey, ok := VoiceOperationIdempotencyKeyFromContext(ctx); ok {
+		p.seenCloneOpKeys = append(p.seenCloneOpKeys, opKey)
+	}
+	enteredCh := p.cloneEnteredCh
+	releaseCh := p.cloneReleaseCh
+	cloneErr := p.cloneErr
+	p.mu.Unlock()
+
+	if enteredCh != nil {
+		select {
+		case enteredCh <- struct{}{}:
+		default:
+		}
+	}
+	if releaseCh != nil {
+		select {
+		case <-releaseCh:
+		case <-ctx.Done():
+			return "", "", ctx.Err()
+		}
+	}
+	if cloneErr != nil {
+		return "", "", cloneErr
+	}
+	return "elevenlabs", fmt.Sprintf("prov-clone-%d", callNum), nil
+}
+
+func (p *barrierVoiceCloneProvider) SynthesizeSpeech(ctx context.Context, workspaceID, providerVoiceID, text, _ string) (string, float64, error) {
+	p.mu.Lock()
+	p.synthCalls++
+	callNum := p.synthCalls
+	p.seenSynthEffects = append(p.seenSynthEffects, workspaceID+":"+providerVoiceID+":"+text)
+	if opKey, ok := VoiceOperationIdempotencyKeyFromContext(ctx); ok {
+		p.seenSynthOpKeys = append(p.seenSynthOpKeys, opKey)
+	}
+	enteredCh := p.synthEnteredCh
+	releaseCh := p.synthReleaseCh
+	synthErr := p.synthErr
+	p.mu.Unlock()
+
+	if enteredCh != nil {
+		select {
+		case enteredCh <- struct{}{}:
+		default:
+		}
+	}
+	if releaseCh != nil {
+		select {
+		case <-releaseCh:
+		case <-ctx.Done():
+			return "", 0, ctx.Err()
+		}
+	}
+	if synthErr != nil {
+		return "", 0, synthErr
+	}
+	return fmt.Sprintf("https://cdn.creativanta.com/voiceovers/vo-%d.mp3", callNum), 10.0, nil
+}
+
+func TestN2_VoiceCloneAndVoiceover_ConcurrentBarrierPreventsOverspend(t *testing.T) {
+	ctx := context.Background()
+
+	// 1. Two concurrent GenerateVoiceover calls with balance = 3.00 (cost is 3.00 each).
+	// Credits MUST be reserved before SynthesizeSpeech is called so at most 1 provider call executes
+	// and final balance is 0 (never -3).
+	{
+		wsID := "01908700-0002-7000-8000-000000000201"
+		ctxManager := createLocalizationTestContext(wsID, "Manager")
+		store := NewMemoryStore()
+		prov := &barrierVoiceCloneProvider{
+			synthEnteredCh: make(chan struct{}, 2),
+			synthReleaseCh: make(chan struct{}),
+		}
+		svc := NewService(ServiceConfig{
+			Store:              store,
+			VoiceCloneProvider: prov,
+		})
+		vcMgr := svc.VoiceClone
+		vcMgr.SetWorkspaceTier(wsID, "pro")
+		_ = store.SaveConsentRecord(ctx, &ProductionConsentRecord{
+			ConsentID:   "consent-n2-vo",
+			WorkspaceID: wsID,
+			CharacterID: "char-n2-vo",
+			UserID:      "test-user-001",
+			ConsentType: "voice_likeness",
+			Granted:     true,
+		})
+
+		// Create the clone first with sufficient balance (15 credits), then set balance to exactly 3 credits.
+		svc.SetWorkspaceBalance(wsID, tenantdb.MustParseExactDecimal("15.00"))
+		createResp, err := vcMgr.Create(ctxManager, connect.NewRequest(&productionv1.VoiceCloneServiceCreateRequest{
+			Context:          &commonv1.CommandContext{WorkspaceId: &commonv1.UUID{Value: wsID}},
+			CharacterId:      "char-n2-vo",
+			Name:             "N2 Clone",
+			SampleAudioUrls:  []string{"https://assets.creativanta.com/n2-s1.mp3", "https://assets.creativanta.com/n2-s2.mp3"},
+			ConsentRecordId:  "consent-n2-vo",
+			ConsentConfirmed: true,
+		}))
+		if err != nil {
+			t.Fatalf("setup Create failed: %v", err)
+		}
+		cloneID := createResp.Msg.GetRecord().GetVoiceCloneId()
+
+		svc.SetWorkspaceBalance(wsID, tenantdb.MustParseExactDecimal("3.00"))
+
+		var wg sync.WaitGroup
+		errs := make([]error, 2)
+		wg.Add(2)
+		for i := 0; i < 2; i++ {
+			go func(idx int) {
+				defer wg.Done()
+				_, errs[idx] = vcMgr.GenerateVoiceover(ctxManager, connect.NewRequest(&productionv1.VoiceCloneServiceGenerateVoiceoverRequest{
+					Context: &commonv1.CommandContext{
+						WorkspaceId:    &commonv1.UUID{Value: wsID},
+						IdempotencyKey: fmt.Sprintf("idem-n2-vo-%d", idx),
+					},
+					VoiceCloneId: cloneID,
+					Text:         fmt.Sprintf("Concurrent voiceover line %d", idx),
+					Language:     "en",
+				}))
+			}(i)
+		}
+
+		// Wait for the winning request to enter the provider, give the second goroutine a moment to hit the credit reservation check, then release.
+		<-prov.synthEnteredCh
+		time.Sleep(25 * time.Millisecond)
+		close(prov.synthReleaseCh)
+		wg.Wait()
+
+		successCount := 0
+		insufficientCount := 0
+		for _, e := range errs {
+			if e == nil {
+				successCount++
+			} else if connect.CodeOf(e) == connect.CodeFailedPrecondition && strings.Contains(e.Error(), ErrInsufficientCredits.Error()) {
+				insufficientCount++
+			} else {
+				t.Fatalf("unexpected error in concurrent GenerateVoiceover: %v", e)
+			}
+		}
+		if successCount != 1 || insufficientCount != 1 {
+			t.Fatalf("N2 VIOLATION: expected 1 success and 1 insufficient-credit rejection, got success=%d insufficient=%d (errs=%v)", successCount, insufficientCount, errs)
+		}
+		if prov.synthCalls != 1 {
+			t.Fatalf("N2 VIOLATION: expected provider SynthesizeSpeech called once, got %d calls", prov.synthCalls)
+		}
+		if bal := svc.GetWorkspaceBalance(wsID); bal.Cmp(tenantdb.ZeroDecimal()) != 0 {
+			t.Fatalf("N2 VIOLATION: expected final workspace balance 0 after single 3-credit spend, got %s", bal.String())
+		}
+	}
+
+	// 2. Two concurrent VoiceClone.Create calls with balance = 15.00 (cost is 15.00 each).
+	// Credits MUST be reserved before CloneVoice is called so at most 1 provider call executes
+	// and final balance is 0 (never -15).
+	{
+		wsID := "01908700-0002-7000-8000-000000000202"
+		ctxManager := createLocalizationTestContext(wsID, "Manager")
+		store := NewMemoryStore()
+		prov := &barrierVoiceCloneProvider{
+			cloneEnteredCh: make(chan struct{}, 2),
+			cloneReleaseCh: make(chan struct{}),
+		}
+		svc := NewService(ServiceConfig{
+			Store:              store,
+			VoiceCloneProvider: prov,
+		})
+		vcMgr := svc.VoiceClone
+		vcMgr.SetWorkspaceTier(wsID, "pro")
+		for i := 0; i < 2; i++ {
+			_ = store.SaveConsentRecord(ctx, &ProductionConsentRecord{
+				ConsentID:   fmt.Sprintf("consent-n2-clone-%d", i),
+				WorkspaceID: wsID,
+				CharacterID: fmt.Sprintf("char-n2-%d", i),
+				UserID:      "test-user-001",
+				ConsentType: "voice_likeness",
+				Granted:     true,
+			})
+		}
+		svc.SetWorkspaceBalance(wsID, tenantdb.MustParseExactDecimal("15.00"))
+
+		var wg sync.WaitGroup
+		errs := make([]error, 2)
+		wg.Add(2)
+		for i := 0; i < 2; i++ {
+			go func(idx int) {
+				defer wg.Done()
+				_, errs[idx] = vcMgr.Create(ctxManager, connect.NewRequest(&productionv1.VoiceCloneServiceCreateRequest{
+					Context: &commonv1.CommandContext{
+						WorkspaceId:    &commonv1.UUID{Value: wsID},
+						IdempotencyKey: fmt.Sprintf("idem-n2-clone-%d", idx),
+					},
+					CharacterId:      fmt.Sprintf("char-n2-%d", idx),
+					Name:             fmt.Sprintf("Concurrent Clone %d", idx),
+					SampleAudioUrls:  []string{fmt.Sprintf("https://assets.creativanta.com/n2-clone-%d.mp3", idx)},
+					ConsentRecordId:  fmt.Sprintf("consent-n2-clone-%d", idx),
+					ConsentConfirmed: true,
+				}))
+			}(i)
+		}
+
+		<-prov.cloneEnteredCh
+		time.Sleep(25 * time.Millisecond)
+		close(prov.cloneReleaseCh)
+		wg.Wait()
+
+		successCount := 0
+		insufficientCount := 0
+		for _, e := range errs {
+			if e == nil {
+				successCount++
+			} else if connect.CodeOf(e) == connect.CodeFailedPrecondition && strings.Contains(e.Error(), ErrInsufficientCredits.Error()) {
+				insufficientCount++
+			} else {
+				t.Fatalf("unexpected error in concurrent Create: %v", e)
+			}
+		}
+		if successCount != 1 || insufficientCount != 1 {
+			t.Fatalf("N2 VIOLATION: expected 1 success and 1 insufficient-credit rejection on Create, got success=%d insufficient=%d (errs=%v)", successCount, insufficientCount, errs)
+		}
+		if prov.cloneCalls != 1 {
+			t.Fatalf("N2 VIOLATION: expected provider CloneVoice called once, got %d calls", prov.cloneCalls)
+		}
+		if bal := svc.GetWorkspaceBalance(wsID); bal.Cmp(tenantdb.ZeroDecimal()) != 0 {
+			t.Fatalf("N2 VIOLATION: expected final workspace balance 0 after single 15-credit spend, got %s", bal.String())
+		}
+	}
+}
+
+func TestN3_VoiceCloneAndVoiceover_UnknownOutcomeHoldsCreditsAndBlocksReplay(t *testing.T) {
+	ctx := context.Background()
+	wsID := "01908700-0003-7000-8000-000000000301"
+	ctxManager := createLocalizationTestContext(wsID, "Manager")
+	store := NewMemoryStore()
+	prov := &barrierVoiceCloneProvider{
+		cloneErr: context.DeadlineExceeded,
+	}
+	svc := NewService(ServiceConfig{
+		Store:              store,
+		VoiceCloneProvider: prov,
+	})
+	vcMgr := svc.VoiceClone
+	vcMgr.SetWorkspaceTier(wsID, "pro")
+	_ = store.SaveConsentRecord(ctx, &ProductionConsentRecord{
+		ConsentID:   "consent-n3-clone",
+		WorkspaceID: wsID,
+		CharacterID: "char-n3-clone",
+		UserID:      "test-user-001",
+		ConsentType: "voice_likeness",
+		Granted:     true,
+	})
+	svc.SetWorkspaceBalance(wsID, tenantdb.MustParseExactDecimal("100.00"))
+
+	// 1. VoiceClone.Create times out after provider recorded the side effect.
+	cloneReq := &productionv1.VoiceCloneServiceCreateRequest{
+		Context: &commonv1.CommandContext{
+			WorkspaceId:    &commonv1.UUID{Value: wsID},
+			IdempotencyKey: "idem-n3-voice-clone-001",
+		},
+		CharacterId:      "char-n3-clone",
+		Name:             "N3 Timeout Clone",
+		SampleAudioUrls:  []string{"https://assets.creativanta.com/n3-sample1.mp3"},
+		ConsentRecordId:  "consent-n3-clone",
+		ConsentConfirmed: true,
+	}
+	_, err := vcMgr.Create(ctxManager, connect.NewRequest(cloneReq))
+	if err == nil || !errors.Is(err, ErrOutcomeUnknown) {
+		t.Fatalf("N3 VIOLATION: expected ErrOutcomeUnknown on provider timeout during Create, got: %v", err)
+	}
+	if prov.cloneCalls != 1 {
+		t.Fatalf("expected 1 provider CloneVoice call, got %d", prov.cloneCalls)
+	}
+	// Credits (15) MUST remain held in reconciling state while outcome is unknown (available balance = 85).
+	if bal := svc.GetWorkspaceBalance(wsID); bal.Cmp(tenantdb.MustParseExactDecimal("85.00")) != 0 {
+		t.Fatalf("N3 VIOLATION: expected 15 credits held while Create outcome is unknown (balance 85), got %s", bal.String())
+	}
+
+	// Even if provider recovers, retrying with the SAME idempotency key while reconciling MUST NOT re-send the effect!
+	prov.mu.Lock()
+	prov.cloneErr = nil
+	prov.mu.Unlock()
+
+	_, retryErr := vcMgr.Create(ctxManager, connect.NewRequest(cloneReq))
+	if retryErr == nil || !errors.Is(retryErr, ErrOutcomeUnknown) {
+		t.Fatalf("N3 VIOLATION: expected retry of reconciling voice clone operation to fail closed with ErrOutcomeUnknown, got: %v", retryErr)
+	}
+	if prov.cloneCalls != 1 {
+		t.Fatalf("N3 VIOLATION: provider CloneVoice was re-executed on retry! cloneCalls=%d", prov.cloneCalls)
+	}
+	if len(prov.seenCloneOpKeys) != 1 || !strings.Contains(prov.seenCloneOpKeys[0], "idem-n3-voice-clone-001") {
+		t.Fatalf("N3 VIOLATION: expected provider to receive idempotency key in ctx, got %v", prov.seenCloneOpKeys)
+	}
+	if opRec, ok := vcMgr.GetOperation(wsID, "idem-n3-voice-clone-001"); !ok || opRec.Status != "reconciling" {
+		t.Fatalf("N3 VIOLATION: expected voice clone operation in reconciling state, got ok=%v op=%+v", ok, opRec)
+	}
+	if resRec, ok := svc.GetReservationByJob("idem-n3-voice-clone-001"); !ok || resRec.Status != "reconciling" {
+		t.Fatalf("N3 VIOLATION: expected credit reservation in reconciling state, got ok=%v res=%+v", ok, resRec)
+	}
+	if bal := svc.GetWorkspaceBalance(wsID); bal.Cmp(tenantdb.MustParseExactDecimal("85.00")) != 0 {
+		t.Fatalf("N3 VIOLATION: expected balance to remain 85 while reconciling, got %s", bal.String())
+	}
+
+	// Reusing the same idempotency key with different parameters MUST fail with CodeAlreadyExists.
+	conflictCloneReq := &productionv1.VoiceCloneServiceCreateRequest{
+		Context: &commonv1.CommandContext{
+			WorkspaceId:    &commonv1.UUID{Value: wsID},
+			IdempotencyKey: "idem-n3-voice-clone-001",
+		},
+		CharacterId:      "char-n3-clone",
+		Name:             "Mutated Clone Name",
+		SampleAudioUrls:  []string{"https://assets.creativanta.com/n3-sample1.mp3"},
+		ConsentRecordId:  "consent-n3-clone",
+		ConsentConfirmed: true,
+	}
+	_, conflictErr := vcMgr.Create(ctxManager, connect.NewRequest(conflictCloneReq))
+	if conflictErr == nil || connect.CodeOf(conflictErr) != connect.CodeAlreadyExists || !errors.Is(conflictErr, ErrDuplicateIdempotencyKeyConflict) {
+		t.Fatalf("N3 VIOLATION: expected parameter mismatch on same idempotency key to fail with CodeAlreadyExists, got: %v", conflictErr)
+	}
+
+	// Reconcile clone as confirmed_not_executed -> releases the 15 held credits back to 100.00!
+	if err := vcMgr.ReconcileOperation(ctx, wsID, "idem-n3-voice-clone-001", "confirmed_not_executed", "", "", 0); err != nil {
+		t.Fatalf("ReconcileOperation failed: %v", err)
+	}
+	if bal := svc.GetWorkspaceBalance(wsID); bal.Cmp(tenantdb.MustParseExactDecimal("100.00")) != 0 {
+		t.Fatalf("expected balance restored to 100.00 after confirmed_not_executed reconciliation, got %s", bal.String())
+	}
+
+	// 2. Now test GenerateVoiceover timeout -> holds 3 credits in reconciling and blocks duplicate provider call on retry.
+	_ = store.SaveConsentRecord(ctx, &ProductionConsentRecord{
+		ConsentID:   "consent-n3-vo",
+		WorkspaceID: wsID,
+		CharacterID: "char-n3-vo",
+		UserID:      "test-user-001",
+		ConsentType: "voice_likeness",
+		Granted:     true,
+	})
+	readyCloneResp, err := vcMgr.Create(ctxManager, connect.NewRequest(&productionv1.VoiceCloneServiceCreateRequest{
+		Context: &commonv1.CommandContext{
+			WorkspaceId:    &commonv1.UUID{Value: wsID},
+			IdempotencyKey: "idem-n3-voice-clone-002",
+		},
+		CharacterId:      "char-n3-vo",
+		Name:             "N3 Ready Clone",
+		SampleAudioUrls:  []string{"https://assets.creativanta.com/n3-sample2.mp3"},
+		ConsentRecordId:  "consent-n3-vo",
+		ConsentConfirmed: true,
+	}))
+	if err != nil {
+		t.Fatalf("setup ready clone failed: %v", err)
+	}
+	cloneID := readyCloneResp.Msg.GetRecord().GetVoiceCloneId()
+	// Balance is now 100 - 15 = 85.
+
+	prov.mu.Lock()
+	prov.synthErr = context.DeadlineExceeded
+	prov.mu.Unlock()
+
+	voReq := &productionv1.VoiceCloneServiceGenerateVoiceoverRequest{
+		Context: &commonv1.CommandContext{
+			WorkspaceId:    &commonv1.UUID{Value: wsID},
+			IdempotencyKey: "idem-n3-voiceover-001",
+		},
+		VoiceCloneId: cloneID,
+		Text:         "Hello from N3 voiceover test",
+		Language:     "en",
+	}
+	_, voErr := vcMgr.GenerateVoiceover(ctxManager, connect.NewRequest(voReq))
+	if voErr == nil || !errors.Is(voErr, ErrOutcomeUnknown) {
+		t.Fatalf("N3 VIOLATION: expected ErrOutcomeUnknown on provider timeout during GenerateVoiceover, got: %v", voErr)
+	}
+	if prov.synthCalls != 1 {
+		t.Fatalf("expected 1 provider SynthesizeSpeech call, got %d", prov.synthCalls)
+	}
+	if len(prov.seenSynthOpKeys) != 1 || !strings.Contains(prov.seenSynthOpKeys[0], "idem-n3-voiceover-001") {
+		t.Fatalf("N3 VIOLATION: expected SynthesizeSpeech to receive idempotency key in ctx, got %v", prov.seenSynthOpKeys)
+	}
+	// 3 credits MUST remain held in reconciling state (85 - 3 = 82).
+	if bal := svc.GetWorkspaceBalance(wsID); bal.Cmp(tenantdb.MustParseExactDecimal("82.00")) != 0 {
+		t.Fatalf("N3 VIOLATION: expected 3 credits held while GenerateVoiceover outcome is unknown (balance 82), got %s", bal.String())
+	}
+
+	// Clear provider error and retry with the same IdempotencyKey -> MUST NOT call SynthesizeSpeech a second time!
+	prov.mu.Lock()
+	prov.synthErr = nil
+	prov.mu.Unlock()
+
+	_, voRetryErr := vcMgr.GenerateVoiceover(ctxManager, connect.NewRequest(voReq))
+	if voRetryErr == nil || !errors.Is(voRetryErr, ErrOutcomeUnknown) {
+		t.Fatalf("N3 VIOLATION: expected retry of reconciling voiceover operation to fail closed with ErrOutcomeUnknown, got: %v", voRetryErr)
+	}
+	if prov.synthCalls != 1 {
+		t.Fatalf("N3 VIOLATION: provider SynthesizeSpeech was re-executed on retry! synthCalls=%d", prov.synthCalls)
+	}
+
+	// Reconcile the voiceover operation as completed -> commits the 3 held credits and allows idempotent replay without calling provider again!
+	if err := vcMgr.ReconcileOperation(ctx, wsID, "idem-n3-voiceover-001", "completed", "", "https://cdn.creativanta.com/voiceovers/reconciled.mp3", 12.0); err != nil {
+		t.Fatalf("ReconcileOperation completed failed: %v", err)
+	}
+	replayedVO, err := vcMgr.GenerateVoiceover(ctxManager, connect.NewRequest(voReq))
+	if err != nil {
+		t.Fatalf("expected idempotent replay after completed reconciliation to succeed, got: %v", err)
+	}
+	if replayedVO.Msg.GetAudioUrl() != "https://cdn.creativanta.com/voiceovers/reconciled.mp3" {
+		t.Fatalf("unexpected replayed audio url: %s", replayedVO.Msg.GetAudioUrl())
+	}
+	if prov.synthCalls != 1 {
+		t.Fatalf("expected synthCalls to remain 1 after idempotent replay, got %d", prov.synthCalls)
+	}
+	if bal := svc.GetWorkspaceBalance(wsID); bal.Cmp(tenantdb.MustParseExactDecimal("82.00")) != 0 {
+		t.Fatalf("expected balance to remain 82.00 after idempotent replay, got %s", bal.String())
 	}
 }

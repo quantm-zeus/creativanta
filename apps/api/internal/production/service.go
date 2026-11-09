@@ -524,10 +524,56 @@ func (s *Service) GetWorkspaceBalance(workspaceID string) tenantdb.ExactDecimal 
 func (s *Service) deductCredits(workspaceID string, amount tenantdb.ExactDecimal) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	curr := s.balances[workspaceID]
+	curr, ok := s.balances[workspaceID]
+	if !ok {
+		curr = tenantdb.MustParseExactDecimal("100")
+	}
+	if curr.Cmp(amount) < 0 {
+		return
+	}
 	if res, err := curr.Sub(amount); err == nil {
 		s.balances[workspaceID] = res
 	}
+}
+
+func (s *Service) reserveCreditsForOperation(workspaceID, operationID, quoteID, idempotencyKey, requestHash string, amount tenantdb.ExactDecimal, aliases ...string) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	currBal, ok := s.balances[workspaceID]
+	if !ok {
+		currBal = tenantdb.MustParseExactDecimal("100")
+	}
+	if currBal.Cmp(amount) < 0 {
+		return "", ErrInsufficientCredits
+	}
+	newBal, err := currBal.Sub(amount)
+	if err != nil {
+		return "", err
+	}
+	now := time.Now().UTC()
+	resID := "res-" + operationID
+	rec := &CreditReservationRecord{
+		ReservationID:    resID,
+		WorkspaceID:      workspaceID,
+		JobID:            operationID,
+		QuoteID:          quoteID,
+		IdempotencyKey:   idempotencyKey,
+		RequestHash:      requestHash,
+		ReservedCredits:  amount,
+		Status:           "in_flight",
+		DispatchInFlight: true,
+		CreatedAt:        now,
+		UpdatedAt:        now,
+	}
+	s.balances[workspaceID] = newBal
+	s.reservations[resID] = rec
+	s.reservationsByJob[operationID] = resID
+	for _, alias := range aliases {
+		if trimmed := strings.TrimSpace(alias); trimmed != "" {
+			s.reservationsByJob[trimmed] = resID
+		}
+	}
+	return resID, nil
 }
 
 // DeductCredits decrements workspace balance with balance check.

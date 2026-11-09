@@ -2,6 +2,9 @@ package production
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -9,6 +12,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	commonv1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/common/v1"
@@ -16,6 +20,49 @@ import (
 	"github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/production/v1/productionv1connect"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb"
 )
+
+type voiceOperationIdempotencyKeyCtxKey struct{}
+
+// WithVoiceOperationIdempotencyKey attaches a deterministic operation idempotency key to ctx for external voice providers.
+func WithVoiceOperationIdempotencyKey(ctx context.Context, key string) context.Context {
+	return context.WithValue(ctx, voiceOperationIdempotencyKeyCtxKey{}, key)
+}
+
+// VoiceOperationIdempotencyKeyFromContext extracts the operation idempotency key from ctx if present.
+func VoiceOperationIdempotencyKeyFromContext(ctx context.Context) (string, bool) {
+	v, ok := ctx.Value(voiceOperationIdempotencyKeyCtxKey{}).(string)
+	return v, ok && v != ""
+}
+
+// VoiceOperationRecord tracks a voice clone or voiceover side-effect operation, its credit reservation, and reconciliation state.
+type VoiceOperationRecord struct {
+	OperationID     string
+	OperationType   string // "voice_clone_create" | "voice_clone_voiceover"
+	WorkspaceID     string
+	IdempotencyKey  string
+	ProviderOpKey   string
+	RequestHash     string
+	ReservationID   string
+	Status          string // "in_flight" | "reconciling" | "completed" | "failed" | "cancelled"
+	RequiredCredits tenantdb.ExactDecimal
+	ProviderName    string
+	ProviderVoiceID string
+	AudioURL        string
+	DurationSeconds float64
+	QualityScore    float64
+	RepairApplied   bool
+	CharacterID     string
+	VoiceName       string
+	SampleAudioURLs []string
+	ConsentRecordID string
+	VoiceCloneID    string
+	Text            string
+	Language        string
+	CreateResp      *productionv1.VoiceCloneServiceCreateResponse
+	VoiceoverResp   *productionv1.VoiceCloneServiceGenerateVoiceoverResponse
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+}
 
 // VoiceCloneProvider abstracts external voice cloning and synthesis execution (e.g., ElevenLabs).
 type VoiceCloneProvider interface {
@@ -52,9 +99,13 @@ type VoiceCloneManager struct {
 	store            Store
 	service          *Service
 	provider         VoiceCloneProvider
-	workspaceTiers   map[string]string // workspaceID -> tier ("free", "starter", "pro", "business", "enterprise")
-	consentStatus    map[string]bool   // consentRecordID -> isValid
-	consentWorkspace map[string]string // consentRecordID -> workspaceID
+	workspaceTiers   map[string]string                // workspaceID -> tier ("free", "starter", "pro", "business", "enterprise")
+	consentStatus    map[string]bool                  // consentRecordID -> isValid
+	consentWorkspace map[string]string                // consentRecordID -> workspaceID
+	opSeq            int64                            // monotonic sequence for voice operation IDs
+	opRecords        map[string]*VoiceOperationRecord // operationID -> record
+	opByIdemKey      map[string]string                // wsID:opType:idemKey -> operationID
+	opByNaturalKey   map[string]string                // wsID:opType:reqHash -> operationID
 }
 
 var _ productionv1connect.VoiceCloneServiceHandler = (*VoiceCloneManager)(nil)
@@ -67,6 +118,9 @@ func NewVoiceCloneManager(store Store, svc *Service) *VoiceCloneManager {
 		workspaceTiers:   make(map[string]string),
 		consentStatus:    make(map[string]bool),
 		consentWorkspace: make(map[string]string),
+		opRecords:        make(map[string]*VoiceOperationRecord),
+		opByIdemKey:      make(map[string]string),
+		opByNaturalKey:   make(map[string]string),
 	}
 }
 
@@ -281,17 +335,13 @@ func (m *VoiceCloneManager) Create(
 		}
 	}
 
-	// 3. Measured Quote & Credit Check
+	// 3. Measured Quote & Credit Validation
 	requiredCredits := tenantdb.MustParseExactDecimal("15") // Base quote per api_examples.md A.22
 	if msg.ConfirmedCredits != "" {
 		confirmed := tenantdb.MustParseExactDecimal(msg.ConfirmedCredits)
 		if confirmed.Cmp(requiredCredits) < 0 {
 			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("confirmed credits %s less than required %s", confirmed.String(), requiredCredits.String()))
 		}
-	}
-	bal := m.service.GetWorkspaceBalance(wsID)
-	if bal.Cmp(requiredCredits) < 0 {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, ErrInsufficientCredits)
 	}
 
 	// 4. Voice Quality Scoring & Automatic Repair (Acceptance Target 2)
@@ -306,19 +356,50 @@ func (m *VoiceCloneManager) Create(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("at least one sample audio URL is required"))
 	}
 
-	// 5. Fail-closed provider execution BEFORE persisting record or deducting credits (R8)
+	// 5. Fail-closed provider check BEFORE reserving credits (R8)
 	vcProvider := m.getProvider()
 	if vcProvider == nil {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, ErrProviderNotConfigured)
 	}
-	providerName, providerVoiceID, provErr := vcProvider.CloneVoice(ctx, wsID, msg.CharacterId, msg.Name, msg.SampleAudioUrls, repairApplied)
+
+	// 6. Idempotency + Atomic Credit Reservation BEFORE external provider call (N2 / N3)
+	idemKey := strings.TrimSpace(msg.GetContext().GetIdempotencyKey())
+	reqHash := computeVoiceCloneRequestHash(msg)
+	op, cachedCreate, _, beginErr := m.beginVoiceOperation(wsID, "voice_clone_create", idemKey, reqHash, "quote-voice-clone", requiredCredits)
+	if beginErr != nil {
+		return nil, beginErr
+	}
+	if cachedCreate != nil {
+		return connect.NewResponse(cachedCreate), nil
+	}
+	m.mu.Lock()
+	op.CharacterID = msg.CharacterId
+	op.VoiceName = msg.Name
+	op.SampleAudioURLs = append([]string(nil), msg.SampleAudioUrls...)
+	op.ConsentRecordID = msg.ConsentRecordId
+	op.QualityScore = qualityScore
+	op.RepairApplied = repairApplied
+	m.mu.Unlock()
+
+	defer m.service.endDispatch(op.OperationID)
+
+	providerCtx := WithVoiceOperationIdempotencyKey(ctx, op.ProviderOpKey)
+	providerName, providerVoiceID, provErr := vcProvider.CloneVoice(providerCtx, wsID, msg.CharacterId, msg.Name, msg.SampleAudioUrls, repairApplied)
 	if provErr != nil {
 		if errors.Is(provErr, ErrProviderNotConfigured) {
+			m.failAndReleaseVoiceOperation(wsID, op.OperationID)
 			return nil, connect.NewError(connect.CodeFailedPrecondition, provErr)
 		}
+		if isUnknownVoiceOutcomeError(provErr, providerVoiceID) {
+			m.markVoiceOperationReconciling(op.OperationID, providerName, providerVoiceID, "", 0)
+			m.service.setReservationStatus(op.OperationID, "reconciling")
+			return nil, connect.NewError(connect.CodeDeadlineExceeded, fmt.Errorf("%w: voice clone provider outcome unknown; operation %s is reconciling and credits remain reserved: %v", ErrOutcomeUnknown, op.OperationID, provErr))
+		}
+		m.failAndReleaseVoiceOperation(wsID, op.OperationID)
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("voice clone provider execution failed: %w", provErr))
 	}
 	if strings.TrimSpace(providerVoiceID) == "" {
+		m.failAndReleaseVoiceOperation(wsID, op.OperationID)
 		return nil, connect.NewError(connect.CodeInternal, errors.New("voice clone provider returned empty provider_voice_id"))
 	}
 	if strings.TrimSpace(providerName) == "" {
@@ -345,11 +426,14 @@ func (m *VoiceCloneManager) Create(
 	}
 
 	if err := m.store.CreateVoiceClone(ctx, record); err != nil {
+		m.failAndReleaseVoiceOperation(wsID, op.OperationID)
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	// Deduct reserved credits only after provider execution and durable persistence succeed (R8)
-	m.service.deductCredits(wsID, requiredCredits)
+	// Commit reserved credits only after provider execution and durable persistence succeed (R8 / N2)
+	if err := m.service.commitReservation(wsID, op.OperationID, requiredCredits); err != nil {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, err)
+	}
 
 	res := &productionv1.VoiceCloneServiceCreateResponse{
 		Record: &productionv1.VoiceCloneRecord{
@@ -373,6 +457,7 @@ func (m *VoiceCloneManager) Create(
 		ConsentStatus:      "granted",
 	}
 
+	m.completeVoiceOperation(op.OperationID, providerName, providerVoiceID, "", 0, res, nil)
 	return connect.NewResponse(res), nil
 }
 
@@ -545,24 +630,51 @@ func (m *VoiceCloneManager) GenerateVoiceover(
 	}
 
 	cost := tenantdb.MustParseExactDecimal("3")
-	bal := m.service.GetWorkspaceBalance(wsID)
-	if bal.Cmp(cost) < 0 {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, ErrInsufficientCredits)
-	}
 
-	// Fail-closed provider execution BEFORE creating asset or deducting credits (R8)
+	// Fail-closed provider check BEFORE reserving credits (R8)
 	vcProvider := m.getProvider()
 	if vcProvider == nil {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, ErrProviderNotConfigured)
 	}
-	audioURL, durSec, synthErr := vcProvider.SynthesizeSpeech(ctx, wsID, rec.ProviderVoiceID, msg.Text, msg.Language)
+
+	// Idempotency + Atomic Credit Reservation BEFORE external provider call (N2 / N3)
+	idemKey := strings.TrimSpace(msg.GetContext().GetIdempotencyKey())
+	reqHash := computeVoiceoverRequestHash(msg)
+	op, _, cachedVO, beginErr := m.beginVoiceOperation(wsID, "voice_clone_voiceover", idemKey, reqHash, "quote-voiceover", cost)
+	if beginErr != nil {
+		return nil, beginErr
+	}
+	if cachedVO != nil {
+		return connect.NewResponse(cachedVO), nil
+	}
+	m.mu.Lock()
+	op.VoiceCloneID = msg.VoiceCloneId
+	op.VoiceName = rec.VoiceName
+	op.ProviderName = rec.Provider
+	op.ProviderVoiceID = rec.ProviderVoiceID
+	op.Text = msg.Text
+	op.Language = msg.Language
+	m.mu.Unlock()
+
+	defer m.service.endDispatch(op.OperationID)
+
+	providerCtx := WithVoiceOperationIdempotencyKey(ctx, op.ProviderOpKey)
+	audioURL, durSec, synthErr := vcProvider.SynthesizeSpeech(providerCtx, wsID, rec.ProviderVoiceID, msg.Text, msg.Language)
 	if synthErr != nil {
 		if errors.Is(synthErr, ErrProviderNotConfigured) {
+			m.failAndReleaseVoiceOperation(wsID, op.OperationID)
 			return nil, connect.NewError(connect.CodeFailedPrecondition, synthErr)
 		}
+		if isUnknownVoiceOutcomeError(synthErr, audioURL) {
+			m.markVoiceOperationReconciling(op.OperationID, rec.Provider, rec.ProviderVoiceID, audioURL, durSec)
+			m.service.setReservationStatus(op.OperationID, "reconciling")
+			return nil, connect.NewError(connect.CodeDeadlineExceeded, fmt.Errorf("%w: voiceover provider outcome unknown; operation %s is reconciling and credits remain reserved: %v", ErrOutcomeUnknown, op.OperationID, synthErr))
+		}
+		m.failAndReleaseVoiceOperation(wsID, op.OperationID)
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("voiceover synthesis failed: %w", synthErr))
 	}
 	if strings.TrimSpace(audioURL) == "" {
+		m.failAndReleaseVoiceOperation(wsID, op.OperationID)
 		return nil, connect.NewError(connect.CodeInternal, errors.New("voiceover provider returned empty audio URL"))
 	}
 	if durSec <= 0 {
@@ -593,17 +705,401 @@ func (m *VoiceCloneManager) GenerateVoiceover(
 		UpdatedAt:             now,
 	}
 	if err := m.store.CreateAsset(ctx, asset); err != nil {
+		m.failAndReleaseVoiceOperation(wsID, op.OperationID)
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to persist voiceover asset: %w", err))
 	}
 
-	m.service.deductCredits(wsID, cost)
+	if err := m.service.commitReservation(wsID, op.OperationID, cost); err != nil {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, err)
+	}
 
-	return connect.NewResponse(&productionv1.VoiceCloneServiceGenerateVoiceoverResponse{
+	voResp := &productionv1.VoiceCloneServiceGenerateVoiceoverResponse{
 		AssetId:         assetID,
 		AudioUrl:        asset.FileURL,
 		DurationSeconds: durSec,
 		CreditsUsed:     cost.String(),
-	}), nil
+	}
+	m.completeVoiceOperation(op.OperationID, rec.Provider, rec.ProviderVoiceID, audioURL, durSec, nil, voResp)
+
+	return connect.NewResponse(voResp), nil
+}
+
+func computeVoiceCloneRequestHash(msg *productionv1.VoiceCloneServiceCreateRequest) string {
+	payload := struct {
+		CharacterID     string   `json:"character_id"`
+		Name            string   `json:"name"`
+		SampleAudioURLs []string `json:"sample_audio_urls"`
+		ConsentRecordID string   `json:"consent_record_id"`
+	}{
+		CharacterID:     strings.TrimSpace(msg.GetCharacterId()),
+		Name:            strings.TrimSpace(msg.GetName()),
+		SampleAudioURLs: msg.GetSampleAudioUrls(),
+		ConsentRecordID: strings.TrimSpace(msg.GetConsentRecordId()),
+	}
+	b, _ := json.Marshal(payload)
+	sum := sha256.Sum256(b)
+	return hex.EncodeToString(sum[:])
+}
+
+func computeVoiceoverRequestHash(msg *productionv1.VoiceCloneServiceGenerateVoiceoverRequest) string {
+	payload := struct {
+		VoiceCloneID string  `json:"voice_clone_id"`
+		Text         string  `json:"text"`
+		Language     string  `json:"language"`
+		Speed        float64 `json:"speed"`
+		Pitch        float64 `json:"pitch"`
+	}{
+		VoiceCloneID: strings.TrimSpace(msg.GetVoiceCloneId()),
+		Text:         strings.TrimSpace(msg.GetText()),
+		Language:     strings.TrimSpace(msg.GetLanguage()),
+		Speed:        msg.GetSpeed(),
+		Pitch:        msg.GetPitch(),
+	}
+	b, _ := json.Marshal(payload)
+	sum := sha256.Sum256(b)
+	return hex.EncodeToString(sum[:])
+}
+
+func isUnknownVoiceOutcomeError(err error, partialOutput string) bool {
+	if err == nil {
+		return false
+	}
+	if strings.TrimSpace(partialOutput) != "" {
+		return true
+	}
+	if isUnknownSubmissionOutcomeError(err) {
+		return true
+	}
+	lower := strings.ToLower(err.Error())
+	return strings.Contains(lower, "reconcil") ||
+		strings.Contains(lower, "ambiguous") ||
+		strings.Contains(lower, "502") ||
+		strings.Contains(lower, "503") ||
+		strings.Contains(lower, "504") ||
+		strings.Contains(lower, "gateway")
+}
+
+func (m *VoiceCloneManager) beginVoiceOperation(
+	wsID, opType, idemKey, reqHash, quoteID string,
+	requiredCredits tenantdb.ExactDecimal,
+) (
+	*VoiceOperationRecord,
+	*productionv1.VoiceCloneServiceCreateResponse,
+	*productionv1.VoiceCloneServiceGenerateVoiceoverResponse,
+	error,
+) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if idemKey != "" {
+		idemLookup := wsID + ":" + opType + ":" + idemKey
+		if existingID, ok := m.opByIdemKey[idemLookup]; ok {
+			if existing, exists := m.opRecords[existingID]; exists && existing != nil {
+				if existing.RequestHash != reqHash {
+					return nil, nil, nil, connect.NewError(connect.CodeAlreadyExists, ErrDuplicateIdempotencyKeyConflict)
+				}
+				switch existing.Status {
+				case "completed":
+					if existing.CreateResp != nil {
+						return nil, proto.Clone(existing.CreateResp).(*productionv1.VoiceCloneServiceCreateResponse), nil, nil
+					}
+					if existing.VoiceoverResp != nil {
+						return nil, nil, proto.Clone(existing.VoiceoverResp).(*productionv1.VoiceCloneServiceGenerateVoiceoverResponse), nil
+					}
+				case "in_flight", "reconciling":
+					return nil, nil, nil, connect.NewError(
+						connect.CodeFailedPrecondition,
+						fmt.Errorf("%w: voice operation %s has an unresolved provider outcome (%s) and cannot be retried until reconciled", ErrOutcomeUnknown, existing.OperationID, existing.Status),
+					)
+				}
+			}
+		}
+	}
+
+	naturalLookup := wsID + ":" + opType + ":" + reqHash
+	if existingID, ok := m.opByNaturalKey[naturalLookup]; ok {
+		if existing, exists := m.opRecords[existingID]; exists && existing != nil && existing.Status == "reconciling" {
+			return nil, nil, nil, connect.NewError(
+				connect.CodeFailedPrecondition,
+				fmt.Errorf("%w: voice operation %s has an unresolved provider outcome and cannot be retried until reconciled", ErrOutcomeUnknown, existing.OperationID),
+			)
+		}
+	}
+
+	m.opSeq++
+	opID := fmt.Sprintf("voice-op-%s-%d", opType, m.opSeq)
+	providerOpKey := fmt.Sprintf("%s:%s:%s", wsID, opType, opID)
+	if idemKey != "" {
+		providerOpKey = fmt.Sprintf("%s:%s:%s", wsID, opType, idemKey)
+	}
+
+	resID, resErr := m.service.reserveCreditsForOperation(wsID, opID, quoteID, idemKey, reqHash, requiredCredits, idemKey)
+	if resErr != nil {
+		if errors.Is(resErr, ErrInsufficientCredits) {
+			return nil, nil, nil, connect.NewError(connect.CodeFailedPrecondition, ErrInsufficientCredits)
+		}
+		return nil, nil, nil, connect.NewError(connect.CodeInternal, resErr)
+	}
+
+	now := time.Now().UTC()
+	rec := &VoiceOperationRecord{
+		OperationID:     opID,
+		OperationType:   opType,
+		WorkspaceID:     wsID,
+		IdempotencyKey:  idemKey,
+		ProviderOpKey:   providerOpKey,
+		RequestHash:     reqHash,
+		ReservationID:   resID,
+		Status:          "in_flight",
+		RequiredCredits: requiredCredits,
+		CreatedAt:       now,
+		UpdatedAt:       now,
+	}
+	m.opRecords[opID] = rec
+	if idemKey != "" {
+		m.opByIdemKey[wsID+":"+opType+":"+idemKey] = opID
+	}
+	m.opByNaturalKey[naturalLookup] = opID
+	return rec, nil, nil, nil
+}
+
+func (m *VoiceCloneManager) markVoiceOperationReconciling(opID, providerName, providerVoiceID, audioURL string, durSec float64) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	rec, ok := m.opRecords[opID]
+	if !ok || rec == nil {
+		return
+	}
+	rec.Status = "reconciling"
+	if strings.TrimSpace(providerName) != "" {
+		rec.ProviderName = strings.TrimSpace(providerName)
+	}
+	if strings.TrimSpace(providerVoiceID) != "" {
+		rec.ProviderVoiceID = strings.TrimSpace(providerVoiceID)
+	}
+	if strings.TrimSpace(audioURL) != "" {
+		rec.AudioURL = strings.TrimSpace(audioURL)
+	}
+	if durSec > 0 {
+		rec.DurationSeconds = durSec
+	}
+	rec.UpdatedAt = time.Now().UTC()
+}
+
+func (m *VoiceCloneManager) failAndReleaseVoiceOperation(wsID, opID string) {
+	m.service.releaseReservation(wsID, opID)
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	rec, ok := m.opRecords[opID]
+	if !ok || rec == nil {
+		return
+	}
+	rec.Status = "failed"
+	rec.UpdatedAt = time.Now().UTC()
+}
+
+func (m *VoiceCloneManager) completeVoiceOperation(
+	opID, providerName, providerVoiceID, audioURL string,
+	durSec float64,
+	createResp *productionv1.VoiceCloneServiceCreateResponse,
+	voResp *productionv1.VoiceCloneServiceGenerateVoiceoverResponse,
+) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	rec, ok := m.opRecords[opID]
+	if !ok || rec == nil {
+		return
+	}
+	rec.Status = "completed"
+	rec.ProviderName = providerName
+	rec.ProviderVoiceID = providerVoiceID
+	rec.AudioURL = audioURL
+	rec.DurationSeconds = durSec
+	if createResp != nil {
+		rec.CreateResp = proto.Clone(createResp).(*productionv1.VoiceCloneServiceCreateResponse)
+	}
+	if voResp != nil {
+		rec.VoiceoverResp = proto.Clone(voResp).(*productionv1.VoiceCloneServiceGenerateVoiceoverResponse)
+	}
+	rec.UpdatedAt = time.Now().UTC()
+}
+
+// GetOperation returns a snapshot of a tracked voice operation by workspace and idempotency key (or operation ID).
+func (m *VoiceCloneManager) GetOperation(workspaceID, keyOrOpID string) (*VoiceOperationRecord, bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	if rec, ok := m.opRecords[keyOrOpID]; ok && rec != nil && rec.WorkspaceID == workspaceID {
+		cp := *rec
+		return &cp, true
+	}
+	for _, opType := range []string{"voice_clone_create", "voice_clone_voiceover"} {
+		if opID, ok := m.opByIdemKey[workspaceID+":"+opType+":"+keyOrOpID]; ok {
+			if rec, exists := m.opRecords[opID]; exists && rec != nil {
+				cp := *rec
+				return &cp, true
+			}
+		}
+	}
+	return nil, false
+}
+
+// ReconcileOperation resolves an unknown/reconciling voice operation after external provider outcome is verified.
+func (m *VoiceCloneManager) ReconcileOperation(
+	ctx context.Context,
+	workspaceID, keyOrOpID, providerOutcome, providerVoiceID, audioURL string,
+	durationSeconds float64,
+) error {
+	m.mu.Lock()
+	var target *VoiceOperationRecord
+	if rec, ok := m.opRecords[keyOrOpID]; ok && rec != nil && rec.WorkspaceID == workspaceID {
+		target = rec
+	} else {
+		for _, opType := range []string{"voice_clone_create", "voice_clone_voiceover"} {
+			if opID, ok := m.opByIdemKey[workspaceID+":"+opType+":"+keyOrOpID]; ok {
+				if rec, exists := m.opRecords[opID]; exists && rec != nil {
+					target = rec
+					break
+				}
+			}
+		}
+	}
+	if target == nil {
+		m.mu.Unlock()
+		return fmt.Errorf("voice operation %q not found in workspace %q", keyOrOpID, workspaceID)
+	}
+	opCopy := *target
+	m.mu.Unlock()
+
+	outcome := strings.ToLower(strings.TrimSpace(providerOutcome))
+	switch outcome {
+	case "confirmed_not_executed", "failed", "cancelled", "canceled":
+		m.service.releaseReservation(workspaceID, opCopy.OperationID)
+		m.mu.Lock()
+		if outcome == "cancelled" || outcome == "canceled" {
+			target.Status = "cancelled"
+		} else {
+			target.Status = "failed"
+		}
+		target.UpdatedAt = time.Now().UTC()
+		m.mu.Unlock()
+		return nil
+
+	case "completed", "succeeded":
+		if opCopy.OperationType == "voice_clone_create" {
+			effVoiceID := strings.TrimSpace(providerVoiceID)
+			if effVoiceID == "" {
+				effVoiceID = strings.TrimSpace(opCopy.ProviderVoiceID)
+			}
+			if effVoiceID == "" {
+				return errors.New("provider_voice_id is required to reconcile voice clone as completed")
+			}
+			effProvider := strings.TrimSpace(opCopy.ProviderName)
+			if effProvider == "" {
+				effProvider = "elevenlabs"
+			}
+			now := time.Now().UTC()
+			cloneID := fmt.Sprintf("01908700-%04d-7000-8000-%012d", now.UnixNano()%10000, now.UnixNano()%1000000000000)
+			record := &VoiceCloneRecord{
+				VoiceCloneID:    cloneID,
+				WorkspaceID:     workspaceID,
+				CharacterID:     opCopy.CharacterID,
+				Provider:        effProvider,
+				ProviderVoiceID: effVoiceID,
+				VoiceName:       opCopy.VoiceName,
+				SampleAudioURLs: opCopy.SampleAudioURLs,
+				CloneStatus:     "ready",
+				ConsentRecordID: opCopy.ConsentRecordID,
+				QualityScore:    opCopy.QualityScore,
+				RepairApplied:   opCopy.RepairApplied,
+				CreatedAt:       now,
+				UpdatedAt:       now,
+			}
+			if err := m.store.CreateVoiceClone(ctx, record); err != nil {
+				return err
+			}
+			if err := m.service.commitReservation(workspaceID, opCopy.OperationID, opCopy.RequiredCredits); err != nil {
+				return err
+			}
+			res := &productionv1.VoiceCloneServiceCreateResponse{
+				Record: &productionv1.VoiceCloneRecord{
+					VoiceCloneId:    record.VoiceCloneID,
+					WorkspaceId:     record.WorkspaceID,
+					CharacterId:     record.CharacterID,
+					Provider:        record.Provider,
+					ProviderVoiceId: record.ProviderVoiceID,
+					VoiceName:       record.VoiceName,
+					SampleAudioUrls: record.SampleAudioURLs,
+					CloneStatus:     record.CloneStatus,
+					ConsentRecordId: record.ConsentRecordID,
+					QualityScore:    record.QualityScore,
+					RepairApplied:   record.RepairApplied,
+					CreatedAt:       timestamppb.New(record.CreatedAt),
+					UpdatedAt:       timestamppb.New(record.UpdatedAt),
+				},
+				Status:             "ready",
+				EstimatedDurationS: 120,
+				CreditsReserved:    opCopy.RequiredCredits.String(),
+				ConsentStatus:      "granted",
+			}
+			m.completeVoiceOperation(opCopy.OperationID, effProvider, effVoiceID, "", 0, res, nil)
+			return nil
+		}
+
+		effAudioURL := strings.TrimSpace(audioURL)
+		if effAudioURL == "" {
+			effAudioURL = strings.TrimSpace(opCopy.AudioURL)
+		}
+		if effAudioURL == "" {
+			return errors.New("audio_url is required to reconcile voiceover operation as completed")
+		}
+		effDur := durationSeconds
+		if effDur <= 0 {
+			effDur = opCopy.DurationSeconds
+		}
+		if effDur <= 0 {
+			effDur = 15.5
+		}
+		durDec, decErr := tenantdb.ParseExactDecimal(fmt.Sprintf("%.2f", effDur))
+		if decErr != nil {
+			durDec = tenantdb.MustParseExactDecimal("15.5")
+		}
+		now := time.Now().UTC()
+		assetID := fmt.Sprintf("asset-voiceover-%d", now.UnixNano())
+		asset := &Asset{
+			AssetID:               assetID,
+			WorkspaceID:           workspaceID,
+			AssetType:             "audio",
+			Title:                 "Voiceover - " + opCopy.VoiceName,
+			SourceGenerationMode:  "ai_generated",
+			SourceProvider:        opCopy.ProviderName,
+			SourceModel:           "eleven_multilingual_v2",
+			FileURL:               effAudioURL,
+			DurationSeconds:       durDec,
+			GenerationState:       "generated",
+			QualityState:          "approved",
+			GenerationCostCredits: opCopy.RequiredCredits,
+			GenerationPrompt:      opCopy.Text,
+			CreatedAt:             now,
+			UpdatedAt:             now,
+		}
+		if err := m.store.CreateAsset(ctx, asset); err != nil {
+			return err
+		}
+		if err := m.service.commitReservation(workspaceID, opCopy.OperationID, opCopy.RequiredCredits); err != nil {
+			return err
+		}
+		voResp := &productionv1.VoiceCloneServiceGenerateVoiceoverResponse{
+			AssetId:         assetID,
+			AudioUrl:        asset.FileURL,
+			DurationSeconds: effDur,
+			CreditsUsed:     opCopy.RequiredCredits.String(),
+		}
+		m.completeVoiceOperation(opCopy.OperationID, opCopy.ProviderName, opCopy.ProviderVoiceID, effAudioURL, effDur, nil, voResp)
+		return nil
+
+	default:
+		return fmt.Errorf("%w: unsupported reconciliation outcome %q", ErrOutcomeUnknown, providerOutcome)
+	}
 }
 
 // GetConsentStatus implements VoiceCloneService.GetConsentStatus.

@@ -2,10 +2,17 @@ package agent
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"sync"
 	"time"
 )
+
+// StepLeaseStore provides atomic step lease claims, fencing token enforcement, and serialized run mutations (N4).
+type StepLeaseStore interface {
+	MutateRunAtomically(ctx context.Context, workspaceID, runID string, fn func(run *AgentRun) error) (*AgentRun, error)
+	ClaimStepForExecution(ctx context.Context, workspaceID, runID, ownerID string, leaseTTL time.Duration) (runSnap *AgentRun, stepIndex int, claimed bool, allDone bool, err error)
+}
 
 // WorkspaceMembershipStore provides authoritative live membership resolution for a workspace member.
 type WorkspaceMembershipStore interface {
@@ -58,6 +65,7 @@ func NewMemStore() *MemStore {
 var _ Store = (*MemStore)(nil)
 var _ WorkspaceMembershipStore = (*MemStore)(nil)
 var _ WorkspaceMembershipMutator = (*MemStore)(nil)
+var _ StepLeaseStore = (*MemStore)(nil)
 
 func (s *MemStore) SetMemberRole(workspaceID, userID, role string, active bool) {
 	ws := strings.TrimSpace(workspaceID)
@@ -171,6 +179,106 @@ func (s *MemStore) UpdateRun(ctx context.Context, run *AgentRun) error {
 	return nil
 }
 
+func (s *MemStore) MutateRunAtomically(ctx context.Context, workspaceID, runID string, fn func(run *AgentRun) error) (*AgentRun, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	existing, ok := s.runs[runID]
+	if !ok {
+		return nil, ErrRunNotFound
+	}
+	if existing.WorkspaceID != workspaceID {
+		return nil, ErrCrossTenantDenied
+	}
+	work := cloneRun(existing)
+	if err := fn(work); err != nil {
+		return cloneRun(existing), err
+	}
+	work.UpdatedAt = time.Now().UTC()
+	s.runs[runID] = work
+	return cloneRun(work), nil
+}
+
+func (s *MemStore) ClaimStepForExecution(
+	ctx context.Context,
+	workspaceID, runID, ownerID string,
+	leaseTTL time.Duration,
+) (*AgentRun, int, bool, bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	run, ok := s.runs[runID]
+	if !ok {
+		return nil, -1, false, false, ErrRunNotFound
+	}
+	if run.WorkspaceID != workspaceID {
+		return nil, -1, false, false, ErrCrossTenantDenied
+	}
+	if run.CurrentState != StateExecuting {
+		return cloneRun(run), -1, false, false, fmt.Errorf("%w: run is in state %q, cannot execute", ErrInvalidStateTransition, run.CurrentState)
+	}
+
+	now := time.Now().UTC()
+	if leaseTTL <= 0 {
+		leaseTTL = 5 * time.Minute
+	}
+
+	// Reject concurrent claim if any step currently holds an active lease owned by another worker.
+	for i := range run.Steps {
+		st := &run.Steps[i]
+		if st.Status == StepStatusExecuting && st.LeaseExpiresAt != nil && now.Before(*st.LeaseExpiresAt) && st.ExecutionOwner != "" && st.ExecutionOwner != ownerID {
+			return cloneRun(run), i, false, false, ErrStepAlreadyClaimed
+		}
+	}
+
+	targetIdx := -1
+	for i := range run.Steps {
+		st := &run.Steps[i]
+		if st.Status == StepStatusPlanning {
+			targetIdx = i
+			break
+		}
+		if st.Status == StepStatusExecuting {
+			leaseExpired := st.LeaseExpiresAt == nil || !now.Before(*st.LeaseExpiresAt) || st.ExecutionOwner == ownerID
+			notYetCompleted := st.CompletedAt == nil && strings.TrimSpace(st.ActualCredits) == ""
+			if leaseExpired && notYetCompleted {
+				targetIdx = i
+				break
+			}
+			return cloneRun(run), i, false, false, ErrStepAlreadyClaimed
+		}
+	}
+
+	if targetIdx < 0 {
+		allCompleted := true
+		for i := range run.Steps {
+			if run.Steps[i].Status != StepStatusCompleted {
+				allCompleted = false
+				break
+			}
+		}
+		if allCompleted {
+			return cloneRun(run), -1, false, true, nil
+		}
+		return cloneRun(run), -1, false, false, ErrStepAlreadyClaimed
+	}
+
+	exp := now.Add(leaseTTL)
+	st := &run.Steps[targetIdx]
+	st.FencingToken++
+	st.ExecutionOwner = ownerID
+	st.LeaseExpiresAt = &exp
+	if strings.TrimSpace(st.OperationKey) == "" {
+		st.OperationKey = fmt.Sprintf("agent_run:%s:step:%d", run.AgentRunID, st.StepOrder)
+	}
+	st.StartedAt = &now
+	st.Status = StepStatusExecuting
+	st.UpdatedAt = now
+	run.UpdatedAt = now
+
+	return cloneRun(run), targetIdx, true, false, nil
+}
+
 func (s *MemStore) CreateOutput(ctx context.Context, output AgentOutput) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -246,6 +354,20 @@ func cloneRun(r *AgentRun) *AgentRun {
 	if len(r.Steps) > 0 {
 		cp.Steps = make([]AgentStep, len(r.Steps))
 		copy(cp.Steps, r.Steps)
+		for i := range cp.Steps {
+			if r.Steps[i].LeaseExpiresAt != nil {
+				t := *r.Steps[i].LeaseExpiresAt
+				cp.Steps[i].LeaseExpiresAt = &t
+			}
+			if r.Steps[i].StartedAt != nil {
+				t := *r.Steps[i].StartedAt
+				cp.Steps[i].StartedAt = &t
+			}
+			if r.Steps[i].CompletedAt != nil {
+				t := *r.Steps[i].CompletedAt
+				cp.Steps[i].CompletedAt = &t
+			}
+		}
 	}
 	if len(r.Outputs) > 0 {
 		cp.Outputs = make([]AgentOutput, len(r.Outputs))
