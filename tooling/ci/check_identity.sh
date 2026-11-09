@@ -102,6 +102,18 @@ grep -q -- '--- PASS: TestModerationRulesHardBlockSelfReviewGuardAndKillSwitchHa
  echo 'P0-07 FAIL: moderation hard-block and kill switch test was skipped' >&2
  exit 1
 }
+grep -q -- '--- PASS: TestEmptyMigrationBundleFailsClosed' "$log_p004" || {
+ echo 'P8-08 FAIL: empty migration bundle fail-closed test was skipped' >&2
+ exit 1
+}
+grep -q -- '--- PASS: TestP808SecondPassRegression_ReleaseF4DataF9_DeletedTempFixtureRejected' "$log_p004" || {
+ echo 'P8-08 FAIL: persistent PostgreSQL restore rehearsal and temp-fixture rejection test was skipped' >&2
+ exit 1
+}
+grep -q -- '--- PASS: TestP808ThirdPassRegression_ReleaseF1F2F3_AuditIntegrityRollbackAndMigrateCLI' "$log_p004" || {
+ echo 'P8-08 FAIL: release smoke audit integrity, rollback failure reporting, and migrate bundle regression test was skipped' >&2
+ exit 1
+}
 echo 'P0-07_TESTS_PASS: Capability verification registry, unverified route block, composite health score, isolated admin listener VPN/MFA gate, read-only impersonation, moderation rules engine, and kill switches'
 
 grep -q -- '--- PASS: TestPostgresLiveCreditLotsQuotesAndBilling' "$log_p004" || {
