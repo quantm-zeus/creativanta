@@ -941,6 +941,122 @@ export async function rejectScriptRemote(
 
 export type ScriptEditorLoadState = 'waiting_context' | 'loading' | 'loaded' | 'error';
 
+export function cloneScenes(scenes: Scene[]): Scene[] {
+  return (scenes || []).map((sc, idx) => ({
+    ...sc,
+    sceneIndex: typeof sc.sceneIndex === 'number' ? sc.sceneIndex : idx,
+    shotList: (sc.shotList || []).map((sh, shotIdx) => ({
+      ...sh,
+      shotIndex: typeof sh.shotIndex === 'number' ? sh.shotIndex : shotIdx
+    }))
+  }));
+}
+
+export function updateSceneInList(
+  scenes: Scene[],
+  sceneIndex: number,
+  patch: Partial<Scene>
+): Scene[] {
+  return cloneScenes(scenes).map((sc, idx) => {
+    if (idx !== sceneIndex) return sc;
+    const nextShots = patch.shotList
+      ? patch.shotList.map((sh, shotIdx) => ({
+          ...sh,
+          shotIndex: typeof sh.shotIndex === 'number' ? sh.shotIndex : shotIdx
+        }))
+      : sc.shotList;
+    return {
+      ...sc,
+      ...patch,
+      sceneIndex: idx,
+      shotList: nextShots
+    };
+  });
+}
+
+export function updateShotInList(
+  scenes: Scene[],
+  sceneIndex: number,
+  shotIndex: number,
+  patch: Partial<Shot>
+): Scene[] {
+  return cloneScenes(scenes).map((sc, idx) => {
+    if (idx !== sceneIndex) return sc;
+    return {
+      ...sc,
+      shotList: (sc.shotList || []).map((sh, sIdx) =>
+        sIdx === shotIndex
+          ? {
+              ...sh,
+              ...patch,
+              shotIndex: sIdx
+            }
+          : sh
+      )
+    };
+  });
+}
+
+interface PersistedScriptBaseline {
+  title: string;
+  formatType: string;
+  durationTargetSeconds: number;
+  scenesSignature: string;
+}
+
+function serializeScenesSignature(scenes: Scene[]): string {
+  return JSON.stringify(
+    (scenes || []).map((sc, idx) => ({
+      sceneId: String(sc.sceneId || ''),
+      sceneIndex: typeof sc.sceneIndex === 'number' ? sc.sceneIndex : idx,
+      description: String(sc.description || ''),
+      content: String(sc.content || ''),
+      durationSeconds: Number(sc.durationSeconds || 0) || 0,
+      visualNotes: String(sc.visualNotes || ''),
+      audioNotes: String(sc.audioNotes || ''),
+      shotList: (sc.shotList || []).map((sh, sIdx) => ({
+        shotId: String(sh.shotId || ''),
+        shotIndex: typeof sh.shotIndex === 'number' ? sh.shotIndex : sIdx,
+        shotType: String(sh.shotType || ''),
+        description: String(sh.description || ''),
+        durationSeconds: Number(sh.durationSeconds || 0) || 0
+      }))
+    }))
+  );
+}
+
+function buildPersistedBaseline(
+  title: string,
+  formatType: string,
+  durationTargetSeconds: number,
+  scenes: Scene[]
+): PersistedScriptBaseline {
+  return {
+    title: String(title || '').trim(),
+    formatType: String(formatType || ''),
+    durationTargetSeconds: Number(durationTargetSeconds || 0) || 0,
+    scenesSignature: serializeScenesSignature(scenes)
+  };
+}
+
+function isDraftDirtyAgainstBaseline(
+  draft: {
+    title: string;
+    formatType: string;
+    durationTargetSeconds: number;
+    scenes: Scene[];
+  },
+  baseline: PersistedScriptBaseline | null
+): boolean {
+  if (!baseline) return false;
+  if (String(draft.title || '').trim() !== baseline.title) return true;
+  if (String(draft.formatType || '') !== baseline.formatType) return true;
+  if ((Number(draft.durationTargetSeconds || 0) || 0) !== baseline.durationTargetSeconds) {
+    return true;
+  }
+  return serializeScenesSignature(draft.scenes) !== baseline.scenesSignature;
+}
+
 export interface ScriptEditorSessionSnapshot {
   scriptId: string;
   workspaceId: string | null;
@@ -955,6 +1071,7 @@ export interface ScriptEditorSessionSnapshot {
   approvalState: ScriptApprovalState;
   rejectionReason: string;
   scenes: Scene[];
+  isDirty: boolean;
   isConflict: boolean;
   conflictReason: string;
   saveFeedback: string;
@@ -980,6 +1097,7 @@ export interface ScriptEditorContextInput {
  * 1. Never increments `versionIndex`, clears `isConflict`, or reports save/review success without backend RPC confirmation (N3).
  * 2. Locks `save()` and `submitForReview()` when `loadState !== 'loaded'`, `isReverifying === true`, `isPersisting === true`, or `versionIndex === null`.
  * 3. Preserves unsaved edits and in-flight mutations across same-tenant re-discovery while purging state immediately on user/workspace switch or logout.
+ * 4. Tracks `isDirty` across title, format, duration, scene, and shot edits (R2) and persists dirty edits via `ScriptService/Update` before `ScriptService/SubmitApproval` (failing closed if `Update` fails or conflicts) (R3).
  */
 export function createScriptEditorSession(initialScriptId: string) {
   let state: ScriptEditorSessionSnapshot = {
@@ -996,6 +1114,7 @@ export function createScriptEditorSession(initialScriptId: string) {
     approvalState: 'not_submitted',
     rejectionReason: '',
     scenes: [],
+    isDirty: false,
     isConflict: false,
     conflictReason: '',
     saveFeedback: '',
@@ -1005,6 +1124,7 @@ export function createScriptEditorSession(initialScriptId: string) {
     isReverifying: false
   };
 
+  let persistedBaseline: PersistedScriptBaseline | null = null;
   let loadEpoch = 0;
   let pendingMutations = 0;
   const subscribers = new Set<(snapshot: ScriptEditorSessionSnapshot) => void>();
@@ -1012,10 +1132,7 @@ export function createScriptEditorSession(initialScriptId: string) {
   function getSnapshot(): ScriptEditorSessionSnapshot {
     return {
       ...state,
-      scenes: state.scenes.map((sc) => ({
-        ...sc,
-        shotList: [...(sc.shotList || [])]
-      }))
+      scenes: cloneScenes(state.scenes)
     };
   }
 
@@ -1081,6 +1198,7 @@ export function createScriptEditorSession(initialScriptId: string) {
     ) {
       loadEpoch += 1;
       pendingMutations = 0;
+      persistedBaseline = null;
       state = {
         scriptId: targetScriptId,
         workspaceId: targetWorkspaceId,
@@ -1095,6 +1213,7 @@ export function createScriptEditorSession(initialScriptId: string) {
         approvalState: 'not_submitted',
         rejectionReason: '',
         scenes: [],
+        isDirty: false,
         isConflict: false,
         conflictReason: '',
         saveFeedback: '',
@@ -1140,6 +1259,7 @@ export function createScriptEditorSession(initialScriptId: string) {
 
     const requestEpoch = ++loadEpoch;
     pendingMutations = 0;
+    persistedBaseline = null;
     state = {
       scriptId: targetScriptId,
       workspaceId: targetWorkspaceId,
@@ -1154,6 +1274,7 @@ export function createScriptEditorSession(initialScriptId: string) {
       approvalState: 'not_submitted',
       rejectionReason: '',
       scenes: [],
+      isDirty: false,
       isConflict: false,
       conflictReason: '',
       saveFeedback: '',
@@ -1187,12 +1308,14 @@ export function createScriptEditorSession(initialScriptId: string) {
       const errMessage =
         res.error ||
         'Không thể tải kịch bản từ máy chủ (ScriptService/Get). Đã khóa thao tác lưu và gửi duyệt để tránh mất dữ liệu (fail-closed).';
+      persistedBaseline = null;
       state = {
         ...state,
         loadState: 'error',
         loadedContextKey: null,
         versionIndex: null,
         scenes: [],
+        isDirty: false,
         saveFeedback: '',
         error: errMessage,
         isPersisting: false,
@@ -1206,6 +1329,13 @@ export function createScriptEditorSession(initialScriptId: string) {
       };
     }
 
+    const loadedScenes = cloneScenes(res.script.scenes);
+    persistedBaseline = buildPersistedBaseline(
+      res.script.title,
+      res.script.formatType,
+      res.script.durationTargetSeconds,
+      loadedScenes
+    );
     state = {
       scriptId: res.script.scriptId,
       workspaceId: targetWorkspaceId,
@@ -1219,7 +1349,8 @@ export function createScriptEditorSession(initialScriptId: string) {
       lifecycleState: res.script.lifecycleState,
       approvalState: res.script.approvalState,
       rejectionReason: res.script.rejectionReason || '',
-      scenes: [...res.script.scenes],
+      scenes: loadedScenes,
+      isDirty: false,
       isConflict: false,
       conflictReason: '',
       saveFeedback: '',
@@ -1235,35 +1366,62 @@ export function createScriptEditorSession(initialScriptId: string) {
     };
   }
 
-  function setTitle(title: string) {
+  function applyDraftChange(patch: Partial<Pick<ScriptEditorSessionSnapshot, 'title' | 'formatType' | 'durationTargetSeconds' | 'scenes'>>) {
     if (state.loadState !== 'loaded' || state.isReverifying || state.isPersisting) return;
-    state = { ...state, title, saveFeedback: '' };
-    emit();
-  }
-
-  function setFormatType(formatType: string) {
-    if (state.loadState !== 'loaded' || state.isReverifying || state.isPersisting) return;
-    state = { ...state, formatType, saveFeedback: '' };
-    emit();
-  }
-
-  function setDurationTarget(durationTargetSeconds: number) {
-    if (state.loadState !== 'loaded' || state.isReverifying || state.isPersisting) return;
-    state = { ...state, durationTargetSeconds, saveFeedback: '' };
-    emit();
-  }
-
-  function setScenes(scenes: Scene[]) {
-    if (state.loadState !== 'loaded' || state.isReverifying || state.isPersisting) return;
+    const nextTitle = patch.title !== undefined ? patch.title : state.title;
+    const nextFormatType = patch.formatType !== undefined ? patch.formatType : state.formatType;
+    const nextDuration =
+      patch.durationTargetSeconds !== undefined
+        ? patch.durationTargetSeconds
+        : state.durationTargetSeconds;
+    const nextScenes = patch.scenes !== undefined ? cloneScenes(patch.scenes) : state.scenes;
+    const nextDirty = isDraftDirtyAgainstBaseline(
+      {
+        title: nextTitle,
+        formatType: nextFormatType,
+        durationTargetSeconds: nextDuration,
+        scenes: nextScenes
+      },
+      persistedBaseline
+    );
     state = {
       ...state,
-      scenes: scenes.map((sc) => ({
-        ...sc,
-        shotList: [...(sc.shotList || [])]
-      })),
+      title: nextTitle,
+      formatType: nextFormatType,
+      durationTargetSeconds: nextDuration,
+      scenes: nextScenes,
+      isDirty: nextDirty,
       saveFeedback: ''
     };
     emit();
+  }
+
+  function setTitle(title: string) {
+    applyDraftChange({ title });
+  }
+
+  function setFormatType(formatType: string) {
+    applyDraftChange({ formatType });
+  }
+
+  function setDurationTarget(durationTargetSeconds: number) {
+    applyDraftChange({ durationTargetSeconds });
+  }
+
+  function setScenes(scenes: Scene[]) {
+    applyDraftChange({ scenes });
+  }
+
+  function updateScene(sceneIndex: number, patch: Partial<Scene>) {
+    applyDraftChange({
+      scenes: updateSceneInList(state.scenes, sceneIndex, patch)
+    });
+  }
+
+  function updateShot(sceneIndex: number, shotIndex: number, patch: Partial<Shot>) {
+    applyDraftChange({
+      scenes: updateShotInList(state.scenes, sceneIndex, shotIndex, patch)
+    });
   }
 
   function markConflict(reason: string) {
@@ -1311,6 +1469,11 @@ export function createScriptEditorSession(initialScriptId: string) {
     const activeWorkspaceId = state.workspaceId;
     const activeScriptId = state.scriptId;
     const expectedVersion = state.versionIndex;
+    const submittedTitle = state.title;
+    const submittedFormatType = state.formatType;
+    const submittedDuration = state.durationTargetSeconds;
+    const submittedScenes = cloneScenes(state.scenes);
+
     pendingMutations += 1;
     state = {
       ...state,
@@ -1325,11 +1488,11 @@ export function createScriptEditorSession(initialScriptId: string) {
         {
           workspaceId: activeWorkspaceId,
           scriptId: activeScriptId,
-          title: state.title,
-          formatType: state.formatType,
-          durationTargetSeconds: state.durationTargetSeconds,
+          title: submittedTitle,
+          formatType: submittedFormatType,
+          durationTargetSeconds: submittedDuration,
           expectedVersion,
-          scenes: state.scenes
+          scenes: submittedScenes
         },
         {
           ...options,
@@ -1360,6 +1523,24 @@ export function createScriptEditorSession(initialScriptId: string) {
         return res;
       }
 
+      const persistedScenes =
+        res.script.scenes.length > 0 ? cloneScenes(res.script.scenes) : submittedScenes;
+      persistedBaseline = buildPersistedBaseline(
+        res.script.title,
+        res.script.formatType,
+        res.script.durationTargetSeconds,
+        persistedScenes
+      );
+      const stillDirty = isDraftDirtyAgainstBaseline(
+        {
+          title: res.script.title,
+          formatType: res.script.formatType,
+          durationTargetSeconds: res.script.durationTargetSeconds,
+          scenes: persistedScenes
+        },
+        persistedBaseline
+      );
+
       state = {
         ...state,
         title: res.script.title,
@@ -1368,7 +1549,8 @@ export function createScriptEditorSession(initialScriptId: string) {
         versionIndex: res.script.versionIndex,
         lifecycleState: res.script.lifecycleState,
         approvalState: res.script.approvalState,
-        scenes: [...res.script.scenes],
+        scenes: persistedScenes,
+        isDirty: stillDirty,
         isConflict: false,
         conflictReason: '',
         saveFeedback: `Đã lưu phiên bản v${res.script.versionIndex} trên máy chủ.`,
@@ -1399,6 +1581,21 @@ export function createScriptEditorSession(initialScriptId: string) {
   async function submitForReview(
     options: CanonicalRpcOptions = {}
   ): Promise<SubmitScriptApprovalRemoteResult> {
+    const trimmedTitle = String(state.title || '').trim();
+    if (!trimmedTitle) {
+      const errMessage = 'Tiêu đề kịch bản không được để trống trước khi gửi duyệt.';
+      state = {
+        ...state,
+        saveFeedback: '',
+        error: errMessage
+      };
+      emit();
+      return {
+        ok: false,
+        error: errMessage
+      };
+    }
+
     const sceneValidation = validateScenesForSubmission(state.scenes);
     if (!sceneValidation.valid) {
       state = {
@@ -1444,7 +1641,129 @@ export function createScriptEditorSession(initialScriptId: string) {
     const submitContextKey = state.loadedContextKey;
     const activeWorkspaceId = state.workspaceId;
     const activeScriptId = state.scriptId;
-    const expectedVersion = state.versionIndex;
+
+    // R3: If draft has unsaved changes (title, format, duration, or scenes/shots),
+    // persist them via ScriptService/Update first and verify the server accepted the draft
+    // before calling ScriptService/SubmitApproval on the new version.
+    if (state.isDirty) {
+      const dirtyTitle = trimmedTitle;
+      const dirtyFormatType = state.formatType;
+      const dirtyDuration = state.durationTargetSeconds;
+      const dirtyScenes = cloneScenes(state.scenes);
+      const dirtyExpectedVersion = state.versionIndex;
+
+      pendingMutations += 1;
+      state = {
+        ...state,
+        isPersisting: true,
+        saveFeedback: '',
+        error: null
+      };
+      emit();
+
+      let saveRes: SaveScriptRemoteResult;
+      try {
+        saveRes = await saveScriptRemote(
+          {
+            workspaceId: activeWorkspaceId,
+            scriptId: activeScriptId,
+            title: dirtyTitle,
+            formatType: dirtyFormatType,
+            durationTargetSeconds: dirtyDuration,
+            expectedVersion: dirtyExpectedVersion,
+            scenes: dirtyScenes
+          },
+          {
+            ...options,
+            workspaceId: activeWorkspaceId
+          }
+        );
+      } catch (err) {
+        if (submitEpoch === loadEpoch && state.loadedContextKey === submitContextKey) {
+          pendingMutations = Math.max(0, pendingMutations - 1);
+          const msg =
+            err instanceof Error
+              ? err.message
+              : 'Lỗi kết nối khi lưu thay đổi trước khi gửi duyệt (fail-closed)';
+          state = {
+            ...state,
+            saveFeedback: '',
+            error: msg,
+            isPersisting: pendingMutations > 0
+          };
+          emit();
+        }
+        return {
+          ok: false,
+          error:
+            err instanceof Error
+              ? err.message
+              : 'Lỗi kết nối khi lưu thay đổi trước khi gửi duyệt (fail-closed)'
+        };
+      }
+
+      if (submitEpoch !== loadEpoch || state.loadedContextKey !== submitContextKey) {
+        return {
+          ok: false,
+          error: 'Ngữ cảnh phiên làm việc đã thay đổi trong khi lưu kịch bản trước khi gửi duyệt (fail-closed).'
+        };
+      }
+
+      const savedScript = saveRes.script;
+      const titlePersisted =
+        Boolean(savedScript) && String(savedScript!.title || '').trim() === dirtyTitle;
+      const scenesPersisted =
+        Boolean(savedScript) &&
+        (savedScript!.scenes.length === 0 ||
+          serializeScenesSignature(savedScript!.scenes) === serializeScenesSignature(dirtyScenes));
+
+      if (!saveRes.ok || !savedScript || !titlePersisted || !scenesPersisted) {
+        pendingMutations = Math.max(0, pendingMutations - 1);
+        const errMessage =
+          saveRes.error ||
+          'Không thể gửi duyệt: thay đổi chưa lưu chưa được máy chủ xác nhận qua ScriptService/Update (fail-closed).';
+        state = {
+          ...state,
+          isConflict: saveRes.conflict ? true : state.isConflict,
+          conflictReason: saveRes.conflict ? saveRes.error || state.conflictReason : state.conflictReason,
+          saveFeedback: '',
+          error: errMessage,
+          isPersisting: pendingMutations > 0
+        };
+        emit();
+        return {
+          ok: false,
+          conflict: saveRes.conflict,
+          error: errMessage
+        };
+      }
+
+      const updatedScenes =
+        savedScript.scenes.length > 0 ? cloneScenes(savedScript.scenes) : dirtyScenes;
+      persistedBaseline = buildPersistedBaseline(
+        savedScript.title,
+        savedScript.formatType,
+        savedScript.durationTargetSeconds,
+        updatedScenes
+      );
+      state = {
+        ...state,
+        title: savedScript.title,
+        formatType: savedScript.formatType,
+        durationTargetSeconds: savedScript.durationTargetSeconds,
+        versionIndex: savedScript.versionIndex,
+        lifecycleState: savedScript.lifecycleState,
+        approvalState: savedScript.approvalState,
+        scenes: updatedScenes,
+        isDirty: false,
+        isConflict: false,
+        conflictReason: '',
+        error: null
+      };
+      pendingMutations = Math.max(0, pendingMutations - 1);
+    }
+
+    const expectedVersion = state.versionIndex!;
     pendingMutations += 1;
     state = {
       ...state,
@@ -1491,11 +1810,25 @@ export function createScriptEditorSession(initialScriptId: string) {
         return res;
       }
 
+      const submittedScenes =
+        res.script.scenes.length > 0 ? cloneScenes(res.script.scenes) : state.scenes;
+      persistedBaseline = buildPersistedBaseline(
+        res.script.title || state.title,
+        res.script.formatType || state.formatType,
+        res.script.durationTargetSeconds || state.durationTargetSeconds,
+        submittedScenes
+      );
+
       state = {
         ...state,
+        title: res.script.title || state.title,
+        formatType: res.script.formatType || state.formatType,
+        durationTargetSeconds: res.script.durationTargetSeconds || state.durationTargetSeconds,
         versionIndex: res.script.versionIndex,
         lifecycleState: res.script.lifecycleState,
         approvalState: res.script.approvalState,
+        scenes: submittedScenes,
+        isDirty: false,
         approvalRequestId: res.approvalRequestId,
         isConflict: false,
         conflictReason: '',
@@ -1532,8 +1865,622 @@ export function createScriptEditorSession(initialScriptId: string) {
     setFormatType,
     setDurationTarget,
     setScenes,
+    updateScene,
+    updateShot,
     markConflict,
     save,
     submitForReview
+  };
+}
+
+export interface ScriptReviewSessionSnapshot {
+  scriptId: string;
+  workspaceId: string | null;
+  userId: string | null;
+  loadState: ScriptEditorLoadState;
+  loadedContextKey: string | null;
+  title: string;
+  formatType: string;
+  durationTargetSeconds: number;
+  versionIndex: number | null;
+  lifecycleState: ScriptLifecycleState;
+  approvalState: ScriptApprovalState;
+  rejectionReason: string;
+  scenes: Scene[];
+  reviewerSnapshotTime: string | null;
+  scriptUpdatedAt: string | null;
+  isConflict: boolean;
+  conflictReason: string;
+  feedbackMessage: string;
+  error: string | null;
+  isProcessingReview: boolean;
+  isReverifying: boolean;
+}
+
+/**
+ * Fail-closed state controller for Script Lab review (`/scripts/[id]/review`, M06, R1).
+ *
+ * Guarantees:
+ * 1. Never initializes synthetic version numbers or sample skincare scenes.
+ * 2. Requires `ScriptService/Get` to load the script and its scenes for the active `userId:workspaceId:scriptId` before enabling `approve()` or `reject()`.
+ * 3. Sends the exact `versionIndex` and `reviewerSnapshotTime` of the currently displayed script on `approve()` / `reject()`, and locks review actions immediately on load error, conflict, or tenant/user switch.
+ */
+export function createScriptReviewSession(initialScriptId: string) {
+  let state: ScriptReviewSessionSnapshot = {
+    scriptId: String(initialScriptId || '').trim(),
+    workspaceId: null,
+    userId: null,
+    loadState: 'waiting_context',
+    loadedContextKey: null,
+    title: '',
+    formatType: '',
+    durationTargetSeconds: 0,
+    versionIndex: null,
+    lifecycleState: 'draft',
+    approvalState: 'not_submitted',
+    rejectionReason: '',
+    scenes: [],
+    reviewerSnapshotTime: null,
+    scriptUpdatedAt: null,
+    isConflict: false,
+    conflictReason: '',
+    feedbackMessage: '',
+    error: null,
+    isProcessingReview: false,
+    isReverifying: false
+  };
+
+  let loadEpoch = 0;
+  let pendingMutations = 0;
+  const subscribers = new Set<(snapshot: ScriptReviewSessionSnapshot) => void>();
+
+  function getSnapshot(): ScriptReviewSessionSnapshot {
+    return {
+      ...state,
+      scenes: cloneScenes(state.scenes)
+    };
+  }
+
+  function emit() {
+    const snap = getSnapshot();
+    for (const sub of subscribers) {
+      sub(snap);
+    }
+  }
+
+  function subscribe(run: (snapshot: ScriptReviewSessionSnapshot) => void): () => void {
+    subscribers.add(run);
+    run(getSnapshot());
+    return () => {
+      subscribers.delete(run);
+    };
+  }
+
+  async function syncContext(
+    ctx: ScriptEditorContextInput,
+    options: CanonicalRpcOptions = {}
+  ): Promise<{
+    ok: boolean;
+    loadState: ScriptEditorLoadState;
+    stale?: boolean;
+    error?: string;
+  }> {
+    const targetScriptId = String(ctx.scriptId ?? state.scriptId ?? '').trim();
+    const targetUserId = String(ctx.userId ?? '').trim() || null;
+    const targetWorkspaceId = String(ctx.workspaceId ?? '').trim() || null;
+    const isAuthenticated = ctx.authState === undefined || ctx.authState === 'authenticated';
+
+    const hasLoadedScriptForSameSubject =
+      state.loadedContextKey !== null &&
+      state.versionIndex !== null &&
+      isAuthenticated &&
+      Boolean(targetUserId) &&
+      targetUserId === state.userId &&
+      Boolean(targetScriptId) &&
+      targetScriptId === state.scriptId &&
+      (targetWorkspaceId === null || targetWorkspaceId === state.workspaceId);
+
+    if (ctx.isDiscoveryLoading === true && hasLoadedScriptForSameSubject) {
+      state = {
+        ...state,
+        isReverifying: true,
+        isProcessingReview: pendingMutations > 0,
+        error: null
+      };
+      emit();
+      return {
+        ok: false,
+        loadState: state.loadState
+      };
+    }
+
+    if (
+      ctx.isDiscoveryLoading === true ||
+      !isAuthenticated ||
+      !targetUserId ||
+      !targetWorkspaceId ||
+      !targetScriptId
+    ) {
+      loadEpoch += 1;
+      pendingMutations = 0;
+      state = {
+        scriptId: targetScriptId,
+        workspaceId: targetWorkspaceId,
+        userId: targetUserId,
+        loadState: 'waiting_context',
+        loadedContextKey: null,
+        title: '',
+        formatType: '',
+        durationTargetSeconds: 0,
+        versionIndex: null,
+        lifecycleState: 'draft',
+        approvalState: 'not_submitted',
+        rejectionReason: '',
+        scenes: [],
+        reviewerSnapshotTime: null,
+        scriptUpdatedAt: null,
+        isConflict: false,
+        conflictReason: '',
+        feedbackMessage: '',
+        error: null,
+        isProcessingReview: false,
+        isReverifying: false
+      };
+      emit();
+      return {
+        ok: false,
+        loadState: 'waiting_context'
+      };
+    }
+
+    const contextKey = `${targetUserId}:${targetWorkspaceId}:${targetScriptId}`;
+    if (
+      !ctx.force &&
+      state.loadedContextKey === contextKey &&
+      state.versionIndex !== null &&
+      (state.loadState === 'loaded' || state.isReverifying)
+    ) {
+      if (
+        state.loadState !== 'loaded' ||
+        state.isReverifying ||
+        state.isProcessingReview !== (pendingMutations > 0) ||
+        state.error !== null
+      ) {
+        state = {
+          ...state,
+          loadState: 'loaded',
+          isReverifying: false,
+          isProcessingReview: pendingMutations > 0,
+          error: null
+        };
+        emit();
+      }
+      return {
+        ok: true,
+        loadState: 'loaded'
+      };
+    }
+
+    const requestEpoch = ++loadEpoch;
+    pendingMutations = 0;
+    state = {
+      scriptId: targetScriptId,
+      workspaceId: targetWorkspaceId,
+      userId: targetUserId,
+      loadState: 'loading',
+      loadedContextKey: null,
+      title: '',
+      formatType: '',
+      durationTargetSeconds: 0,
+      versionIndex: null,
+      lifecycleState: 'draft',
+      approvalState: 'not_submitted',
+      rejectionReason: '',
+      scenes: [],
+      reviewerSnapshotTime: null,
+      scriptUpdatedAt: null,
+      isConflict: false,
+      conflictReason: '',
+      feedbackMessage: '',
+      error: null,
+      isProcessingReview: false,
+      isReverifying: false
+    };
+    emit();
+
+    const res = await loadScriptRemote(
+      {
+        workspaceId: targetWorkspaceId,
+        scriptId: targetScriptId
+      },
+      {
+        ...options,
+        workspaceId: targetWorkspaceId
+      }
+    );
+
+    if (requestEpoch !== loadEpoch) {
+      return {
+        ok: false,
+        stale: true,
+        loadState: state.loadState
+      };
+    }
+
+    if (
+      !res.ok ||
+      !res.script ||
+      res.script.scriptId !== targetScriptId ||
+      res.script.scenes.length === 0
+    ) {
+      const errMessage =
+        res.error ||
+        (res.script && res.script.scenes.length === 0
+          ? 'Kịch bản chưa có phân cảnh nào để kiểm duyệt. Đã khóa thao tác phê duyệt/từ chối (fail-closed).'
+          : 'Không thể tải kịch bản từ máy chủ (ScriptService/Get). Đã khóa thao tác phê duyệt và từ chối (fail-closed).');
+      state = {
+        ...state,
+        loadState: 'error',
+        loadedContextKey: null,
+        versionIndex: null,
+        scenes: [],
+        reviewerSnapshotTime: null,
+        scriptUpdatedAt: null,
+        feedbackMessage: '',
+        error: errMessage,
+        isProcessingReview: false,
+        isReverifying: false
+      };
+      emit();
+      return {
+        ok: false,
+        loadState: 'error',
+        error: errMessage
+      };
+    }
+
+    const snapshotTimestamp = res.script.updatedAt || new Date().toISOString();
+    state = {
+      scriptId: res.script.scriptId,
+      workspaceId: targetWorkspaceId,
+      userId: targetUserId,
+      loadState: 'loaded',
+      loadedContextKey: contextKey,
+      title: res.script.title,
+      formatType: res.script.formatType,
+      durationTargetSeconds: res.script.durationTargetSeconds,
+      versionIndex: res.script.versionIndex,
+      lifecycleState: res.script.lifecycleState,
+      approvalState: res.script.approvalState,
+      rejectionReason: res.script.rejectionReason || '',
+      scenes: cloneScenes(res.script.scenes),
+      reviewerSnapshotTime: snapshotTimestamp,
+      scriptUpdatedAt: snapshotTimestamp,
+      isConflict: false,
+      conflictReason: '',
+      feedbackMessage: ctx.force
+        ? `Đã tải lại phiên bản v${res.script.versionIndex} mới nhất từ máy chủ.`
+        : '',
+      error: null,
+      isProcessingReview: false,
+      isReverifying: false
+    };
+    emit();
+    return {
+      ok: true,
+      loadState: 'loaded'
+    };
+  }
+
+  function setConflictSimulation(enabled: boolean) {
+    state = {
+      ...state,
+      isConflict: enabled,
+      conflictReason: enabled
+        ? 'Tác giả vừa cập nhật cảnh 2 cách đây 5 giây. Vui lòng tải lại trước khi phê duyệt (EC-M06-003).'
+        : '',
+      feedbackMessage: ''
+    };
+    emit();
+  }
+
+  async function approve(options: CanonicalRpcOptions = {}): Promise<SaveScriptRemoteResult> {
+    if (state.isConflict) {
+      const errMessage =
+        'Không thể phê duyệt: Phiên bản kịch bản đã bị thay đổi kể từ khi bạn mở trang (EC-M06-003). Vui lòng tải lại trang.';
+      state = {
+        ...state,
+        feedbackMessage: '',
+        error: errMessage
+      };
+      emit();
+      return {
+        ok: false,
+        conflict: true,
+        error: errMessage
+      };
+    }
+
+    if (
+      state.loadState !== 'loaded' ||
+      state.isReverifying ||
+      state.isProcessingReview ||
+      pendingMutations > 0 ||
+      state.versionIndex === null ||
+      state.scenes.length === 0 ||
+      !state.loadedContextKey ||
+      !state.workspaceId ||
+      !state.scriptId
+    ) {
+      const errMessage = state.isReverifying
+        ? 'Đang xác minh lại ngữ cảnh workspace. Thao tác phê duyệt tạm khóa (fail-closed).'
+        : 'Không thể phê duyệt khi kịch bản và phân cảnh chưa được tải từ máy chủ (ScriptService/Get fail-closed).';
+      state = {
+        ...state,
+        feedbackMessage: '',
+        error: errMessage
+      };
+      emit();
+      return {
+        ok: false,
+        error: errMessage
+      };
+    }
+
+    const approveEpoch = loadEpoch;
+    const approveContextKey = state.loadedContextKey;
+    const activeWorkspaceId = state.workspaceId;
+    const activeScriptId = state.scriptId;
+    const expectedVersion = state.versionIndex;
+    const snapshotTime = state.reviewerSnapshotTime || undefined;
+
+    pendingMutations += 1;
+    state = {
+      ...state,
+      isProcessingReview: true,
+      feedbackMessage: '',
+      error: null
+    };
+    emit();
+
+    try {
+      const res = await approveScriptRemote(
+        {
+          workspaceId: activeWorkspaceId,
+          scriptId: activeScriptId,
+          expectedVersion,
+          reviewerSnapshotTime: snapshotTime
+        },
+        {
+          ...options,
+          workspaceId: activeWorkspaceId
+        }
+      );
+
+      if (approveEpoch !== loadEpoch || state.loadedContextKey !== approveContextKey) {
+        return {
+          ok: false,
+          error: 'Ngữ cảnh phiên làm việc đã thay đổi trong khi phê duyệt kịch bản (fail-closed).'
+        };
+      }
+
+      pendingMutations = Math.max(0, pendingMutations - 1);
+      if (!res.ok || !res.script) {
+        state = {
+          ...state,
+          isConflict: res.conflict ? true : state.isConflict,
+          conflictReason: res.conflict
+            ? res.error ||
+              'Kịch bản đã được tác giả cập nhật mới kể từ khi bạn mở trang (EC-M06-003). Vui lòng tải lại.'
+            : state.conflictReason,
+          feedbackMessage: '',
+          error:
+            res.error ||
+            'Không thể phê duyệt kịch bản trên máy chủ (ScriptService/Approve fail-closed).',
+          isProcessingReview: pendingMutations > 0
+        };
+        emit();
+        return res;
+      }
+
+      state = {
+        ...state,
+        title: res.script.title || state.title,
+        formatType: res.script.formatType || state.formatType,
+        durationTargetSeconds: res.script.durationTargetSeconds || state.durationTargetSeconds,
+        versionIndex: res.script.versionIndex,
+        lifecycleState: res.script.lifecycleState,
+        approvalState: res.script.approvalState,
+        scenes: res.script.scenes.length > 0 ? cloneScenes(res.script.scenes) : state.scenes,
+        isConflict: false,
+        conflictReason: '',
+        feedbackMessage: '✓ Đã phê duyệt kịch bản thành công trên máy chủ!',
+        error: null,
+        isProcessingReview: pendingMutations > 0
+      };
+      emit();
+      return res;
+    } catch (err) {
+      if (approveEpoch === loadEpoch && state.loadedContextKey === approveContextKey) {
+        pendingMutations = Math.max(0, pendingMutations - 1);
+        const msg =
+          err instanceof Error ? err.message : 'Lỗi kết nối khi phê duyệt kịch bản (fail-closed)';
+        state = {
+          ...state,
+          feedbackMessage: '',
+          error: msg,
+          isProcessingReview: pendingMutations > 0
+        };
+        emit();
+      }
+      return {
+        ok: false,
+        error: err instanceof Error ? err.message : 'Lỗi kết nối khi phê duyệt kịch bản (fail-closed)'
+      };
+    }
+  }
+
+  async function reject(
+    rejectionReason: string,
+    options: CanonicalRpcOptions = {}
+  ): Promise<SaveScriptRemoteResult> {
+    const reasonValidation = validateRejectionReason(rejectionReason);
+    if (!reasonValidation.valid) {
+      state = {
+        ...state,
+        feedbackMessage: '',
+        error: reasonValidation.error || null
+      };
+      emit();
+      return {
+        ok: false,
+        error: reasonValidation.error
+      };
+    }
+
+    if (state.isConflict) {
+      const errMessage =
+        'Không thể từ chối: Kịch bản đã được tác giả cập nhật mới (EC-M06-003). Vui lòng tải lại.';
+      state = {
+        ...state,
+        feedbackMessage: '',
+        error: errMessage
+      };
+      emit();
+      return {
+        ok: false,
+        conflict: true,
+        error: errMessage
+      };
+    }
+
+    if (
+      state.loadState !== 'loaded' ||
+      state.isReverifying ||
+      state.isProcessingReview ||
+      pendingMutations > 0 ||
+      state.versionIndex === null ||
+      state.scenes.length === 0 ||
+      !state.loadedContextKey ||
+      !state.workspaceId ||
+      !state.scriptId
+    ) {
+      const errMessage = state.isReverifying
+        ? 'Đang xác minh lại ngữ cảnh workspace. Thao tác từ chối tạm khóa (fail-closed).'
+        : 'Không thể từ chối khi kịch bản và phân cảnh chưa được tải từ máy chủ (ScriptService/Get fail-closed).';
+      state = {
+        ...state,
+        feedbackMessage: '',
+        error: errMessage
+      };
+      emit();
+      return {
+        ok: false,
+        error: errMessage
+      };
+    }
+
+    const rejectEpoch = loadEpoch;
+    const rejectContextKey = state.loadedContextKey;
+    const activeWorkspaceId = state.workspaceId;
+    const activeScriptId = state.scriptId;
+    const expectedVersion = state.versionIndex;
+    const snapshotTime = state.reviewerSnapshotTime || undefined;
+
+    pendingMutations += 1;
+    state = {
+      ...state,
+      isProcessingReview: true,
+      feedbackMessage: '',
+      error: null
+    };
+    emit();
+
+    try {
+      const res = await rejectScriptRemote(
+        {
+          workspaceId: activeWorkspaceId,
+          scriptId: activeScriptId,
+          rejectionReason,
+          expectedVersion,
+          reviewerSnapshotTime: snapshotTime
+        },
+        {
+          ...options,
+          workspaceId: activeWorkspaceId
+        }
+      );
+
+      if (rejectEpoch !== loadEpoch || state.loadedContextKey !== rejectContextKey) {
+        return {
+          ok: false,
+          error: 'Ngữ cảnh phiên làm việc đã thay đổi trong khi từ chối kịch bản (fail-closed).'
+        };
+      }
+
+      pendingMutations = Math.max(0, pendingMutations - 1);
+      if (!res.ok || !res.script) {
+        state = {
+          ...state,
+          isConflict: res.conflict ? true : state.isConflict,
+          conflictReason: res.conflict
+            ? res.error ||
+              'Kịch bản đã được tác giả cập nhật mới kể từ khi bạn mở trang (EC-M06-003). Vui lòng tải lại.'
+            : state.conflictReason,
+          feedbackMessage: '',
+          error:
+            res.error ||
+            'Không thể từ chối kịch bản trên máy chủ (ScriptService/Reject fail-closed).',
+          isProcessingReview: pendingMutations > 0
+        };
+        emit();
+        return res;
+      }
+
+      state = {
+        ...state,
+        title: res.script.title || state.title,
+        formatType: res.script.formatType || state.formatType,
+        durationTargetSeconds: res.script.durationTargetSeconds || state.durationTargetSeconds,
+        versionIndex: res.script.versionIndex,
+        lifecycleState: res.script.lifecycleState,
+        approvalState: res.script.approvalState,
+        rejectionReason: res.script.rejectionReason || rejectionReason.trim(),
+        scenes: res.script.scenes.length > 0 ? cloneScenes(res.script.scenes) : state.scenes,
+        isConflict: false,
+        conflictReason: '',
+        feedbackMessage: `Đã từ chối kịch bản trên máy chủ và gửi phản hồi: "${rejectionReason.trim()}"`,
+        error: null,
+        isProcessingReview: pendingMutations > 0
+      };
+      emit();
+      return res;
+    } catch (err) {
+      if (rejectEpoch === loadEpoch && state.loadedContextKey === rejectContextKey) {
+        pendingMutations = Math.max(0, pendingMutations - 1);
+        const msg =
+          err instanceof Error ? err.message : 'Lỗi kết nối khi từ chối kịch bản (fail-closed)';
+        state = {
+          ...state,
+          feedbackMessage: '',
+          error: msg,
+          isProcessingReview: pendingMutations > 0
+        };
+        emit();
+      }
+      return {
+        ok: false,
+        error: err instanceof Error ? err.message : 'Lỗi kết nối khi từ chối kịch bản (fail-closed)'
+      };
+    }
+  }
+
+  return {
+    subscribe,
+    getSnapshot,
+    syncContext,
+    setConflictSimulation,
+    approve,
+    reject
   };
 }

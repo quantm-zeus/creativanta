@@ -76,7 +76,27 @@ export async function callCanonicalRpc<TReq extends Record<string, unknown>, TRe
   const snapshot = authStore.getSnapshot();
   let token = options.token ?? null;
   if (!token) {
-    token = (await getClerkSessionToken()) ?? snapshot.token ?? null;
+    const clerkToken = await getClerkSessionToken();
+    const afterTokenSnapshot = authStore.getSnapshot();
+    const sessionChangedWhileResolvingToken =
+      (snapshot.state === 'authenticated' && afterTokenSnapshot.state !== 'authenticated') ||
+      (snapshot.user?.id && afterTokenSnapshot.user?.id !== snapshot.user.id) ||
+      (!options.workspaceId &&
+        snapshot.activeWorkspace?.id &&
+        afterTokenSnapshot.activeWorkspace?.id !== snapshot.activeWorkspace.id);
+    if (sessionChangedWhileResolvingToken) {
+      return {
+        ok: false,
+        error: {
+          code: 'AUTH_SESSION_CHANGED_001',
+          message:
+            'Phiên đăng nhập hoặc không gian làm việc đã thay đổi trong khi lấy token xác thực (fail-closed).',
+          status: 401,
+          retryable: false
+        }
+      };
+    }
+    token = clerkToken ?? afterTokenSnapshot.token ?? null;
   }
 
   const workspaceId =

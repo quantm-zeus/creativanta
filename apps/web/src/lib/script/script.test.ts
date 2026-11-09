@@ -1,4 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+import { render } from 'svelte/server';
+import ScriptSceneEditor from './ScriptSceneEditor.svelte';
 import {
   validateScenesForSubmission,
   validateRejectionReason,
@@ -8,6 +10,10 @@ import {
   calculateTotalDuration,
   calculateWordCount,
   suggestDisclosureForHooks,
+  updateSceneInList,
+  updateShotInList,
+  createScriptEditorSession,
+  createScriptReviewSession,
   type Script,
   type Scene,
   type AssetBrief
@@ -254,6 +260,193 @@ describe('M06 Script Lab Business Rules & Acceptance Targets', () => {
     it('calculates total words count across scenes', () => {
       // 7 words in sc-1 + 7 words in sc-2 = 14 words
       expect(calculateWordCount(scenes)).toBe(14);
+    });
+  });
+
+  describe('R1, R2, R3 Component & Controller Regressions', () => {
+    it('renders ScriptSceneEditor with bound scene/shot values and synchronizes field edits into createScriptEditorSession without mutating detached clones (R2)', () => {
+      const initialScenes: Scene[] = [
+        {
+          sceneId: 'sc-10',
+          scriptId: 'scr-10',
+          workspaceId: 'ws-1',
+          sceneIndex: 0,
+          description: 'Hook cảnh 1',
+          content: 'Lời thoại gốc trước khi sửa',
+          durationSeconds: 8,
+          visualNotes: 'Quay cận sản phẩm',
+          audioNotes: 'Nhạc nền upbeat',
+          shotList: [
+            {
+              shotId: 'sh-10',
+              sceneId: 'sc-10',
+              workspaceId: 'ws-1',
+              shotIndex: 0,
+              shotType: 'Medium Shot',
+              description: 'Mở hộp sản phẩm',
+              durationSeconds: 4,
+              createdAt: ''
+            }
+          ],
+          createdAt: ''
+        }
+      ];
+
+      const onUpdateScenes = vi.fn();
+      const rendered = render(ScriptSceneEditor, {
+        props: {
+          scenes: initialScenes,
+          onUpdateScenes
+        }
+      });
+
+      expect(rendered.body).toContain('Lời thoại gốc trước khi sửa');
+      expect(rendered.body).toContain('Hook cảnh 1');
+      expect(rendered.body).toContain('Mở hộp sản phẩm');
+
+      // Verify updateSceneInList and updateShotInList produce deep clones and do not mutate initialScenes
+      const afterSceneEdit = updateSceneInList(initialScenes, 0, {
+        content: 'NEW TEXT TYPED IN TEXTAREA',
+        durationSeconds: 12
+      });
+      expect(initialScenes[0].content).toBe('Lời thoại gốc trước khi sửa');
+      expect(afterSceneEdit[0].content).toBe('NEW TEXT TYPED IN TEXTAREA');
+      expect(afterSceneEdit[0].durationSeconds).toBe(12);
+
+      const afterShotEdit = updateShotInList(afterSceneEdit, 0, 0, {
+        shotType: 'Close Up',
+        description: 'Zoom cận chất kem',
+        durationSeconds: 6
+      });
+      expect(afterSceneEdit[0].shotList[0].description).toBe('Mở hộp sản phẩm');
+      expect(afterShotEdit[0].shotList[0].shotType).toBe('Close Up');
+      expect(afterShotEdit[0].shotList[0].description).toBe('Zoom cận chất kem');
+      expect(afterShotEdit[0].shotList[0].durationSeconds).toBe(6);
+    });
+
+    it('blocks SubmitApproval if backend Update returns stale unpersisted title when draft is dirty (R3 negative guard)', async () => {
+      const session = createScriptEditorSession('scr-stale-update');
+      const serverScript = {
+        script_id: 'scr-stale-update',
+        workspace_id: 'ws-1',
+        title: 'Persisted title',
+        format_type: '9:16 vertical short',
+        duration_target_seconds: 60,
+        version_index: 2,
+        lifecycle_state: 'SCRIPT_LIFECYCLE_STATE_DRAFT',
+        approval_state: 'SCRIPT_APPROVAL_STATE_NOT_SUBMITTED',
+        scenes: [
+          {
+            scene_id: 'sc-1',
+            script_id: 'scr-stale-update',
+            workspace_id: 'ws-1',
+            scene_index: 0,
+            description: 'Hook',
+            content: 'Original scene content',
+            duration_seconds: 10,
+            visual_notes: '',
+            audio_notes: '',
+            shot_list: []
+          }
+        ]
+      };
+
+      let submitCalled = false;
+      const staleMockFetch = vi.fn(async (url: string) => {
+        if (url.includes('ScriptService/Get')) {
+          return new Response(JSON.stringify({ script: serverScript }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' }
+          });
+        }
+        if (url.includes('ScriptService/Update')) {
+          // Broken server ignores the new title and returns the old record
+          return new Response(JSON.stringify({ script: serverScript }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' }
+          });
+        }
+        if (url.includes('ScriptService/SubmitApproval')) {
+          submitCalled = true;
+          return new Response(
+            JSON.stringify({ script: serverScript, approval_request_id: 'apr-bad' }),
+            { status: 200, headers: { 'content-type': 'application/json' } }
+          );
+        }
+        return new Response('{}', { status: 404 });
+      });
+
+      await session.syncContext(
+        {
+          userId: 'usr-1',
+          workspaceId: 'ws-1',
+          scriptId: 'scr-stale-update',
+          authState: 'authenticated',
+          isDiscoveryLoading: false
+        },
+        { token: 'jwt_1', workspaceId: 'ws-1', fetchFn: staleMockFetch as unknown as typeof fetch }
+      );
+
+      session.setTitle('NEW TITLE NOT YET SAVED');
+      expect(session.getSnapshot().isDirty).toBe(true);
+
+      const res = await session.submitForReview({
+        token: 'jwt_1',
+        workspaceId: 'ws-1',
+        fetchFn: staleMockFetch as unknown as typeof fetch
+      });
+
+      expect(res.ok).toBe(false);
+      expect(submitCalled).toBe(false);
+      expect(session.getSnapshot().approvalState).toBe('not_submitted');
+      expect(session.getSnapshot().isDirty).toBe(true);
+    });
+
+    it('rejects empty-scene scripts in createScriptReviewSession and locks approve/reject (R1 negative guard)', async () => {
+      const reviewSession = createScriptReviewSession('scr-empty-scenes');
+      const emptyScenesFetch = vi.fn(async () =>
+        new Response(
+          JSON.stringify({
+            script: {
+              script_id: 'scr-empty-scenes',
+              workspace_id: 'ws-1',
+              title: 'Empty Script',
+              version_index: 2,
+              lifecycle_state: 'SCRIPT_LIFECYCLE_STATE_IN_REVIEW',
+              approval_state: 'SCRIPT_APPROVAL_STATE_PENDING_APPROVAL',
+              scenes: []
+            }
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } }
+        )
+      );
+
+      const loadRes = await reviewSession.syncContext(
+        {
+          userId: 'mgr-1',
+          workspaceId: 'ws-1',
+          scriptId: 'scr-empty-scenes',
+          authState: 'authenticated',
+          isDiscoveryLoading: false
+        },
+        {
+          token: 'jwt_mgr',
+          workspaceId: 'ws-1',
+          fetchFn: emptyScenesFetch as unknown as typeof fetch
+        }
+      );
+
+      expect(loadRes.ok).toBe(false);
+      expect(reviewSession.getSnapshot().loadState).toBe('error');
+      expect(reviewSession.getSnapshot().versionIndex).toBeNull();
+      expect(reviewSession.getSnapshot().scenes).toEqual([]);
+
+      const approveRes = await reviewSession.approve({
+        token: 'jwt_mgr',
+        workspaceId: 'ws-1',
+        fetchFn: emptyScenesFetch as unknown as typeof fetch
+      });
+      expect(approveRes.ok).toBe(false);
     });
   });
 });
