@@ -92,6 +92,7 @@ func TestTarget1_InstallPreservesCanonicalGraph(t *testing.T) {
 	store := recipe.NewMemoryStore()
 	wfStore := workflow.NewMemoryStore()
 	capProvider := workflow.NewDefaultCapabilityProvider()
+	capProvider.SetStatus("tiktok", "supported")
 	capChecker := recipe.NewCapabilityChecker(capProvider)
 	svc := recipe.NewService(store, wfStore, capChecker)
 
@@ -250,6 +251,7 @@ func TestTarget3_TenantAndSystemTemplateIsolation(t *testing.T) {
 	store := recipe.NewMemoryStore()
 	wfStore := workflow.NewMemoryStore()
 	capProvider := workflow.NewDefaultCapabilityProvider()
+	capProvider.SetStatus("tiktok", "supported")
 	capChecker := recipe.NewCapabilityChecker(capProvider)
 	svc := recipe.NewService(store, wfStore, capChecker)
 

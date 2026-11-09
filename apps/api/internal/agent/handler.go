@@ -111,6 +111,9 @@ func toConnectError(err error) error {
 	if errors.Is(err, ErrInvalidBudgetCeiling) {
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	}
+	if errors.Is(err, ErrIdempotencyKeyConflict) {
+		return connect.NewError(connect.CodeAlreadyExists, err)
+	}
 	if errors.Is(err, ErrCapabilityMissing) || errors.Is(err, ErrBudgetCeilingExceeded) ||
 		errors.Is(err, ErrApprovalRequired) || errors.Is(err, ErrInvalidStateTransition) ||
 		errors.Is(err, ErrRunAlreadyFinished) {
@@ -128,8 +131,9 @@ func (h *AgentHandler) LaunchAgent(
 		return nil, err
 	}
 
+	launchCtx := WithLaunchIdempotencyKey(ctx, req.Msg.GetIdempotencyKey())
 	run, warnings, requiresApproval, err := h.service.LaunchAgent(
-		ctx,
+		launchCtx,
 		caller,
 		ProtoToAgentType(req.Msg.AgentType),
 		req.Msg.TaskPrompt,
@@ -141,7 +145,7 @@ func (h *AgentHandler) LaunchAgent(
 		req.Msg.Parameters,
 	)
 	if err != nil {
-		if errors.Is(err, ErrPermissionDenied) || errors.Is(err, ErrCrossTenantDenied) {
+		if errors.Is(err, ErrPermissionDenied) || errors.Is(err, ErrCrossTenantDenied) || errors.Is(err, ErrIdempotencyKeyConflict) {
 			return nil, toConnectError(err)
 		}
 		rejection := err.Error()

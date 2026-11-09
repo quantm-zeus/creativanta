@@ -367,6 +367,9 @@ func (s *MemoryStore) ListAssets(ctx context.Context, workspaceID, assetType, ge
 		if a.DeletedAt != nil {
 			continue
 		}
+		if (a.GenerationState == "quarantined" || a.QualityState == "quarantined") && genState != "quarantined" && qualityState != "quarantined" {
+			continue
+		}
 		if assetType != "" && a.AssetType != assetType {
 			continue
 		}
@@ -402,7 +405,7 @@ func (s *MemoryStore) GetRecentAssets(ctx context.Context, workspaceID string, l
 
 	var list []*Asset
 	for _, a := range ws {
-		if a.DeletedAt == nil {
+		if a.DeletedAt == nil && a.GenerationState != "quarantined" && a.QualityState != "quarantined" {
 			cp := *a
 			list = append(list, &cp)
 		}
@@ -1000,7 +1003,7 @@ func (s *MemoryStore) ListVoiceClones(ctx context.Context, workspaceID, characte
 
 	var matched []*VoiceCloneRecord
 	for _, vc := range ws {
-		if vc.CloneStatus == "revoked" {
+		if vc.CloneStatus == "revoked" || vc.CloneStatus == "quarantined" {
 			continue
 		}
 		if characterID != "" && vc.CharacterID != characterID {

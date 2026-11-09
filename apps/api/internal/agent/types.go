@@ -26,7 +26,24 @@ var (
 	ErrExecutorNotConfigured  = errors.New("agent: step executor or provider is not configured (fail-closed)")
 	ErrInvalidStepOutput      = errors.New("agent: step execution returned invalid or missing canonical output")
 	ErrStepAlreadyClaimed     = errors.New("agent: step is already claimed by an active execution owner")
+	ErrIdempotencyKeyConflict = errors.New("agent: idempotency key already used with different request parameters")
 )
+
+type launchIdempotencyKeyCtxKey struct{}
+
+// WithLaunchIdempotencyKey attaches an idempotency key to ctx for LaunchAgent.
+func WithLaunchIdempotencyKey(ctx context.Context, key string) context.Context {
+	return context.WithValue(ctx, launchIdempotencyKeyCtxKey{}, key)
+}
+
+// LaunchIdempotencyKeyFromContext extracts the LaunchAgent idempotency key from ctx if present.
+func LaunchIdempotencyKeyFromContext(ctx context.Context) string {
+	if ctx == nil {
+		return ""
+	}
+	v, _ := ctx.Value(launchIdempotencyKeyCtxKey{}).(string)
+	return v
+}
 
 // StepExecutionRequest describes the parameters passed to a StepExecutor for a single step.
 type StepExecutionRequest struct {

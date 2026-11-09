@@ -57,6 +57,7 @@ type Service struct {
 	quotes                map[string]*CreditQuote
 	reservations          map[string]*CreditReservationRecord
 	reservationsByJob     map[string]string
+	reservationsByAlias   map[string]string
 	idempotencyRecords    map[string]*idempotencyEntry
 	requireConfirmedQuote bool
 	clipFactory           *ClipFactoryEngine
@@ -177,6 +178,7 @@ func NewService(cfg ServiceConfig) *Service {
 		quotes:                make(map[string]*CreditQuote),
 		reservations:          make(map[string]*CreditReservationRecord),
 		reservationsByJob:     make(map[string]string),
+		reservationsByAlias:   make(map[string]string),
 		idempotencyRecords:    make(map[string]*idempotencyEntry),
 		requireConfirmedQuote: cfg.RequireConfirmedQuote,
 	}
@@ -219,12 +221,16 @@ func (s *Service) GetQuote(quoteID string) (*CreditQuote, bool) {
 	return &cp, true
 }
 
-// GetReservationByJob returns the credit reservation record associated with a job ID.
+// GetReservationByJob returns the credit reservation record associated with a job ID (or unambiguous alias).
+// Canonical job/operation IDs in reservationsByJob always take precedence and can never be overwritten by aliases.
 func (s *Service) GetReservationByJob(jobID string) (*CreditReservationRecord, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	resID, ok := s.reservationsByJob[jobID]
-	if !ok {
+	if !ok || resID == "" {
+		resID, ok = s.reservationsByAlias[jobID]
+	}
+	if !ok || resID == "" {
 		return nil, false
 	}
 	rec, ok := s.reservations[resID]
@@ -233,6 +239,25 @@ func (s *Service) GetReservationByJob(jobID string) (*CreditReservationRecord, b
 	}
 	cp := *rec
 	return &cp, true
+}
+
+// GetWorkspaceReservation returns the credit reservation record scoped to workspaceID and jobOrAlias.
+func (s *Service) GetWorkspaceReservation(workspaceID, jobOrAlias string) (*CreditReservationRecord, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if resID, ok := s.reservationsByJob[jobOrAlias]; ok && resID != "" {
+		if rec, exists := s.reservations[resID]; exists && rec != nil && rec.WorkspaceID == workspaceID && rec.JobID == jobOrAlias {
+			cp := *rec
+			return &cp, true
+		}
+	}
+	if resID, ok := s.reservationsByAlias[workspaceID+"\x00"+jobOrAlias]; ok && resID != "" {
+		if rec, exists := s.reservations[resID]; exists && rec != nil && rec.WorkspaceID == workspaceID {
+			cp := *rec
+			return &cp, true
+		}
+	}
+	return nil, false
 }
 
 func computeGenerateRequestHash(msg *productionv1.GenerateRequest) string {
@@ -292,7 +317,7 @@ func (s *Service) setReservationStatus(jobID, status string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if resID, ok := s.reservationsByJob[jobID]; ok {
-		if rec, ok := s.reservations[resID]; ok && rec != nil {
+		if rec, ok := s.reservations[resID]; ok && rec != nil && rec.JobID == jobID {
 			if rec.Status == "released" || rec.Status == "committed" {
 				return
 			}
@@ -313,7 +338,7 @@ func (s *Service) beginDispatch(jobID string) bool {
 		return true
 	}
 	rec, ok := s.reservations[resID]
-	if !ok || rec == nil {
+	if !ok || rec == nil || rec.JobID != jobID {
 		return true
 	}
 	if rec.Status == "released" || rec.Status == "committed" || rec.CancelRequested {
@@ -331,7 +356,7 @@ func (s *Service) endDispatch(jobID string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if resID, ok := s.reservationsByJob[jobID]; ok {
-		if rec, ok := s.reservations[resID]; ok && rec != nil {
+		if rec, ok := s.reservations[resID]; ok && rec != nil && rec.JobID == jobID {
 			rec.DispatchInFlight = false
 			rec.UpdatedAt = time.Now().UTC()
 		}
@@ -342,7 +367,7 @@ func (s *Service) setReservationProviderRef(jobID, providerName, providerJobID s
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if resID, ok := s.reservationsByJob[jobID]; ok {
-		if rec, ok := s.reservations[resID]; ok && rec != nil {
+		if rec, ok := s.reservations[resID]; ok && rec != nil && rec.JobID == jobID {
 			if providerName != "" {
 				rec.Provider = providerName
 			}
@@ -362,15 +387,19 @@ func (s *Service) releaseReservation(workspaceID, jobID string) {
 		return
 	}
 	rec, ok := s.reservations[resID]
-	if !ok || rec == nil || rec.Status == "released" || rec.Status == "committed" {
+	if !ok || rec == nil || rec.JobID != jobID || workspaceID == "" || rec.WorkspaceID != workspaceID {
 		return
 	}
-	curr, exists := s.balances[workspaceID]
+	if rec.Status == "released" || rec.Status == "committed" {
+		return
+	}
+	targetWS := rec.WorkspaceID
+	curr, exists := s.balances[targetWS]
 	if !exists {
 		curr = tenantdb.MustParseExactDecimal("100")
 	}
 	if updated, err := curr.Add(rec.ReservedCredits); err == nil {
-		s.balances[workspaceID] = updated
+		s.balances[targetWS] = updated
 	}
 	rec.Status = "released"
 	rec.UpdatedAt = time.Now().UTC()
@@ -379,6 +408,26 @@ func (s *Service) releaseReservation(workspaceID, jobID string) {
 var (
 	ErrReservationAlreadyReleased = errors.New("production: credit reservation already released; late completion quarantined")
 )
+
+func (s *Service) canCommitReservation(workspaceID, jobID string) error {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	resID, ok := s.reservationsByJob[jobID]
+	if !ok {
+		return nil
+	}
+	rec, ok := s.reservations[resID]
+	if !ok || rec == nil {
+		return nil
+	}
+	if rec.JobID != jobID || workspaceID == "" || rec.WorkspaceID != workspaceID {
+		return ErrCrossTenantDenied
+	}
+	if rec.Status == "released" {
+		return ErrReservationAlreadyReleased
+	}
+	return nil
+}
 
 func (s *Service) commitReservation(workspaceID, jobID string, actualCredits tenantdb.ExactDecimal) error {
 	s.mu.Lock()
@@ -390,6 +439,9 @@ func (s *Service) commitReservation(workspaceID, jobID string, actualCredits ten
 	rec, ok := s.reservations[resID]
 	if !ok || rec == nil {
 		return nil
+	}
+	if rec.JobID != jobID || workspaceID == "" || rec.WorkspaceID != workspaceID {
+		return ErrCrossTenantDenied
 	}
 	if rec.Status == "released" {
 		return ErrReservationAlreadyReleased
@@ -406,14 +458,19 @@ func (s *Service) commitReservation(workspaceID, jobID string, actualCredits ten
 		charged = rec.ReservedCredits
 	}
 
+	targetWS := rec.WorkspaceID
+	if targetWS == "" {
+		targetWS = workspaceID
+	}
+
 	// Release unused portion of the reserved ceiling back to workspace balance (F08 / credit_accounting_contract.md §4)
 	if unused, err := rec.ReservedCredits.Sub(charged); err == nil && unused.IsPositive() {
-		curr, exists := s.balances[workspaceID]
+		curr, exists := s.balances[targetWS]
 		if !exists {
 			curr = tenantdb.MustParseExactDecimal("100")
 		}
 		if updated, addErr := curr.Add(unused); addErr == nil {
-			s.balances[workspaceID] = updated
+			s.balances[targetWS] = updated
 		}
 	}
 
@@ -539,6 +596,9 @@ func (s *Service) deductCredits(workspaceID string, amount tenantdb.ExactDecimal
 func (s *Service) reserveCreditsForOperation(workspaceID, operationID, quoteID, idempotencyKey, requestHash string, amount tenantdb.ExactDecimal, aliases ...string) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if _, exists := s.reservationsByJob[operationID]; exists {
+		return "", fmt.Errorf("duplicate operation reservation ID %q", operationID)
+	}
 	currBal, ok := s.balances[workspaceID]
 	if !ok {
 		currBal = tenantdb.MustParseExactDecimal("100")
@@ -568,12 +628,54 @@ func (s *Service) reserveCreditsForOperation(workspaceID, operationID, quoteID, 
 	s.balances[workspaceID] = newBal
 	s.reservations[resID] = rec
 	s.reservationsByJob[operationID] = resID
+	if s.reservationsByAlias == nil {
+		s.reservationsByAlias = make(map[string]string)
+	}
 	for _, alias := range aliases {
-		if trimmed := strings.TrimSpace(alias); trimmed != "" {
-			s.reservationsByJob[trimmed] = resID
+		trimmed := strings.TrimSpace(alias)
+		if trimmed == "" || trimmed == operationID {
+			continue
+		}
+		s.reservationsByAlias[workspaceID+"\x00"+trimmed] = resID
+		if existing, has := s.reservationsByAlias[trimmed]; !has {
+			s.reservationsByAlias[trimmed] = resID
+		} else if existing != resID {
+			s.reservationsByAlias[trimmed] = ""
 		}
 	}
 	return resID, nil
+}
+
+func (s *Service) reReserveCreditsForOperation(workspaceID, operationID string, amount tenantdb.ExactDecimal) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	resID, ok := s.reservationsByJob[operationID]
+	if !ok {
+		return fmt.Errorf("reservation for operation %q not found", operationID)
+	}
+	rec, ok := s.reservations[resID]
+	if !ok || rec == nil || rec.JobID != operationID || workspaceID == "" || rec.WorkspaceID != workspaceID {
+		return ErrCrossTenantDenied
+	}
+	if rec.Status == "in_flight" || rec.Status == "reconciling" || rec.Status == "reserved" || rec.Status == "committed" {
+		return nil
+	}
+	currBal, ok := s.balances[workspaceID]
+	if !ok {
+		currBal = tenantdb.MustParseExactDecimal("100")
+	}
+	if currBal.Cmp(amount) < 0 {
+		return ErrInsufficientCredits
+	}
+	newBal, err := currBal.Sub(amount)
+	if err != nil {
+		return err
+	}
+	s.balances[workspaceID] = newBal
+	rec.ReservedCredits = amount
+	rec.Status = "reconciling"
+	rec.UpdatedAt = time.Now().UTC()
+	return nil
 }
 
 // DeductCredits decrements workspace balance with balance check.
@@ -1817,8 +1919,8 @@ func (s *Service) Get(ctx context.Context, req *connect.Request[productionv1.Get
 	}
 
 	asset, err := s.store.GetAsset(ctx, wsID, req.Msg.GetAssetId())
-	if err != nil {
-		return nil, connect.NewError(connect.CodeNotFound, err)
+	if err != nil || asset.GenerationState == "quarantined" || asset.QualityState == "quarantined" {
+		return nil, connect.NewError(connect.CodeNotFound, ErrAssetNotFound)
 	}
 
 	return connect.NewResponse(&productionv1.GetResponse{Asset: toProtoAsset(asset)}), nil
@@ -1836,8 +1938,8 @@ func (s *Service) Approve(ctx context.Context, req *connect.Request[productionv1
 	}
 
 	asset, err := s.store.GetAsset(ctx, wsID, req.Msg.GetAssetId())
-	if err != nil {
-		return nil, connect.NewError(connect.CodeNotFound, err)
+	if err != nil || asset.GenerationState == "quarantined" || asset.QualityState == "quarantined" {
+		return nil, connect.NewError(connect.CodeNotFound, ErrAssetNotFound)
 	}
 
 	// Acceptance Target 2: High drift blocks readiness unless resolved/overridden
