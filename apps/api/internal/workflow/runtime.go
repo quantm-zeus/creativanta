@@ -186,9 +186,6 @@ func NewExecutionEngine(
 }
 
 func (e *ExecutionEngine) SetCapabilityProvider(cp CapabilityStatusProvider) {
-	if cp == nil {
-		cp = NewDefaultCapabilityProvider()
-	}
 	e.capProvider = cp
 }
 
@@ -877,15 +874,8 @@ func (e *ExecutionEngine) runLoop(
 				break
 			}
 
-			// 1. MANDATORY Capability Check (RULE-M20-002, AC-M20-003)
-			platform := detectPlatform(rpcName, inputJSON)
-			capStatus := "supported"
-			if platform != "" {
-				s, err := e.capProvider.GetPlatformCapability(ctx, workspaceID, platform, rpcName)
-				if err == nil && s != "" {
-					capStatus = s
-				}
-			}
+			// 1. MANDATORY Capability Check (RULE-M20-002, AC-M20-003, C2 fail-closed allowlist)
+			platform, capStatus, capExecutable := resolveActionCapabilityStatus(ctx, e.capProvider, workspaceID, rpcName, inputJSON)
 
 			hasFallbackBranch := false
 			var fallbackNodeID string
@@ -897,7 +887,7 @@ func (e *ExecutionEngine) runLoop(
 				}
 			}
 
-			if capStatus == "degraded" || capStatus == "unsupported" {
+			if !capExecutable {
 				// Must not execute action silently per RULE-M20-002
 				if hasFallbackBranch {
 					// Route to fallback branch!

@@ -2,8 +2,12 @@ package agent
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -13,22 +17,36 @@ import (
 	"github.com/quantm-zeus/creativanta/apps/api/internal/transportauth"
 )
 
+type launchIdempotencyEntry struct {
+	workspaceID      string
+	idempotencyKey   string
+	requestHash      string
+	done             chan struct{}
+	runID            string
+	warnings         []string
+	requiresApproval bool
+	err              error
+}
+
 // Service provides high-level business logic for autonomous agent operations.
 type Service struct {
-	store        Store
-	planner      *Planner
-	runtime      *Runtime
-	capabilities map[string]bool // workspace capability map (defaults supported)
-	execLocksMu  sync.Mutex
-	runExecLocks map[string]*sync.Mutex
+	store             Store
+	planner           *Planner
+	runtime           *Runtime
+	capabilities      map[string]bool // workspace capability map (defaults supported)
+	execLocksMu       sync.Mutex
+	runExecLocks      map[string]*sync.Mutex
+	launchIdemMu      sync.Mutex
+	launchIdemEntries map[string]*launchIdempotencyEntry
 }
 
 func NewService(store Store) *Service {
 	return &Service{
-		store:        store,
-		planner:      NewPlanner(),
-		runtime:      NewRuntime(store),
-		runExecLocks: make(map[string]*sync.Mutex),
+		store:             store,
+		planner:           NewPlanner(),
+		runtime:           NewRuntime(store),
+		runExecLocks:      make(map[string]*sync.Mutex),
+		launchIdemEntries: make(map[string]*launchIdempotencyEntry),
 		capabilities: map[string]bool{
 			"ai.nlu":            true,
 			"ai.vision":         true,
@@ -97,6 +115,52 @@ func verifyCallerPrincipal(ctx context.Context, caller CallerContext) error {
 	return nil
 }
 
+func computeLaunchAgentRequestHash(
+	workspaceID, agentType, taskPrompt, recipeID, workflowID, budgetCeiling, executionScopeJSON string,
+	autoExecute bool,
+	params map[string]string,
+) string {
+	type kv struct {
+		K string `json:"k"`
+		V string `json:"v"`
+	}
+	var sortedParams []kv
+	if len(params) > 0 {
+		keys := make([]string, 0, len(params))
+		for k := range params {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			sortedParams = append(sortedParams, kv{K: k, V: params[k]})
+		}
+	}
+	payload := struct {
+		WorkspaceID        string `json:"workspace_id"`
+		AgentType          string `json:"agent_type"`
+		TaskPrompt         string `json:"task_prompt"`
+		RecipeID           string `json:"recipe_id"`
+		WorkflowID         string `json:"workflow_id"`
+		BudgetCeiling      string `json:"budget_ceiling"`
+		ExecutionScopeJSON string `json:"execution_scope_json"`
+		AutoExecute        bool   `json:"auto_execute"`
+		Params             []kv   `json:"params,omitempty"`
+	}{
+		WorkspaceID:        strings.TrimSpace(workspaceID),
+		AgentType:          strings.TrimSpace(agentType),
+		TaskPrompt:         strings.TrimSpace(taskPrompt),
+		RecipeID:           strings.TrimSpace(recipeID),
+		WorkflowID:         strings.TrimSpace(workflowID),
+		BudgetCeiling:      strings.TrimSpace(budgetCeiling),
+		ExecutionScopeJSON: strings.TrimSpace(executionScopeJSON),
+		AutoExecute:        autoExecute,
+		Params:             sortedParams,
+	}
+	b, _ := json.Marshal(payload)
+	sum := sha256.Sum256(b)
+	return hex.EncodeToString(sum[:])
+}
+
 // LaunchAgent plans, preflights, and creates an agent run graph.
 func (s *Service) LaunchAgent(
 	ctx context.Context,
@@ -109,7 +173,7 @@ func (s *Service) LaunchAgent(
 	executionScopeJSON string,
 	autoExecute bool,
 	params map[string]string,
-) (*AgentRun, []string, bool, error) {
+) (retRun *AgentRun, retWarnings []string, retRequiresApproval bool, retErr error) {
 	if err := verifyCallerPrincipal(ctx, caller); err != nil {
 		return nil, nil, false, err
 	}
@@ -134,6 +198,67 @@ func (s *Service) LaunchAgent(
 		} else {
 			budgetCeiling = parsedCeiling.Fixed6String()
 		}
+	}
+
+	idemKey := strings.TrimSpace(LaunchIdempotencyKeyFromContext(ctx))
+	if idemKey != "" {
+		reqHash := computeLaunchAgentRequestHash(
+			caller.WorkspaceID,
+			agentType,
+			taskPrompt,
+			recipeID,
+			workflowID,
+			budgetCeiling,
+			executionScopeJSON,
+			autoExecute,
+			params,
+		)
+		lookupKey := caller.WorkspaceID + "\x00" + idemKey
+
+		s.launchIdemMu.Lock()
+		if s.launchIdemEntries == nil {
+			s.launchIdemEntries = make(map[string]*launchIdempotencyEntry)
+		}
+		if existing, ok := s.launchIdemEntries[lookupKey]; ok && existing != nil {
+			if existing.requestHash != reqHash {
+				s.launchIdemMu.Unlock()
+				return nil, nil, false, ErrIdempotencyKeyConflict
+			}
+			s.launchIdemMu.Unlock()
+			select {
+			case <-existing.done:
+			case <-ctx.Done():
+				return nil, nil, false, ctx.Err()
+			}
+			var replayedRun *AgentRun
+			if existing.runID != "" {
+				replayedRun, _ = s.store.GetRun(ctx, caller.WorkspaceID, existing.runID)
+			}
+			return replayedRun, append([]string(nil), existing.warnings...), existing.requiresApproval, existing.err
+		}
+
+		entry := &launchIdempotencyEntry{
+			workspaceID:    caller.WorkspaceID,
+			idempotencyKey: idemKey,
+			requestHash:    reqHash,
+			done:           make(chan struct{}),
+		}
+		s.launchIdemEntries[lookupKey] = entry
+		s.launchIdemMu.Unlock()
+
+		defer func() {
+			s.launchIdemMu.Lock()
+			if retRun != nil {
+				entry.runID = retRun.AgentRunID
+				entry.warnings = append([]string(nil), retWarnings...)
+				entry.requiresApproval = retRequiresApproval
+				entry.err = retErr
+			} else {
+				delete(s.launchIdemEntries, lookupKey)
+			}
+			close(entry.done)
+			s.launchIdemMu.Unlock()
+		}()
 	}
 
 	var steps []AgentStep

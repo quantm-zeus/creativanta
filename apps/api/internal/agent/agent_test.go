@@ -1271,3 +1271,121 @@ func TestN4_ConcurrentProvideInputApproveAndResume_SingleStepExecutionAndCreditA
 		}
 	}
 }
+
+func TestC3_LaunchAgentIdempotency_PreventsDuplicateRunsAndEffectsOnSequentialAndConcurrentRetries(t *testing.T) {
+	wsID := "11111111-1111-4111-8111-111111111903"
+	interceptor, err := transportauth.NewServerInterceptor(transportauth.Options{
+		Mode: transportauth.ModeAPI,
+		Verifier: testAuthVerifier{
+			session: transportauth.Session{
+				UserID:      "11111111-1111-4111-8111-111111111199",
+				WorkspaceID: wsID,
+				Role:        "editor",
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("NewServerInterceptor: %v", err)
+	}
+	var ctx context.Context
+	wrapped := interceptor.WrapUnary(func(innerCtx context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
+		ctx = innerCtx
+		return connect.NewResponse(&automationv1.AgentServiceLaunchAgentResponse{}), nil
+	})
+	initReq := connect.NewRequest(&automationv1.AgentServiceLaunchAgentRequest{})
+	initReq.Header().Set("Authorization", "Bearer valid-test-token")
+	initReq.Header().Set("x-workspace-id", wsID)
+	if _, err := wrapped(context.Background(), initReq); err != nil {
+		t.Fatalf("wrapped auth interceptor call failed: %v", err)
+	}
+
+	// 1. Concurrent + sequential LaunchAgent retries with the same IdempotencyKey and payload must produce 1 run and 1 effect per step.
+	store := NewMemStore()
+	exec := &barrierCountingStepExecutor{
+		step1Enter: make(chan struct{}, 4),
+		step1Gate:  make(chan struct{}),
+	}
+	svc := NewService(store)
+	svc.SetStepExecutor(exec)
+	store.SetMemberRole(wsID, "11111111-1111-4111-8111-111111111199", "editor", true)
+	handler := NewAgentHandler(svc)
+
+	launchReq := &automationv1.AgentServiceLaunchAgentRequest{
+		WorkspaceId:          wsID,
+		AgentType:            automationv1.AgentType_AGENT_TYPE_VIDEO_AGENT,
+		TaskPrompt:           "C3 idempotent launch video campaign",
+		BudgetCeilingCredits: "50.000000",
+		AutoExecute:          true,
+		IdempotencyKey:       "idem-c3-launch-001",
+		Parameters:           map[string]string{"campaign": "autumn"},
+	}
+
+	var wg sync.WaitGroup
+	resps := make([]*connect.Response[automationv1.AgentServiceLaunchAgentResponse], 2)
+	errs := make([]error, 2)
+	wg.Add(2)
+	for i := 0; i < 2; i++ {
+		go func(idx int) {
+			defer wg.Done()
+			resps[idx], errs[idx] = handler.LaunchAgent(ctx, connect.NewRequest(launchReq))
+		}(i)
+	}
+
+	<-exec.step1Enter
+	time.Sleep(25 * time.Millisecond)
+	close(exec.step1Gate)
+	wg.Wait()
+
+	for i, err := range errs {
+		if err != nil {
+			t.Fatalf("concurrent LaunchAgent %d returned unexpected error: %v", i, err)
+		}
+	}
+	if resps[0] == nil || resps[1] == nil || resps[0].Msg.GetRun() == nil || resps[1].Msg.GetRun() == nil {
+		t.Fatalf("expected non-nil LaunchAgent responses")
+	}
+	runID0 := resps[0].Msg.GetRun().GetAgentRunId()
+	runID1 := resps[1].Msg.GetRun().GetAgentRunId()
+	if runID0 == "" || runID0 != runID1 {
+		t.Fatalf("C3 VIOLATION: concurrent LaunchAgent calls with same idempotency_key created distinct runs: %q vs %q", runID0, runID1)
+	}
+
+	// Sequential retry with the same idempotency_key must also return the same run without re-executing steps.
+	seqResp, seqErr := handler.LaunchAgent(ctx, connect.NewRequest(launchReq))
+	if seqErr != nil {
+		t.Fatalf("sequential LaunchAgent retry returned unexpected error: %v", seqErr)
+	}
+	if seqResp.Msg.GetRun().GetAgentRunId() != runID0 {
+		t.Fatalf("C3 VIOLATION: sequential LaunchAgent retry created new run %q (expected %q)", seqResp.Msg.GetRun().GetAgentRunId(), runID0)
+	}
+
+	runs, totalRuns, listErr := store.ListRuns(ctx, wsID, "", "", 100, 0)
+	if listErr != nil || totalRuns != 1 || len(runs) != 1 {
+		t.Fatalf("C3 VIOLATION: expected exactly 1 persisted AgentRun, got total=%d len=%d err=%v", totalRuns, len(runs), listErr)
+	}
+
+	stepCount := len(runs[0].Steps)
+	exec.mu.Lock()
+	for stepOrder := 1; stepOrder <= stepCount; stepOrder++ {
+		if c := exec.callsByStep[stepOrder]; c != 1 {
+			exec.mu.Unlock()
+			t.Fatalf("C3 VIOLATION: step %d executed %d times across idempotent LaunchAgent retries (expected 1)! callsByStep=%+v", stepOrder, c, exec.callsByStep)
+		}
+	}
+	exec.mu.Unlock()
+
+	// 2. Reusing the same idempotency_key with a different payload must be rejected with CodeAlreadyExists.
+	conflictingReq := &automationv1.AgentServiceLaunchAgentRequest{
+		WorkspaceId:          wsID,
+		AgentType:            automationv1.AgentType_AGENT_TYPE_VIDEO_AGENT,
+		TaskPrompt:           "DIFFERENT TASK PROMPT ON SAME KEY",
+		BudgetCeilingCredits: "50.000000",
+		AutoExecute:          true,
+		IdempotencyKey:       "idem-c3-launch-001",
+		Parameters:           map[string]string{"campaign": "autumn"},
+	}
+	_, conflictErr := handler.LaunchAgent(ctx, connect.NewRequest(conflictingReq))
+	if conflictErr == nil || connect.CodeOf(conflictErr) != connect.CodeAlreadyExists {
+		t.Fatalf("C3 VIOLATION: expected CodeAlreadyExists when reusing idempotency_key with different payload, got: %v", conflictErr)
+	}
+}

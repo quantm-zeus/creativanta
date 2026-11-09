@@ -13,19 +13,21 @@ type CapabilityStatusProvider interface {
 }
 
 // DefaultCapabilityProvider provides baseline capability lookup.
+// By default (N1 / C2 fail-closed contract), external social/commerce platforms are NOT executable
+// ("manual" or "unsupported") until explicitly verified and configured via SetStatus.
 type DefaultCapabilityProvider struct {
-	statuses map[string]string // key: platform:action or platform
+	statuses map[string]string // key: workspace:account:platform:action, workspace:platform:action, platform:action, or platform
 }
 
 func NewDefaultCapabilityProvider() *DefaultCapabilityProvider {
 	return &DefaultCapabilityProvider{
 		statuses: map[string]string{
-			"tiktok":    "supported",
-			"youtube":   "supported",
-			"instagram": "supported",
-			"facebook":  "supported",
-			"shopee":    "supported",
-			"lazada":    "supported",
+			"tiktok":    "manual",
+			"youtube":   "manual",
+			"instagram": "manual",
+			"facebook":  "manual",
+			"shopee":    "unsupported",
+			"lazada":    "unsupported",
 		},
 	}
 }
@@ -34,24 +36,118 @@ func (p *DefaultCapabilityProvider) SetStatus(platform, status string) {
 	if p.statuses == nil {
 		p.statuses = make(map[string]string)
 	}
-	p.statuses[strings.ToLower(platform)] = strings.ToLower(status)
+	p.statuses[strings.ToLower(strings.TrimSpace(platform))] = strings.ToLower(strings.TrimSpace(status))
+}
+
+type capabilityAccountIDCtxKey struct{}
+
+func withCapabilityAccountID(ctx context.Context, accountID string) context.Context {
+	if strings.TrimSpace(accountID) == "" {
+		return ctx
+	}
+	return context.WithValue(ctx, capabilityAccountIDCtxKey{}, strings.TrimSpace(accountID))
+}
+
+func capabilityAccountIDFromContext(ctx context.Context) string {
+	if ctx == nil {
+		return ""
+	}
+	v, _ := ctx.Value(capabilityAccountIDCtxKey{}).(string)
+	return strings.TrimSpace(v)
 }
 
 func (p *DefaultCapabilityProvider) GetPlatformCapability(ctx context.Context, workspaceID, platform, action string) (string, error) {
-	if p.statuses == nil {
-		return "supported", nil
+	if p == nil || p.statuses == nil {
+		return "unsupported", nil
 	}
-	key := strings.ToLower(platform)
-	if action != "" {
-		actionKey := fmt.Sprintf("%s:%s", key, strings.ToLower(action))
-		if status, ok := p.statuses[actionKey]; ok {
+	ws := strings.ToLower(strings.TrimSpace(workspaceID))
+	acct := strings.ToLower(capabilityAccountIDFromContext(ctx))
+	key := strings.ToLower(strings.TrimSpace(platform))
+	act := strings.ToLower(strings.TrimSpace(action))
+	if key == "" {
+		return "unsupported", nil
+	}
+
+	var candidates []string
+	if ws != "" && acct != "" && act != "" {
+		candidates = append(candidates, fmt.Sprintf("%s:%s:%s:%s", ws, acct, key, act))
+	}
+	if ws != "" && acct != "" {
+		candidates = append(candidates, fmt.Sprintf("%s:%s:%s", ws, acct, key))
+	}
+	if acct != "" && act != "" {
+		candidates = append(candidates, fmt.Sprintf("%s:%s:%s", acct, key, act))
+	}
+	if acct != "" {
+		candidates = append(candidates, fmt.Sprintf("%s:%s", acct, key))
+	}
+	if ws != "" && act != "" {
+		candidates = append(candidates, fmt.Sprintf("%s:%s:%s", ws, key, act))
+	}
+	if ws != "" {
+		candidates = append(candidates, fmt.Sprintf("%s:%s", ws, key))
+	}
+	if act != "" {
+		candidates = append(candidates, fmt.Sprintf("%s:%s", key, act))
+	}
+	candidates = append(candidates, key)
+
+	for _, c := range candidates {
+		if status, ok := p.statuses[c]; ok {
 			return status, nil
 		}
 	}
-	if status, ok := p.statuses[key]; ok {
-		return status, nil
+	return "unsupported", nil
+}
+
+func isExecutableCapabilityStatus(status string) bool {
+	switch strings.ToLower(strings.TrimSpace(status)) {
+	case "supported", "native":
+		return true
+	default:
+		return false
 	}
-	return "supported", nil
+}
+
+func extractAccountIDFromInputJSON(inputJSON string) string {
+	if strings.TrimSpace(inputJSON) == "" {
+		return ""
+	}
+	var m map[string]any
+	if err := json.Unmarshal([]byte(inputJSON), &m); err == nil {
+		if a, ok := m["account_id"].(string); ok && strings.TrimSpace(a) != "" {
+			return strings.TrimSpace(a)
+		}
+		if a, ok := m["connected_account_id"].(string); ok && strings.TrimSpace(a) != "" {
+			return strings.TrimSpace(a)
+		}
+	}
+	return ""
+}
+
+func resolveActionCapabilityStatus(
+	ctx context.Context,
+	capProvider CapabilityStatusProvider,
+	workspaceID, rpcName, inputJSON string,
+) (platform string, capStatus string, executable bool) {
+	platform = detectPlatform(rpcName, inputJSON)
+	if platform == "" {
+		return "", "supported", true
+	}
+	if capProvider == nil {
+		return platform, "unsupported", false
+	}
+	acctID := extractAccountIDFromInputJSON(inputJSON)
+	lookupCtx := withCapabilityAccountID(ctx, acctID)
+	s, err := capProvider.GetPlatformCapability(lookupCtx, workspaceID, platform, rpcName)
+	if err != nil {
+		return platform, "lookup_error", false
+	}
+	normalized := strings.ToLower(strings.TrimSpace(s))
+	if normalized == "" {
+		return platform, "unsupported", false
+	}
+	return platform, normalized, isExecutableCapabilityStatus(normalized)
 }
 
 // PreflightEngine evaluates graph actions, permissions, capabilities, and quotes.
@@ -60,9 +156,6 @@ type PreflightEngine struct {
 }
 
 func NewPreflightEngine(capProvider CapabilityStatusProvider) *PreflightEngine {
-	if capProvider == nil {
-		capProvider = NewDefaultCapabilityProvider()
-	}
 	return &PreflightEngine{capProvider: capProvider}
 }
 
@@ -271,14 +364,7 @@ func (pe *PreflightEngine) PreflightWorkflow(
 			reqPerm = policy.PermissionKey
 		}
 
-		platform := detectPlatform(rpc, cfg.InputJSON)
-		capStatus := "supported"
-		if platform != "" {
-			status, err := pe.capProvider.GetPlatformCapability(ctx, workspaceID, platform, rpc)
-			if err == nil && status != "" {
-				capStatus = status
-			}
-		}
+		platform, capStatus, capExecutable := resolveActionCapabilityStatus(ctx, pe.capProvider, workspaceID, rpc, cfg.InputJSON)
 
 		requiresApproval := IsSensitiveAction(rpc)
 		if requiresApproval {
@@ -297,9 +383,9 @@ func (pe *PreflightEngine) PreflightWorkflow(
 			}
 		}
 
-		if capStatus == "degraded" || capStatus == "unsupported" {
+		if !capExecutable {
 			if !hasFallbackEdge[node.NodeID] {
-				report.Warnings = append(report.Warnings, fmt.Sprintf("Node %s targets %s with %s capability but lacks a fallback failure branch", node.NodeID, platform, capStatus))
+				report.Warnings = append(report.Warnings, fmt.Sprintf("Node %s targets %s with non-executable %s capability but lacks a fallback failure branch", node.NodeID, platform, capStatus))
 			}
 		}
 

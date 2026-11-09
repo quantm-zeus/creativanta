@@ -1439,6 +1439,7 @@ func TestP702_Resume_NeverReplaysConfirmedEffect(t *testing.T) {
 	store := workflow.NewMemoryStore()
 	dispatcher := workflow.NewMockActionDispatcher()
 	capProvider := workflow.NewDefaultCapabilityProvider()
+	capProvider.SetStatus("tiktok", "supported")
 	svc := workflow.NewService(store, nil)
 	svc.SetActionDispatcher(dispatcher)
 	svc.SetCapabilityProvider(capProvider)
@@ -2237,6 +2238,9 @@ func TestAI09_LifecycleEnforcement_DelegatedRBAC_And_MandatoryApproval(t *testin
 	}
 
 	// 3. Mandatory Approval check at action effect point for sensitive action without upstream Approval node
+	capProvider := workflow.NewDefaultCapabilityProvider()
+	capProvider.SetStatus("tiktok", "supported")
+	svc.SetCapabilityProvider(capProvider)
 	sensGraph := workflow.WorkflowGraph{
 		SchemaVersion: 1,
 		Nodes: []workflow.WorkflowNode{
@@ -2273,8 +2277,11 @@ func TestAI11_ApproverAllowlist_Quorum_And_DuplicateVotePrevention(t *testing.T)
 	ctx := context.Background()
 	store := workflow.NewMemoryStore()
 	dispatcher := workflow.NewMockActionDispatcher()
+	capProvider := workflow.NewDefaultCapabilityProvider()
+	capProvider.SetStatus("tiktok", "supported")
 	svc := workflow.NewService(store, nil)
 	svc.SetActionDispatcher(dispatcher)
+	svc.SetCapabilityProvider(capProvider)
 
 	wsID := "22222222-2222-4222-8222-222222222203"
 	editor := workflow.CallerContext{UserID: "usr-editor", WorkspaceID: wsID, WorkspaceRole: "editor"}
@@ -3011,8 +3018,11 @@ func TestR5_ApprovalSingleUsePerActionNode_BlocksSecondIdenticalSensitiveAction(
 	ctx := context.Background()
 	store := workflow.NewMemoryStore()
 	dispatcher := workflow.NewMockActionDispatcher()
+	capProvider := workflow.NewDefaultCapabilityProvider()
+	capProvider.SetStatus("tiktok", "supported")
 	svc := workflow.NewService(store, nil)
 	svc.SetActionDispatcher(dispatcher)
+	svc.SetCapabilityProvider(capProvider)
 
 	wsID := "22222222-2222-4222-8222-222222222505"
 	editor := workflow.CallerContext{UserID: "usr-editor-r5", WorkspaceID: wsID, WorkspaceRole: "editor"}
@@ -3098,5 +3108,152 @@ func TestR5_ApprovalSingleUsePerActionNode_BlocksSecondIdenticalSensitiveAction(
 	// Verify that UndoApprove is rejected once the approval request has been consumed by act_a
 	if _, undoErr := svc.UndoApprove(ctx, manager, pending[0].RequestID); !errors.Is(undoErr, workflow.ErrInvalidApprovalState) && !errors.Is(undoErr, workflow.ErrInvalidRunState) {
 		t.Fatalf("R5 VIOLATION: expected UndoApprove on consumed approval request to fail, got: %v", undoErr)
+	}
+}
+
+type staticCapabilityProvider struct {
+	status string
+	err    error
+}
+
+func (p *staticCapabilityProvider) GetPlatformCapability(_ context.Context, _, _, _ string) (string, error) {
+	return p.status, p.err
+}
+
+func TestC2_WorkflowCapabilityFailClosed_BlocksNilDefaultErrorEmptyUnknownManualReadOnly(t *testing.T) {
+	ctx := context.Background()
+	publishRPC := "creativanta.publish.v1.PublishService/Publish"
+
+	cases := []struct {
+		name     string
+		setupCap func(svc *workflow.Service)
+	}{
+		{
+			name: "nil_provider",
+			setupCap: func(svc *workflow.Service) {
+				svc.SetCapabilityProvider(nil)
+			},
+		},
+		{
+			name: "default_unconfigured_provider",
+			setupCap: func(svc *workflow.Service) {
+				svc.SetCapabilityProvider(workflow.NewDefaultCapabilityProvider())
+			},
+		},
+		{
+			name: "lookup_error",
+			setupCap: func(svc *workflow.Service) {
+				svc.SetCapabilityProvider(&staticCapabilityProvider{status: "", err: errors.New("capability lookup failed")})
+			},
+		},
+		{
+			name: "empty_status",
+			setupCap: func(svc *workflow.Service) {
+				svc.SetCapabilityProvider(&staticCapabilityProvider{status: "", err: nil})
+			},
+		},
+		{
+			name: "unknown_status",
+			setupCap: func(svc *workflow.Service) {
+				svc.SetCapabilityProvider(&staticCapabilityProvider{status: "mystery_state", err: nil})
+			},
+		},
+		{
+			name: "manual_status",
+			setupCap: func(svc *workflow.Service) {
+				svc.SetCapabilityProvider(&staticCapabilityProvider{status: "manual", err: nil})
+			},
+		},
+		{
+			name: "read_only_status",
+			setupCap: func(svc *workflow.Service) {
+				svc.SetCapabilityProvider(&staticCapabilityProvider{status: "read_only", err: nil})
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			store := workflow.NewMemoryStore()
+			dispatcher := workflow.NewMockActionDispatcher()
+			svc := workflow.NewService(store, nil)
+			svc.SetActionDispatcher(dispatcher)
+			tc.setupCap(svc)
+
+			wsID := "22222222-2222-4222-8222-222222222902"
+			editor := workflow.CallerContext{UserID: "usr-editor-c2", WorkspaceID: wsID, WorkspaceRole: "editor"}
+			manager := workflow.CallerContext{UserID: "usr-mgr-c2", WorkspaceID: wsID, WorkspaceRole: "manager"}
+			store.SetMemberRole(wsID, editor.UserID, "editor", true)
+			store.SetMemberRole(wsID, manager.UserID, "manager", true)
+
+			graph := workflow.WorkflowGraph{
+				SchemaVersion: 1,
+				Nodes: []workflow.WorkflowNode{
+					{NodeID: "trig", NodeType: workflow.NodeTypeTrigger, TriggerConfig: &workflow.TriggerConfig{Type: workflow.TriggerTypeManual}},
+					{
+						NodeID:   "appr",
+						NodeType: workflow.NodeTypeApproval,
+						ApprovalConfig: &workflow.ApprovalConfig{
+							ApproverIDs:              []string{manager.UserID},
+							RequiredApprovals:        1,
+							ExpiresAtDurationSeconds: 3600,
+						},
+					},
+					{
+						NodeID:   "act_pub",
+						NodeType: workflow.NodeTypeAction,
+						ActionConfig: &workflow.ActionConfig{
+							RPCName:   publishRPC,
+							InputJSON: `{"platform":"tiktok","account_id":"acc-tiktok-1","title":"C2 Publish"}`,
+						},
+					},
+					{NodeID: "term", NodeType: workflow.NodeTypeTerminal, TerminalConfig: &workflow.TerminalConfig{Outcome: "succeeded"}},
+				},
+				Edges: []workflow.WorkflowEdge{
+					{FromNodeID: "trig", ToNodeID: "appr"},
+					{FromNodeID: "appr", ToNodeID: "act_pub", Branch: workflow.EdgeBranchSuccess},
+					{FromNodeID: "act_pub", ToNodeID: "term"},
+				},
+			}
+
+			// Also verify PreflightWorkflow reflects the same non-executable decision.
+			pfRes, pfErr := svc.PreflightWorkflow(ctx, editor, "", &graph)
+			if pfErr != nil {
+				t.Fatalf("PreflightWorkflow returned unexpected error: %v", pfErr)
+			}
+			if len(pfRes.Actions) == 1 && (pfRes.Actions[0].CapabilityStatus == "supported" || pfRes.Actions[0].CapabilityStatus == "native") {
+				t.Fatalf("C2 VIOLATION (%s): PreflightWorkflow reported executable CapabilityStatus=%q for non-executable capability", tc.name, pfRes.Actions[0].CapabilityStatus)
+			}
+			if len(pfRes.Warnings) == 0 {
+				t.Fatalf("C2 VIOLATION (%s): expected PreflightWorkflow warning when non-executable capability action lacks fallback branch", tc.name)
+			}
+
+			wf, err := svc.CreateWorkflow(ctx, editor, "C2 Capability Flow "+tc.name, "Desc", "custom", *graph.Nodes[0].TriggerConfig, graph, nil)
+			if err != nil {
+				t.Fatalf("CreateWorkflow: %v", err)
+			}
+			_, _ = svc.ActivateWorkflow(ctx, manager, wf.WorkflowID)
+
+			run, err := svc.RunWorkflow(ctx, editor, wf.WorkflowID, nil)
+			if err != nil || run.Status != workflow.WorkflowRunStatusWaitingApproval {
+				t.Fatalf("expected waiting_approval, got run=%+v err=%v", run, err)
+			}
+
+			pending, _ := svc.ApprovalManager().FindPendingApprovalsByRun(ctx, wsID, run.RunID)
+			if len(pending) != 1 {
+				t.Fatalf("expected 1 pending approval, got %d", len(pending))
+			}
+
+			_, resumed, err := svc.Approve(ctx, manager, pending[0].RequestID)
+			if err != nil {
+				t.Fatalf("Approve: %v", err)
+			}
+			if count := dispatcher.GetDispatchedCount(publishRPC); count != 0 {
+				t.Fatalf("C2 VIOLATION (%s): expected 0 dispatches when capability is not verified executable, got %d!", tc.name, count)
+			}
+			if resumed == nil || resumed.Status != workflow.WorkflowRunStatusFailed {
+				t.Fatalf("C2 VIOLATION (%s): expected resumed run to fail without fallback, got %+v", tc.name, resumed)
+			}
+		})
 	}
 }
