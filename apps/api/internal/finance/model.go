@@ -203,6 +203,14 @@ type Order struct {
 	PostIDs              []string
 	ContentID            string
 	ContentIDs           []string
+	EconomicVersion      int
+	PendingFeeVersion    string
+	SyncedRevenue        *tenantdb.ExactDecimal
+	SyncedPlatformFee    *tenantdb.ExactDecimal
+	SyncedShippingCost   *tenantdb.ExactDecimal
+	SyncedCommission     *tenantdb.ExactDecimal
+	SyncedCOGS           *tenantdb.ExactDecimal
+	HasExplicitFees      bool
 }
 
 // EffectiveTime returns the canonical recognition timestamp of the order (RecognizedAt if set, otherwise OrderedAt).
