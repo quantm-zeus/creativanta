@@ -2,6 +2,7 @@ package billing
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -13,7 +14,10 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	adminv1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/admin/v1"
+	commonv1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/common/v1"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/migrate"
+	"github.com/quantm-zeus/creativanta/apps/api/internal/rbac"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb"
 )
 
@@ -109,7 +113,10 @@ func TestPostgresLiveCreditLotsQuotesAndBilling(t *testing.T) {
 		t.Fatalf("seed P0-06 workspace_members: %v", err)
 	}
 
-	// Clean any prior test rows for tenantA / tenantB.
+	// Clean any prior test rows for tenantA / tenantB (temporarily disabling append-only trigger via superuser adminPool for test reset).
+	_, _ = adminPool.Exec(ctx, `ALTER TABLE ai_credit_transactions DISABLE TRIGGER USER`)
+	_, _ = adminPool.Exec(ctx, `DELETE FROM ai_credit_transactions WHERE workspace_id IN ($1::uuid, $2::uuid)`, tenantA, tenantB)
+	_, _ = adminPool.Exec(ctx, `ALTER TABLE ai_credit_transactions ENABLE TRIGGER USER`)
 	_, _ = adminPool.Exec(ctx, `DELETE FROM ai_credit_reservation_allocations WHERE workspace_id IN ($1::uuid, $2::uuid)`, tenantA, tenantB)
 	_, _ = adminPool.Exec(ctx, `DELETE FROM ai_credit_reservations WHERE workspace_id IN ($1::uuid, $2::uuid)`, tenantA, tenantB)
 	_, _ = adminPool.Exec(ctx, `DELETE FROM ai_credit_lots WHERE workspace_id IN ($1::uuid, $2::uuid)`, tenantA, tenantB)
@@ -421,4 +428,229 @@ func TestPostgresLiveCreditLotsQuotesAndBilling(t *testing.T) {
 	if err != nil {
 		t.Fatalf("PostgreSQL payment replay idempotency verification failed: %v", err)
 	}
+}
+
+func TestPostgresLiveBillingEngineAndServiceDurabilityAcrossRestarts(t *testing.T) {
+	dsn := os.Getenv("CREATIVANTA_TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("CREATIVANTA_TEST_DATABASE_URL not set; live PostgreSQL billing durability suite executes when DB is available")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+	defer cancel()
+
+	adminPool, err := pgxpool.New(ctx, dsn)
+	if err != nil {
+		t.Fatalf("connect adminPool: %v", err)
+	}
+	defer adminPool.Close()
+
+	dir := filepath.Join("..", "..", "..", "..", "infra", "migrations")
+	migConn, err := adminPool.Acquire(ctx)
+	if err != nil {
+		t.Fatalf("acquire migConn: %v", err)
+	}
+	if _, err := migConn.Exec(ctx, `SELECT pg_advisory_lock(77331100)`); err != nil {
+		migConn.Release()
+		t.Fatalf("pg_advisory_lock: %v", err)
+	}
+	_, migErr := migrate.Up(ctx, adminPool, dir)
+	_, roleErr := adminPool.Exec(ctx, `ALTER ROLE app_user WITH LOGIN PASSWORD 'app_user_test_pw' NOBYPASSRLS`)
+	_, _ = migConn.Exec(ctx, `SELECT pg_advisory_unlock(77331100)`)
+	migConn.Release()
+	if migErr != nil {
+		t.Fatalf("migrate.Up failed: %v", migErr)
+	}
+	if roleErr != nil {
+		t.Fatalf("configure app_user login: %v", roleErr)
+	}
+
+	const (
+		userA   = "11111111-1111-4111-8111-111111111601"
+		tenantA = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaa601"
+	)
+
+	now := time.Date(2026, 11, 2, 12, 0, 0, 0, time.UTC)
+
+	cleanup := func() {
+		_, _ = adminPool.Exec(ctx, `DELETE FROM external_effects WHERE workspace_id = $1::uuid`, tenantA)
+		_, _ = adminPool.Exec(ctx, `DELETE FROM workspace_members WHERE workspace_id = $1::uuid`, tenantA)
+		_, _ = adminPool.Exec(ctx, `DELETE FROM workspaces WHERE workspace_id = $1::uuid`, tenantA)
+		_, _ = adminPool.Exec(ctx, `DELETE FROM users WHERE user_id = $1::uuid`, userA)
+	}
+	cleanup()
+	defer cleanup()
+
+	if _, err := adminPool.Exec(ctx, `
+		INSERT INTO users (user_id, external_auth_id, email, display_name, status)
+		VALUES ($1::uuid, 'ext_billing_restart_owner', 'billing-restart@creativanta.test', 'Billing Restart Owner', 'active')
+	`, userA); err != nil {
+		t.Fatalf("seed user: %v", err)
+	}
+	if _, err := adminPool.Exec(ctx, `
+		INSERT INTO workspaces (workspace_id, name, slug, owner_user_id, status)
+		VALUES ($1::uuid, 'Billing Restart WS', 'billing-restart-ws', $2::uuid, 'active')
+	`, tenantA, userA); err != nil {
+		t.Fatalf("seed workspace: %v", err)
+	}
+	if _, err := adminPool.Exec(ctx, `
+		INSERT INTO workspace_members (workspace_id, user_id, role, status)
+		VALUES ($1::uuid, $2::uuid, 'owner', 'active')
+	`, tenantA, userA); err != nil {
+		t.Fatalf("seed member: %v", err)
+	}
+
+	appDSN, err := buildAppUserBillingDSN(dsn)
+	if err != nil {
+		t.Fatalf("buildAppUserBillingDSN: %v", err)
+	}
+	appPool, err := pgxpool.New(ctx, appDSN)
+	if err != nil {
+		t.Fatalf("connect appPool: %v", err)
+	}
+	defer appPool.Close()
+
+	reg := loadTestRBAC(t)
+	ownerCtx := rbac.WithPolicyContext(ctx, rbac.PolicyContext{
+		ActorUserID: userA,
+		WorkspaceID: tenantA,
+		Role:        rbac.RoleOwner,
+	})
+
+	// Instance 1: Create Starter subscription, settle starter webhook, and create a pending Business upgrade session.
+	store1 := NewPostgresMemoryStore(now, appPool)
+	svc1 := NewService(reg, NewEngine(store1), "whsec_test")
+	svc1.SetClock(func() time.Time { return now })
+
+	starterSess, err := svc1.ChangePlan(ownerCtx, &adminv1.ChangePlanRequest{
+		Context:         &commonv1.CommandContext{IdempotencyKey: "pg-r01-starter-init"},
+		TargetPlan:      "starter",
+		BillingInterval: "monthly",
+	})
+	if err != nil {
+		t.Fatalf("svc1.ChangePlan(starter): %v", err)
+	}
+	if _, err := svc1.SettleStripeWebhook(StripeWebhookEvent{
+		EventID:           "evt_pg_starter_1",
+		EventType:         "invoice.paid",
+		WorkspaceID:       tenantA,
+		SubscriptionID:    "sub_pg_starter_1",
+		StripeInvoiceID:   "in_pg_starter_1",
+		CheckoutSessionID: starterSess.GetCheckoutSessionId(),
+		TargetPlan:        "starter",
+		BillingInterval:   "monthly",
+		PeriodKey:         "2026-11",
+		AmountPaid:        tenantdb.MustParseExactDecimal("20"),
+		Currency:          "USD",
+		PaymentStatus:     "paid",
+		OccurredAt:        now,
+	}); err != nil {
+		t.Fatalf("svc1.SettleStripeWebhook(starter): %v", err)
+	}
+
+	bizSess, err := svc1.ChangePlan(ownerCtx, &adminv1.ChangePlanRequest{
+		Context:         &commonv1.CommandContext{IdempotencyKey: "pg-r01-biz-pending"},
+		TargetPlan:      "business",
+		BillingInterval: "monthly",
+	})
+	if err != nil {
+		t.Fatalf("svc1.ChangePlan(business): %v", err)
+	}
+
+	// Instance 2 (simulating process restart / second instance with empty in-memory map):
+	// 1) Replaying evt_pg_starter_1 on Instance 2 must be suppressed as duplicate.
+	store2 := NewPostgresMemoryStore(now, appPool)
+	svc2 := NewService(reg, NewEngine(store2), "whsec_test")
+	svc2.SetClock(func() time.Time { return now })
+	replayed, err := svc2.SettleStripeWebhook(StripeWebhookEvent{
+		EventID:           "evt_pg_starter_1",
+		EventType:         "invoice.paid",
+		WorkspaceID:       tenantA,
+		SubscriptionID:    "sub_pg_starter_1",
+		StripeInvoiceID:   "in_pg_starter_1",
+		CheckoutSessionID: starterSess.GetCheckoutSessionId(),
+		TargetPlan:        "starter",
+		BillingInterval:   "monthly",
+		PeriodKey:         "2026-11",
+		AmountPaid:        tenantdb.MustParseExactDecimal("20"),
+		Currency:          "USD",
+		PaymentStatus:     "paid",
+		OccurredAt:        now,
+	})
+	if err != nil || !replayed.Duplicate {
+		t.Fatalf("expected webhook replay on fresh Instance 2 to be suppressed (Duplicate=true), got replayed=%+v err=%v", replayed, err)
+	}
+
+	// 2) R01 cross-instance check: A routine Starter renewal invoice ($20) arriving on Instance 2 while Business ($150)
+	//    upgrade session is still pending in PostgreSQL must NOT activate Business!
+	if _, err := svc2.SettleStripeWebhook(StripeWebhookEvent{
+		EventID:         "evt_pg_starter_renewal_2026_12",
+		EventType:       "invoice.paid",
+		WorkspaceID:     tenantA,
+		SubscriptionID:  "sub_pg_starter_1",
+		StripeInvoiceID: "in_pg_starter_renewal_2",
+		PeriodKey:       "2026-12",
+		AmountPaid:      tenantdb.MustParseExactDecimal("20"),
+		Currency:        "USD",
+		PaymentStatus:   "paid",
+		OccurredAt:      now.Add(30 * 24 * time.Hour),
+	}); err != nil {
+		t.Fatalf("svc2.SettleStripeWebhook(starter renewal): %v", err)
+	}
+	// Underpaid Business invoice on Instance 2 must fail closed with ErrInvalidBillingInput.
+	if _, err := svc2.SettleStripeWebhook(StripeWebhookEvent{
+		EventID:           "evt_pg_biz_underpaid",
+		EventType:         "invoice.paid",
+		WorkspaceID:       tenantA,
+		SubscriptionID:    "sub_pg_starter_1",
+		StripeInvoiceID:   "in_pg_biz_underpaid",
+		CheckoutSessionID: bizSess.GetCheckoutSessionId(),
+		TargetPlan:        "business",
+		BillingInterval:   "monthly",
+		PeriodKey:         "2026-12",
+		AmountPaid:        tenantdb.MustParseExactDecimal("20"),
+		Currency:          "USD",
+		PaymentStatus:     "paid",
+		OccurredAt:        now.Add(30 * 24 * time.Hour),
+	}); !errors.Is(err, ErrInvalidBillingInput) {
+		t.Fatalf("expected underpaid Business invoice on Instance 2 to fail with ErrInvalidBillingInput, got %v", err)
+	}
+
+	// Instance 3 (another fresh process) verifies tier is still Starter and Business session is still pending,
+	// then settles the actual Business upgrade invoice ($150) bound to bizSess.
+	store3 := NewPostgresMemoryStore(now, appPool)
+	svc3 := NewService(reg, NewEngine(store3), "whsec_test")
+	svc3.SetClock(func() time.Time { return now })
+	_ = store3.WithWorkspaceTx(tenantA, func(st *WorkspaceBillingState) error {
+		if st.SubscriptionTier != "starter" {
+			t.Fatalf("expected workspace tier on fresh Instance 3 to remain starter after renewal invoice, got %q", st.SubscriptionTier)
+		}
+		return nil
+	})
+
+	if _, err := svc3.SettleStripeWebhook(StripeWebhookEvent{
+		EventID:           "evt_pg_biz_settled",
+		EventType:         "invoice.paid",
+		WorkspaceID:       tenantA,
+		SubscriptionID:    "sub_pg_starter_1",
+		StripeInvoiceID:   "in_pg_biz_1",
+		CheckoutSessionID: bizSess.GetCheckoutSessionId(),
+		TargetPlan:        "business",
+		BillingInterval:   "monthly",
+		PeriodKey:         "2026-12",
+		AmountPaid:        tenantdb.MustParseExactDecimal("200"),
+		Currency:          "USD",
+		PaymentStatus:     "paid",
+		OccurredAt:        now.Add(30*24*time.Hour + time.Minute),
+	}); err != nil {
+		t.Fatalf("svc3.SettleStripeWebhook(business upgrade): %v", err)
+	}
+
+	// Verify on Instance 1 that it sees the Business upgrade committed by Instance 3 via PostgreSQL!
+	_ = store1.WithWorkspaceTx(tenantA, func(st *WorkspaceBillingState) error {
+		if st.SubscriptionTier != "business" {
+			t.Fatalf("expected Instance 1 to observe business tier persisted by Instance 3, got %q", st.SubscriptionTier)
+		}
+		return nil
+	})
 }

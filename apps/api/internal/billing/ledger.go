@@ -3,12 +3,15 @@ package billing
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	adminv1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/admin/v1"
 	commonv1 "github.com/quantm-zeus/creativanta/apps/api/gen/creativanta/common/v1"
 	"github.com/quantm-zeus/creativanta/apps/api/internal/tenantdb"
@@ -305,6 +308,7 @@ type WorkspaceBillingState struct {
 	LifecycleEvidences        []RetentionLifecycleEvidence
 	SoftDeletedAt             *time.Time
 	HardDeletedAt             *time.Time
+	SeqCounter                uint64
 }
 
 // CheckoutSessionRecord tracks a billing or credit pack checkout session.
@@ -331,13 +335,14 @@ type CheckoutSessionRecord struct {
 }
 
 // MemoryStore provides a deterministic, concurrency-safe (per-workspace mutex with
-// transactional copy-on-commit) store for unit and -race tests.
+// transactional copy-on-commit, plus optional PostgreSQL durability) store for billing.
 type MemoryStore struct {
 	mu         sync.Mutex
 	wsLocks    map[string]*sync.Mutex
 	workspaces map[string]*WorkspaceBillingState
 	rateCards  map[string]ProviderRateCard
 	seqCounter uint64
+	pool       *pgxpool.Pool
 }
 
 // NewMemoryStore initializes a MemoryStore seeded with the canonical verified provider rate cards.
@@ -352,6 +357,21 @@ func NewMemoryStore(now time.Time) *MemoryStore {
 		s.rateCards[key] = card
 	}
 	return s
+}
+
+// NewPostgresMemoryStore initializes a PostgreSQL-backed MemoryStore for cross-instance durability.
+func NewPostgresMemoryStore(now time.Time, pool *pgxpool.Pool) *MemoryStore {
+	s := NewMemoryStore(now)
+	s.AttachPostgresPool(pool)
+	return s
+}
+
+// AttachPostgresPool binds a pgxpool.Pool so WithWorkspaceTx synchronizes and persists
+// workspace billing state atomically in PostgreSQL under RLS and advisory locking.
+func (s *MemoryStore) AttachPostgresPool(pool *pgxpool.Pool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.pool = pool
 }
 
 func (s *MemoryStore) nextUUID(prefix string) string {
@@ -436,7 +456,26 @@ func cloneWorkspaceState(src *WorkspaceBillingState) *WorkspaceBillingState {
 	return &dst
 }
 
+func defaultWorkspaceBillingState(workspaceID string) *WorkspaceBillingState {
+	return &WorkspaceBillingState{
+		WorkspaceID:               workspaceID,
+		SubscriptionTier:          "free",
+		SeatsUsed:                 1,
+		ChannelsUsed:              1,
+		StorageUsedGB:             1,
+		Quotes:                    make(map[string]tenantdb.CreditQuoteRow),
+		Reservations:              make(map[string]tenantdb.CreditReservationRow),
+		Allocations:               make(map[string][]tenantdb.CreditReservationAllocationRow),
+		ProcessedWebhooks:         make(map[string]time.Time),
+		ProcessedCycleClosures:    make(map[string]CycleBoundaryResult),
+		CheckoutSessions:          make(map[string]*CheckoutSessionRecord),
+		EnabledPaymentMethodGates: make(map[string]bool),
+	}
+}
+
 // WithWorkspaceTx executes fn under an exclusive per-workspace lock (matching SELECT ... FOR UPDATE on workspaces).
+// When a PostgreSQL pool is attached, it also acquires a cross-instance transactional advisory lock under RLS
+// and atomically loads/persists the workspace billing state in PostgreSQL.
 // If fn returns an error, all mutations to the workspace state are discarded (transactional rollback).
 func (s *MemoryStore) WithWorkspaceTx(workspaceID string, fn func(state *WorkspaceBillingState) error) error {
 	wsMu := s.getWorkspaceMutex(workspaceID)
@@ -444,21 +483,105 @@ func (s *MemoryStore) WithWorkspaceTx(workspaceID string, fn func(state *Workspa
 	defer wsMu.Unlock()
 
 	s.mu.Lock()
+	pool := s.pool
+	s.mu.Unlock()
+
+	if pool != nil && strings.TrimSpace(workspaceID) != "" {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		tx, err := pool.Begin(ctx)
+		if err != nil {
+			return err
+		}
+		defer func() {
+			_ = tx.Rollback(ctx)
+		}()
+
+		if _, err := tx.Exec(ctx, `SELECT set_config('app.current_tenant_id', $1, true)`, workspaceID); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtext('billing_ws:' || $1))`, workspaceID); err != nil {
+			return err
+		}
+
+		opKey := "billing_ws_state:" + workspaceID
+		var rawPayload []byte
+		qErr := tx.QueryRow(ctx, `
+			SELECT result_payload
+			FROM external_effects
+			WHERE workspace_id = $1::uuid AND operation_key = $2
+			FOR UPDATE
+		`, workspaceID, opKey).Scan(&rawPayload)
+
+		s.mu.Lock()
+		var current *WorkspaceBillingState
+		if qErr == nil && len(rawPayload) > 0 {
+			var loaded WorkspaceBillingState
+			if uErr := json.Unmarshal(rawPayload, &loaded); uErr == nil {
+				current = &loaded
+				if current.SeqCounter > s.seqCounter {
+					s.seqCounter = current.SeqCounter
+				}
+			}
+		} else if qErr != nil && !errors.Is(qErr, pgx.ErrNoRows) {
+			s.mu.Unlock()
+			return qErr
+		}
+		if current == nil {
+			if memCur, exists := s.workspaces[workspaceID]; exists {
+				current = memCur
+			} else {
+				current = defaultWorkspaceBillingState(workspaceID)
+			}
+		}
+		workingCopy := cloneWorkspaceState(current)
+		s.mu.Unlock()
+
+		if err := fn(workingCopy); err != nil {
+			return err
+		}
+
+		s.mu.Lock()
+		if s.seqCounter > workingCopy.SeqCounter {
+			workingCopy.SeqCounter = s.seqCounter
+		}
+		s.mu.Unlock()
+
+		savedJSON, err := json.Marshal(workingCopy)
+		if err != nil {
+			return err
+		}
+		effectID := s.nextUUID("99000000")
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO external_effects (
+				effect_id, workspace_id, operation_key, provider,
+				aggregate_type, aggregate_id, provider_request_id, status, result_payload
+			) VALUES (
+				$1::uuid, $2::uuid, $3, 'stripe_billing',
+				'workspace', $2::uuid, $3, 'succeeded', $4::jsonb
+			)
+			ON CONFLICT (workspace_id, operation_key) DO UPDATE SET
+				status = 'succeeded',
+				result_payload = EXCLUDED.result_payload,
+				updated_at = NOW()
+		`, effectID, workspaceID, opKey, string(savedJSON)); err != nil {
+			return err
+		}
+		if err := tx.Commit(ctx); err != nil {
+			return err
+		}
+
+		s.mu.Lock()
+		s.workspaces[workspaceID] = workingCopy
+		s.mu.Unlock()
+		return nil
+	}
+
+	s.mu.Lock()
 	current, exists := s.workspaces[workspaceID]
 	if !exists {
-		current = &WorkspaceBillingState{
-			WorkspaceID:            workspaceID,
-			SubscriptionTier:       "free",
-			SeatsUsed:              1,
-			ChannelsUsed:           1,
-			StorageUsedGB:          1,
-			Quotes:                 make(map[string]tenantdb.CreditQuoteRow),
-			Reservations:           make(map[string]tenantdb.CreditReservationRow),
-			Allocations:            make(map[string][]tenantdb.CreditReservationAllocationRow),
-			ProcessedWebhooks:      make(map[string]time.Time),
-			ProcessedCycleClosures: make(map[string]CycleBoundaryResult),
-			CheckoutSessions:       make(map[string]*CheckoutSessionRecord),
-		}
+		current = defaultWorkspaceBillingState(workspaceID)
 		s.workspaces[workspaceID] = current
 	}
 	workingCopy := cloneWorkspaceState(current)
@@ -469,6 +592,9 @@ func (s *MemoryStore) WithWorkspaceTx(workspaceID string, fn func(state *Workspa
 	}
 
 	s.mu.Lock()
+	if s.seqCounter > workingCopy.SeqCounter {
+		workingCopy.SeqCounter = s.seqCounter
+	}
 	s.workspaces[workspaceID] = workingCopy
 	s.mu.Unlock()
 	return nil

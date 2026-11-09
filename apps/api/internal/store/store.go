@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -70,60 +71,98 @@ type Store interface {
 	ListFinancialPostings(ctx context.Context, workspaceID string) ([]FinancialPosting, error)
 }
 
+const defaultCheckoutLeaseTTL = 5 * time.Second
+
 type checkoutClaim struct {
 	idempotencyKey     string
 	paymentIntentID    string
 	requestFingerprint string
 	orderID            string
+	leaseOwner         string
+	leaseUntil         time.Time
+	leaseEpoch         int64
 	done               chan struct{}
 }
 
 // MemoryStore provides a thread-safe in-memory store for unit and concurrency test suites.
 type MemoryStore struct {
-	mu                sync.RWMutex
-	pages             map[string]*StorePage              // key: pageID
-	pageSlugs         map[string]string                  // key: workspaceID + ":" + slug -> pageID
-	pageViews         map[string]int64                   // key: pageID -> count
-	pageOrders        map[string]int64                   // key: pageID -> count
-	pageRevenue       map[string]tenantdb.ExactDecimal   // key: pageID -> amount
-	plans             map[string]*MembershipPlan         // key: planID
-	subscriptions     map[string]*MembershipSubscription // key: subID
-	subByProvider     map[string]string                  // key: workspaceID + ":" + providerSubID -> subID
-	bundles           map[string]*Bundle                 // key: bundleID
-	products          map[string]*StoreProduct           // key: workspaceID + ":" + productID -> product
-	offers            map[string]*StoreOffer             // key: workspaceID + ":" + offerID -> offer
-	verifiedPayments  map[string]*VerifiedPaymentIntent  // key: workspaceID + ":" + paymentIntentID -> intent
-	productStock      map[string]int32                   // key: workspaceID + ":" + productID -> stock
-	deliveries        map[string]*DigitalDelivery        // key: deliveryID
-	deliveryByIdem    map[string]string                  // key: workspaceID + ":" + idempotencyKey -> deliveryID
-	checkouts         map[string]*CheckoutResult         // key: workspaceID + ":" + idempotencyKey -> result
-	inFlightCheckouts map[string]*checkoutClaim          // key: workspaceID + ":" + idempotencyKey -> active claim
-	paymentToIdem     map[string]string                  // key: workspaceID + ":" + paymentIntentID -> idempotencyKey
-	postings          []FinancialPosting
+	mu                 sync.RWMutex
+	nowFunc            func() time.Time
+	checkoutLeaseTTL   time.Duration
+	pages              map[string]*StorePage              // key: pageID
+	pageSlugs          map[string]string                  // key: workspaceID + ":" + slug -> pageID
+	pageViews          map[string]int64                   // key: pageID -> count
+	pageOrders         map[string]int64                   // key: pageID -> count
+	pageRevenue        map[string]tenantdb.ExactDecimal   // key: pageID -> amount
+	plans              map[string]*MembershipPlan         // key: planID
+	subscriptions      map[string]*MembershipSubscription // key: subID
+	subByProvider      map[string]string                  // key: workspaceID + ":" + providerSubID -> subID
+	bundles            map[string]*Bundle                 // key: bundleID
+	bundleReservations map[string]int32                   // key: workspaceID + ":" + orderID + ":" + bundleID -> quantity
+	products           map[string]*StoreProduct           // key: workspaceID + ":" + productID -> product
+	offers             map[string]*StoreOffer             // key: workspaceID + ":" + offerID -> offer
+	verifiedPayments   map[string]*VerifiedPaymentIntent  // key: workspaceID + ":" + paymentIntentID -> intent
+	productStock       map[string]int32                   // key: workspaceID + ":" + productID -> stock
+	deliveries         map[string]*DigitalDelivery        // key: deliveryID
+	deliveryByIdem     map[string]string                  // key: workspaceID + ":" + idempotencyKey -> deliveryID
+	checkouts          map[string]*CheckoutResult         // key: workspaceID + ":" + idempotencyKey -> result
+	inFlightCheckouts  map[string]*checkoutClaim          // key: workspaceID + ":" + idempotencyKey -> active claim
+	paymentToIdem      map[string]string                  // key: workspaceID + ":" + paymentIntentID -> idempotencyKey
+	postings           []FinancialPosting
 }
 
 func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{
-		pages:             make(map[string]*StorePage),
-		pageSlugs:         make(map[string]string),
-		pageViews:         make(map[string]int64),
-		pageOrders:        make(map[string]int64),
-		pageRevenue:       make(map[string]tenantdb.ExactDecimal),
-		plans:             make(map[string]*MembershipPlan),
-		subscriptions:     make(map[string]*MembershipSubscription),
-		subByProvider:     make(map[string]string),
-		bundles:           make(map[string]*Bundle),
-		products:          make(map[string]*StoreProduct),
-		offers:            make(map[string]*StoreOffer),
-		verifiedPayments:  make(map[string]*VerifiedPaymentIntent),
-		productStock:      make(map[string]int32),
-		deliveries:        make(map[string]*DigitalDelivery),
-		deliveryByIdem:    make(map[string]string),
-		checkouts:         make(map[string]*CheckoutResult),
-		inFlightCheckouts: make(map[string]*checkoutClaim),
-		paymentToIdem:     make(map[string]string),
-		postings:          make([]FinancialPosting, 0),
+		checkoutLeaseTTL:   defaultCheckoutLeaseTTL,
+		pages:              make(map[string]*StorePage),
+		pageSlugs:          make(map[string]string),
+		pageViews:          make(map[string]int64),
+		pageOrders:         make(map[string]int64),
+		pageRevenue:        make(map[string]tenantdb.ExactDecimal),
+		plans:              make(map[string]*MembershipPlan),
+		subscriptions:      make(map[string]*MembershipSubscription),
+		subByProvider:      make(map[string]string),
+		bundles:            make(map[string]*Bundle),
+		bundleReservations: make(map[string]int32),
+		products:           make(map[string]*StoreProduct),
+		offers:             make(map[string]*StoreOffer),
+		verifiedPayments:   make(map[string]*VerifiedPaymentIntent),
+		productStock:       make(map[string]int32),
+		deliveries:         make(map[string]*DigitalDelivery),
+		deliveryByIdem:     make(map[string]string),
+		checkouts:          make(map[string]*CheckoutResult),
+		inFlightCheckouts:  make(map[string]*checkoutClaim),
+		paymentToIdem:      make(map[string]string),
+		postings:           make([]FinancialPosting, 0),
 	}
+}
+
+func (m *MemoryStore) SetNowFunc(fn func() time.Time) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.nowFunc = fn
+}
+
+func (m *MemoryStore) SetCheckoutLeaseTTL(ttl time.Duration) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if ttl > 0 {
+		m.checkoutLeaseTTL = ttl
+	}
+}
+
+func (m *MemoryStore) nowLocked() time.Time {
+	if m.nowFunc != nil {
+		return m.nowFunc().UTC()
+	}
+	return time.Now().UTC()
+}
+
+func (m *MemoryStore) leaseTTLLocked() time.Duration {
+	if m.checkoutLeaseTTL > 0 {
+		return m.checkoutLeaseTTL
+	}
+	return defaultCheckoutLeaseTTL
 }
 
 // ----------------------------------------------------------------------------
@@ -373,6 +412,21 @@ func (m *MemoryStore) CreateSubscription(_ context.Context, sub *MembershipSubsc
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	if sub.ProviderSubscriptionID != "" {
+		if existingID, ok := m.subByProvider[sub.WorkspaceID+":"+sub.ProviderSubscriptionID]; ok && existingID != "" {
+			if existing, ok2 := m.subscriptions[existingID]; ok2 && existing != nil {
+				*sub = *existing
+				return nil
+			}
+		}
+	}
+	if sub.MembershipID != "" {
+		if existing, ok := m.subscriptions[sub.MembershipID]; ok && existing != nil {
+			*sub = *existing
+			return nil
+		}
+	}
+
 	if sub.MembershipID == "" {
 		sub.MembershipID = newUUID()
 	}
@@ -585,13 +639,22 @@ func (m *MemoryStore) SetProductStock(_ context.Context, workspaceID, productID 
 // AtomicallyReserveBundleStock verifies all components have sufficient stock and decrements
 // each component atomically. If ANY component is insufficient, all are left untouched and
 // ErrBundleComponentOutOfStock is returned with no partial deductions or leaks.
-func (m *MemoryStore) AtomicallyReserveBundleStock(_ context.Context, workspaceID, bundleID string, quantity int32) error {
+func (m *MemoryStore) AtomicallyReserveBundleStock(ctx context.Context, workspaceID, bundleID string, quantity int32) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	bundle, ok := m.bundles[bundleID]
 	if !ok || bundle.WorkspaceID != workspaceID {
 		return ErrBundleNotFound
+	}
+
+	orderID := checkoutOrderIDFromContext(ctx)
+	resKey := ""
+	if orderID != "" {
+		resKey = workspaceID + ":" + orderID + ":" + bundleID
+		if prevQty, exists := m.bundleReservations[resKey]; exists && prevQty == quantity {
+			return nil
+		}
 	}
 
 	// 1. Verify ALL components have sufficient stock
@@ -614,11 +677,14 @@ func (m *MemoryStore) AtomicallyReserveBundleStock(_ context.Context, workspaceI
 		stockKey := workspaceID + ":" + item.ProductID
 		m.productStock[stockKey] -= required
 	}
+	if resKey != "" {
+		m.bundleReservations[resKey] = quantity
+	}
 
 	return nil
 }
 
-func (m *MemoryStore) ReleaseBundleStock(_ context.Context, workspaceID, bundleID string, quantity int32) error {
+func (m *MemoryStore) ReleaseBundleStock(ctx context.Context, workspaceID, bundleID string, quantity int32) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -626,6 +692,16 @@ func (m *MemoryStore) ReleaseBundleStock(_ context.Context, workspaceID, bundleI
 	if !ok || bundle.WorkspaceID != workspaceID {
 		return ErrBundleNotFound
 	}
+
+	orderID := checkoutOrderIDFromContext(ctx)
+	if orderID != "" {
+		resKey := workspaceID + ":" + orderID + ":" + bundleID
+		if _, exists := m.bundleReservations[resKey]; !exists {
+			return nil
+		}
+		delete(m.bundleReservations, resKey)
+	}
+
 	for _, item := range bundle.Items {
 		restored := item.Quantity * quantity
 		stockKey := workspaceID + ":" + item.ProductID
@@ -810,20 +886,37 @@ func (m *MemoryStore) ClaimCheckout(ctx context.Context, workspaceID, idempotenc
 			}
 		}
 
+		var nextEpoch int64 = 1
+		now := m.nowLocked()
 		if inflight, ok := m.inFlightCheckouts[idemMapKey]; ok && inflight != nil {
 			if (inflight.requestFingerprint != "" && requestFingerprint != "" && inflight.requestFingerprint != requestFingerprint) ||
 				(inflight.paymentIntentID != "" && paymentIntentID != "" && inflight.paymentIntentID != paymentIntentID) {
 				m.mu.Unlock()
 				return nil, "", ErrPaymentReplay
 			}
-			waitCh := inflight.done
-			m.mu.Unlock()
-			select {
-			case <-waitCh:
-				continue
-			case <-ctx.Done():
-				return nil, "", ctx.Err()
+			if existingOrderID == "" && inflight.orderID != "" {
+				existingOrderID = inflight.orderID
 			}
+			if !inflight.leaseUntil.IsZero() && now.Before(inflight.leaseUntil) {
+				waitCh := inflight.done
+				waitDur := inflight.leaseUntil.Sub(now)
+				if waitDur > 15*time.Millisecond {
+					waitDur = 15 * time.Millisecond
+				}
+				m.mu.Unlock()
+				select {
+				case <-waitCh:
+					continue
+				case <-time.After(waitDur):
+					continue
+				case <-ctx.Done():
+					return nil, "", ctx.Err()
+				}
+			}
+			// Expired lease: take over the abandoned in-flight checkout claim (M01)
+			nextEpoch = inflight.leaseEpoch + 1
+			close(inflight.done)
+			delete(m.inFlightCheckouts, idemMapKey)
 		}
 
 		if existingOrderID == "" {
@@ -834,6 +927,9 @@ func (m *MemoryStore) ClaimCheckout(ctx context.Context, workspaceID, idempotenc
 			paymentIntentID:    paymentIntentID,
 			requestFingerprint: requestFingerprint,
 			orderID:            existingOrderID,
+			leaseOwner:         newUUID(),
+			leaseUntil:         now.Add(m.leaseTTLLocked()),
+			leaseEpoch:         nextEpoch,
 			done:               make(chan struct{}),
 		}
 		m.inFlightCheckouts[idemMapKey] = claim
@@ -931,6 +1027,12 @@ func (m *MemoryStore) CreateDigitalDelivery(_ context.Context, delivery *Digital
 	if delivery.IdempotencyKey != "" {
 		idemKey := delivery.WorkspaceID + ":" + delivery.IdempotencyKey
 		if existingID, exists := m.deliveryByIdem[idemKey]; exists && existingID != "" {
+			if existing, ok := m.deliveries[existingID]; ok && existing != nil {
+				if existing.OrderID != "" && delivery.OrderID != "" && existing.OrderID == delivery.OrderID {
+					*delivery = *existing
+					return nil
+				}
+			}
 			return fmt.Errorf("%w: digital delivery idempotency key %s already exists", ErrPaymentReplay, delivery.IdempotencyKey)
 		}
 	}
@@ -981,6 +1083,10 @@ func (m *MemoryStore) RecordFinancialPosting(_ context.Context, posting *Financi
 
 	for _, existing := range m.postings {
 		if existing.WorkspaceID == posting.WorkspaceID && posting.OrderID != "" && existing.OrderID == posting.OrderID {
+			if existing.GrossAmount.Cmp(posting.GrossAmount) == 0 && strings.EqualFold(existing.Currency, posting.Currency) {
+				*posting = existing
+				return nil
+			}
 			return fmt.Errorf("%w: financial posting already exists for order %s", ErrPaymentReplay, posting.OrderID)
 		}
 	}
