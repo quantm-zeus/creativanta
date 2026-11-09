@@ -25,6 +25,11 @@ import {
   setWorkflowStatusRemote,
   createWorkflowEditorSession
 } from '../workflow/runtime';
+import {
+  createScriptEditorSession,
+  approveScriptRemote,
+  rejectScriptRemote
+} from '../script';
 import { CANONICAL_LEGAL_LINKS, getLegalDocumentBySlug } from '../a11y';
 import { executeVideoAgentStepRemote, planVideoAgent } from '../automation/agent';
 import {
@@ -1562,5 +1567,434 @@ describe('Remediation Canonical RPC Flows (UF-04..UF-08, AI-02, R04)', () => {
     expect(capturedBodies[0].image_to_video_config.loop_friendly).toBe(true);
     expect(capturedBodies[0].image_to_video_config.auto_music_sync).toBe(false);
     expect(capturedBodies[0].image_to_video_config.duration_seconds).toBe(15);
+  });
+
+  it('T8-N2 In-flight workflow Save and Activate started before same-tenant re-discovery preserve updated version (v3 -> v4) while still rejecting cross-tenant responses', async () => {
+    const session = createWorkflowEditorSession('wf-prod-v3');
+    const loadFetch = vi.fn(async () =>
+      jsonResponse({
+        workflow: {
+          workflow_id: 'wf-prod-v3',
+          workspace_id: 'ws-1',
+          title: 'Workflow v3',
+          description: 'Initial v3',
+          status: 'WORKFLOW_STATUS_DRAFT',
+          version: 3,
+          trigger_config: { type: 'TRIGGER_TYPE_EVENT', event_type: 'order.created' },
+          action_chain: {
+            schema_version: 1,
+            nodes: [
+              {
+                node_id: 'trig-1',
+                node_type: 'NODE_TYPE_TRIGGER',
+                title: 'Order Created',
+                trigger_config: { config: { type: 'TRIGGER_TYPE_EVENT', event_type: 'order.created' } }
+              },
+              {
+                node_id: 'term-1',
+                node_type: 'NODE_TYPE_TERMINAL',
+                title: 'Done',
+                terminal_config: { outcome: 'succeeded' }
+              }
+            ],
+            edges: [{ from_node_id: 'trig-1', to_node_id: 'term-1' }]
+          }
+        }
+      })
+    );
+
+    // 1. Load workflow v3
+    await session.syncContext(
+      {
+        userId: 'usr-1',
+        workspaceId: 'ws-1',
+        workflowId: 'wf-prod-v3',
+        authState: 'authenticated',
+        isDiscoveryLoading: false
+      },
+      { token: 'jwt_1', workspaceId: 'ws-1', fetchFn: loadFetch as unknown as typeof fetch }
+    );
+    expect(session.getSnapshot().version).toBe(3);
+
+    // 2. Start Save (v3 -> v4), keep response pending
+    const sentExpectedVersions: number[] = [];
+    let resolveFirstSave!: (value: Response) => void;
+    const firstSaveFetch = vi.fn((_url: string, init?: RequestInit) => {
+      const parsed = init?.body ? JSON.parse(String(init.body)) : {};
+      sentExpectedVersions.push(parsed.expected_version);
+      return new Promise<Response>((resolve) => {
+        resolveFirstSave = resolve;
+      });
+    });
+
+    session.setMeta({ title: 'Workflow Edited for v4' });
+    const pendingFirstSave = session.save({
+      token: 'jwt_1',
+      workspaceId: 'ws-1',
+      fetchFn: firstSaveFetch as unknown as typeof fetch
+    });
+    expect(session.getSnapshot().isPersisting).toBe(true);
+
+    // 3. Same-tenant discovery starts and then completes with same (usr-1, ws-1)
+    await session.syncContext(
+      {
+        userId: 'usr-1',
+        workspaceId: 'ws-1',
+        workflowId: 'wf-prod-v3',
+        authState: 'authenticated',
+        isDiscoveryLoading: true
+      },
+      { token: 'jwt_2', workspaceId: 'ws-1', fetchFn: loadFetch as unknown as typeof fetch }
+    );
+    expect(session.getSnapshot().isReverifying).toBe(true);
+    expect(session.getSnapshot().isPersisting).toBe(true);
+
+    await session.syncContext(
+      {
+        userId: 'usr-1',
+        workspaceId: 'ws-1',
+        workflowId: 'wf-prod-v3',
+        authState: 'authenticated',
+        isDiscoveryLoading: false
+      },
+      { token: 'jwt_2', workspaceId: 'ws-1', fetchFn: loadFetch as unknown as typeof fetch }
+    );
+    expect(session.getSnapshot().isReverifying).toBe(false);
+    expect(session.getSnapshot().isPersisting).toBe(true);
+
+    // 4. Server completes first Save and returns v4
+    resolveFirstSave(
+      jsonResponse({
+        workflow: {
+          workflow_id: 'wf-prod-v3',
+          status: 'WORKFLOW_STATUS_DRAFT',
+          version: 4
+        }
+      })
+    );
+    const firstSaveRes = await pendingFirstSave;
+    expect(firstSaveRes.ok).toBe(true);
+    expect(firstSaveRes.version).toBe(4);
+    expect(session.getSnapshot().version).toBe(4);
+    expect(session.getSnapshot().isPersisting).toBe(false);
+
+    // 5. Second Save uses expected_version = 4 (not stale 3!) and advances to v5
+    const secondSaveFetch = vi.fn(async (_url: string, init?: RequestInit) => {
+      const parsed = init?.body ? JSON.parse(String(init.body)) : {};
+      sentExpectedVersions.push(parsed.expected_version);
+      return jsonResponse({
+        workflow: {
+          workflow_id: 'wf-prod-v3',
+          status: 'WORKFLOW_STATUS_DRAFT',
+          version: 5
+        }
+      });
+    });
+
+    const secondSaveRes = await session.save({
+      token: 'jwt_2',
+      workspaceId: 'ws-1',
+      fetchFn: secondSaveFetch as unknown as typeof fetch
+    });
+    expect(secondSaveRes.ok).toBe(true);
+    expect(secondSaveRes.version).toBe(5);
+    expect(sentExpectedVersions).toEqual([3, 4]);
+    expect(session.getSnapshot().version).toBe(5);
+
+    // 6. In-flight setStatus('active') started before same-tenant discovery also preserves v5 -> v6
+    let resolveActivate!: (value: Response) => void;
+    const activateFetch = vi.fn(() => {
+      return new Promise<Response>((resolve) => {
+        resolveActivate = resolve;
+      });
+    });
+
+    const pendingActivate = session.setStatus('active', {
+      token: 'jwt_2',
+      workspaceId: 'ws-1',
+      fetchFn: activateFetch as unknown as typeof fetch
+    });
+    expect(session.getSnapshot().isPersisting).toBe(true);
+
+    await session.syncContext(
+      {
+        userId: 'usr-1',
+        workspaceId: 'ws-1',
+        workflowId: 'wf-prod-v3',
+        authState: 'authenticated',
+        isDiscoveryLoading: true
+      },
+      { token: 'jwt_3', workspaceId: 'ws-1', fetchFn: loadFetch as unknown as typeof fetch }
+    );
+    await session.syncContext(
+      {
+        userId: 'usr-1',
+        workspaceId: 'ws-1',
+        workflowId: 'wf-prod-v3',
+        authState: 'authenticated',
+        isDiscoveryLoading: false
+      },
+      { token: 'jwt_3', workspaceId: 'ws-1', fetchFn: loadFetch as unknown as typeof fetch }
+    );
+
+    resolveActivate(
+      jsonResponse({
+        workflow: {
+          workflow_id: 'wf-prod-v3',
+          status: 'WORKFLOW_STATUS_ACTIVE',
+          version: 6
+        }
+      })
+    );
+    const activateRes = await pendingActivate;
+    expect(activateRes.ok).toBe(true);
+    expect(activateRes.status).toBe('active');
+    expect(activateRes.version).toBe(6);
+    expect(session.getSnapshot().status).toBe('active');
+    expect(session.getSnapshot().version).toBe(6);
+    expect(session.getSnapshot().isPersisting).toBe(false);
+
+    // 7. Negative isolation: if discovery switches workspace to ws-2 while Save is in flight, stale ws-1 Save is rejected
+    let resolveCrossTenantSave!: (value: Response) => void;
+    const crossTenantSaveFetch = vi.fn(
+      () =>
+        new Promise<Response>((resolve) => {
+          resolveCrossTenantSave = resolve;
+        })
+    );
+    const pendingCrossTenantSave = session.save({
+      token: 'jwt_3',
+      workspaceId: 'ws-1',
+      fetchFn: crossTenantSaveFetch as unknown as typeof fetch
+    });
+
+    const ws2LoadFetch = vi.fn(async () =>
+      jsonResponse({
+        workflow: {
+          workflow_id: 'wf-prod-v3',
+          workspace_id: 'ws-2',
+          title: 'Workspace 2 Workflow',
+          status: 'WORKFLOW_STATUS_DRAFT',
+          version: 1,
+          action_chain: {
+            schema_version: 1,
+            nodes: [
+              { node_id: 'trig-ws2', node_type: 'NODE_TYPE_TRIGGER', title: 'WS2 Trigger' },
+              { node_id: 'term-ws2', node_type: 'NODE_TYPE_TERMINAL', title: 'WS2 End' }
+            ],
+            edges: [{ from_node_id: 'trig-ws2', to_node_id: 'term-ws2' }]
+          }
+        }
+      })
+    );
+    await session.syncContext(
+      {
+        userId: 'usr-1',
+        workspaceId: 'ws-2',
+        workflowId: 'wf-prod-v3',
+        authState: 'authenticated',
+        isDiscoveryLoading: false
+      },
+      { token: 'jwt_ws2', workspaceId: 'ws-2', fetchFn: ws2LoadFetch as unknown as typeof fetch }
+    );
+
+    resolveCrossTenantSave(
+      jsonResponse({
+        workflow: {
+          workflow_id: 'wf-prod-v3',
+          status: 'WORKFLOW_STATUS_ACTIVE',
+          version: 99
+        }
+      })
+    );
+    const staleCrossRes = await pendingCrossTenantSave;
+    expect(staleCrossRes.ok).toBe(false);
+    expect(session.getSnapshot().workspaceId).toBe('ws-2');
+    expect(session.getSnapshot().version).toBe(1);
+    expect(session.getSnapshot().title).toBe('Workspace 2 Workflow');
+  });
+
+  it('T8-N3 Script Lab session fails closed on Save, SubmitApproval, Approve, and Reject without backend persistence, preserves conflict state on failure, and persists across reload on success', async () => {
+    const scriptSession = createScriptEditorSession('scr-001');
+
+    // 1. Before context load: Save and SubmitApproval fail closed without incrementing versionIndex or reporting success
+    expect(scriptSession.getSnapshot().loadState).toBe('waiting_context');
+    expect(scriptSession.getSnapshot().versionIndex).toBeNull();
+
+    const saveBeforeLoad = await scriptSession.save({
+      token: 'jwt_1',
+      fetchFn: vi.fn() as unknown as typeof fetch
+    });
+    expect(saveBeforeLoad.ok).toBe(false);
+    expect(scriptSession.getSnapshot().versionIndex).toBeNull();
+    expect(scriptSession.getSnapshot().saveFeedback).toBe('');
+
+    const submitBeforeLoad = await scriptSession.submitForReview({
+      token: 'jwt_1',
+      fetchFn: vi.fn() as unknown as typeof fetch
+    });
+    expect(submitBeforeLoad.ok).toBe(false);
+    expect(scriptSession.getSnapshot().lifecycleState).toBe('draft');
+    expect(scriptSession.getSnapshot().approvalState).toBe('not_submitted');
+    expect(scriptSession.getSnapshot().saveFeedback).toBe('');
+
+    // 2. Load script v2 from server (ScriptService/Get)
+    let serverRecord = {
+      script_id: 'scr-001',
+      workspace_id: 'ws-1',
+      title: 'Kịch bản Skincare Mùa Hè',
+      format_type: '9:16 vertical short',
+      duration_target_seconds: 60,
+      version_index: 2,
+      lifecycle_state: 'SCRIPT_LIFECYCLE_STATE_DRAFT',
+      approval_state: 'SCRIPT_APPROVAL_STATE_NOT_SUBMITTED',
+      scenes: [
+        {
+          scene_id: 'sc-1',
+          script_id: 'scr-001',
+          workspace_id: 'ws-1',
+          scene_index: 0,
+          description: 'Hook mở đầu',
+          content: 'Nếu hè này da bạn đổ dầu, dừng ngay 2 bước này!',
+          duration_seconds: 10,
+          visual_notes: 'Cận mặt',
+          audio_notes: 'Nhạc nhanh',
+          shot_list: []
+        }
+      ]
+    };
+
+    const getScriptFetch = vi.fn(async (url: string) => {
+      expect(url).toContain('/creativanta.content.v1.ScriptService/Get');
+      return jsonResponse({ script: serverRecord });
+    });
+
+    const loadRes = await scriptSession.syncContext(
+      {
+        userId: 'usr-1',
+        workspaceId: 'ws-1',
+        scriptId: 'scr-001',
+        authState: 'authenticated',
+        isDiscoveryLoading: false
+      },
+      { token: 'jwt_1', workspaceId: 'ws-1', fetchFn: getScriptFetch as unknown as typeof fetch }
+    );
+    expect(loadRes.ok).toBe(true);
+    expect(scriptSession.getSnapshot().loadState).toBe('loaded');
+    expect(scriptSession.getSnapshot().versionIndex).toBe(2);
+    expect(scriptSession.getSnapshot().title).toBe('Kịch bản Skincare Mùa Hè');
+
+    // 3. Mark conflict and attempt Save while backend returns 503 -> must NOT increment versionIndex or clear isConflict!
+    scriptSession.markConflict('Phiên bản máy chủ đã thay đổi (v3).');
+    expect(scriptSession.getSnapshot().isConflict).toBe(true);
+
+    const fail503Fetch = vi
+      .fn()
+      .mockResolvedValue(jsonResponse({ code: 'unavailable', message: 'Backend offline' }, 503));
+
+    scriptSession.setTitle('Tiêu đề chỉnh sửa khi offline');
+    const failedSave = await scriptSession.save({
+      token: 'jwt_1',
+      workspaceId: 'ws-1',
+      fetchFn: fail503Fetch as unknown as typeof fetch
+    });
+    expect(failedSave.ok).toBe(false);
+    expect(scriptSession.getSnapshot().versionIndex).toBe(2);
+    expect(scriptSession.getSnapshot().isConflict).toBe(true);
+    expect(scriptSession.getSnapshot().saveFeedback).toBe('');
+    expect(scriptSession.getSnapshot().error).toBeTruthy();
+
+    // 4. Attempt SubmitApproval while backend returns 503 -> must NOT transition to in_review or pending_approval
+    const failedSubmit = await scriptSession.submitForReview({
+      token: 'jwt_1',
+      workspaceId: 'ws-1',
+      fetchFn: fail503Fetch as unknown as typeof fetch
+    });
+    expect(failedSubmit.ok).toBe(false);
+    expect(scriptSession.getSnapshot().lifecycleState).toBe('draft');
+    expect(scriptSession.getSnapshot().approvalState).toBe('not_submitted');
+    expect(scriptSession.getSnapshot().approvalRequestId).toBeNull();
+    expect(scriptSession.getSnapshot().saveFeedback).toBe('');
+
+    // 5. Save succeeds via ScriptService/Update -> advances to v3, clears conflict, and persists across reload (F5)
+    const updateScriptFetch = vi.fn(async (url: string, init?: RequestInit) => {
+      expect(url).toContain('/creativanta.content.v1.ScriptService/Update');
+      const body = init?.body ? JSON.parse(String(init.body)) : {};
+      expect(body.expected_version).toBe(2);
+      expect(body.title).toBe('Tiêu đề chỉnh sửa khi offline');
+      serverRecord = {
+        ...serverRecord,
+        title: body.title,
+        version_index: 3
+      };
+      return jsonResponse({ script: serverRecord });
+    });
+
+    const okSave = await scriptSession.save({
+      token: 'jwt_1',
+      workspaceId: 'ws-1',
+      fetchFn: updateScriptFetch as unknown as typeof fetch
+    });
+    expect(okSave.ok).toBe(true);
+    expect(scriptSession.getSnapshot().versionIndex).toBe(3);
+    expect(scriptSession.getSnapshot().isConflict).toBe(false);
+    expect(scriptSession.getSnapshot().saveFeedback).toContain('v3');
+
+    // Simulate page reload (force re-fetch from ScriptService/Get)
+    const reloadRes = await scriptSession.syncContext(
+      {
+        userId: 'usr-1',
+        workspaceId: 'ws-1',
+        scriptId: 'scr-001',
+        authState: 'authenticated',
+        isDiscoveryLoading: false,
+        force: true
+      },
+      { token: 'jwt_1', workspaceId: 'ws-1', fetchFn: getScriptFetch as unknown as typeof fetch }
+    );
+    expect(reloadRes.ok).toBe(true);
+    expect(scriptSession.getSnapshot().versionIndex).toBe(3);
+    expect(scriptSession.getSnapshot().title).toBe('Tiêu đề chỉnh sửa khi offline');
+
+    // 6. SubmitApproval succeeds via ScriptService/SubmitApproval -> transitions to in_review + pending_approval with approval_request_id
+    const submitOkFetch = vi.fn(async (url: string, init?: RequestInit) => {
+      expect(url).toContain('/creativanta.content.v1.ScriptService/SubmitApproval');
+      const body = init?.body ? JSON.parse(String(init.body)) : {};
+      expect(body.expected_version).toBe(3);
+      serverRecord = {
+        ...serverRecord,
+        version_index: 3,
+        lifecycle_state: 'SCRIPT_LIFECYCLE_STATE_IN_REVIEW',
+        approval_state: 'SCRIPT_APPROVAL_STATE_PENDING_APPROVAL'
+      };
+      return jsonResponse({
+        script: serverRecord,
+        approval_request_id: 'apr_req_901'
+      });
+    });
+
+    const okSubmit = await scriptSession.submitForReview({
+      token: 'jwt_1',
+      workspaceId: 'ws-1',
+      fetchFn: submitOkFetch as unknown as typeof fetch
+    });
+    expect(okSubmit.ok).toBe(true);
+    expect(okSubmit.approvalRequestId).toBe('apr_req_901');
+    expect(scriptSession.getSnapshot().lifecycleState).toBe('in_review');
+    expect(scriptSession.getSnapshot().approvalState).toBe('pending_approval');
+    expect(scriptSession.getSnapshot().approvalRequestId).toBe('apr_req_901');
+
+    // 7. Reviewer Approve/Reject helpers also fail closed on 503/412
+    const approveFail = await approveScriptRemote(
+      { workspaceId: 'ws-1', scriptId: 'scr-001', expectedVersion: 3 },
+      { token: 'jwt_1', workspaceId: 'ws-1', fetchFn: fail503Fetch as unknown as typeof fetch }
+    );
+    expect(approveFail.ok).toBe(false);
+
+    const rejectShort = await rejectScriptRemote(
+      { workspaceId: 'ws-1', scriptId: 'scr-001', rejectionReason: 'ngắn', expectedVersion: 3 },
+      { token: 'jwt_1', workspaceId: 'ws-1', fetchFn: fail503Fetch as unknown as typeof fetch }
+    );
+    expect(rejectShort.ok).toBe(false);
   });
 });

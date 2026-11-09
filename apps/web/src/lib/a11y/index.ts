@@ -214,7 +214,7 @@ export function activateModalFocusSession(
     (document.activeElement instanceof HTMLElement ? document.activeElement : null);
 
   const backgroundTargets = Array.from(
-    document.querySelectorAll<HTMLElement>('header, main, footer, nav')
+    document.querySelectorAll<HTMLElement>('header, main, footer, nav, [data-modal-background]')
   ).filter((el) => !dialogEl.contains(el) && !el.contains(dialogEl));
 
   const previousStates = backgroundTargets.map((el) => ({

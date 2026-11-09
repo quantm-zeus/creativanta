@@ -907,5 +907,151 @@ describe('P0-03 Web User-Facing Identity & Auth Store', () => {
         unsubResetHook();
       }
     });
+
+    it('discards deferred createWorkspace response if caller logs out or switches to another user before response resolves (N1)', async () => {
+      let capturedListener: ((emission: any) => void | Promise<void>) | null = null;
+      const clerkWithListener: ClerkBrowserInstance = {
+        ...mockClerk,
+        addListener: vi.fn((cb) => {
+          capturedListener = cb;
+          return () => {
+            capturedListener = null;
+          };
+        })
+      };
+
+      const userBWorkspace: WorkspaceSummary = {
+        id: 'ws-user-b-existing',
+        name: 'User B Existing Workspace',
+        role: 'editor',
+        plan: 'Pro',
+        status: 'active'
+      };
+
+      const store = createAuthStore();
+      await store.init({
+        publishableKey: 'pk_test_valid_dummy_key',
+        clerkInstance: clerkWithListener,
+        discoveryFetcher: vi.fn(async (token: string) => {
+          if (token === 'token-user-b') {
+            return [userBWorkspace];
+          }
+          return [];
+        })
+      });
+
+      expect(store.getSnapshot().user?.id).toBe('user_clerk_test_123');
+      expect(store.getSnapshot().activeMode).toBe('creator');
+
+      // 1. User A starts createWorkspace, keep response pending
+      let resolveUserACreate!: (value: Response) => void;
+      const deferredFetchA = vi.fn(
+        () =>
+          new Promise<Response>((resolve) => {
+            resolveUserACreate = resolve;
+          })
+      );
+
+      const pendingCreateA = store.createWorkspace(
+        {
+          displayName: 'User A Private Studio',
+          slug: 'user-a-private-studio',
+          defaultOperatorMode: 'seller'
+        },
+        deferredFetchA as unknown as typeof fetch
+      );
+
+      // 2. While User A's createWorkspace is in flight, switch session to User B
+      await capturedListener!({
+        user: {
+          id: 'user_clerk_999',
+          fullName: 'User B',
+          primaryEmailAddress: { emailAddress: 'b@creativanta.vn' }
+        },
+        session: {
+          id: 'sess_b',
+          getToken: async () => 'token-user-b'
+        }
+      });
+
+      expect(store.getSnapshot().user?.id).toBe('user_clerk_999');
+      expect(store.getSnapshot().activeWorkspace?.id).toBe('ws-user-b-existing');
+      expect(store.getSnapshot().workspaces.map((w) => w.id)).toEqual(['ws-user-b-existing']);
+
+      // 3. Now resolve User A's createWorkspace with HTTP 200
+      resolveUserACreate(
+        new Response(
+          JSON.stringify({
+            workspace: {
+              workspace_id: 'ws-user-a-created-leak',
+              display_name: 'User A Private Studio',
+              slug: 'user-a-private-studio',
+              plan_tier: 'Starter',
+              status: 'active',
+              default_operator_mode: 'agency'
+            }
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } }
+        )
+      );
+
+      const createResA = await pendingCreateA;
+      expect(createResA.ok).toBe(false);
+      expect(createResA.stale).toBe(true);
+      expect(createResA.workspace).toBeUndefined();
+
+      // User B's session state, activeWorkspace, workspaces list, and operator mode MUST remain untouched
+      const snapAfter = store.getSnapshot();
+      expect(snapAfter.user?.id).toBe('user_clerk_999');
+      expect(snapAfter.activeWorkspace?.id).toBe('ws-user-b-existing');
+      expect(snapAfter.activeWorkspace?.role).toBe('editor');
+      expect(snapAfter.workspaces.map((w) => w.id)).toEqual(['ws-user-b-existing']);
+      expect(snapAfter.activeMode).toBe('creator');
+
+      // 4. Also verify deferred createWorkspace followed by signOut does not write state after logout
+      await store.init({
+        publishableKey: 'pk_test_valid_dummy_key',
+        clerkInstance: clerkWithListener,
+        discoveryFetcher: vi.fn().mockResolvedValue([])
+      });
+
+      let resolveLogoutCreate!: (value: Response) => void;
+      const deferredLogoutFetch = vi.fn(
+        () =>
+          new Promise<Response>((resolve) => {
+            resolveLogoutCreate = resolve;
+          })
+      );
+
+      const pendingLogoutCreate = store.createWorkspace(
+        {
+          displayName: 'Pre-Logout Studio',
+          defaultOperatorMode: 'seller'
+        },
+        deferredLogoutFetch as unknown as typeof fetch
+      );
+
+      await store.signOut();
+      expect(store.getSnapshot().state).toBe('unauthenticated');
+
+      resolveLogoutCreate(
+        new Response(
+          JSON.stringify({
+            workspace: {
+              workspace_id: 'ws-post-logout-leak',
+              display_name: 'Pre-Logout Studio'
+            }
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } }
+        )
+      );
+
+      const logoutCreateRes = await pendingLogoutCreate;
+      expect(logoutCreateRes.ok).toBe(false);
+      expect(logoutCreateRes.stale).toBe(true);
+      expect(store.getSnapshot().state).toBe('unauthenticated');
+      expect(store.getSnapshot().activeWorkspace).toBeNull();
+      expect(store.getSnapshot().workspaces).toHaveLength(0);
+    });
   });
 });
