@@ -1336,4 +1336,133 @@ func TestAdminAPIWhoamiRejectsNullOrUnboundedExpiryAndStaleAge(t *testing.T) {
 	if post4837954Rec.Code != http.StatusOK {
 		t.Fatalf("expected post-4837954-upgrade /api/workspaces/discovery to return 200 OK, got %d (%s)", post4837954Rec.Code, post4837954Rec.Body.String())
 	}
+
+	// Verify Codex F3 (no data race on shared appUserTxBeginner across concurrent DiagnosticsService & CapabilityService calls),
+	// Codex N2 (tenantProductStore.UpdateSkuStock writes movement_id/location_id/movement_type/quantity to event_outbox),
+	// and Codex N5 (transportauth preserves connect.CodeFailedPrecondition on insufficient stock).
+	inProcAPISrv := httptest.NewServer(apiHandler)
+	defer inProcAPISrv.Close()
+
+	inProcHTTPClient := newAuthHTTPClient(ownerAToken, testWsA)
+	inProcDiagClient := adminv1connect.NewDiagnosticsServiceClient(inProcHTTPClient, inProcAPISrv.URL)
+	inProcCapClient := adminv1connect.NewCapabilityServiceClient(inProcHTTPClient, inProcAPISrv.URL)
+	inProcProdClient := commercev1connect.NewProductServiceClient(inProcHTTPClient, inProcAPISrv.URL)
+
+	var raceWG sync.WaitGroup
+	raceErrCh := make(chan error, 16)
+	for i := 0; i < 8; i++ {
+		raceWG.Add(2)
+		go func() {
+			defer raceWG.Done()
+			if _, dErr := inProcDiagClient.GetOverview(ctx, connect.NewRequest(&adminv1.GetOverviewRequest{
+				WorkspaceId: &commonv1.UUID{Value: testWsA},
+			})); dErr != nil {
+				raceErrCh <- dErr
+			}
+		}()
+		go func() {
+			defer raceWG.Done()
+			if _, cErr := inProcCapClient.GetMatrix(ctx, connect.NewRequest(&adminv1.GetMatrixRequest{
+				WorkspaceId: &commonv1.UUID{Value: testWsA},
+			})); cErr != nil {
+				raceErrCh <- cErr
+			}
+		}()
+	}
+	raceWG.Wait()
+	close(raceErrCh)
+	for rErr := range raceErrCh {
+		t.Fatalf("concurrent DiagnosticsService/CapabilityService call failed: %v", rErr)
+	}
+
+	createStockProdResp, err := inProcProdClient.Create(ctx, connect.NewRequest(&commercev1.CreateRequest{
+		Context: &commonv1.CommandContext{
+			WorkspaceId:    &commonv1.UUID{Value: testWsA},
+			IdempotencyKey: "idem-f3-n2-n5-create-001",
+		},
+		ProductType:      commercev1.ProductType_PRODUCT_TYPE_PHYSICAL,
+		Title:            "Micro Thu Âm Studio Pro",
+		Category:         "audio",
+		Currency:         "VND",
+		CatalogStatus:    commercev1.CatalogStatus_CATALOG_STATUS_ACTIVE,
+		InventoryEnabled: true,
+		BasePrice: &commonv1.Money{
+			Currency: "VND",
+			Amount:   "1200000.000000",
+		},
+		InitialSkus: []*commercev1.ProductSku{
+			{
+				SkuCode:           "MIC-STUDIO-01",
+				Currency:          "VND",
+				StockQuantity:     15,
+				LowStockThreshold: 3,
+				IsActive:          true,
+			},
+		},
+	}))
+	if err != nil || len(createStockProdResp.Msg.GetProduct().GetSkus()) != 1 {
+		t.Fatalf("inProcProdClient.Create failed: resp=%+v err=%v", createStockProdResp, err)
+	}
+	stockSkuID := createStockProdResp.Msg.GetProduct().GetSkus()[0].GetSkuId()
+
+	if _, err := inProcProdClient.UpdateStock(ctx, connect.NewRequest(&commercev1.UpdateStockRequest{
+		Context: &commonv1.CommandContext{
+			WorkspaceId:    &commonv1.UUID{Value: testWsA},
+			IdempotencyKey: "idem-f3-n2-n5-restock-001",
+		},
+		SkuId:         stockSkuID,
+		DeltaQuantity: 15,
+		Reason:        "initial_restock_test",
+	})); err != nil {
+		t.Fatalf("inProcProdClient.UpdateStock(+15) failed: %v", err)
+	}
+
+	if _, err := inProcProdClient.UpdateStock(ctx, connect.NewRequest(&commercev1.UpdateStockRequest{
+		Context: &commonv1.CommandContext{
+			WorkspaceId:    &commonv1.UUID{Value: testWsA},
+			IdempotencyKey: "idem-f3-n2-n5-adjust-001",
+		},
+		SkuId:         stockSkuID,
+		DeltaQuantity: -4,
+		Reason:        "order_reserved_test",
+	})); err != nil {
+		t.Fatalf("inProcProdClient.UpdateStock(-4) failed: %v", err)
+	}
+
+	var stockOutboxPayload []byte
+	if err := pool.QueryRow(ctx, `
+		SELECT payload
+		FROM event_outbox
+		WHERE workspace_id = $1::uuid
+		  AND aggregate_id = $2::uuid
+		  AND event_type = 'inventory.stock_moved'
+		ORDER BY outbox_id DESC
+		LIMIT 1
+	`, testWsA, stockSkuID).Scan(&stockOutboxPayload); err != nil {
+		t.Fatalf("query inventory.stock_moved outbox row: %v", err)
+	}
+	var stockPayloadMap map[string]any
+	if err := json.Unmarshal(stockOutboxPayload, &stockPayloadMap); err != nil {
+		t.Fatalf("unmarshal inventory.stock_moved payload: %v", err)
+	}
+	if strings.TrimSpace(fmt.Sprintf("%v", stockPayloadMap["movement_id"])) == "" ||
+		strings.TrimSpace(fmt.Sprintf("%v", stockPayloadMap["location_id"])) == "" ||
+		stockPayloadMap["movement_type"] != "adjustment" ||
+		fmt.Sprintf("%v", stockPayloadMap["quantity"]) != "-4" {
+		t.Fatalf("Codex N2 regression: expected movement_id, location_id, movement_type=adjustment, quantity=-4 in outbox payload, got %s", string(stockOutboxPayload))
+	}
+
+	// Insufficient stock adjustment (-9999) must return connect.CodeFailedPrecondition over ConnectRPC wire (Codex N5).
+	_, overdrawErr := inProcProdClient.UpdateStock(ctx, connect.NewRequest(&commercev1.UpdateStockRequest{
+		Context: &commonv1.CommandContext{
+			WorkspaceId:    &commonv1.UUID{Value: testWsA},
+			IdempotencyKey: "idem-f3-n2-n5-overdraw-001",
+		},
+		SkuId:         stockSkuID,
+		DeltaQuantity: -9999,
+		Reason:        "overdraw_test",
+	}))
+	if connect.CodeOf(overdrawErr) != connect.CodeFailedPrecondition {
+		t.Fatalf("Codex N5 regression: expected CodeFailedPrecondition on insufficient stock, got code=%v err=%v", connect.CodeOf(overdrawErr), overdrawErr)
+	}
 }

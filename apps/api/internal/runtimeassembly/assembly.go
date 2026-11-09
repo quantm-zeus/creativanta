@@ -951,10 +951,26 @@ func (s *pgIdentityStore) VerifyAdminSession(ctx context.Context, sessionToken s
 
 type appUserTxBeginner struct {
 	pool *pgxpool.Pool
-	last pgx.Tx
 }
 
 func (b *appUserTxBeginner) Begin(ctx context.Context) (pgx.Tx, error) {
+	tx, err := b.pool.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := tx.Exec(ctx, `SET LOCAL ROLE app_user`); err != nil {
+		_ = tx.Rollback(ctx)
+		return nil, err
+	}
+	return tx, nil
+}
+
+type capturingAppUserTxBeginner struct {
+	pool *pgxpool.Pool
+	last pgx.Tx
+}
+
+func (b *capturingAppUserTxBeginner) Begin(ctx context.Context) (pgx.Tx, error) {
 	tx, err := b.pool.Begin(ctx)
 	if err != nil {
 		return nil, err
@@ -981,7 +997,7 @@ func (s *tenantProductStore) runInTenantTx(ctx context.Context, workspaceID stri
 	if workspaceID != "" && principal.WorkspaceID != workspaceID {
 		return product.ErrProductNotFound
 	}
-	capturer := &appUserTxBeginner{pool: s.pool}
+	capturer := &capturingAppUserTxBeginner{pool: s.pool}
 	return tenantdb.WithTx(ctx, capturer, tenantdb.Scope{
 		WorkspaceID:             principal.WorkspaceID,
 		UserID:                  principal.UserID,
@@ -1261,22 +1277,39 @@ func (s *tenantProductStore) ListSkusByProduct(ctx context.Context, workspaceID,
 func (s *tenantProductStore) UpdateSkuStock(ctx context.Context, workspaceID, skuID string, delta int32) (int32, error) {
 	var newQty int32
 	err := s.runInTenantTx(ctx, workspaceID, func(txCtx context.Context, tx pgx.Tx, q *tenantdb.Queries, principal transportauth.Session) error {
+		meta, _ := product.StockAdjustmentMetaFromContext(txCtx)
+		if meta.Result == nil {
+			txCtx = product.WithStockAdjustmentMeta(txCtx, meta.Reason, meta.MovementKey)
+			meta, _ = product.StockAdjustmentMetaFromContext(txCtx)
+		}
 		var err error
 		newQty, err = product.NewPostgresStoreTx(tx).UpdateSkuStock(txCtx, workspaceID, skuID, delta)
 		if err != nil {
 			return err
 		}
-		meta, _ := product.StockAdjustmentMetaFromContext(txCtx)
 		reason := meta.Reason
 		if reason == "" {
 			reason = "manual_adjustment"
 		}
+		movementType := "adjustment"
+		var movementID, locationID string
+		if meta.Result != nil {
+			movementID = meta.Result.MovementID
+			locationID = meta.Result.LocationID
+			if meta.Result.MovementType != "" {
+				movementType = meta.Result.MovementType
+			}
+		}
 		payloadBytes, _ := json.Marshal(map[string]any{
-			"sku_id":       skuID,
-			"workspace_id": workspaceID,
-			"delta":        delta,
-			"reason":       reason,
-			"new_quantity": newQty,
+			"movement_id":   movementID,
+			"sku_id":        skuID,
+			"location_id":   locationID,
+			"movement_type": movementType,
+			"quantity":      delta,
+			"workspace_id":  workspaceID,
+			"delta":         delta,
+			"reason":        reason,
+			"new_quantity":  newQty,
 		})
 		metaBytes, _ := json.Marshal(map[string]any{
 			"actor_id":      principal.UserID,

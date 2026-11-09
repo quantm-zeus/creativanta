@@ -1304,6 +1304,22 @@ func (s *PostgresStore) ListProducts(ctx context.Context, workspaceID string, fi
 
 func (s *PostgresStore) UpdateProduct(ctx context.Context, p *Product) error {
 	db := s.dbFromContext(ctx)
+	if p.Metadata == nil || p.Metadata["search_index"] == nil {
+		var existingSearchIdx []byte
+		if err := db.QueryRow(ctx, `
+			SELECT metadata->'search_index'
+			FROM products
+			WHERE workspace_id = $1::uuid AND product_id = $2::uuid AND deleted_at IS NULL
+		`, p.WorkspaceID, p.ProductID).Scan(&existingSearchIdx); err == nil && len(existingSearchIdx) > 0 && string(existingSearchIdx) != "null" {
+			var idxObj map[string]any
+			if json.Unmarshal(existingSearchIdx, &idxObj) == nil && len(idxObj) > 0 {
+				if p.Metadata == nil {
+					p.Metadata = make(map[string]any)
+				}
+				p.Metadata["search_index"] = idxObj
+			}
+		}
+	}
 	if len(p.SKUs) == 0 && p.Metadata != nil && p.Metadata["search_index"] != nil {
 		if skus, skuErr := s.ListSkusByProduct(ctx, p.WorkspaceID, p.ProductID); skuErr == nil {
 			p.SKUs = skus

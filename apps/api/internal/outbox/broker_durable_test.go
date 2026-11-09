@@ -1861,6 +1861,99 @@ func TestUpdateStockOutboxPolicyAndAuthorizedExecutor(t *testing.T) {
 	if len(mismatchOutcomes) != 1 || mismatchOutcomes[0].Acked || mismatchOutcomes[0].Executed {
 		t.Fatalf("expected mismatched delta event to remain un-ACKed, got %+v", mismatchOutcomes)
 	}
+	if err := broker.XAck(ctx, outbox.QueueAnalyticsEvents, "worker-main", mismatchOutcomes[0].StreamEntryID); err != nil {
+		t.Fatalf("XAck mismatch message: %v", err)
+	}
+
+	// 9. Multi-movement backlog correlation (Codex N2): when multiple stock_movements rows and multiple
+	// inventory.stock_moved outbox events for the same SKU accumulate before PollOnce runs, each event
+	// must bind to its own movement_id in FIFO order and both must execute and ACK cleanly.
+	const (
+		multiMoveID1  = "0195f000-0000-7000-8000-000000000721"
+		multiMoveID2  = "0195f000-0000-7000-8000-000000000722"
+		multiEventID1 = "0195f000-0000-7000-8000-000000000723"
+		multiEventID2 = "0195f000-0000-7000-8000-000000000724"
+	)
+	if _, err := pool.Exec(ctx, fmt.Sprintf(`
+		INSERT INTO stock_movements (
+			movement_id, workspace_id, sku_id, location_id, movement_type, movement_key, quantity, reason, created_at
+		) VALUES
+			('%s'::uuid, '%s'::uuid, '%s'::uuid, '%s'::uuid, 'adjustment', 'adj:multi-move-1', 7, 'multi_batch_1', NOW() + INTERVAL '1 second'),
+			('%s'::uuid, '%s'::uuid, '%s'::uuid, '%s'::uuid, 'adjustment', 'adj:multi-move-2', -4, 'multi_batch_2', NOW() + INTERVAL '2 seconds');
+	`, multiMoveID1, durableTestWsA, stockSkuID, stockLocID, multiMoveID2, durableTestWsA, stockSkuID, stockLocID)); err != nil {
+		t.Fatalf("seed multi-movement ledger rows: %v", err)
+	}
+
+	enqueueTenantOutboxEvent(
+		t, ctx, pool,
+		durableTestWsA, editorUserID,
+		multiEventID1, "inventory.stock_moved", outbox.QueueAnalyticsEvents,
+		"product_sku", stockSkuID,
+		map[string]any{
+			"sku_id":       stockSkuID,
+			"workspace_id": durableTestWsA,
+			"delta":        7,
+			"reason":       "multi_batch_1",
+			"new_quantity": 32,
+		},
+		map[string]any{
+			"actor_id":      editorUserID,
+			"actor_type":    "user",
+			"required_perm": "inventory:adjust",
+		},
+	)
+	enqueueTenantOutboxEvent(
+		t, ctx, pool,
+		durableTestWsA, editorUserID,
+		multiEventID2, "inventory.stock_moved", outbox.QueueAnalyticsEvents,
+		"product_sku", stockSkuID,
+		map[string]any{
+			"sku_id":       stockSkuID,
+			"workspace_id": durableTestWsA,
+			"delta":        -4,
+			"reason":       "multi_batch_2",
+			"new_quantity": 28,
+		},
+		map[string]any{
+			"actor_id":      editorUserID,
+			"actor_type":    "user",
+			"required_perm": "inventory:adjust",
+		},
+	)
+
+	now = now.Add(5 * time.Second)
+	if _, err := poller.PollOnce(ctx, now); err != nil {
+		t.Fatalf("PollOnce multi-movement backlog: %v", err)
+	}
+
+	for _, exp := range []struct {
+		eventID    string
+		movementID string
+		qty        string
+	}{
+		{multiEventID1, multiMoveID1, "7"},
+		{multiEventID2, multiMoveID2, "-4"},
+	} {
+		var rawPayload []byte
+		if err := pool.QueryRow(ctx, `SELECT payload FROM event_outbox WHERE event_id = $1::uuid`, exp.eventID).Scan(&rawPayload); err != nil {
+			t.Fatalf("query event_outbox %s: %v", exp.eventID, err)
+		}
+		var pMap map[string]any
+		if err := json.Unmarshal(rawPayload, &pMap); err != nil {
+			t.Fatalf("unmarshal payload %s: %v", exp.eventID, err)
+		}
+		if pMap["movement_id"] != exp.movementID || fmt.Sprintf("%v", pMap["quantity"]) != exp.qty {
+			t.Fatalf("Codex N2 regression: expected event %s to bind to movement_id=%s quantity=%s, got %+v", exp.eventID, exp.movementID, exp.qty, pMap)
+		}
+	}
+
+	multiOutcomes, err := worker.ProcessNext(ctx, now, 10, domainHandler.Handle)
+	if err != nil {
+		t.Fatalf("Codex N2 regression: ProcessNext for multi-movement backlog failed: %v", err)
+	}
+	if len(multiOutcomes) != 2 || !multiOutcomes[0].Executed || !multiOutcomes[0].Acked || !multiOutcomes[1].Executed || !multiOutcomes[1].Acked {
+		t.Fatalf("Codex N2 regression: expected both multi-movement events to execute and ACK, got %+v", multiOutcomes)
+	}
 }
 
 // TestCatalogSearchIndexingRequiresRealProductAndVerifiesDurableIndex verifies Data F4 / Agent F14 / Release F2:

@@ -1751,15 +1751,14 @@ func (s *Service) ExecuteLiveBlueGreenReleaseSmokeRehearsal(
 														} `json:"netProfit"`
 													} `json:"snapshot"`
 												}
-												if err := json.Unmarshal(rawProfit, &profitBody); err == nil && profitBody.Snapshot != nil {
+												if err := json.Unmarshal(rawProfit, &profitBody); err == nil && profitBody.Snapshot != nil && profitBody.Snapshot.NetProfit != nil {
 													curr := strings.TrimSpace(profitBody.Snapshot.NetProfit.CurrencyCode)
-													if curr == "" && profitBody.Snapshot.NetProfit != nil {
+													if curr == "" {
 														curr = strings.TrimSpace(profitBody.Snapshot.NetProfit.Currency)
 													}
 													if profitBody.Snapshot.WorkspaceID == matchedWS &&
 														!profitBody.Snapshot.IsIncomplete &&
 														profitBody.Snapshot.UnknownRequiredComponentsCount == 0 &&
-														profitBody.Snapshot.NetProfit != nil &&
 														curr != "" {
 														if dec, err := tenantdb.ParseExactDecimal(strings.TrimSpace(profitBody.Snapshot.NetProfit.Amount)); err == nil {
 															num := dec.ToPgNumeric()
@@ -1943,7 +1942,29 @@ func (s *Service) evaluateBlueGreenProbe(
 		verifiedActiveSlot := prevSlot
 		verifiedActiveDigest := prevDigest
 		if proxyTarget != nil {
-			if rbErr := proxyTarget.RollbackUpstream(ctx, prevSlot, prevDigest); rbErr != nil {
+			if prevSlot == "" || prevDigest == "" {
+				rollbackSucceeded = false
+				rollbackErrMsg = "previous active slot is unverified; cannot roll back to an unverified upstream"
+				verifiedActiveSlot = ""
+				verifiedActiveDigest = ""
+				s.activeSlot = ""
+				s.activeSlotDigest = ""
+				if verifier, ok := proxyTarget.(DisposableProxyActiveStateVerifier); ok {
+					obsSlot, obsDigest, verifyErr := verifier.VerifiedActiveUpstream(ctx)
+					obsSlot = strings.TrimSpace(obsSlot)
+					obsDigest = strings.TrimSpace(obsDigest)
+					if verifyErr != nil {
+						rollbackErrMsg = fmt.Sprintf("%s (verification error: %v)", rollbackErrMsg, verifyErr)
+					} else if (obsSlot == "blue" || obsSlot == "green") && strings.HasPrefix(obsDigest, "sha256:") && len(obsDigest) >= 15 {
+						verifiedActiveSlot = obsSlot
+						verifiedActiveDigest = obsDigest
+						s.activeSlot = obsSlot
+						s.activeSlotDigest = obsDigest
+						rollbackErrMsg = fmt.Sprintf("post-rollback active upstream mismatch: expected verified previous slot, observed %s (%s)", obsSlot, obsDigest)
+					}
+				}
+				reason = fmt.Sprintf("%s; rollback verification failed: %s", reason, rollbackErrMsg)
+			} else if rbErr := proxyTarget.RollbackUpstream(ctx, prevSlot, prevDigest); rbErr != nil {
 				rollbackSucceeded = false
 				rollbackErrMsg = rbErr.Error()
 				verifiedActiveSlot = ""
@@ -1953,17 +1974,30 @@ func (s *Service) evaluateBlueGreenProbe(
 				reason = fmt.Sprintf("%s; rollback to %s (%s) failed: %v", reason, prevSlot, prevDigest, rbErr)
 			} else if verifier, ok := proxyTarget.(DisposableProxyActiveStateVerifier); ok {
 				obsSlot, obsDigest, verifyErr := verifier.VerifiedActiveUpstream(ctx)
-				if verifyErr != nil || obsSlot != prevSlot || obsDigest != prevDigest {
+				obsSlot = strings.TrimSpace(obsSlot)
+				obsDigest = strings.TrimSpace(obsDigest)
+				if verifyErr != nil {
 					rollbackSucceeded = false
-					if verifyErr != nil {
-						rollbackErrMsg = verifyErr.Error()
+					rollbackErrMsg = verifyErr.Error()
+					verifiedActiveSlot = ""
+					verifiedActiveDigest = ""
+					s.activeSlot = ""
+					s.activeSlotDigest = ""
+					reason = fmt.Sprintf("%s; rollback verification failed: %s", reason, rollbackErrMsg)
+				} else if obsSlot != prevSlot || obsDigest != prevDigest {
+					rollbackSucceeded = false
+					rollbackErrMsg = fmt.Sprintf("post-rollback active upstream mismatch: expected %s (%s), observed %s (%s)", prevSlot, prevDigest, obsSlot, obsDigest)
+					if (obsSlot == "blue" || obsSlot == "green") && strings.HasPrefix(obsDigest, "sha256:") && len(obsDigest) >= 15 {
+						verifiedActiveSlot = obsSlot
+						verifiedActiveDigest = obsDigest
+						s.activeSlot = obsSlot
+						s.activeSlotDigest = obsDigest
 					} else {
-						rollbackErrMsg = fmt.Sprintf("post-rollback active upstream mismatch: expected %s (%s), observed %s (%s)", prevSlot, prevDigest, obsSlot, obsDigest)
+						verifiedActiveSlot = ""
+						verifiedActiveDigest = ""
+						s.activeSlot = ""
+						s.activeSlotDigest = ""
 					}
-					verifiedActiveSlot = obsSlot
-					verifiedActiveDigest = obsDigest
-					s.activeSlot = obsSlot
-					s.activeSlotDigest = obsDigest
 					reason = fmt.Sprintf("%s; rollback verification failed: %s", reason, rollbackErrMsg)
 				} else {
 					s.activeSlot = prevSlot

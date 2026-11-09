@@ -88,6 +88,27 @@ func normalizeMetadataRequiredPerm(raw json.RawMessage, canonicalPerm string) js
 	return updated
 }
 
+func extractSignedInt64(v any) int64 {
+	switch val := v.(type) {
+	case float64:
+		return int64(val)
+	case int:
+		return int64(val)
+	case int32:
+		return int64(val)
+	case int64:
+		return val
+	case json.Number:
+		parsed, _ := val.Int64()
+		return parsed
+	case string:
+		parsed, _ := strconv.ParseInt(strings.TrimSpace(val), 10, 64)
+		return parsed
+	default:
+		return 0
+	}
+}
+
 func normalizeInventoryStockMovedPayload(raw json.RawMessage) json.RawMessage {
 	if len(raw) == 0 {
 		return raw
@@ -120,6 +141,8 @@ func normalizeInventoryStockMovedPayload(raw json.RawMessage) json.RawMessage {
 func enrichInventoryStockMovedFromLedger(
 	ctx context.Context,
 	db tenantdb.TxBeginner,
+	setRole bool,
+	outboxID int64,
 	workspaceID, aggregateID string,
 	raw json.RawMessage,
 ) (json.RawMessage, bool) {
@@ -132,8 +155,10 @@ func enrichInventoryStockMovedFromLedger(
 		return normalized, !bytes.Equal(normalized, raw)
 	}
 	existingMoveID, _ := obj["movement_id"].(string)
+	existingMoveID = strings.TrimSpace(existingMoveID)
 	existingLocID, _ := obj["location_id"].(string)
-	if strings.TrimSpace(existingMoveID) != "" && strings.TrimSpace(existingLocID) != "" {
+	existingLocID = strings.TrimSpace(existingLocID)
+	if existingMoveID != "" && existingLocID != "" {
 		return normalized, !bytes.Equal(normalized, raw)
 	}
 	skuID, _ := obj["sku_id"].(string)
@@ -143,6 +168,40 @@ func enrichInventoryStockMovedFromLedger(
 	}
 	if !tenantdb.IsValidNonZeroUUID(skuID) {
 		return normalized, !bytes.Equal(normalized, raw)
+	}
+
+	wantQty := extractSignedInt64(obj["delta"])
+	if wantQty == 0 {
+		wantQty = extractSignedInt64(obj["quantity"])
+	}
+	wantReason, _ := obj["reason"].(string)
+	wantReason = strings.TrimSpace(wantReason)
+
+	claimedMovementIDs := []string{}
+	if existingMoveID == "" {
+		if pollerTx, pErr := db.Begin(ctx); pErr == nil {
+			if setRole {
+				_, _ = pollerTx.Exec(ctx, `SET LOCAL ROLE outbox_poller`)
+			}
+			rows, qErr := pollerTx.Query(ctx, `
+				SELECT DISTINCT payload->>'movement_id'
+				FROM event_outbox
+				WHERE workspace_id = $1::uuid
+				  AND event_type = 'inventory.stock_moved'
+				  AND ($2::bigint <= 0 OR outbox_id <> $2::bigint)
+				  AND COALESCE(payload->>'movement_id', '') <> ''
+			`, workspaceID, outboxID)
+			if qErr == nil {
+				for rows.Next() {
+					var mid string
+					if rows.Scan(&mid) == nil && strings.TrimSpace(mid) != "" {
+						claimedMovementIDs = append(claimedMovementIDs, strings.TrimSpace(mid))
+					}
+				}
+				rows.Close()
+			}
+			_ = pollerTx.Rollback(ctx)
+		}
 	}
 
 	tx, err := db.Begin(ctx)
@@ -165,16 +224,23 @@ func enrichInventoryStockMovedFromLedger(
 		FROM stock_movements
 		WHERE workspace_id = $1::uuid
 		  AND sku_id = $2::uuid
-		ORDER BY created_at DESC, movement_id DESC
+		  AND ($3 = '' OR movement_id = NULLIF($3, '')::uuid)
+		  AND ($3 <> '' OR NOT (movement_id::text = ANY($4::text[])))
+		  AND ($5::bigint = 0 OR quantity = $5::bigint OR ABS(quantity) = ABS($5::bigint))
+		ORDER BY
+		  CASE WHEN quantity = $5::bigint THEN 0 ELSE 1 END ASC,
+		  CASE WHEN $6 <> '' AND COALESCE(reason, '') = $6 THEN 0 ELSE 1 END ASC,
+		  created_at ASC,
+		  movement_id ASC
 		LIMIT 1
-	`, workspaceID, skuID).Scan(&movementID, &locationID, &movementType, &quantity); err != nil {
+	`, workspaceID, skuID, existingMoveID, claimedMovementIDs, wantQty, wantReason).Scan(&movementID, &locationID, &movementType, &quantity); err != nil {
 		return normalized, !bytes.Equal(normalized, raw)
 	}
 
-	if strings.TrimSpace(existingMoveID) == "" && movementID != "" {
+	if existingMoveID == "" && movementID != "" {
 		obj["movement_id"] = movementID
 	}
-	if strings.TrimSpace(existingLocID) == "" && locationID != "" {
+	if existingLocID == "" && locationID != "" {
 		obj["location_id"] = locationID
 	}
 	if strings.TrimSpace(skuID) != "" {
@@ -210,7 +276,7 @@ func enrichClaimedOutboxRow(ctx context.Context, db tenantdb.TxBeginner, setRole
 	r.Payload = tmp.Payload
 
 	if strings.TrimSpace(r.EventType) == "inventory.stock_moved" {
-		enriched, changed := enrichInventoryStockMovedFromLedger(ctx, db, r.WorkspaceID, r.AggregateID, r.Payload)
+		enriched, changed := enrichInventoryStockMovedFromLedger(ctx, db, setRole, r.OutboxID, r.WorkspaceID, r.AggregateID, r.Payload)
 		if changed {
 			r.Payload = enriched
 			payloadChanged = true
@@ -389,7 +455,7 @@ func (b *PgStreamBroker) XAdd(ctx context.Context, stream QueueName, msg StreamM
 	msg.Metadata = stripBrokerMetadata(msg.Metadata)
 	populateEnvelopeAuthFields(&msg, msg.Metadata, msg.Payload)
 	if strings.TrimSpace(msg.EventType) == "inventory.stock_moved" {
-		enriched, _ := enrichInventoryStockMovedFromLedger(ctx, b.db, msg.WorkspaceID, msg.AggregateID, msg.Payload)
+		enriched, _ := enrichInventoryStockMovedFromLedger(ctx, b.db, b.setRole, 0, msg.WorkspaceID, msg.AggregateID, msg.Payload)
 		msg.Payload = enriched
 	}
 
@@ -2660,8 +2726,8 @@ func (h *PgDomainActionHandler) executeInventoryStockMoved(ctx context.Context, 
 		ledgerReason string
 	)
 	wantMovementID := strings.TrimSpace(p.MovementID)
-	if wantMovementID != "" && !tenantdb.IsValidNonZeroUUID(wantMovementID) {
-		return DomainActionResult{}, fmt.Errorf("%w: invalid movement_id %q", ErrInventoryMovementNotFound, wantMovementID)
+	if !tenantdb.IsValidNonZeroUUID(wantMovementID) {
+		return DomainActionResult{}, fmt.Errorf("%w: missing or invalid movement_id %q", ErrInventoryMovementNotFound, wantMovementID)
 	}
 	wantLocationID := strings.TrimSpace(p.LocationID)
 	if wantLocationID != "" && !tenantdb.IsValidNonZeroUUID(wantLocationID) {
@@ -2677,9 +2743,7 @@ func (h *PgDomainActionHandler) executeInventoryStockMoved(ctx context.Context, 
 		FROM stock_movements
 		WHERE workspace_id = $1::uuid
 		  AND sku_id = $2::uuid
-		  AND ($3 = '' OR movement_id = NULLIF($3, '')::uuid)
-		ORDER BY created_at DESC, movement_id DESC
-		LIMIT 1
+		  AND movement_id = $3::uuid
 	`, msg.WorkspaceID, skuID, wantMovementID).Scan(
 		&movementID,
 		&locationID,
@@ -2689,7 +2753,7 @@ func (h *PgDomainActionHandler) executeInventoryStockMoved(ctx context.Context, 
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return DomainActionResult{}, fmt.Errorf("%w: no committed stock_movements ledger row for sku_id=%s workspace_id=%s", ErrInventoryMovementNotFound, skuID, msg.WorkspaceID)
+			return DomainActionResult{}, fmt.Errorf("%w: no committed stock_movements ledger row for sku_id=%s workspace_id=%s movement_id=%s", ErrInventoryMovementNotFound, skuID, msg.WorkspaceID, wantMovementID)
 		}
 		return DomainActionResult{}, fmt.Errorf("outbox: verify stock_movements ledger row: %w", err)
 	}
@@ -2699,7 +2763,15 @@ func (h *PgDomainActionHandler) executeInventoryStockMoved(ctx context.Context, 
 	if wantMoveType := strings.TrimSpace(p.MovementType); wantMoveType != "" && !strings.EqualFold(wantMoveType, movementType) {
 		return DomainActionResult{}, fmt.Errorf("%w: movement_type %q mismatches stock_movements ledger movement_type %q", ErrInventoryMovementNotFound, wantMoveType, movementType)
 	}
-	if ledgerQty != delta {
+	absLedgerQty := ledgerQty
+	if absLedgerQty < 0 {
+		absLedgerQty = -absLedgerQty
+	}
+	absDelta := delta
+	if absDelta < 0 {
+		absDelta = -absDelta
+	}
+	if ledgerQty != delta && absLedgerQty != absDelta {
 		return DomainActionResult{}, fmt.Errorf("%w: delta %d mismatches stock_movements ledger quantity %d", ErrInventoryMovementNotFound, delta, ledgerQty)
 	}
 
