@@ -1951,6 +1951,12 @@ func (h *AttributionHandler) RecordAttribution(ctx context.Context, req *connect
 
 	recorded, err := h.service.AttributionEngine().RecordAttribution(ctx, entity, isLiveAPI)
 	if err != nil {
+		if errors.Is(err, ErrOrderNotFound) {
+			return nil, connect.NewError(connect.CodeNotFound, err)
+		}
+		if errors.Is(err, ErrMissingTenant) {
+			return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		}
 		if errors.Is(err, ErrAttributionCapacityExceeded) {
 			return nil, connect.NewError(connect.CodeFailedPrecondition, err)
 		}
@@ -1960,11 +1966,11 @@ func (h *AttributionHandler) RecordAttribution(ctx context.Context, req *connect
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	order, hasOrder := h.service.AttributionEngine().GetCanonicalOrder(recorded.OrderID)
+	order, hasOrder := h.service.AttributionEngine().GetCanonicalOrderForWorkspace(wsID, recorded.OrderID)
 	var totalRev, allocatedRev, remCap *commonv1.Money
 	if hasOrder {
 		totalRev = &commonv1.Money{Amount: order.NetRevenue.Fixed6String(), Currency: order.Currency}
-		alloc, cap := h.service.AttributionEngine().GetOrderAllocationStatus(recorded.OrderID)
+		alloc, cap := h.service.AttributionEngine().GetOrderAllocationStatusForWorkspace(wsID, recorded.OrderID)
 		allocatedRev = &commonv1.Money{Amount: alloc.Fixed6String(), Currency: order.Currency}
 		remCap = &commonv1.Money{Amount: cap.Fixed6String(), Currency: order.Currency}
 	}

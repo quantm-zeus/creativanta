@@ -140,6 +140,9 @@ func DeduplicateWorkspaceRevenue(
 	minConfidenceRank := 5
 
 	for _, attr := range attributionRecords {
+		if workspaceID != "" && attr.WorkspaceID != "" && attr.WorkspaceID != workspaceID {
+			continue
+		}
 		uniqueOrderIDs[attr.OrderID] = true
 		var err error
 		sumAttribution, err = sumAttribution.Add(attr.RevenueAttributed)
@@ -159,8 +162,14 @@ func DeduplicateWorkspaceRevenue(
 	// Canonical workspace revenue sums recognized orders ONCE
 	canonicalRevenue := tenantdb.ZeroDecimal()
 	for orderID := range uniqueOrderIDs {
-		ord, ok := orders[orderID]
+		ord, ok := orders[attributionOrderKey(workspaceID, orderID)]
 		if !ok {
+			ord, ok = orders[orderID]
+		}
+		if !ok {
+			continue
+		}
+		if workspaceID != "" && ord.WorkspaceID != "" && ord.WorkspaceID != workspaceID {
 			continue
 		}
 		if !ord.IsRecognizedOrder && ord.LifecycleState != "completed" {
@@ -195,6 +204,9 @@ func DeduplicateWorkspaceRevenue(
 
 	currency := "VND"
 	for _, ord := range orders {
+		if workspaceID != "" && ord.WorkspaceID != "" && ord.WorkspaceID != workspaceID {
+			continue
+		}
 		if ord.Currency != "" {
 			currency = ord.Currency
 			break
@@ -436,10 +448,20 @@ func NewAttributionEngineWithStore(store Store) *AttributionEngine {
 	}
 }
 
+func attributionOrderKey(workspaceID, orderID string) string {
+	ws := strings.TrimSpace(workspaceID)
+	id := strings.TrimSpace(orderID)
+	if ws == "" {
+		return id
+	}
+	return ws + ":" + id
+}
+
 func (e *AttributionEngine) hydrateOrderFromStoreLocked(ctx context.Context, workspaceID, orderID string) (CanonicalOrderRecord, bool) {
 	if e.store == nil || strings.TrimSpace(workspaceID) == "" || strings.TrimSpace(orderID) == "" {
 		return CanonicalOrderRecord{}, false
 	}
+	cacheKey := attributionOrderKey(workspaceID, orderID)
 
 	var gross tenantdb.ExactDecimal
 	currency := "VND"
@@ -514,6 +536,9 @@ func (e *AttributionEngine) hydrateOrderFromStoreLocked(ctx context.Context, wor
 		if hasRevPosting {
 			gross = postGross
 		}
+		if existing, hasExisting := e.orders[cacheKey]; hasExisting && existing.RefundDeduction.Cmp(refundTotal) > 0 {
+			refundTotal = existing.RefundDeduction
+		}
 		if found {
 			net, _ := gross.Sub(refundTotal)
 			rec := CanonicalOrderRecord{
@@ -528,25 +553,30 @@ func (e *AttributionEngine) hydrateOrderFromStoreLocked(ctx context.Context, wor
 				LifecycleState:    lifecycleState,
 				IsRecognizedOrder: isRecognized,
 			}
-			e.orders[orderID] = rec
+			e.orders[cacheKey] = rec
 			return rec, true
 		}
 	}
 
 	if found {
+		refundTotal := tenantdb.ZeroDecimal()
+		if existing, hasExisting := e.orders[cacheKey]; hasExisting && existing.RefundDeduction.IsPositive() {
+			refundTotal = existing.RefundDeduction
+		}
+		net, _ := gross.Sub(refundTotal)
 		rec := CanonicalOrderRecord{
 			OrderID:           orderID,
 			WorkspaceID:       workspaceID,
 			GrossRevenue:      gross,
-			RefundDeduction:   tenantdb.ZeroDecimal(),
-			NetRevenue:        gross,
+			RefundDeduction:   refundTotal,
+			NetRevenue:        net,
 			Currency:          currency,
 			SourceClass:       sourceClass,
 			Confidence:        confidence,
 			LifecycleState:    lifecycleState,
 			IsRecognizedOrder: isRecognized,
 		}
-		e.orders[orderID] = rec
+		e.orders[cacheKey] = rec
 		return rec, true
 	}
 	return CanonicalOrderRecord{}, false
@@ -556,25 +586,57 @@ func (e *AttributionEngine) hydrateOrderFromStoreLocked(ctx context.Context, wor
 func (e *AttributionEngine) SeedCanonicalOrder(order CanonicalOrderRecord) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	e.orders[order.OrderID] = order
+	e.orders[attributionOrderKey(order.WorkspaceID, order.OrderID)] = order
 }
 
-// GetCanonicalOrder returns the tracked canonical order record if present.
-func (e *AttributionEngine) GetCanonicalOrder(orderID string) (CanonicalOrderRecord, bool) {
+// GetCanonicalOrderForWorkspace returns the tracked canonical order record for the given workspace and order ID.
+func (e *AttributionEngine) GetCanonicalOrderForWorkspace(workspaceID, orderID string) (CanonicalOrderRecord, bool) {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
+	if strings.TrimSpace(workspaceID) != "" {
+		if order, exists := e.orders[attributionOrderKey(workspaceID, orderID)]; exists {
+			if order.WorkspaceID == "" || order.WorkspaceID == workspaceID {
+				return order, true
+			}
+		}
+		return CanonicalOrderRecord{}, false
+	}
 	order, exists := e.orders[orderID]
 	return order, exists
 }
 
-// GetOrderAllocationStatus returns total allocated revenue and remaining capacity for an order.
-func (e *AttributionEngine) GetOrderAllocationStatus(orderID string) (allocated tenantdb.ExactDecimal, remaining tenantdb.ExactDecimal) {
+// GetCanonicalOrder returns the tracked canonical order record if present and unambiguous.
+func (e *AttributionEngine) GetCanonicalOrder(orderID string) (CanonicalOrderRecord, bool) {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	if order, exists := e.orders[orderID]; exists {
+		return order, true
+	}
+	var matched CanonicalOrderRecord
+	matches := 0
+	for _, ord := range e.orders {
+		if ord.OrderID == orderID {
+			matched = ord
+			matches++
+		}
+	}
+	if matches == 1 {
+		return matched, true
+	}
+	return CanonicalOrderRecord{}, false
+}
+
+// GetOrderAllocationStatusForWorkspace returns total allocated revenue and remaining capacity for an order in a workspace.
+func (e *AttributionEngine) GetOrderAllocationStatusForWorkspace(workspaceID, orderID string) (allocated tenantdb.ExactDecimal, remaining tenantdb.ExactDecimal) {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 	allocated = tenantdb.ZeroDecimal()
-	order, exists := e.orders[orderID]
+	order, exists := e.orders[attributionOrderKey(workspaceID, orderID)]
+	if exists && workspaceID != "" && order.WorkspaceID != "" && order.WorkspaceID != workspaceID {
+		exists = false
+	}
 	for _, attr := range e.attributions {
-		if attr.OrderID == orderID {
+		if attr.OrderID == orderID && (workspaceID == "" || attr.WorkspaceID == workspaceID) {
 			allocated, _ = allocated.Add(attr.RevenueAttributed)
 		}
 	}
@@ -588,6 +650,41 @@ func (e *AttributionEngine) GetOrderAllocationStatus(orderID string) (allocated 
 	return allocated, remaining
 }
 
+// GetOrderAllocationStatus returns total allocated revenue and remaining capacity for an order.
+func (e *AttributionEngine) GetOrderAllocationStatus(orderID string) (allocated tenantdb.ExactDecimal, remaining tenantdb.ExactDecimal) {
+	e.mu.RLock()
+	var matchedWS string
+	if ord, exists := e.orders[orderID]; exists {
+		matchedWS = ord.WorkspaceID
+	} else {
+		matches := 0
+		for _, ord := range e.orders {
+			if ord.OrderID == orderID {
+				matchedWS = ord.WorkspaceID
+				matches++
+			}
+		}
+		if matches != 1 {
+			e.mu.RUnlock()
+			return tenantdb.ZeroDecimal(), tenantdb.ZeroDecimal()
+		}
+	}
+	e.mu.RUnlock()
+	return e.GetOrderAllocationStatusForWorkspace(matchedWS, orderID)
+}
+
+// RecordRefundDeductionForWorkspace updates an order's refund deduction and net revenue within a workspace.
+func (e *AttributionEngine) RecordRefundDeductionForWorkspace(workspaceID, orderID string, refund tenantdb.ExactDecimal) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	key := attributionOrderKey(workspaceID, orderID)
+	if order, exists := e.orders[key]; exists && (workspaceID == "" || order.WorkspaceID == "" || order.WorkspaceID == workspaceID) {
+		order.RefundDeduction, _ = order.RefundDeduction.Add(refund)
+		order.NetRevenue, _ = order.GrossRevenue.Sub(order.RefundDeduction)
+		e.orders[key] = order
+	}
+}
+
 // RecordRefundDeduction updates an order's refund deduction and net revenue.
 func (e *AttributionEngine) RecordRefundDeduction(orderID string, refund tenantdb.ExactDecimal) {
 	e.mu.Lock()
@@ -596,6 +693,21 @@ func (e *AttributionEngine) RecordRefundDeduction(orderID string, refund tenantd
 		order.RefundDeduction, _ = order.RefundDeduction.Add(refund)
 		order.NetRevenue, _ = order.GrossRevenue.Sub(order.RefundDeduction)
 		e.orders[orderID] = order
+		return
+	}
+	var matchedKey string
+	matches := 0
+	for k, ord := range e.orders {
+		if ord.OrderID == orderID {
+			matchedKey = k
+			matches++
+		}
+	}
+	if matches == 1 {
+		order := e.orders[matchedKey]
+		order.RefundDeduction, _ = order.RefundDeduction.Add(refund)
+		order.NetRevenue, _ = order.GrossRevenue.Sub(order.RefundDeduction)
+		e.orders[matchedKey] = order
 	}
 }
 
@@ -628,7 +740,11 @@ func (e *AttributionEngine) RecordAttribution(
 		return nil, ErrOrderNotFound
 	}
 
-	order, exists := e.orders[attr.OrderID]
+	cacheKey := attributionOrderKey(attr.WorkspaceID, attr.OrderID)
+	order, exists := e.orders[cacheKey]
+	if exists && order.WorkspaceID != "" && order.WorkspaceID != attr.WorkspaceID {
+		exists = false
+	}
 	if !exists {
 		if hydrated, ok := e.hydrateOrderFromStoreLocked(ctx, attr.WorkspaceID, attr.OrderID); ok {
 			order = hydrated
@@ -637,21 +753,8 @@ func (e *AttributionEngine) RecordAttribution(
 	} else if hydrated, ok := e.hydrateOrderFromStoreLocked(ctx, attr.WorkspaceID, attr.OrderID); ok && hydrated.RefundDeduction.Cmp(order.RefundDeduction) > 0 {
 		order = hydrated
 	}
-	if !exists {
-		// Fallback: create default order record if not pre-seeded
-		order = CanonicalOrderRecord{
-			OrderID:           attr.OrderID,
-			WorkspaceID:       attr.WorkspaceID,
-			GrossRevenue:      attr.RevenueAttributed,
-			RefundDeduction:   tenantdb.ZeroDecimal(),
-			NetRevenue:        attr.RevenueAttributed,
-			Currency:          "VND",
-			SourceClass:       attr.SourceClass,
-			Confidence:        attr.Confidence,
-			LifecycleState:    "completed",
-			IsRecognizedOrder: true,
-		}
-		e.orders[attr.OrderID] = order
+	if !exists || (order.WorkspaceID != "" && order.WorkspaceID != attr.WorkspaceID) {
+		return nil, ErrOrderNotFound
 	}
 
 	// Target 3: Validate source class integrity
@@ -721,7 +824,7 @@ func (e *AttributionEngine) RecordChannelPostMetrics(
 		metric.CapturedAt = time.Now().UTC()
 	}
 
-	e.metrics[metric.ChannelPostID] = metric
+	e.metrics[attributionOrderKey(metric.WorkspaceID, metric.ChannelPostID)] = metric
 	return metric, nil
 }
 
@@ -769,8 +872,13 @@ func (e *AttributionEngine) GetContentRevenueAttribution(
 		}
 	}
 
-	// Find metrics snapshot for post
-	metricSnap := e.metrics[contentID]
+	// Find metrics snapshot for post scoped to workspace
+	metricSnap := e.metrics[attributionOrderKey(workspaceID, contentID)]
+	if metricSnap == nil {
+		if candidate := e.metrics[contentID]; candidate != nil && (candidate.WorkspaceID == "" || candidate.WorkspaceID == workspaceID) {
+			metricSnap = candidate
+		}
+	}
 	var views *int64
 	var clicks *int64
 	isViewsUnknown := true
@@ -816,11 +924,15 @@ func (e *AttributionEngine) GetContentRevenueAttribution(
 		attrStatus = rpmMetric.Status
 	}
 
+	wsOrders := make(map[string]CanonicalOrderRecord)
 	currency := "VND"
 	for _, o := range e.orders {
-		if o.Currency != "" {
+		if workspaceID != "" && o.WorkspaceID != "" && o.WorkspaceID != workspaceID {
+			continue
+		}
+		wsOrders[o.OrderID] = o
+		if currency == "VND" && o.Currency != "" {
 			currency = o.Currency
-			break
 		}
 	}
 
@@ -855,7 +967,7 @@ func (e *AttributionEngine) GetContentRevenueAttribution(
 	}
 
 	// Target 1: Deduplicate workspace revenue summary
-	summary, err := DeduplicateWorkspaceRevenue(workspaceID, e.orders, allWorkspaceAttrs)
+	summary, err := DeduplicateWorkspaceRevenue(workspaceID, wsOrders, allWorkspaceAttrs)
 	if err != nil {
 		return nil, nil, nil, err
 	}
