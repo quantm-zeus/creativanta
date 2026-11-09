@@ -387,16 +387,13 @@ func (s *Service) releaseReservation(workspaceID, jobID string) {
 		return
 	}
 	rec, ok := s.reservations[resID]
-	if !ok || rec == nil || rec.JobID != jobID || (workspaceID != "" && rec.WorkspaceID != workspaceID) {
+	if !ok || rec == nil || rec.JobID != jobID || workspaceID == "" || rec.WorkspaceID != workspaceID {
 		return
 	}
 	if rec.Status == "released" || rec.Status == "committed" {
 		return
 	}
 	targetWS := rec.WorkspaceID
-	if targetWS == "" {
-		targetWS = workspaceID
-	}
 	curr, exists := s.balances[targetWS]
 	if !exists {
 		curr = tenantdb.MustParseExactDecimal("100")
@@ -423,7 +420,7 @@ func (s *Service) canCommitReservation(workspaceID, jobID string) error {
 	if !ok || rec == nil {
 		return nil
 	}
-	if rec.JobID != jobID || (workspaceID != "" && rec.WorkspaceID != workspaceID) {
+	if rec.JobID != jobID || workspaceID == "" || rec.WorkspaceID != workspaceID {
 		return ErrCrossTenantDenied
 	}
 	if rec.Status == "released" {
@@ -443,7 +440,7 @@ func (s *Service) commitReservation(workspaceID, jobID string, actualCredits ten
 	if !ok || rec == nil {
 		return nil
 	}
-	if rec.JobID != jobID || (workspaceID != "" && rec.WorkspaceID != workspaceID) {
+	if rec.JobID != jobID || workspaceID == "" || rec.WorkspaceID != workspaceID {
 		return ErrCrossTenantDenied
 	}
 	if rec.Status == "released" {
@@ -657,7 +654,7 @@ func (s *Service) reReserveCreditsForOperation(workspaceID, operationID string, 
 		return fmt.Errorf("reservation for operation %q not found", operationID)
 	}
 	rec, ok := s.reservations[resID]
-	if !ok || rec == nil || rec.JobID != operationID || (workspaceID != "" && rec.WorkspaceID != workspaceID) {
+	if !ok || rec == nil || rec.JobID != operationID || workspaceID == "" || rec.WorkspaceID != workspaceID {
 		return ErrCrossTenantDenied
 	}
 	if rec.Status == "in_flight" || rec.Status == "reconciling" || rec.Status == "reserved" || rec.Status == "committed" {
@@ -1922,8 +1919,8 @@ func (s *Service) Get(ctx context.Context, req *connect.Request[productionv1.Get
 	}
 
 	asset, err := s.store.GetAsset(ctx, wsID, req.Msg.GetAssetId())
-	if err != nil {
-		return nil, connect.NewError(connect.CodeNotFound, err)
+	if err != nil || asset.GenerationState == "quarantined" || asset.QualityState == "quarantined" {
+		return nil, connect.NewError(connect.CodeNotFound, ErrAssetNotFound)
 	}
 
 	return connect.NewResponse(&productionv1.GetResponse{Asset: toProtoAsset(asset)}), nil
@@ -1941,8 +1938,8 @@ func (s *Service) Approve(ctx context.Context, req *connect.Request[productionv1
 	}
 
 	asset, err := s.store.GetAsset(ctx, wsID, req.Msg.GetAssetId())
-	if err != nil {
-		return nil, connect.NewError(connect.CodeNotFound, err)
+	if err != nil || asset.GenerationState == "quarantined" || asset.QualityState == "quarantined" {
+		return nil, connect.NewError(connect.CodeNotFound, ErrAssetNotFound)
 	}
 
 	// Acceptance Target 2: High drift blocks readiness unless resolved/overridden

@@ -351,7 +351,9 @@ func (s *Service) LaunchAgent(
 	if autoExecute && !requiresApproval {
 		// Run steps sequentially until paused, completed, or failed
 		_, execErr := s.ExecuteRemainingSteps(ctx, caller, run.AgentRunID, 0)
-		run, _ = s.store.GetRun(ctx, caller.WorkspaceID, run.AgentRunID)
+		if updatedRun, getErr := s.store.GetRun(context.WithoutCancel(ctx), caller.WorkspaceID, run.AgentRunID); getErr == nil && updatedRun != nil {
+			run = updatedRun
+		}
 		if execErr != nil {
 			return run, warnings, false, execErr
 		}

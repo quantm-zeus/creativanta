@@ -442,7 +442,7 @@ func (m *VoiceCloneManager) Get(
 	wsID := msg.WorkspaceId.Value
 
 	rec, err := m.store.GetVoiceClone(ctx, wsID, msg.VoiceCloneId)
-	if err != nil || rec.CloneStatus == "revoked" {
+	if err != nil || rec.CloneStatus == "revoked" || rec.CloneStatus == "quarantined" {
 		if err == nil {
 			err = fmt.Errorf("voice clone %q not found or revoked in workspace %q", msg.VoiceCloneId, wsID)
 		}
@@ -539,7 +539,7 @@ func (m *VoiceCloneManager) Delete(
 	}
 
 	rec, err := m.store.GetVoiceClone(ctx, wsID, msg.VoiceCloneId)
-	if err != nil || rec.CloneStatus == "revoked" {
+	if err != nil || rec.CloneStatus == "revoked" || rec.CloneStatus == "quarantined" {
 		if err == nil {
 			err = fmt.Errorf("voice clone %q not found or revoked in workspace %q", msg.VoiceCloneId, wsID)
 		}
@@ -587,7 +587,7 @@ func (m *VoiceCloneManager) GenerateVoiceover(
 	}
 
 	// Verify consent has not been revoked and remains valid in store (Acceptance Target 1)
-	if rec.CloneStatus == "revoked" {
+	if rec.CloneStatus == "revoked" || rec.CloneStatus == "quarantined" {
 		return nil, connect.NewError(connect.CodePermissionDenied, ErrConsentRevoked)
 	}
 	if err := m.VerifyConsent(ctx, wsID, rec.CharacterID, rec.ConsentRecordID); err != nil {
@@ -762,6 +762,8 @@ func (m *VoiceCloneManager) beginVoiceOperation(
 						return nil, nil, nil, connect.NewError(connect.CodeInternal, resErr)
 					}
 					return existing, nil, nil, nil
+				case "quarantined":
+					return nil, nil, nil, connect.NewError(connect.CodeFailedPrecondition, ErrReservationAlreadyReleased)
 				case "in_flight", "reconciling":
 					return nil, nil, nil, connect.NewError(
 						connect.CodeFailedPrecondition,
@@ -797,11 +799,13 @@ func (m *VoiceCloneManager) beginVoiceOperation(
 	opHash := sha256.Sum256([]byte(fmt.Sprintf("%s:%s:%s:%d:%d", wsID, opType, reqHash, m.opSeq, time.Now().UnixNano())))
 	opID := fmt.Sprintf("voice-op-%s-%d-%s", opType, m.opSeq, hex.EncodeToString(opHash[:6]))
 	providerOpKey := fmt.Sprintf("%s:%s:%s", wsID, opType, opID)
+	var aliases []string
 	if idemKey != "" {
 		providerOpKey = fmt.Sprintf("%s:%s:%s", wsID, opType, idemKey)
+		aliases = []string{opType + "\x00" + idemKey, idemKey}
 	}
 
-	resID, resErr := m.service.reserveCreditsForOperation(wsID, opID, quoteID, idemKey, reqHash, requiredCredits, idemKey)
+	resID, resErr := m.service.reserveCreditsForOperation(wsID, opID, quoteID, idemKey, reqHash, requiredCredits, aliases...)
 	if resErr != nil {
 		if errors.Is(resErr, ErrInsufficientCredits) {
 			return nil, nil, nil, connect.NewError(connect.CodeFailedPrecondition, ErrInsufficientCredits)
@@ -892,7 +896,7 @@ func (m *VoiceCloneManager) materializeAndCommitVoiceCloneLocked(ctx context.Con
 		m.mu.Unlock()
 		return resp, nil
 	}
-	if target.Status == "failed" || target.Status == "cancelled" {
+	if target.Status == "failed" || target.Status == "cancelled" || target.Status == "quarantined" {
 		m.mu.Unlock()
 		return nil, ErrReservationAlreadyReleased
 	}
@@ -981,7 +985,7 @@ func (m *VoiceCloneManager) materializeAndCommitVoiceoverLocked(ctx context.Cont
 		m.mu.Unlock()
 		return resp, nil
 	}
-	if target.Status == "failed" || target.Status == "cancelled" {
+	if target.Status == "failed" || target.Status == "cancelled" || target.Status == "quarantined" {
 		m.mu.Unlock()
 		return nil, ErrReservationAlreadyReleased
 	}
@@ -1107,6 +1111,82 @@ func (m *VoiceCloneManager) GetOperation(workspaceID, keyOrOpID string) (*VoiceO
 	return nil, false
 }
 
+func (m *VoiceCloneManager) quarantineLateVoiceOutput(
+	ctx context.Context,
+	workspaceID, opID, providerVoiceID, audioURL string,
+	durationSeconds float64,
+) {
+	m.mu.Lock()
+	target, ok := m.opRecords[opID]
+	if !ok || target == nil || target.WorkspaceID != workspaceID {
+		m.mu.Unlock()
+		return
+	}
+	target.Status = "quarantined"
+	if strings.TrimSpace(providerVoiceID) != "" {
+		target.ProviderVoiceID = strings.TrimSpace(providerVoiceID)
+	}
+	if strings.TrimSpace(audioURL) != "" {
+		target.AudioURL = strings.TrimSpace(audioURL)
+	}
+	if durationSeconds > 0 {
+		target.DurationSeconds = durationSeconds
+	}
+	if target.OutputRecordID == "" {
+		nowNano := time.Now().UnixNano()
+		if target.OperationType == "voice_clone_create" {
+			target.OutputRecordID = fmt.Sprintf("01908700-%04d-7000-8000-%012d", nowNano%10000, nowNano%1000000000000)
+		} else {
+			target.OutputRecordID = fmt.Sprintf("asset-voiceover-quarantined-%d", nowNano)
+		}
+	}
+	target.UpdatedAt = time.Now().UTC()
+	opCopy := *target
+	m.mu.Unlock()
+
+	now := time.Now().UTC()
+	if opCopy.OperationType == "voice_clone_create" {
+		effProvider := strings.TrimSpace(opCopy.ProviderName)
+		if effProvider == "" {
+			effProvider = "elevenlabs"
+		}
+		_ = m.store.CreateVoiceClone(ctx, &VoiceCloneRecord{
+			VoiceCloneID:    opCopy.OutputRecordID,
+			WorkspaceID:     workspaceID,
+			CharacterID:     opCopy.CharacterID,
+			Provider:        effProvider,
+			ProviderVoiceID: opCopy.ProviderVoiceID,
+			VoiceName:       opCopy.VoiceName,
+			SampleAudioURLs: opCopy.SampleAudioURLs,
+			CloneStatus:     "quarantined",
+			ConsentRecordID: opCopy.ConsentRecordID,
+			QualityScore:    opCopy.QualityScore,
+			RepairApplied:   opCopy.RepairApplied,
+			CreatedAt:       now,
+			UpdatedAt:       now,
+		})
+		return
+	}
+	_ = m.store.CreateAsset(ctx, &Asset{
+		AssetID:               opCopy.OutputRecordID,
+		WorkspaceID:           workspaceID,
+		AssetType:             "audio",
+		Title:                 "Quarantined Voiceover - " + opCopy.VoiceName,
+		SourceGenerationMode:  "ai_generated",
+		SourceProvider:        opCopy.ProviderName,
+		SourceModel:           "eleven_multilingual_v2",
+		FileURL:               "",
+		DurationSeconds:       tenantdb.ZeroDecimal(),
+		GenerationState:       "quarantined",
+		QualityState:          "quarantined",
+		GenerationCostCredits: tenantdb.ZeroDecimal(),
+		GenerationPrompt:      opCopy.Text,
+		ErrorMessage:          "Late provider completion after reservation release; output quarantined",
+		CreatedAt:             now,
+		UpdatedAt:             now,
+	})
+}
+
 // ReconcileOperation resolves an unknown/reconciling voice operation after external provider outcome is verified.
 func (m *VoiceCloneManager) ReconcileOperation(
 	ctx context.Context,
@@ -1158,8 +1238,13 @@ func (m *VoiceCloneManager) ReconcileOperation(
 			m.mu.Unlock()
 			return nil
 		}
-		if target.Status == "failed" || target.Status == "cancelled" {
+		opID := target.OperationID
+		opType := target.OperationType
+		wasPersistencePending := target.Status == "persistence_pending"
+		reqCredits := target.RequiredCredits
+		if target.Status == "failed" || target.Status == "cancelled" || target.Status == "quarantined" {
 			m.mu.Unlock()
+			m.quarantineLateVoiceOutput(ctx, workspaceID, opID, providerVoiceID, audioURL, durationSeconds)
 			return ErrReservationAlreadyReleased
 		}
 		if strings.TrimSpace(providerVoiceID) != "" {
@@ -1171,11 +1256,17 @@ func (m *VoiceCloneManager) ReconcileOperation(
 		if durationSeconds > 0 {
 			target.DurationSeconds = durationSeconds
 		}
-		opID := target.OperationID
-		opType := target.OperationType
 		m.mu.Unlock()
 
+		if wasPersistencePending {
+			if resErr := m.service.reReserveCreditsForOperation(workspaceID, opID, reqCredits); resErr != nil {
+				return resErr
+			}
+		}
 		if err := m.service.canCommitReservation(workspaceID, opID); err != nil {
+			if errors.Is(err, ErrReservationAlreadyReleased) {
+				m.quarantineLateVoiceOutput(ctx, workspaceID, opID, providerVoiceID, audioURL, durationSeconds)
+			}
 			return err
 		}
 

@@ -22,12 +22,14 @@ type DefaultCapabilityProvider struct {
 func NewDefaultCapabilityProvider() *DefaultCapabilityProvider {
 	return &DefaultCapabilityProvider{
 		statuses: map[string]string{
-			"tiktok":    "manual",
-			"youtube":   "manual",
-			"instagram": "manual",
-			"facebook":  "manual",
-			"shopee":    "unsupported",
-			"lazada":    "unsupported",
+			"tiktok":                 "manual",
+			"youtube":                "manual",
+			"instagram":              "manual",
+			"facebook":               "manual",
+			"shopee":                 "unsupported",
+			"lazada":                 "unsupported",
+			"workflow:create":        "supported",
+			"continuity:pack_manage": "supported",
 		},
 	}
 }

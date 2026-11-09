@@ -1607,6 +1607,11 @@ func TestC5_VoiceReconcileOperationRejectsLateSuccessWithoutMaterializingOutputA
 	if len(clonesAfterLate) != 0 {
 		t.Fatalf("C5 VIOLATION: late completed after release materialized %d usable VoiceCloneRecord(s) in store!", len(clonesAfterLate))
 	}
+	if opLateClone, ok := vcMgr.GetOperation(wsID, "idem-c5-late-clone"); !ok || opLateClone.Status != "quarantined" {
+		t.Fatalf("C5 VIOLATION: expected late clone operation to be marked quarantined, got ok=%v op=%+v", ok, opLateClone)
+	} else if qClone, gErr := store.GetVoiceClone(ctx, wsID, opLateClone.OutputRecordID); gErr != nil || qClone.CloneStatus != "quarantined" {
+		t.Fatalf("C5 VIOLATION: expected late clone output to be stored in quarantined state, got err=%v clone=%+v", gErr, qClone)
+	}
 
 	// Part 2: Concurrent and repeated "completed" reconciliations on a reconciling operation must materialize only 1 output and settle once.
 	_ = store.SaveConsentRecord(ctx, &ProductionConsentRecord{
@@ -1683,6 +1688,11 @@ func TestC5_VoiceReconcileOperationRejectsLateSuccessWithoutMaterializingOutputA
 	assetsAfterLateVO, _ := store.GetRecentAssets(ctx, wsID, 100)
 	if len(assetsAfterLateVO) != 0 {
 		t.Fatalf("C5 VIOLATION: late voiceover completed after release created %d usable Asset(s) in store!", len(assetsAfterLateVO))
+	}
+	if opLateVO, ok := vcMgr.GetOperation(wsID, "idem-c5-late-vo"); !ok || opLateVO.Status != "quarantined" {
+		t.Fatalf("C5 VIOLATION: expected late voiceover operation to be marked quarantined, got ok=%v op=%+v", ok, opLateVO)
+	} else if qAsset, aErr := store.GetAsset(ctx, wsID, opLateVO.OutputRecordID); aErr != nil || qAsset.GenerationState != "quarantined" || qAsset.QualityState != "quarantined" {
+		t.Fatalf("C5 VIOLATION: expected late voiceover asset to be stored in quarantined state, got err=%v asset=%+v", aErr, qAsset)
 	}
 
 	// Concurrent + sequential completed for voiceover
