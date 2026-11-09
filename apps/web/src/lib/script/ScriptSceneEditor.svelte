@@ -2,6 +2,9 @@
   import {
     calculateTotalDuration,
     calculateWordCount,
+    cloneScenes,
+    updateSceneInList,
+    updateShotInList,
     validateScenesForSubmission,
     type Scene,
     type Shot
@@ -18,6 +21,16 @@
   let totalWords = $derived(calculateWordCount(scenes));
   let validation = $derived(validateScenesForSubmission(scenes));
 
+  function updateSceneField(sceneIndex: number, patch: Partial<Scene>) {
+    scenes = updateSceneInList(scenes, sceneIndex, patch);
+    onUpdateScenes(scenes);
+  }
+
+  function updateShotField(sceneIndex: number, shotIndex: number, patch: Partial<Shot>) {
+    scenes = updateShotInList(scenes, sceneIndex, shotIndex, patch);
+    onUpdateScenes(scenes);
+  }
+
   function addScene() {
     const newScene: Scene = {
       sceneId: `sc-${Date.now()}`,
@@ -32,17 +45,21 @@
       shotList: [],
       createdAt: new Date().toISOString()
     };
-    scenes = [...scenes, newScene];
+    scenes = [...cloneScenes(scenes), newScene];
     onUpdateScenes(scenes);
   }
 
   function removeScene(index: number) {
-    scenes = scenes.filter((_, i) => i !== index).map((sc, i) => ({ ...sc, sceneIndex: i }));
+    scenes = cloneScenes(scenes)
+      .filter((_, i) => i !== index)
+      .map((sc, i) => ({ ...sc, sceneIndex: i }));
     onUpdateScenes(scenes);
   }
 
   function addShot(sceneIndex: number) {
-    const target = scenes[sceneIndex];
+    const cloned = cloneScenes(scenes);
+    const target = cloned[sceneIndex];
+    if (!target) return;
     const newShot: Shot = {
       shotId: `sh-${Date.now()}`,
       sceneId: target.sceneId,
@@ -54,14 +71,18 @@
       createdAt: new Date().toISOString()
     };
     target.shotList = [...target.shotList, newShot];
-    scenes = [...scenes];
+    scenes = cloned;
     onUpdateScenes(scenes);
   }
 
   function removeShot(sceneIndex: number, shotIndex: number) {
-    const target = scenes[sceneIndex];
-    target.shotList = target.shotList.filter((_, i) => i !== shotIndex).map((sh, i) => ({ ...sh, shotIndex: i }));
-    scenes = [...scenes];
+    const cloned = cloneScenes(scenes);
+    const target = cloned[sceneIndex];
+    if (!target) return;
+    target.shotList = target.shotList
+      .filter((_, i) => i !== shotIndex)
+      .map((sh, i) => ({ ...sh, shotIndex: i }));
+    scenes = cloned;
     onUpdateScenes(scenes);
   }
 </script>
@@ -100,7 +121,11 @@
             </span>
             <input
               type="text"
-              bind:value={scene.description}
+              value={scene.description}
+              oninput={(e) =>
+                updateSceneField(sceneIdx, {
+                  description: (e.currentTarget as HTMLInputElement).value
+                })}
               placeholder="Tên hoặc mô tả phân cảnh..."
               class="border-b border-transparent px-1 font-semibold text-gray-800 focus:border-indigo-500 focus:outline-none"
             />
@@ -111,7 +136,11 @@
               <span class="text-gray-500">Thời lượng:</span>
               <input
                 type="number"
-                bind:value={scene.durationSeconds}
+                value={scene.durationSeconds}
+                oninput={(e) =>
+                  updateSceneField(sceneIdx, {
+                    durationSeconds: Number((e.currentTarget as HTMLInputElement).value) || 0
+                  })}
                 min="1"
                 class="w-14 rounded border border-gray-200 px-1 py-0.5 text-center font-mono focus:border-indigo-500 focus:outline-none"
               />
@@ -136,7 +165,11 @@
             <textarea
               id="scene-content-{sceneIdx}"
               rows={4}
-              bind:value={scene.content}
+              value={scene.content}
+              oninput={(e) =>
+                updateSceneField(sceneIdx, {
+                  content: (e.currentTarget as HTMLTextAreaElement).value
+                })}
               placeholder="Nhập lời thoại của diễn viên hoặc voiceover cho phân cảnh này..."
               class="mt-1 w-full rounded-lg border {scene.content.trim() === '' ? 'border-amber-300 bg-amber-50/30' : 'border-gray-300'} p-3 text-sm focus:border-indigo-500 focus:outline-none"
             ></textarea>
@@ -153,7 +186,11 @@
               <input
                 id="scene-visual-{sceneIdx}"
                 type="text"
-                bind:value={scene.visualNotes}
+                value={scene.visualNotes}
+                oninput={(e) =>
+                  updateSceneField(sceneIdx, {
+                    visualNotes: (e.currentTarget as HTMLInputElement).value
+                  })}
                 placeholder="Góc quay, động tác diễn viên, b-roll minh họa..."
                 class="mt-1 w-full rounded-lg border border-gray-300 p-2 text-xs focus:border-indigo-500 focus:outline-none"
               />
@@ -163,7 +200,11 @@
               <input
                 id="scene-audio-{sceneIdx}"
                 type="text"
-                bind:value={scene.audioNotes}
+                value={scene.audioNotes}
+                oninput={(e) =>
+                  updateSceneField(sceneIdx, {
+                    audioNotes: (e.currentTarget as HTMLInputElement).value
+                  })}
                 placeholder="Nhạc nền, hiệu ứng sound effect sfx, tone giọng..."
                 class="mt-1 w-full rounded-lg border border-gray-300 p-2 text-xs focus:border-indigo-500 focus:outline-none"
               />
@@ -192,7 +233,11 @@
                 <div class="flex items-center gap-3 rounded bg-white p-2 border border-gray-200 text-xs">
                   <span class="font-mono text-gray-400">#{shotIdx + 1}</span>
                   <select
-                    bind:value={shot.shotType}
+                    value={shot.shotType}
+                    onchange={(e) =>
+                      updateShotField(sceneIdx, shotIdx, {
+                        shotType: (e.currentTarget as HTMLSelectElement).value
+                      })}
                     class="rounded border border-gray-200 p-1 text-xs"
                   >
                     <option value="Close Up">Close Up</option>
@@ -203,13 +248,21 @@
                   </select>
                   <input
                     type="text"
-                    bind:value={shot.description}
+                    value={shot.description}
+                    oninput={(e) =>
+                      updateShotField(sceneIdx, shotIdx, {
+                        description: (e.currentTarget as HTMLInputElement).value
+                      })}
                     placeholder="Mô tả shot máy..."
                     class="flex-1 rounded border border-gray-200 px-2 py-1 text-xs"
                   />
                   <input
                     type="number"
-                    bind:value={shot.durationSeconds}
+                    value={shot.durationSeconds}
+                    oninput={(e) =>
+                      updateShotField(sceneIdx, shotIdx, {
+                        durationSeconds: Number((e.currentTarget as HTMLInputElement).value) || 0
+                      })}
                     min="1"
                     class="w-12 rounded border border-gray-200 p-1 text-center font-mono text-xs"
                   />

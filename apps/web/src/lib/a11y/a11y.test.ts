@@ -9,6 +9,8 @@ import { load as loadLegalPage } from '../../routes/legal/[slug]/+page';
 import whyThisNumberModalSource from '../components/WhyThisNumberModal.svelte?raw';
 import developerSettingsSource from '../../routes/settings/developer/+page.svelte?raw';
 import scriptEditorPageSource from '../../routes/scripts/[id]/+page.svelte?raw';
+import scriptReviewPageSource from '../../routes/scripts/[id]/review/+page.svelte?raw';
+import scriptSceneEditorSource from '../script/ScriptSceneEditor.svelte?raw';
 
 class FakeHTMLElement {
   id: string;
@@ -266,8 +268,14 @@ describe('R7 Accessibility & Legal Compliance (Findings 9 & 10)', () => {
     }
   });
 
-  it('T8-N3 Script Lab route does not fabricate local version increment or approval state without backend RPC confirmation', () => {
+  it('T8-N3 & R1-R3 Script Lab editor and review routes do not fabricate local version increment, approval state, or hardcoded review scenes without backend RPC confirmation', () => {
     expect(scriptEditorPageSource).toContain('createScriptEditorSession');
     expect(scriptEditorPageSource).not.toContain('versionIndex += 1');
+    expect(scriptReviewPageSource).toContain('createScriptReviewSession');
+    expect(scriptReviewPageSource).toContain('{#each scenes as scene, sceneIdx');
+    expect(scriptReviewPageSource).toContain('data-testid="review-scenes-empty-guard"');
+    expect(scriptReviewPageSource).not.toContain('Nếu hè này da bạn đổ dầu như chảo mỡ');
+    expect(scriptSceneEditorSource).toContain('updateSceneField');
+    expect(scriptSceneEditorSource).toContain('updateShotField');
   });
 });

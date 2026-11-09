@@ -62,9 +62,21 @@ class _CreativantaAppState extends State<CreativantaApp> {
   late final bool _ownedAdapter;
   StreamSubscription<AuthStatus>? _statusSubscription;
   AuthStatus _status = AuthStatus.unconfigured;
+  String? _activeSubjectKey;
+
+  String? _computeSubjectKey() {
+    final session = _adapter.currentSession;
+    if (session == null) return null;
+    return '${session.user.id}:${session.activeWorkspace.id}';
+  }
 
   void _popPushedRoutesOnAuthBoundary(AuthStatus nextStatus) {
-    if (nextStatus != AuthStatus.authenticated) {
+    final nextSubjectKey = _computeSubjectKey();
+    final subjectChanged =
+        _activeSubjectKey != null && nextSubjectKey != _activeSubjectKey;
+    _activeSubjectKey =
+        nextStatus == AuthStatus.authenticated ? nextSubjectKey : null;
+    if (nextStatus != AuthStatus.authenticated || subjectChanged) {
       _navigatorKey.currentState?.popUntil((route) => route.isFirst);
     }
   }
@@ -87,6 +99,8 @@ class _CreativantaAppState extends State<CreativantaApp> {
     }
 
     _status = _adapter.currentStatus;
+    _activeSubjectKey =
+        _status == AuthStatus.authenticated ? _computeSubjectKey() : null;
     _statusSubscription = _adapter.statusStream.listen((status) {
       if (mounted) {
         _popPushedRoutesOnAuthBoundary(status);

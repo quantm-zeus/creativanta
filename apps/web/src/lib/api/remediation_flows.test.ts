@@ -27,6 +27,9 @@ import {
 } from '../workflow/runtime';
 import {
   createScriptEditorSession,
+  createScriptReviewSession,
+  updateSceneInList,
+  updateShotInList,
   approveScriptRemote,
   rejectScriptRemote
 } from '../script';
@@ -1996,5 +1999,396 @@ describe('Remediation Canonical RPC Flows (UF-04..UF-08, AI-02, R04)', () => {
       { token: 'jwt_1', workspaceId: 'ws-1', fetchFn: fail503Fetch as unknown as typeof fetch }
     );
     expect(rejectShort.ok).toBe(false);
+  });
+
+  it('T8-R1-R2-R3 Script Lab review screen loads real scenes before approval, scene field edits persist on Save, and dirty SubmitApproval saves or blocks before submitting', async () => {
+    const scriptReviewPageSource = (await import('../../routes/scripts/[id]/review/+page.svelte?raw')).default;
+    const scriptSceneEditorSource = (await import('../script/ScriptSceneEditor.svelte?raw')).default;
+
+    // R1: Review page must not hardcode sample skincare scenes and must wire createScriptReviewSession + dynamic scene loop
+    expect(scriptReviewPageSource).not.toContain('Nếu hè này da bạn đổ dầu như chảo mỡ');
+    expect(scriptReviewPageSource).not.toContain('Số cảnh: <strong class="text-gray-800">3 cảnh</strong>');
+    expect(scriptReviewPageSource).toContain('createScriptReviewSession');
+    expect(scriptReviewPageSource).toContain('{#each scenes as scene, sceneIdx');
+
+    // R2: ScriptSceneEditor must synchronize field edits (content, description, duration, visual/audio notes, shot fields) via onUpdateScenes
+    expect(scriptSceneEditorSource).toContain('updateSceneField');
+    expect(scriptSceneEditorSource).toContain('updateShotField');
+
+    // R1 behavioral verification: createScriptReviewSession starts fail-closed with no sample scenes or version
+    const reviewSession = createScriptReviewSession('scr-kb-01');
+    expect(reviewSession.getSnapshot().loadState).toBe('waiting_context');
+    expect(reviewSession.getSnapshot().versionIndex).toBeNull();
+    expect(reviewSession.getSnapshot().scenes).toEqual([]);
+
+    // Attempting Approve or Reject before Get succeeds is strictly denied
+    const earlyApprove = await reviewSession.approve({
+      token: 'jwt_mgr',
+      fetchFn: vi.fn() as unknown as typeof fetch
+    });
+    expect(earlyApprove.ok).toBe(false);
+    expect(reviewSession.getSnapshot().error).toBeTruthy();
+
+    const earlyReject = await reviewSession.reject('Lý do từ chối hợp lệ trên 10 ký tự', {
+      token: 'jwt_mgr',
+      fetchFn: vi.fn() as unknown as typeof fetch
+    });
+    expect(earlyReject.ok).toBe(false);
+
+    // Failed Get (503) keeps review session locked and scenes empty
+    const failGetFetch = vi
+      .fn()
+      .mockResolvedValue(jsonResponse({ code: 'unavailable', message: 'Backend down' }, 503));
+    const failedReviewLoad = await reviewSession.syncContext(
+      {
+        userId: 'mgr-1',
+        workspaceId: 'ws-1',
+        scriptId: 'scr-kb-01',
+        authState: 'authenticated',
+        isDiscoveryLoading: false
+      },
+      { token: 'jwt_mgr', workspaceId: 'ws-1', fetchFn: failGetFetch as unknown as typeof fetch }
+    );
+    expect(failedReviewLoad.ok).toBe(false);
+    expect(reviewSession.getSnapshot().loadState).toBe('error');
+    expect(reviewSession.getSnapshot().scenes).toEqual([]);
+    expect(reviewSession.getSnapshot().versionIndex).toBeNull();
+
+    // Valid Get returns distinct non-skincare scenes (v4)
+    let reviewServerRecord = {
+      script_id: 'scr-kb-01',
+      workspace_id: 'ws-1',
+      title: 'Đánh giá bàn phím cơ Custom Gasket Mount',
+      format_type: '16:9 youtube review',
+      duration_target_seconds: 90,
+      version_index: 4,
+      lifecycle_state: 'SCRIPT_LIFECYCLE_STATE_IN_REVIEW',
+      approval_state: 'SCRIPT_APPROVAL_STATE_PENDING_APPROVAL',
+      updated_at: '2026-10-30T10:00:00Z',
+      scenes: [
+        {
+          scene_id: 'sc-kb-1',
+          script_id: 'scr-kb-01',
+          workspace_id: 'ws-1',
+          scene_index: 0,
+          description: 'Soundtest mở đầu',
+          content: 'Nghe thử âm thanh gõ thocky của chiếc bàn phím nhôm CNC dưới 2 triệu này!',
+          duration_seconds: 15,
+          visual_notes: 'Macro keycap PBT và switch linear',
+          audio_notes: 'Thu âm mic condenser không nén',
+          shot_list: [
+            {
+              shot_id: 'sh-kb-1',
+              scene_id: 'sc-kb-1',
+              workspace_id: 'ws-1',
+              shot_index: 0,
+              shot_type: 'Product Macro',
+              description: 'Gõ phím Spacebar',
+              duration_seconds: 5
+            }
+          ]
+        },
+        {
+          scene_id: 'sc-kb-2',
+          script_id: 'scr-kb-01',
+          workspace_id: 'ws-1',
+          scene_index: 1,
+          description: 'Phân tích cấu trúc Gasket',
+          content: 'Mạch xuôi Hotswap 5 pin kèm foam poron 3 lớp giúp độ nhún cực kỳ êm.',
+          duration_seconds: 75,
+          visual_notes: 'Tháo case hiển thị lớp foam',
+          audio_notes: 'Voiceover rõ ràng',
+          shot_list: []
+        }
+      ]
+    };
+
+    const reviewFetch = vi.fn(async (url: string, init?: RequestInit) => {
+      const body = init?.body ? JSON.parse(String(init.body)) : {};
+      if (url.includes('ScriptService/Get')) {
+        return jsonResponse({ script: reviewServerRecord });
+      }
+      if (url.includes('ScriptService/Approve')) {
+        expect(body.script_id).toBe('scr-kb-01');
+        expect(body.expected_version).toBe(4);
+        expect(body.reviewer_snapshot_time).toBe('2026-10-30T10:00:00Z');
+        reviewServerRecord = {
+          ...reviewServerRecord,
+          version_index: 5,
+          lifecycle_state: 'SCRIPT_LIFECYCLE_STATE_APPROVED',
+          approval_state: 'SCRIPT_APPROVAL_STATE_APPROVED'
+        };
+        return jsonResponse({ script: reviewServerRecord });
+      }
+      return jsonResponse({ message: 'Unexpected RPC' }, 404);
+    });
+
+    const okReviewLoad = await reviewSession.syncContext(
+      {
+        userId: 'mgr-1',
+        workspaceId: 'ws-1',
+        scriptId: 'scr-kb-01',
+        authState: 'authenticated',
+        isDiscoveryLoading: false,
+        force: true
+      },
+      { token: 'jwt_mgr', workspaceId: 'ws-1', fetchFn: reviewFetch as unknown as typeof fetch }
+    );
+    expect(okReviewLoad.ok).toBe(true);
+    expect(reviewSession.getSnapshot().loadState).toBe('loaded');
+    expect(reviewSession.getSnapshot().versionIndex).toBe(4);
+    expect(reviewSession.getSnapshot().scenes).toHaveLength(2);
+    expect(reviewSession.getSnapshot().scenes[0].content).toContain('âm thanh gõ thocky');
+    expect(reviewSession.getSnapshot().scenes[1].content).toContain('Mạch xuôi Hotswap 5 pin');
+
+    // Approve sends expected_version=4 matching the displayed scenes
+    const okReviewApprove = await reviewSession.approve({
+      token: 'jwt_mgr',
+      workspaceId: 'ws-1',
+      fetchFn: reviewFetch as unknown as typeof fetch
+    });
+    expect(okReviewApprove.ok).toBe(true);
+    expect(reviewSession.getSnapshot().approvalState).toBe('approved');
+    expect(reviewSession.getSnapshot().versionIndex).toBe(5);
+
+    // Tenant switch / logout immediately purges review scenes and locks mutations
+    await reviewSession.syncContext({
+      userId: null,
+      workspaceId: null,
+      scriptId: 'scr-kb-01',
+      authState: 'unauthenticated',
+      isDiscoveryLoading: false
+    });
+    expect(reviewSession.getSnapshot().loadState).toBe('waiting_context');
+    expect(reviewSession.getSnapshot().versionIndex).toBeNull();
+    expect(reviewSession.getSnapshot().scenes).toEqual([]);
+
+    // R2 & R3 behavioral verification:
+    // Editing existing scene fields via component helpers updates controller, sets isDirty=true,
+    // persists updated fields on Save, and dirty SubmitApproval runs Update before SubmitApproval.
+    const editorSession = createScriptEditorSession('scr-r2-r3');
+    let editorServerRecord = {
+      script_id: 'scr-r2-r3',
+      workspace_id: 'ws-1',
+      title: 'Persisted title',
+      format_type: '9:16 vertical short',
+      duration_target_seconds: 60,
+      version_index: 2,
+      lifecycle_state: 'SCRIPT_LIFECYCLE_STATE_DRAFT',
+      approval_state: 'SCRIPT_APPROVAL_STATE_NOT_SUBMITTED',
+      scenes: [
+        {
+          scene_id: 'sc-1',
+          script_id: 'scr-r2-r3',
+          workspace_id: 'ws-1',
+          scene_index: 0,
+          description: 'Hook',
+          content: 'Original scene',
+          duration_seconds: 10,
+          visual_notes: 'Original visual',
+          audio_notes: 'Original audio',
+          shot_list: [
+            {
+              shot_id: 'sh-1',
+              scene_id: 'sc-1',
+              workspace_id: 'ws-1',
+              shot_index: 0,
+              shot_type: 'Medium Shot',
+              description: 'Original shot',
+              duration_seconds: 3
+            }
+          ]
+        }
+      ]
+    };
+
+    const calledRpcs: string[] = [];
+    const editorFetch = vi.fn(async (url: string, init?: RequestInit) => {
+      const body = init?.body ? JSON.parse(String(init.body)) : {};
+      if (url.includes('ScriptService/Get')) {
+        calledRpcs.push('Get');
+        return jsonResponse({ script: editorServerRecord });
+      }
+      if (url.includes('ScriptService/Update')) {
+        calledRpcs.push(`Update(v=${body.expected_version})`);
+        editorServerRecord = {
+          ...editorServerRecord,
+          title: body.title,
+          scenes: body.scenes,
+          version_index: editorServerRecord.version_index + 1
+        };
+        return jsonResponse({ script: editorServerRecord });
+      }
+      if (url.includes('ScriptService/SubmitApproval')) {
+        calledRpcs.push(`SubmitApproval(v=${body.expected_version})`);
+        editorServerRecord = {
+          ...editorServerRecord,
+          lifecycle_state: 'SCRIPT_LIFECYCLE_STATE_IN_REVIEW',
+          approval_state: 'SCRIPT_APPROVAL_STATE_PENDING_APPROVAL'
+        };
+        return jsonResponse({
+          script: editorServerRecord,
+          approval_request_id: 'apr-r3-1'
+        });
+      }
+      return jsonResponse({ message: 'Unknown RPC' }, 404);
+    });
+
+    await editorSession.syncContext(
+      {
+        userId: 'usr-1',
+        workspaceId: 'ws-1',
+        scriptId: 'scr-r2-r3',
+        authState: 'authenticated',
+        isDiscoveryLoading: false
+      },
+      { token: 'jwt_1', workspaceId: 'ws-1', fetchFn: editorFetch as unknown as typeof fetch }
+    );
+    expect(editorSession.getSnapshot().isDirty).toBe(false);
+
+    // R2: Simulate ScriptSceneEditor field edits on existing scene and shot without adding/removing scenes
+    let boundScenes = editorSession.getSnapshot().scenes;
+    const onUpdateScenes = (nextScenes: typeof boundScenes) => {
+      boundScenes = nextScenes;
+      editorSession.setScenes(nextScenes);
+    };
+    onUpdateScenes(
+      updateSceneInList(boundScenes, 0, {
+        content: 'NEW TEXT TYPED IN TEXTAREA',
+        description: 'Updated Hook Title',
+        durationSeconds: 14,
+        visualNotes: 'Updated visual angle',
+        audioNotes: 'Updated audio sfx'
+      })
+    );
+    onUpdateScenes(
+      updateShotInList(boundScenes, 0, 0, {
+        shotType: 'Close Up',
+        description: 'Updated close-up shot',
+        durationSeconds: 5
+      })
+    );
+
+    expect(editorSession.getSnapshot().isDirty).toBe(true);
+    expect(editorSession.getSnapshot().scenes[0].content).toBe('NEW TEXT TYPED IN TEXTAREA');
+    expect(editorSession.getSnapshot().scenes[0].shotList[0].description).toBe(
+      'Updated close-up shot'
+    );
+
+    const r2SaveRes = await editorSession.save({
+      token: 'jwt_1',
+      workspaceId: 'ws-1',
+      fetchFn: editorFetch as unknown as typeof fetch
+    });
+    expect(r2SaveRes.ok).toBe(true);
+    expect(editorSession.getSnapshot().isDirty).toBe(false);
+    expect(editorSession.getSnapshot().versionIndex).toBe(3);
+    expect(editorSession.getSnapshot().scenes[0].content).toBe('NEW TEXT TYPED IN TEXTAREA');
+    expect(editorServerRecord.scenes[0].content).toBe('NEW TEXT TYPED IN TEXTAREA');
+    expect(editorServerRecord.scenes[0].description).toBe('Updated Hook Title');
+    expect(editorServerRecord.scenes[0].duration_seconds).toBe(14);
+    expect(editorServerRecord.scenes[0].visual_notes).toBe('Updated visual angle');
+    expect(editorServerRecord.scenes[0].audio_notes).toBe('Updated audio sfx');
+    expect(editorServerRecord.scenes[0].shot_list[0].shot_type).toBe('Close Up');
+    expect(editorServerRecord.scenes[0].shot_list[0].description).toBe('Updated close-up shot');
+
+    // R3: Edit title + add a second scene, then call submitForReview() WITHOUT calling save() first
+    calledRpcs.length = 0;
+    editorSession.setTitle('NEW TITLE NOT YET SAVED');
+    onUpdateScenes([
+      ...editorSession.getSnapshot().scenes,
+      {
+        sceneId: 'sc-2',
+        scriptId: 'scr-r2-r3',
+        workspaceId: 'ws-1',
+        sceneIndex: 1,
+        description: 'CTA Scene',
+        content: 'Nhấn vào giỏ hàng để đặt mua ngay!',
+        durationSeconds: 10,
+        visualNotes: 'Chỉ tay xuống góc trái',
+        audioNotes: 'Nhạc dồn dập',
+        shotList: [],
+        createdAt: '2026-10-30T10:05:00Z'
+      }
+    ]);
+    expect(editorSession.getSnapshot().isDirty).toBe(true);
+
+    // Negative check first: if Update fails with 409 conflict during submitForReview, SubmitApproval MUST NOT be called
+    const conflictUpdateFetch = vi.fn(async (url: string) => {
+      if (url.includes('ScriptService/Update')) {
+        calledRpcs.push('UpdateConflict');
+        return jsonResponse(
+          { code: 'failed_precondition', message: 'expected_version conflict' },
+          409
+        );
+      }
+      if (url.includes('ScriptService/SubmitApproval')) {
+        calledRpcs.push('SubmitApprovalShouldNotRun');
+      }
+      return jsonResponse({ message: 'Error' }, 500);
+    });
+    const failedDirtySubmit = await editorSession.submitForReview({
+      token: 'jwt_1',
+      workspaceId: 'ws-1',
+      fetchFn: conflictUpdateFetch as unknown as typeof fetch
+    });
+    expect(failedDirtySubmit.ok).toBe(false);
+    expect(failedDirtySubmit.conflict).toBe(true);
+    expect(calledRpcs).toEqual(['UpdateConflict']);
+    expect(editorSession.getSnapshot().approvalState).toBe('not_submitted');
+    expect(editorSession.getSnapshot().isDirty).toBe(true);
+    expect(editorSession.getSnapshot().isConflict).toBe(true);
+
+    // Now submitForReview succeeds: runs Update(v=3) -> advances to v4 -> runs SubmitApproval(v=4)
+    calledRpcs.length = 0;
+    const submitRes = await editorSession.submitForReview({
+      token: 'jwt_1',
+      workspaceId: 'ws-1',
+      fetchFn: editorFetch as unknown as typeof fetch
+    });
+    expect(submitRes.ok).toBe(true);
+    expect(calledRpcs).toEqual(['Update(v=3)', 'SubmitApproval(v=4)']);
+    expect(editorServerRecord.title).toBe('NEW TITLE NOT YET SAVED');
+    expect(editorServerRecord.scenes).toHaveLength(2);
+    expect(editorSession.getSnapshot().isDirty).toBe(false);
+    expect(editorSession.getSnapshot().versionIndex).toBe(4);
+    expect(editorSession.getSnapshot().approvalState).toBe('pending_approval');
+
+    // Reloading editor and opening Reviewer screen both see the exact submitted v4 title & 2 scenes
+    await editorSession.syncContext(
+      {
+        userId: 'usr-1',
+        workspaceId: 'ws-1',
+        scriptId: 'scr-r2-r3',
+        authState: 'authenticated',
+        isDiscoveryLoading: false,
+        force: true
+      },
+      { token: 'jwt_1', workspaceId: 'ws-1', fetchFn: editorFetch as unknown as typeof fetch }
+    );
+    expect(editorSession.getSnapshot().title).toBe('NEW TITLE NOT YET SAVED');
+    expect(editorSession.getSnapshot().scenes).toHaveLength(2);
+    expect(editorSession.getSnapshot().scenes[1].content).toBe(
+      'Nhấn vào giỏ hàng để đặt mua ngay!'
+    );
+
+    const reviewerCheck = createScriptReviewSession('scr-r2-r3');
+    await reviewerCheck.syncContext(
+      {
+        userId: 'mgr-1',
+        workspaceId: 'ws-1',
+        scriptId: 'scr-r2-r3',
+        authState: 'authenticated',
+        isDiscoveryLoading: false
+      },
+      { token: 'jwt_mgr', workspaceId: 'ws-1', fetchFn: editorFetch as unknown as typeof fetch }
+    );
+    expect(reviewerCheck.getSnapshot().title).toBe('NEW TITLE NOT YET SAVED');
+    expect(reviewerCheck.getSnapshot().versionIndex).toBe(4);
+    expect(reviewerCheck.getSnapshot().scenes).toHaveLength(2);
+    expect(reviewerCheck.getSnapshot().scenes[0].content).toBe('NEW TEXT TYPED IN TEXTAREA');
+    expect(reviewerCheck.getSnapshot().scenes[1].content).toBe(
+      'Nhấn vào giỏ hàng để đặt mua ngay!'
+    );
   });
 });

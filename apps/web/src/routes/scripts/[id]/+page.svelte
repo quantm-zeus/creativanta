@@ -32,6 +32,7 @@
   let rejectionReason = $state('');
   let scenes = $state<Scene[]>([]);
 
+  let isDirty = $state(false);
   let isConflict = $state(false);
   let conflictReason = $state('');
   let saveFeedback = $state('');
@@ -53,6 +54,7 @@
     approvalState = snap.approvalState;
     rejectionReason = snap.rejectionReason;
     scenes = snap.scenes;
+    isDirty = snap.isDirty;
     isConflict = snap.isConflict;
     conflictReason = snap.conflictReason;
     saveFeedback = snap.saveFeedback;
@@ -153,10 +155,14 @@
   }
 
   async function handleSave() {
+    editorSession.setTitle(scriptTitle);
+    editorSession.setScenes(scenes);
     await editorSession.save();
   }
 
   async function handleSubmitForReview() {
+    editorSession.setTitle(scriptTitle);
+    editorSession.setScenes(scenes);
     await editorSession.submitForReview();
   }
 
@@ -203,7 +209,11 @@
       </div>
 
       <div class="flex items-center gap-3">
-        {#if saveFeedback}
+        {#if isDirty}
+          <span class="rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800" role="status">
+            Chưa lưu thay đổi
+          </span>
+        {:else if saveFeedback}
           <span class="text-xs text-emerald-600 font-medium" role="status">{saveFeedback}</span>
         {/if}
         <button
